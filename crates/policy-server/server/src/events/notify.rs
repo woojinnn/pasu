@@ -7,30 +7,29 @@
 //! through the same `EventPublisher` boundary (Redis in cloud) so connected
 //! dashboards update as the worker runs.
 
-use policy_state::WalletId;
+use policy_sync::WalletSyncCounts;
 
 use crate::events::{Event, EventPublisher, WalletSync};
 
 /// Publish one `wallet_synced` event per wallet that a sync tick refreshed.
 ///
 /// `synced_at` is a Unix timestamp in seconds, passed in so the caller owns the
-/// clock and tests stay deterministic. Per-wallet field counts mirror the
-/// on-demand sync path, which reports zero until a richer refresh summary is
-/// surfaced.
+/// clock and tests stay deterministic. Each wallet's real refresh counts ride
+/// along in the payload.
 pub async fn publish_tick_events(
     publisher: &dyn EventPublisher,
     user_id: &str,
-    synced_wallets: &[WalletId],
+    synced_wallets: &[WalletSyncCounts],
     synced_at: i64,
 ) {
-    for wallet in synced_wallets {
+    for w in synced_wallets {
         publisher
             .publish(
                 user_id.to_owned(),
                 Event::WalletSynced(WalletSync {
-                    wallet: format!("{:#x}", wallet.address),
-                    fields_updated: 0,
-                    fields_failed: 0,
+                    wallet: format!("{:#x}", w.wallet.address),
+                    fields_updated: w.fields_updated,
+                    fields_failed: w.fields_failed,
                     synced_at,
                 }),
             )
@@ -44,7 +43,7 @@ mod tests {
     use std::sync::Mutex;
 
     use async_trait::async_trait;
-    use policy_state::{Address, ChainId};
+    use policy_state::{Address, ChainId, WalletId};
 
     #[derive(Default)]
     struct RecordingPublisher {
@@ -58,14 +57,18 @@ mod tests {
         }
     }
 
-    fn wallet(addr: Address) -> WalletId {
-        WalletId::new(addr, [ChainId::ethereum_mainnet()])
+    fn counts(addr: Address, updated: usize, failed: usize) -> WalletSyncCounts {
+        WalletSyncCounts {
+            wallet: WalletId::new(addr, [ChainId::ethereum_mainnet()]),
+            fields_updated: updated,
+            fields_failed: failed,
+        }
     }
 
     #[tokio::test]
-    async fn publishes_one_wallet_synced_event_per_wallet() {
+    async fn publishes_one_wallet_synced_event_per_wallet_with_counts() {
         let publisher = RecordingPublisher::default();
-        let wallets = [wallet(Address::ZERO)];
+        let wallets = [counts(Address::ZERO, 3, 1)];
 
         publish_tick_events(&publisher, "u_alice", &wallets, 1_700_000_000).await;
 
@@ -76,6 +79,8 @@ mod tests {
         match event {
             Event::WalletSynced(sync) => {
                 assert_eq!(sync.wallet, format!("{:#x}", Address::ZERO));
+                assert_eq!(sync.fields_updated, 3);
+                assert_eq!(sync.fields_failed, 1);
                 assert_eq!(sync.synced_at, 1_700_000_000);
             }
             other => panic!("expected WalletSynced, got {other:?}"),
