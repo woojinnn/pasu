@@ -1129,7 +1129,15 @@ async function evaluateBodyTree(
       await evaluateActionV2({ action: body, meta, tx, bundles, results }),
     );
   } else if (domain === "unknown") {
-    console.debug("[Scopeball] per-child skip (unknown body)", { requestId });
+    // N2/N3: a decoded-but-unmapped leg — the WASM decoder now surfaces an
+    // undecodable batch position (unknown opcode / no-adapter Call[] leg) as an
+    // `Unknown` child instead of dropping it. Contribute a warn so a partially-
+    // decoded batch cannot aggregate to PASS on its legible siblings alone; a
+    // sibling DENY still outranks this warn via deny-overrides.
+    console.debug("[Scopeball] per-child unknown leg → partial-decode warn", {
+      requestId,
+    });
+    verdicts.push(partialDecodeVerdict());
   }
 
   // Recurse into multicall children — each its own envelope, parent meta shared.
@@ -1398,6 +1406,27 @@ function unsupportedUntypedSignatureVerdict(): VerdictDto {
    * rather than silently waiving the request through as the deleted legacy
    * `evaluateWithPolicyRpc` fallback would have.
  */
+/**
+ * N2/N3 — floor for a decoded batch carrying a leg the decoder could not map
+ * (surfaced by the WASM decoder as an `Unknown` child rather than dropped). A
+ * partially-decoded batch must not PASS on its legible siblings alone, so this
+ * warn floors the aggregate; a sibling DENY still outranks it (deny-overrides).
+ */
+function partialDecodeVerdict(): VerdictDto {
+  return {
+    kind: "warn",
+    matched: [
+      {
+        policy_id: "__engine::partial_decode",
+        reason:
+          "Part of this batch could not be decoded — review before signing",
+        severity: "warn",
+        origin: "engine_error",
+      },
+    ],
+  };
+}
+
 function noDecoderVerdict(): VerdictDto {
   return {
     kind: "warn",

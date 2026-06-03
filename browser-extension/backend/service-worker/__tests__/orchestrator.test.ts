@@ -545,7 +545,7 @@ describe("orchestrator", () => {
     );
   });
 
-  it("phaseA: an unknown inner child is skipped, siblings + batch still evaluate", async () => {
+  it("phaseA/N2-N3: an unknown inner child WARN-closes the batch (not pass), siblings still evaluate", async () => {
     const unknownChild = { domain: "unknown", target: ROUTER, calldata: "0x" };
     const mixed = {
       meta: multicallAction.meta,
@@ -559,19 +559,60 @@ describe("orchestrator", () => {
       },
     });
 
-    const { ok, verdict } = await decideMessage(txMessage("v2-multicall-unknown-1"), {
-      onAwaitingUser: vi.fn(),
-    });
+    // The unknown leg now contributes a `__engine::partial_decode` warn instead
+    // of vanishing, so the batch warn-closes and opens the modal — the user can
+    // still Trust-and-proceed, but a partially-decoded batch can no longer PASS
+    // silently on its legible siblings alone (N2/N3).
+    const { ok, verdict } = await decideAndApprove(
+      txMessage("v2-multicall-unknown-1"),
+      true,
+    );
 
+    expect(verdict.kind).toBe("warn");
     expect(ok).toBe(true);
-    expect(verdict.kind).toBe("pass");
-    // Outer batch + the swap child evaluate; the unknown child is skipped (NOT
-    // fail-closed) so it never reaches the v2 pipeline.
+    // Outer batch + the swap child still call the v2 pipeline; the unknown child
+    // does NOT (it contributes a synthetic warn), so still exactly 2 evaluations.
     expect(mocks.evaluateActionV2).toHaveBeenCalledTimes(2);
     const evaluatedBodies = mocks.evaluateActionV2.mock.calls.map(
       (c) => (c[0] as { action: unknown }).action,
     );
     expect(evaluatedBodies).toEqual([mixed.body, swapChild]);
+  });
+
+  it("phaseA/N3: [deny-leg, unknown-leg] still FAILS — deny outranks the partial-decode warn", async () => {
+    const denyChild = { domain: "amm", swap: { recipient: ROUTER } };
+    const unknownChild = { domain: "unknown", target: ROUTER, calldata: "0x" };
+    const mixed = {
+      meta: multicallAction.meta,
+      body: { domain: "multicall", actions: [denyChild, unknownChild] },
+    };
+    mocks.tryDeclarativeRouteV3.mockResolvedValueOnce({
+      kind: "hit",
+      value: { actions: [mixed], decoderId: "registry-v2.test/deny-plus-unknown" },
+    });
+    mocks.evaluateActionV2.mockImplementation(async (input: unknown) => {
+      const body = (input as { action: { domain?: string } }).action;
+      if (body.domain === "amm") {
+        return {
+          kind: "fail",
+          matched: [
+            {
+              policy_id: "swap-deny",
+              reason: "recipient not allow-listed",
+              severity: "deny",
+              origin: "action",
+            },
+          ],
+        };
+      }
+      return { kind: "pass" }; // the outer multicall batch position
+    });
+
+    const result = await decideMessage(txMessage("v2-deny-plus-unknown"));
+
+    expect(result.ok).toBe(false);
+    expect(result.verdict.kind).toBe("fail");
+    expect(result.verdict.matched?.[0]?.policy_id).toBe("swap-deny");
   });
 
   // ── Phase 1 / P3 — FAIL-CLOSED tail ──────────────────────────────────
