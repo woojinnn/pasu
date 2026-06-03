@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scopeball · Market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="market.css" />
+<style>
+  /* Tweak: 도메인 색 mono 매핑 — 인라인 액센트를 중립 슬레이트로 덮음 */
+  body.dcolor-mono .pcard, body.dcolor-mono .mrow, body.dcolor-mono .set-item { border-left-color: var(--slate-300) !important; }
+  body.dcolor-mono .dchip { background: var(--fog-300) !important; color: var(--slate-600) !important; }
+  body.dcolor-mono .dt-ico, body.dcolor-mono .when-box .wb-ico { background: var(--fog-300) !important; color: var(--slate-500) !important; }
+</style>
+</head>
+<body data-locale="ko">
+<div id="root"></div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="20" fill="#2A3441"/>
+    <path d="M30 38h40l-3.5 26h-33z M30 38l4-9h32l4 9 M42 47a8 8 0 0 0 16 0" fill="none" stroke="#9CC58D" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>
+</template>
+
+<!-- React + Babel (pinned) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- data layer (plain JS) -->
+<script src="market.glossary.js"></script>
+<script src="market-nlg.js"></script>
+<script src="market-data.js"></script>
+
+<!-- components + app (babel) -->
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="market-cards.jsx"></script>
+<script type="text/babel" src="market-screens.jsx"></script>
+<script type="text/babel" src="market-detail.jsx"></script>
+<script type="text/babel" src="market-community.jsx"></script>
+<script type="text/babel" src="market-community-screen.jsx"></script>
+<script type="text/babel" src="market-updates.jsx"></script>
+<script type="text/babel" src="market-updates-screen.jsx"></script>
+<script type="text/babel" src="market-main.jsx"></script>
+</body>
+</html>
