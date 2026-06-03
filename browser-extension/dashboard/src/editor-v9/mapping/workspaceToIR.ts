@@ -37,6 +37,8 @@ import type {
 } from "../../cedar/blocks";
 import { BLOCK_TYPES, BINARY_OPS, UNARY_OPS } from "./block-types";
 import type { EditorError } from "../errors";
+import { pathForBlockType, getGloss } from "../gloss";
+import { dottedPathToChain } from "./attr-path";
 
 export function workspaceToIR(
   ws: Blockly.Workspace,
@@ -473,13 +475,49 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         ...(payload.constraints ? { constraints: payload.constraints } : {}),
       };
     }
-    default:
+    case BLOCK_TYPES.expr_field: {
+      // Smart-picker — PATH field carries the dotted path verbatim.
+      const path = String(block.getFieldValue("PATH") ?? "").trim();
+      if (!getGloss(path)) {
+        errors.push({
+          kind: "structural",
+          message: `필드 드롭다운 값 "${path}" 가 사전에 없습니다`,
+          blockId: block.id,
+        });
+        return { kind: "raw", est: null };
+      }
+      const chain = dottedPathToChain(path);
+      if (!chain) {
+        errors.push({
+          kind: "structural",
+          message: `필드 경로 "${path}" 를 attr 체인으로 변환할 수 없습니다`,
+          blockId: block.id,
+        });
+        return { kind: "raw", est: null };
+      }
+      return chain;
+    }
+    default: {
+      // Preset field blocks (`field_<path>`) — same expansion as expr_field
+      // but the path is derived from the block type id rather than a field.
+      const presetPath = pathForBlockType(block.type);
+      if (presetPath) {
+        const chain = dottedPathToChain(presetPath);
+        if (chain) return chain;
+        errors.push({
+          kind: "structural",
+          message: `프리셋 필드 "${presetPath}" 를 attr 체인으로 변환할 수 없습니다`,
+          blockId: block.id,
+        });
+        return { kind: "raw", est: null };
+      }
       errors.push({
         kind: "structural",
         message: `식 슬롯에 알 수 없는 블록 "${block.type}"`,
         blockId: block.id,
       });
       return { kind: "raw", est: null };
+    }
   }
 }
 

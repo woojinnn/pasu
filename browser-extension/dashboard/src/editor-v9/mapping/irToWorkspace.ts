@@ -22,6 +22,8 @@ import type {
   Scope,
 } from "../../cedar/blocks";
 import { BLOCK_TYPES, blockTypeForExpr } from "./block-types";
+import { blockTypeForPath, getGloss } from "../gloss";
+import { chainToDottedPath } from "./attr-path";
 
 export function irToWorkspace(ws: Blockly.WorkspaceSvg, policies: PolicyIR[]): void {
   ws.clear();
@@ -175,6 +177,17 @@ function attachExpr(
 }
 
 function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg | null {
+  // First — try to collapse an attr chain into a preset field block. Hits
+  // when the chain's dotted path matches a gloss entry. Misses fall
+  // through to the per-kind render below.
+  if (expr.kind === "attr") {
+    const path = chainToDottedPath(expr);
+    if (path && getGloss(path)) {
+      const b = ws.newBlock(blockTypeForPath(path)) as Blockly.BlockSvg;
+      return b;
+    }
+  }
+
   const blockType = blockTypeForExpr(expr);
   if (!blockType) {
     // Only `hole` should land here (Phase E). Fall back to placeholder until

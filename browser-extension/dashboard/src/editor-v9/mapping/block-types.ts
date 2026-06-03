@@ -69,6 +69,10 @@ export const BLOCK_TYPES = {
   expr_ext_arg: "expr_ext_arg",
   expr_raw: "expr_raw",
   expr_hole: "expr_hole",
+  /** Smart-picker dropdown — single block, dropdown over all gloss paths.
+   *  Preset per-path field blocks live under their own `field_<path>` ids
+   *  generated from gloss/paths.ts (not enumerated here). */
+  expr_field: "expr_field",
 } as const;
 
 export type BlockTypeId = (typeof BLOCK_TYPES)[keyof typeof BLOCK_TYPES];

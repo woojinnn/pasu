@@ -20,6 +20,7 @@ import {
 } from "./scope-blocks";
 import { COND_WHEN_BLOCK_JSON, COND_UNLESS_BLOCK_JSON } from "./condition-blocks";
 import { EXPR_HOLE_BLOCK_JSON } from "./hole-block";
+import { EXPR_FIELD_BLOCK_JSON, FIELD_BLOCK_JSON_LIST } from "./field-blocks";
 import {
   EXPR_LIT_BOOL_BLOCK_JSON,
   EXPR_LIT_LONG_BLOCK_JSON,
@@ -78,6 +79,9 @@ const ALL_BLOCK_JSON = [
   EXPR_EXT_ARG_BLOCK_JSON,
   EXPR_RAW_BLOCK_JSON,
   EXPR_HOLE_BLOCK_JSON,
+  EXPR_FIELD_BLOCK_JSON,
+  // ...generated preset field blocks (40 entries) — see field-blocks.ts.
+  ...FIELD_BLOCK_JSON_LIST,
 ] as const;
 
 let registered = false;

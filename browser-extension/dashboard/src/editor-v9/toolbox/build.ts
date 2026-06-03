@@ -4,20 +4,35 @@
  * Returns the JSON shape Blockly expects (`Blockly.utils.toolbox.ToolboxDefinition`).
  * Locale-aware (ko/en) for category labels.
  *
- * Wrapper blocks (set_item, record_pair, action_scope_in_item, ext_arg) ARE
- * surfaced in the toolbox alongside their parents so users can drag them
- * directly — Blockly's connection-check prevents misuse (only the right
- * parent slot will accept them).
+ * Layout philosophy:
+ *   - Top: 정책 + 범위 + 조건 (structural — every policy needs these).
+ *   - Middle: domain-aware "필드" categories generated from gloss/paths.ts
+ *     (주소 / 토큰·베뉴 / 금액·수량 / 방향·주문 / 인증·포지션 / 파생값). One block
+ *     per gloss entry; user sees `입력 토큰 주소` instead of building
+ *     attr(attr(attr(var(context), ...))) by hand. Plus `필드 (전체)` — a
+ *     single smart-picker block whose dropdown lists every gloss entry.
+ *   - Lower: 식 (raw expressions for the long tail) / 집합·레코드 / 연산 /
+ *     확장·Raw / 파라미터. These stay for power users and unusual policies.
  */
 
 import { BLOCK_TYPES } from "../mapping/block-types";
+import {
+  blockTypeForPath,
+  glossByRole,
+  ROLE_LABEL_KO,
+  ROLE_LABEL_EN,
+  ROLE_COLOUR,
+  type GlossEntry,
+  type Role,
+} from "../gloss";
 
 const STRINGS = {
   ko: {
     policy: "정책",
     scope: "범위",
     cond: "조건",
-    expr: "식",
+    fieldPicker: "필드 (전체)",
+    expr: "식 (직접 만들기)",
     collection: "집합/레코드",
     ops: "연산",
     ext: "확장 / Raw",
@@ -27,7 +42,8 @@ const STRINGS = {
     policy: "Policy",
     scope: "Scope",
     cond: "Condition",
-    expr: "Expression",
+    fieldPicker: "Field (all)",
+    expr: "Expression (raw)",
     collection: "Set / Record",
     ops: "Ops",
     ext: "Ext / Raw",
@@ -35,11 +51,26 @@ const STRINGS = {
   },
 } as const;
 
+function fieldCategory(role: Role, entries: GlossEntry[], locale: "ko" | "en"): object {
+  return {
+    kind: "category",
+    name: locale === "ko" ? ROLE_LABEL_KO[role] : ROLE_LABEL_EN[role],
+    colour: String(ROLE_COLOUR[role]),
+    contents: entries.map((e) => ({
+      kind: "block",
+      type: blockTypeForPath(e.path),
+    })),
+  };
+}
+
 export function buildToolbox(locale: "ko" | "en" = "ko"): object {
   const s = STRINGS[locale];
+  const byRole = glossByRole();
+
   return {
     kind: "categoryToolbox",
     contents: [
+      // ── structural (top of the toolbox — every policy needs these) ──
       {
         kind: "category",
         name: s.policy,
@@ -71,6 +102,33 @@ export function buildToolbox(locale: "ko" | "en" = "ko"): object {
           { kind: "block", type: BLOCK_TYPES.cond_unless },
         ],
       },
+
+      // ── domain-aware field categories (gloss-driven) ──
+      fieldCategory("address", byRole.address, locale),
+      fieldCategory("ref", byRole.ref, locale),
+      fieldCategory("numeric", byRole.numeric, locale),
+      fieldCategory("enum", byRole.enum, locale),
+      fieldCategory("auth", byRole.auth, locale),
+      fieldCategory("derived", byRole.derived, locale),
+      {
+        kind: "category",
+        name: s.fieldPicker,
+        colour: "220",
+        contents: [{ kind: "block", type: BLOCK_TYPES.expr_field }],
+      },
+
+      // ── operations (lifted high — used everywhere) ──
+      {
+        kind: "category",
+        name: s.ops,
+        colour: "260",
+        contents: [
+          { kind: "block", type: BLOCK_TYPES.expr_binary },
+          { kind: "block", type: BLOCK_TYPES.expr_unary },
+        ],
+      },
+
+      // ── raw expression builders (long tail / power users) ──
       {
         kind: "category",
         name: s.expr,
@@ -97,15 +155,6 @@ export function buildToolbox(locale: "ko" | "en" = "ko"): object {
           { kind: "block", type: BLOCK_TYPES.expr_set_item },
           { kind: "block", type: BLOCK_TYPES.expr_record },
           { kind: "block", type: BLOCK_TYPES.expr_record_pair },
-        ],
-      },
-      {
-        kind: "category",
-        name: s.ops,
-        colour: "260",
-        contents: [
-          { kind: "block", type: BLOCK_TYPES.expr_binary },
-          { kind: "block", type: BLOCK_TYPES.expr_unary },
         ],
       },
       {
