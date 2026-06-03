@@ -251,6 +251,8 @@ const UNISWAP_V3_POOL_BATCH = "uniswap-v3-child-universe-deferred";
 // token list rides as `$source.pool_tokens` context, not as per-pool callkeys.
 const BALANCER_V3_POOL_TOKENS_SOURCE = "balancer_v3:pool_tokens";
 const BALANCER_V3_ROUTER_MAINNET = "0xae563e3f8219521950555f5962419c8919758ea2";
+const BALANCER_V3_COMPOSITE_TOKENS_SOURCE = "balancer_v3:composite_pool_tokens";
+const BALANCER_V3_COMPOSITE_MAINNET = "0xb21a277466e7db6934556a1ce12eb3f032815c8a";
 
 function coverageAddresses(cov: Coverage): Hex[] {
   return (
@@ -358,6 +360,9 @@ function gatedSourceAddresses(
       // Materializes to the single V3 Router (mainnet); cover selectors live on
       // the Router and the pool->tokens map rides as $source context.
       candidates = chainId === 1 ? [BALANCER_V3_ROUTER_MAINNET] : [];
+    } else if (sourceSpec === BALANCER_V3_COMPOSITE_TOKENS_SOURCE) {
+      // Materializes to the single CompositeLiquidityRouter v2 (mainnet).
+      candidates = chainId === 1 ? [BALANCER_V3_COMPOSITE_MAINNET] : [];
     } else {
       continue;
     }

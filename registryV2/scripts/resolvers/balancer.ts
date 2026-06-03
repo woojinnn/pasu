@@ -19,7 +19,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import type { Hex, ProtocolResolvedAddress, ProtocolResolver, ResolverOpts } from "./types.ts";
+import type {
+  Hex,
+  ProtocolResolvedAddress,
+  ProtocolResolver,
+  ProtocolSourceKind,
+  ResolverOpts,
+} from "./types.ts";
 
 const REGISTRY_ROOT = process.env.BUILD_INDEX_REGISTRY_ROOT
   ? resolve(process.env.BUILD_INDEX_REGISTRY_ROOT)
@@ -29,6 +35,8 @@ const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 
 /** Canonical mainnet Balancer V3 Router v2 (balancer-deployments v3 20250307-v3-router-v2). */
 const V3_ROUTER_MAINNET = "0xae563e3f8219521950555f5962419c8919758ea2";
+/** Mainnet Balancer V3 CompositeLiquidityRouter v2 (balancer-deployments v3 20250307). ERC4626/boosted pool liquidity; same pool->tokens resolution as the Router. */
+const V3_COMPOSITE_MAINNET = "0xb21a277466e7db6934556a1ce12eb3f032815c8a";
 
 interface PoolCandidate {
   chainId?: number;
@@ -59,32 +67,42 @@ function loadPoolTokenMap(chainId: number): Record<string, string[]> {
 }
 
 /**
- * `balancer_v3:pool_tokens` — materializes the single mainnet V3 Router bundle
- * carrying the full pool->tokens map under `$source.pool_tokens`.
+ * Build a resolver that materializes ONE router address carrying the full mainnet
+ * V3 `pool -> tokens` map under `$source.pool_tokens`. The V3 Router (proportional/
+ * unbalanced liquidity) and the CompositeLiquidityRouter v2 (ERC4626/boosted pool
+ * liquidity) both resolve a calldata `pool` against the SAME baked map; they only
+ * differ in the callkey address, so this factory parameterizes by `(source, address)`.
  */
-export const balancerV3PoolTokensResolver: ProtocolResolver = {
-  source: "balancer_v3:pool_tokens",
+function makePoolTokensResolver(
+  source: ProtocolSourceKind,
+  routerAddress: Hex,
+): ProtocolResolver {
+  return {
+    source,
+    async resolve(chainId: number, _opts: ResolverOpts): Promise<Hex[]> {
+      if (chainId !== 1) return [];
+      return [routerAddress];
+    },
+    async resolveWithContext(
+      chainId: number,
+      _opts: ResolverOpts,
+    ): Promise<ProtocolResolvedAddress[]> {
+      if (chainId !== 1) return [];
+      const poolTokens = loadPoolTokenMap(chainId);
+      if (Object.keys(poolTokens).length === 0) return [];
+      return [{ address: routerAddress, id_suffix: "v2-mainnet", context: { pool_tokens: poolTokens } }];
+    },
+  };
+}
 
-  // Plain address path: just the Router (the only callkey target).
-  async resolve(chainId: number, _opts: ResolverOpts): Promise<Hex[]> {
-    if (chainId !== 1) return [];
-    return [V3_ROUTER_MAINNET];
-  },
+/** `balancer_v3:pool_tokens` — V3 Router liquidity (proportional/unbalanced). */
+export const balancerV3PoolTokensResolver: ProtocolResolver = makePoolTokensResolver(
+  "balancer_v3:pool_tokens",
+  V3_ROUTER_MAINNET,
+);
 
-  // Context path: Router + the baked pool->tokens map.
-  async resolveWithContext(
-    chainId: number,
-    _opts: ResolverOpts,
-  ): Promise<ProtocolResolvedAddress[]> {
-    if (chainId !== 1) return [];
-    const poolTokens = loadPoolTokenMap(chainId);
-    if (Object.keys(poolTokens).length === 0) return [];
-    return [
-      {
-        address: V3_ROUTER_MAINNET,
-        id_suffix: "v2-mainnet",
-        context: { pool_tokens: poolTokens },
-      },
-    ];
-  },
-};
+/** `balancer_v3:composite_pool_tokens` — CompositeLiquidityRouter v2 ERC4626/boosted liquidity. */
+export const balancerV3CompositePoolTokensResolver: ProtocolResolver = makePoolTokensResolver(
+  "balancer_v3:composite_pool_tokens",
+  V3_COMPOSITE_MAINNET,
+);

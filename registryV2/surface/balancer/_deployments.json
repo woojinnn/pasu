@@ -135,8 +135,8 @@
       "name": "Balancer V3 CompositeLiquidityRouter v2 (mainnet)",
       "chainId": 1,
       "address": "0xb21A277466e7dB6934556a1Ce12eb3F032815c8A",
-      "decision": "exclude",
-      "reason": "DEFERRED user-facing router (1st-party v3/tasks/20250123-v3-composite-liquidity-router-v2; high usage \u2014 active 2026-06-03, ~300 recent direct tx). Add/remove liquidity for nested + ERC-4626 (boosted) pools. Needs a nested/boosted-pool decoder; not covered this run. Follow-up #2."
+      "decision": "cover",
+      "reason": "COVERED (#3, 2026-06-04): ERC4626/boosted pool liquidity (addLiquidityProportional/UnbalancedToERC4626Pool, removeLiquidityProportionalFromERC4626Pool) + permitBatchAndCall, decoded via the baked balancer_v3:composite_pool_tokens map (reuses the #1 V3 pool universe + balancer_v3_zip_pool_tokens $fn). Surface at v3-composite-router-v2-mainnet.{abi,coverage}.json."
     },
     {
       "name": "Balancer V2 BalancerRelayer (BatchRelayer v6, mainnet)",
