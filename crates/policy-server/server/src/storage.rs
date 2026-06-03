@@ -4,6 +4,7 @@
 //! sync cursors live in adjacent tables under the same user namespace.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use policy_db::stores::postgres::connect_pool;
 use policy_db::{GlobalDb, MultiUserStore};
@@ -16,6 +17,12 @@ use crate::config::ServerConfig;
 pub struct StorageBackend {
     global_db: GlobalDb,
     multi_user: MultiUserStore,
+}
+
+/// Capped exponential backoff for the Nth (1-based) retry attempt.
+fn backoff_delay(attempt: u32, base: Duration, cap: Duration) -> Duration {
+    let factor = 2u32.saturating_pow(attempt.saturating_sub(1).min(16));
+    base.saturating_mul(factor).min(cap)
 }
 
 impl StorageBackend {
@@ -43,7 +50,33 @@ impl StorageBackend {
             .into());
         }
 
-        let pool = connect_pool(database_url).await?;
+        let pool = {
+            let mut attempt: u32 = 0;
+            loop {
+                match connect_pool(
+                    database_url,
+                    config.db_max_connections,
+                    Duration::from_secs(config.db_acquire_timeout_secs),
+                )
+                .await
+                {
+                    Ok(pool) => break pool,
+                    Err(e) => {
+                        attempt += 1;
+                        if attempt > config.db_connect_max_retries {
+                            return Err(e.into());
+                        }
+                        let delay = backoff_delay(
+                            attempt,
+                            Duration::from_secs(config.db_connect_backoff_secs),
+                            Duration::from_secs(30),
+                        );
+                        tracing::warn!(attempt, ?delay, error = %e, "db connect failed; retrying");
+                        tokio::time::sleep(delay).await;
+                    }
+                }
+            }
+        };
         let global_db = GlobalDb::new(pool.clone());
         if migrate {
             global_db.migrate().await?;
@@ -84,5 +117,22 @@ impl StorageBackend {
         user_id: &str,
     ) -> Result<Arc<dyn WalletStore>, Box<dyn std::error::Error>> {
         Ok(self.multi_user.for_user(user_id)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::backoff_delay;
+    use std::time::Duration;
+
+    #[test]
+    fn backoff_grows_then_caps() {
+        let base = Duration::from_secs(5);
+        let cap = Duration::from_secs(30);
+        assert_eq!(backoff_delay(1, base, cap), Duration::from_secs(5));
+        assert_eq!(backoff_delay(2, base, cap), Duration::from_secs(10));
+        assert_eq!(backoff_delay(3, base, cap), Duration::from_secs(20));
+        assert_eq!(backoff_delay(4, base, cap), cap);
+        assert_eq!(backoff_delay(99, base, cap), cap);
     }
 }
