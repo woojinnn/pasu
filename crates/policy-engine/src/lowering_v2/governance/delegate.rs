@@ -9,7 +9,7 @@ use super::super::common::token::lower_token_ref;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::lower_governance_venue;
 
-fn kind_name(kind: &GovernanceDelegationKind) -> &'static str {
+const fn kind_name(kind: &GovernanceDelegationKind) -> &'static str {
     match kind {
         GovernanceDelegationKind::All => "all",
         GovernanceDelegationKind::Voting => "voting",
@@ -52,13 +52,13 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use policy_state::primitives::U256;
+    use policy_state::LiveField;
     use policy_transition::action::governance::{
         GovernanceAction, GovernanceDelegateAction, GovernanceDelegateLiveInputs,
         GovernanceDelegationKind,
     };
     use policy_transition::action::ActionBody;
-    use policy_state::primitives::U256;
-    use policy_state::LiveField;
 
     use super::super::test_support::{
         aave_token_ref, assert_conforms, governance_token_venue, now, onchain_meta, onchain_source,

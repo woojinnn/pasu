@@ -20,6 +20,7 @@ pub use self::vote::*;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "action", rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
 pub enum GovernanceAction {
     /// Delegate voting/proposition power.
     Delegate(GovernanceDelegateAction),

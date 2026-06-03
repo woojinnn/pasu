@@ -72,12 +72,12 @@ pub(crate) fn lower_proposal_id(id: policy_state::primitives::U256) -> Value {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use policy_transition::action::governance::GovernanceVenue;
-    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
     use policy_state::live_field::{DataSource, OracleProvider};
     use policy_state::primitives::{Address, ChainId, Time, U256};
     use policy_state::token::{TokenKey, TokenRef};
     use policy_state::LiveField;
+    use policy_transition::action::governance::GovernanceVenue;
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
     use crate::lowering_v2::TxMeta;
 

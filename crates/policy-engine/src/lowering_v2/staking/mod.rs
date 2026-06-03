@@ -60,7 +60,8 @@ pub(crate) fn lower_stake_venue(venue: &StakeVenue) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("minter".into(), Value::String(addr(minter)));
         }
-        StakeVenue::CurveGaugeController { chain, controller } => {
+        StakeVenue::CurveGaugeController { chain, controller }
+        | StakeVenue::AaveUmbrellaRewardsController { chain, controller } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("controller".into(), Value::String(addr(controller)));
         }
@@ -79,10 +80,6 @@ pub(crate) fn lower_stake_venue(venue: &StakeVenue) -> Value {
         StakeVenue::AaveUmbrellaStakeToken { chain, stake_token } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("stakeToken".into(), Value::String(addr(stake_token)));
-        }
-        StakeVenue::AaveUmbrellaRewardsController { chain, controller } => {
-            m.insert("chain".into(), Value::String(chain.to_string()));
-            m.insert("controller".into(), Value::String(addr(controller)));
         }
         StakeVenue::AaveSavingsGho { chain, vault } => {
             m.insert("chain".into(), Value::String(chain.to_string()));

@@ -34,11 +34,11 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use policy_state::primitives::U256;
     use policy_transition::action::governance::{
         GovernanceAction, GovernanceUpdateRepresentativeAction,
     };
     use policy_transition::action::ActionBody;
-    use policy_state::primitives::U256;
 
     use super::super::test_support::{aave_governance_v3, assert_conforms, onchain_meta, other};
 

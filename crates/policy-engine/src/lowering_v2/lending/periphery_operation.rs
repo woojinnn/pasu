@@ -63,11 +63,11 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
+    use policy_state::primitives::{Address, ChainId, U256};
     use policy_transition::action::lending::{
         LendingAction, LendingPeripheryKind, LendingVenue, PeripheryOperationAction,
     };
     use policy_transition::action::ActionBody;
-    use policy_state::primitives::{Address, ChainId, U256};
 
     use super::super::test_support::{assert_conforms, onchain_meta, other, usdc};
 
