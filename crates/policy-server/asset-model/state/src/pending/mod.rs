@@ -36,7 +36,7 @@ pub enum PendingStatus {
     Cancelled,
     /// Expired after its deadline.
     Expired,
-    /// Venue reported a definitive failure (e.g. UniswapX `error` /
+    /// Venue reported a definitive failure (e.g. `UniswapX` `error` /
     /// `insufficient-funds`). Terminal; does not count toward committed.
     Failed,
     /// Unknown because the venue did not respond or reconciliation failed.
@@ -62,7 +62,7 @@ pub struct PendingLifecycle {
     #[tsify(optional)]
     pub on_chain_tx: Option<TxHash>,
     /// Verbatim venue status string, preserved so foreign vocabularies
-    /// (e.g. UniswapX `unverified`, future CoW/Polymarket states) survive
+    /// (e.g. `UniswapX` `unverified`, future `CoW`/`Polymarket` states) survive
     /// the lossy projection into `PendingStatus`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
