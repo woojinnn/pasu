@@ -18,6 +18,7 @@ pub(super) fn apply(
         asset_index: action.asset_index,
         is_cross: action.is_cross,
         leverage: action.leverage,
+        dex: None,
     };
 
     let mut delta = StateDelta::new();
@@ -122,6 +123,7 @@ mod tests {
             asset_index: 0,
             is_cross: true,
             leverage: 5,
+            dex: None,
         }];
         let delta = apply(&act(10), &state_with(base), &ctx()).unwrap();
         assert!(matches!(
@@ -134,6 +136,7 @@ mod tests {
                 asset_index: 0,
                 is_cross: true,
                 leverage: 5,
+                dex: None,
             }]),
             &delta,
         )
@@ -157,6 +160,7 @@ mod tests {
             asset_index: 0,
             is_cross: true,
             leverage: 5,
+            dex: None,
         }];
         let action = HlUpdateLeverageAction {
             asset_index: 1, // different asset than base → forces the append branch

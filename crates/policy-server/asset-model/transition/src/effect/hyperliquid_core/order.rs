@@ -28,6 +28,7 @@ pub(super) fn apply(
         trigger_price: None,
         trigger_condition: None,
         is_position_tpsl: None,
+        dex: None,
     };
 
     let mut delta = StateDelta::new();

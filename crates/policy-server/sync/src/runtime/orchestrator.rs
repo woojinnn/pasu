@@ -1456,6 +1456,7 @@ priority = 1
                     trigger_price: None,
                     trigger_condition: None,
                     is_position_tpsl: None,
+                    dex: None,
                 }],
                 spot_balances: vec![HlSpotBalance {
                     coin: "OLD".to_owned(),

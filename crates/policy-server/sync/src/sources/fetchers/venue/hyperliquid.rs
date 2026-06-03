@@ -622,6 +622,7 @@ pub(crate) fn parse_account_snapshot(
 
     Ok(HlAccount {
         perp_usdc,
+        perp_dex_margins: Vec::new(),
         pending_outflow: Decimal::new("0"),
         positions,
         open_orders,
@@ -1225,6 +1226,8 @@ fn parse_hl_positions(
             is_long: szi.is_sign_positive(),
             size: Decimal::new(szi.abs().normalize().to_string()),
             entry_price,
+            dex: None,
+            liquidation_price: None,
         });
     }
     Ok(out)
@@ -1267,6 +1270,7 @@ fn parse_hl_open_orders(
                 .and_then(Value::as_str)
                 .map(str::to_owned),
             is_position_tpsl: value_at(item, &["isPositionTpsl"]).and_then(Value::as_bool),
+            dex: None,
         });
     }
     Ok(out)
@@ -1296,6 +1300,7 @@ fn parse_hl_leverage_settings(
                 Some("cross" | "Cross")
             ),
             leverage: u32::try_from(value).map_err(|e| sync_error(format!("leverage: {e}")))?,
+            dex: None,
         });
     }
     Ok(out)

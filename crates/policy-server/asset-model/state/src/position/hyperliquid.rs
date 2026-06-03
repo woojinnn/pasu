@@ -27,6 +27,10 @@ pub struct HlAccount {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub perp_usdc: Option<Decimal>,
+    /// Per-dex perp margin snapshots (native + builder dexs). Source of truth for
+    /// the derived `perp_usdc` (= Σ `withdrawable`); see [`HlAccount::merge_core`].
+    #[serde(default)]
+    pub perp_dex_margins: Vec<HlPerpDexMargin>,
     /// Cumulative USDC outflow intent recorded by withdraw / `usd_send`, kept
     /// even when no base balance is known (so a no-fetch caller still sees it).
     pub pending_outflow: Decimal,
@@ -58,6 +62,7 @@ impl Default for HlAccount {
     fn default() -> Self {
         Self {
             perp_usdc: None,
+            perp_dex_margins: Vec::new(),
             pending_outflow: Decimal::new("0"),
             positions: Vec::new(),
             open_orders: Vec::new(),
@@ -69,6 +74,24 @@ impl Default for HlAccount {
             agents: Vec::new(),
         }
     }
+}
+
+/// Per-dex perp margin summary — one entry per dex synced. `None` dex = native.
+///
+/// The additive source of truth for the derived `perp_usdc` (= Σ `withdrawable`),
+/// so a stale builder dex preserved across a [`HlAccount::merge_core`] keeps
+/// contributing its last-known margin.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlPerpDexMargin {
+    /// Perp dex: `None` = native, `Some("xyz")` = builder dex.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub dex: Option<String>,
+    /// Freely-withdrawable USDC margin on this dex (`withdrawable`).
+    pub withdrawable: Decimal,
+    /// Total account value on this dex (`marginSummary.accountValue`).
+    pub account_value: Decimal,
 }
 
 /// Which **core** domains in a freshly fetched snapshot are authoritative.
@@ -158,6 +181,15 @@ pub struct HlPosition {
     pub size: Decimal,
     /// Average entry price.
     pub entry_price: Decimal,
+    /// Perp dex this position is on: `None` = native, `Some("xyz")` = builder dex.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub dex: Option<String>,
+    /// HL-reported liquidation price (`liquidationPx`). Stored, not derived —
+    /// cross-margin recompute would mean reimplementing HL's liquidation engine.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub liquidation_price: Option<Decimal>,
 }
 
 /// A resting Hyperliquid open order (an unfilled `hl_order` intent).
@@ -204,6 +236,10 @@ pub struct HlOpenOrder {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub is_position_tpsl: Option<bool>,
+    /// Perp dex this order is on: `None` = native, `Some("xyz")` = builder dex.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub dex: Option<String>,
 }
 
 /// A spot-account token balance.
@@ -320,6 +356,10 @@ pub struct HlLeverageSetting {
     pub is_cross: bool,
     /// Leverage multiplier.
     pub leverage: u32,
+    /// Perp dex this setting is on: `None` = native, `Some("xyz")` = builder dex.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub dex: Option<String>,
 }
 
 /// An agent (API) wallet authorized via `approveAgent`.
@@ -422,6 +462,21 @@ mod merge_tests {
         );
         assert!(persisted.staking.is_some()); // fresh staking written in
     }
+
+    #[test]
+    fn position_carries_dex_and_liq_price() {
+        let p = HlPosition {
+            asset_index: 5,
+            symbol: Some("NVDA".into()),
+            is_long: true,
+            size: Decimal::new("1"),
+            entry_price: Decimal::new("100"),
+            dex: Some("xyz".into()),
+            liquidation_price: Some(Decimal::new("80")),
+        };
+        assert_eq!(p.dex.as_deref(), Some("xyz"));
+        assert_eq!(p.liquidation_price, Some(Decimal::new("80")));
+    }
 }
 
 #[cfg(test)]
@@ -432,6 +487,11 @@ mod tests {
     fn hl_account_round_trips_through_json() {
         let acct = HlAccount {
             perp_usdc: Some(Decimal::new("1000.5")),
+            perp_dex_margins: vec![HlPerpDexMargin {
+                dex: Some("xyz".to_owned()),
+                withdrawable: Decimal::new("5"),
+                account_value: Decimal::new("3219.36"),
+            }],
             pending_outflow: Decimal::new("0"),
             positions: vec![HlPosition {
                 asset_index: 0,
@@ -439,6 +499,8 @@ mod tests {
                 is_long: true,
                 size: Decimal::new("0.1"),
                 entry_price: Decimal::new("60000"),
+                dex: None,
+                liquidation_price: Some(Decimal::new("48000")),
             }],
             open_orders: vec![HlOpenOrder {
                 asset_index: 1,
@@ -454,6 +516,7 @@ mod tests {
                 trigger_price: Some(Decimal::new("185")),
                 trigger_condition: Some("Price below 185".to_owned()),
                 is_position_tpsl: Some(true),
+                dex: None,
             }],
             spot_balances: vec![HlSpotBalance {
                 coin: "USDC".to_owned(),
@@ -498,6 +561,7 @@ mod tests {
                 asset_index: 0,
                 is_cross: true,
                 leverage: 5,
+                dex: None,
             }],
             agents: vec![HlAgentApproval {
                 agent_address: Address::from([0x11; 20]),

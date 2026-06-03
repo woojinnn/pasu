@@ -2558,6 +2558,7 @@ dependencies = [
  "alloy-primitives",
  "async-trait",
  "hex",
+ "rust_decimal",
  "serde",
  "serde_json",
  "thiserror",

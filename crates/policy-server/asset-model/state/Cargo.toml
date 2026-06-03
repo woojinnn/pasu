@@ -12,6 +12,10 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 alloy-primitives = { workspace = true }
 hex = { workspace = true }
+# Arithmetic for the derived `perp_usdc` = Σ per-dex withdrawable. The workspace
+# decl is `default-features = false` (`serde-str` + `maths`), so it stays
+# wasm-safe — policy-state compiles into the policy-engine-wasm artifact.
+rust_decimal = { workspace = true }
 # Tsify-next derives TypeScript types for every pub type. wasm-bindgen is
 # pulled in transitively because Tsify's #[tsify(into_wasm_abi, from_wasm_abi)]
 # emits trait impls that touch the wasm-bindgen serde glue.

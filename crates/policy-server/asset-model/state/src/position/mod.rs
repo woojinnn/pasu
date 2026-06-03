@@ -13,8 +13,8 @@ pub mod vesting;
 pub use airdrop::{AirdropClaim, ClaimStatus, MerkleProof};
 pub use hyperliquid::{
     CoreFresh, HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance,
-    HlBorrowLendTokenState, HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance,
-    HlStakingAccount, HlStakingDelegation, HlVaultEquity, LongtailFresh,
+    HlBorrowLendTokenState, HlLeverageSetting, HlOpenOrder, HlPerpDexMargin, HlPosition,
+    HlSpotBalance, HlStakingAccount, HlStakingDelegation, HlVaultEquity, LongtailFresh,
 };
 pub use launchpad::LaunchpadAllocation;
 pub use lending::{EModeCategory, LendingAccount};

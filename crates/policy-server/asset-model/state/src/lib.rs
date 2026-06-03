@@ -60,7 +60,8 @@ pub use pending::{
 pub use position::{
     AirdropClaim, ClaimStatus, CoreFresh, EModeCategory, HlAccount, HlAgentApproval,
     HlBorrowLendAccount, HlBorrowLendBalance, HlBorrowLendTokenState, HlLeverageSetting,
-    HlOpenOrder, HlPosition, HlSpotBalance, HlStakingAccount, HlStakingDelegation, HlVaultEquity,
+    HlOpenOrder, HlPerpDexMargin, HlPosition, HlSpotBalance, HlStakingAccount, HlStakingDelegation,
+    HlVaultEquity,
     LaunchpadAllocation, LendingAccount, LongtailFresh, MarginMode, MerkleProof, PerpPosition,
     PerpSide, Position, PositionId, PositionKind, VestCurve, VestSchedule, VestingSchedule,
 };
