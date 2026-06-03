@@ -2,17 +2,17 @@
  * PolicyIR → Blockly Workspace.
  *
  * Used by:
- *   - irToWorkspace(ws, [policy]) on initial mount to seed an empty policy
- *     skeleton in Phase A;
- *   - the textToBlocks path in Phase D once it lands (paste Cedar → blocks).
+ *   - irToWorkspace(ws, [policy]) on initial mount when a serialized workspace
+ *     is unavailable (e.g. legacy policies seeded only from Cedar text);
+ *   - the textToBlocks path in Phase D (paste Cedar → blocks).
  *
- * Clears the workspace first, then creates blocks for each PolicyIR. Block
- * positions are left to Blockly's auto-layout — callers can centerOnBlock
- * afterwards for nicer initial viewport.
+ * Clears the workspace first, then materializes each PolicyIR. Block positions
+ * are left to Blockly's auto-layout; callers can centerOnBlock afterwards.
  *
- * Phase A scope matches workspaceToIR: only the skeleton block set is
- * materializable. Unsupported Expr.kinds fall back to a placeholder lit_bool
- * block until Phase B/C add their real renderers.
+ * Coverage: Phase A/B Expr.kinds (var, lit:{bool,long,string}, attr, has,
+ * binary, unary) render as real blocks. Other kinds fall back to a placeholder
+ * `expr_lit_bool(true)` block — that's a lossy render and will trip the
+ * round-trip test once Phase C wires the remaining renderers.
  */
 
 import * as Blockly from "blockly";
@@ -23,7 +23,7 @@ import type {
   PolicyIR,
   Scope,
 } from "../../cedar/blocks";
-import { BLOCK_TYPES } from "./block-types";
+import { BLOCK_TYPES, blockTypeForExpr } from "./block-types";
 
 export function irToWorkspace(ws: Blockly.WorkspaceSvg, policies: PolicyIR[]): void {
   ws.clear();
@@ -53,13 +53,11 @@ function attachScope(
   inputName: string,
   scope: Scope,
 ): void {
-  // Phase A: only scopeAll is renderable. scopeEq / scopeIn / scopeIs / slot
-  // fall back to scope_all until Phase B adds their blocks. This is a lossy
-  // render — round-trip test will catch any silent downgrade.
+  // Phase A/B: only scopeAll is renderable. Other Scope variants
+  // (scopeEq/scopeIn/scopeIs/slot) fall back to scope_all — Phase C adds them.
   const child = ws.newBlock(BLOCK_TYPES.scope_all) as Blockly.BlockSvg;
   child.initSvg();
   child.render();
-  // Suppress unused-variable warning until scope variants land.
   void scope;
   parent.getInput(inputName)?.connection?.connect(child.outputConnection);
 }
@@ -85,8 +83,9 @@ function attachConditions(
 ): void {
   let prev: Blockly.BlockSvg | null = null;
   for (const cond of conditions) {
-    if (cond.kind !== "when") continue; // unless arrives in Phase B
-    const block = ws.newBlock(BLOCK_TYPES.cond_when) as Blockly.BlockSvg;
+    const blockType =
+      cond.kind === "when" ? BLOCK_TYPES.cond_when : BLOCK_TYPES.cond_unless;
+    const block = ws.newBlock(blockType) as Blockly.BlockSvg;
     attachExpr(ws, block, "BODY", cond.body);
     block.initSvg();
     block.render();
@@ -113,20 +112,47 @@ function attachExpr(
 }
 
 function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg | null {
+  const blockType = blockTypeForExpr(expr);
+  if (!blockType) return placeholderBool(ws);
+
+  const block = ws.newBlock(blockType) as Blockly.BlockSvg;
   switch (expr.kind) {
+    case "var":
+      block.setFieldValue(expr.name, "NAME");
+      break;
     case "lit":
       if (expr.litType === "bool") {
-        const b = ws.newBlock(BLOCK_TYPES.expr_lit_bool) as Blockly.BlockSvg;
-        b.setFieldValue(expr.value ? "true" : "false", "VALUE");
-        return b;
+        block.setFieldValue(expr.value ? "true" : "false", "VALUE");
+      } else if (expr.litType === "long") {
+        block.setFieldValue(String(expr.value), "VALUE");
+      } else {
+        block.setFieldValue(String(expr.value), "VALUE");
       }
-      // Other lit types fall through to placeholder.
-      return placeholderBool(ws);
+      break;
+    case "attr":
+      attachExpr(ws, block, "OF", expr.of);
+      block.setFieldValue(expr.attr, "FIELD");
+      break;
+    case "has":
+      attachExpr(ws, block, "OF", expr.of);
+      block.setFieldValue(expr.attr, "FIELD");
+      break;
+    case "binary":
+      attachExpr(ws, block, "LEFT", expr.left);
+      attachExpr(ws, block, "RIGHT", expr.right);
+      block.setFieldValue(expr.op, "OP");
+      break;
+    case "unary":
+      attachExpr(ws, block, "OPERAND", expr.operand);
+      block.setFieldValue(expr.op, "OP");
+      break;
     default:
-      // Phase A: every other Expr.kind renders as a placeholder bool block.
-      // Phase B+ replaces this branch with real blocks.
+      // Should not reach — blockTypeForExpr returned non-null only for the
+      // kinds enumerated above. Falls through to placeholder below.
+      block.dispose(false);
       return placeholderBool(ws);
   }
+  return block;
 }
 
 function placeholderBool(ws: Blockly.WorkspaceSvg): Blockly.BlockSvg {
