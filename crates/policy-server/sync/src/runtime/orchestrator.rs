@@ -1057,6 +1057,12 @@ priority = 1
         let mut state =
             WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
 
+        // A core snapshot whose clearinghouse domain is fresh (rest stale).
+        let fresh = CoreFresh {
+            clearinghouse: true,
+            ..Default::default()
+        };
+
         // (1) first core sync creates the HL position.
         let core = HlAccount {
             perp_usdc: Some(Decimal::new("5")),
@@ -1064,15 +1070,7 @@ priority = 1
         };
         upsert_hyperliquid_merge(
             &mut state,
-            |a| {
-                a.merge_core(
-                    core,
-                    CoreFresh {
-                        clearinghouse: true,
-                        ..Default::default()
-                    },
-                )
-            },
+            |a| a.merge_core(core, fresh),
             Time::from_unix(0),
         );
 
@@ -1090,15 +1088,7 @@ priority = 1
         };
         upsert_hyperliquid_merge(
             &mut state,
-            |a| {
-                a.merge_core(
-                    core2,
-                    CoreFresh {
-                        clearinghouse: true,
-                        ..Default::default()
-                    },
-                )
-            },
+            |a| a.merge_core(core2, fresh),
             Time::from_unix(2),
         );
 

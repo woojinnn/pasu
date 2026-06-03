@@ -179,6 +179,28 @@ pub struct VenuesConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HyperliquidConfig {
     pub endpoint: String,
+    /// TTL (seconds) for cached static data (`meta`, `perpDexs`). Default 600.
+    #[serde(default = "default_meta_ttl")]
+    pub meta_ttl_secs: u64,
+    /// Whether to fan account fetches out across builder-deployed perp DEXes.
+    /// Default `None` (native dex only); `All` fan-out is wired in Plan 2.
+    #[serde(default)]
+    pub builder_dex_policy: BuilderDexPolicy,
+}
+
+fn default_meta_ttl() -> u64 {
+    600
+}
+
+/// How `HyperliquidFetcher` treats builder-deployed perp DEXes when syncing.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BuilderDexPolicy {
+    /// Query only the native (index-0) perp dex.
+    #[default]
+    None,
+    /// Query the native dex plus every builder dex from `perpDexs`.
+    All,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -310,6 +332,17 @@ chains = ["eip155:1"]
         );
         assert_eq!(uni.api_key, "uni_secret_7");
         assert_eq!(uni.chains, vec![ChainId::ethereum_mainnet()]);
+    }
+
+    #[test]
+    fn hyperliquid_config_defaults_meta_ttl_and_native_only() {
+        let cfg = SyncConfig::load_str(
+            "[venues.hyperliquid]\nendpoint = \"https://api.hyperliquid.xyz\"\n",
+        )
+        .unwrap();
+        let hl = cfg.venues.hyperliquid.as_ref().unwrap();
+        assert_eq!(hl.meta_ttl_secs, 600);
+        assert_eq!(hl.builder_dex_policy, BuilderDexPolicy::None);
     }
 
     #[test]

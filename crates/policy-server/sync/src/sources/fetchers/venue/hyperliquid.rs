@@ -66,7 +66,9 @@ impl HyperliquidFetcher {
 
     #[must_use]
     pub fn from_sync_config(cfg: &HyperliquidConfig) -> Self {
-        Self::with_base_url(cfg.endpoint.clone())
+        let mut fetcher = Self::with_base_url(cfg.endpoint.clone());
+        fetcher.meta_ttl_secs = cfg.meta_ttl_secs;
+        fetcher
     }
 
     #[must_use]
@@ -107,7 +109,11 @@ impl HyperliquidFetcher {
     /// `meta` for a dex, cached for `meta_ttl_secs`. `now` is injected by the caller.
     pub async fn cached_meta(&self, endpoint: &str, now: Time) -> Result<Value, SyncError> {
         let key = endpoint_dex(endpoint).unwrap_or_default();
-        let cached = self.meta_cache.lock().unwrap().get(&key, now, self.meta_ttl_secs);
+        let cached = self
+            .meta_cache
+            .lock()
+            .unwrap()
+            .get(&key, now, self.meta_ttl_secs);
         if let Some(v) = cached {
             return Ok(v);
         }
@@ -122,7 +128,11 @@ impl HyperliquidFetcher {
         endpoint: &str,
         now: Time,
     ) -> Result<Vec<String>, SyncError> {
-        let cached = self.dexs_cache.lock().unwrap().get(&(), now, self.meta_ttl_secs);
+        let cached = self
+            .dexs_cache
+            .lock()
+            .unwrap()
+            .get(&(), now, self.meta_ttl_secs);
         if let Some(v) = cached {
             return Ok(v);
         }
@@ -143,7 +153,11 @@ impl HyperliquidFetcher {
         let meta = match self.cached_meta(endpoint, now).await {
             Ok(m) => m,
             Err(e) => {
-                return (HlAccount::default(), CoreFresh::default(), vec![format!("meta: {e}")]);
+                return (
+                    HlAccount::default(),
+                    CoreFresh::default(),
+                    vec![format!("meta: {e}")],
+                );
             }
         };
         let clearinghouse = self.fetch_clearinghouse_state(endpoint, user).await;
@@ -501,18 +515,18 @@ pub(crate) fn assemble_core(
             (Value::Array(Vec::new()), false)
         }
     };
-    let mut account =
-        match parse_account_snapshot(&clearinghouse, &orders_val, &empty_agents, meta) {
-            Ok(a) => {
-                fresh.clearinghouse = true;
-                fresh.open_orders = orders_ok;
-                a
-            }
-            Err(e) => {
-                errors.push(format!("parse core: {e}"));
-                return (HlAccount::default(), CoreFresh::default(), errors);
-            }
-        };
+    let mut account = match parse_account_snapshot(&clearinghouse, &orders_val, &empty_agents, meta)
+    {
+        Ok(a) => {
+            fresh.clearinghouse = true;
+            fresh.open_orders = orders_ok;
+            a
+        }
+        Err(e) => {
+            errors.push(format!("parse core: {e}"));
+            return (HlAccount::default(), CoreFresh::default(), errors);
+        }
+    };
     match spot {
         Ok(v) => match parse_hl_spot_balances(&v) {
             Ok(b) => {
@@ -1575,12 +1589,67 @@ mod tests {
             reason: "boom".into(),
         });
 
-        let (lt, fresh, errors) =
-            assemble_longtail(Ok(staking), Ok(delegations), Ok(vaults), Ok(borrow), agents_err);
+        let (lt, fresh, errors) = assemble_longtail(
+            Ok(staking),
+            Ok(delegations),
+            Ok(vaults),
+            Ok(borrow),
+            agents_err,
+        );
         assert!(lt.agents.is_empty()); // failed → left empty
         assert!(!fresh.agents); // NOT fresh → caller preserves prior agents
         assert!(fresh.vault_equities); // vaults parsed OK → fresh
         assert!(errors.iter().any(|e| e.contains("agents")));
+    }
+
+    /// Live HL fetch for a real address. Set `HL_LIVE_ADDR` and run with
+    /// `--ignored --nocapture` to print the parsed core + long-tail snapshot.
+    #[tokio::test]
+    #[ignore = "hits the live Hyperliquid API; set HL_LIVE_ADDR"]
+    async fn fetch_hl_live() {
+        let Ok(addr_str) = std::env::var("HL_LIVE_ADDR") else {
+            eprintln!("HL_LIVE_ADDR not set — skipping");
+            return;
+        };
+        let user = Address::from_str(addr_str.trim()).expect("valid 0x address");
+        let f = HyperliquidFetcher::new();
+        let now = Time::from_unix(0);
+
+        let (core, fresh, errors) = f.fetch_hl_core("", &user, now).await;
+        println!(
+            "=== CORE  fresh{{clearinghouse:{} open_orders:{} spot:{}}} ===",
+            fresh.clearinghouse, fresh.open_orders, fresh.spot
+        );
+        println!("perp_usdc (margin): {:?}", core.perp_usdc);
+        println!("positions ({}):", core.positions.len());
+        for p in &core.positions {
+            println!("  {p:?}");
+        }
+        println!("spot_balances ({}):", core.spot_balances.len());
+        for b in &core.spot_balances {
+            println!("  {b:?}");
+        }
+        println!("open_orders ({}):", core.open_orders.len());
+        for o in &core.open_orders {
+            println!("  {o:?}");
+        }
+        println!("leverage_settings: {}", core.leverage_settings.len());
+        println!("core errors: {errors:?}");
+
+        let (lt, lfresh, lerrors) = f.fetch_hl_longtail("", &user).await;
+        println!(
+            "=== LONG-TAIL  fresh{{staking:{} vault:{} borrow_lend:{} agents:{}}} ===",
+            lfresh.staking, lfresh.vault_equities, lfresh.borrow_lend, lfresh.agents
+        );
+        println!("staking: {:?}", lt.staking);
+        println!(
+            "vault_equities ({}): {:?}",
+            lt.vault_equities.len(),
+            lt.vault_equities
+        );
+        println!("borrow_lend: {:?}", lt.borrow_lend);
+        println!("agents ({}): {:?}", lt.agents.len(), lt.agents);
+        println!("long-tail errors: {lerrors:?}");
     }
 
     #[test]

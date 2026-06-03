@@ -71,10 +71,12 @@ impl Default for HlAccount {
     }
 }
 
-/// Which **core** domains in a freshly fetched snapshot are authoritative this
-/// cycle (their fetch + parse both succeeded). Domains left `false` are
-/// *preserved* from the existing account by [`HlAccount::merge_core`] — a failed
-/// poll must never wipe good state (resilience: failed fields keep prior value).
+/// Which **core** domains in a freshly fetched snapshot are authoritative.
+///
+/// A domain is authoritative when its fetch + parse both succeeded this cycle.
+/// Domains left `false` are *preserved* from the existing account by
+/// [`HlAccount::merge_core`] — a failed poll must never wipe good state
+/// (resilience: failed fields keep their prior value).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CoreFresh {
     /// `perp_usdc` + `positions` + `leverage_settings` (one `clearinghouseState`).
@@ -87,6 +89,9 @@ pub struct CoreFresh {
 
 /// Which **long-tail** domains are authoritative this cycle. Same
 /// preserve-on-miss semantics as [`CoreFresh`] (see [`HlAccount::merge_longtail`]).
+// Four independent domain flags: a per-domain freshness mask is the natural
+// representation here, so the >3-bools lint does not apply.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct LongtailFresh {
     /// `staking` (`delegatorSummary` + `delegations`, both required).

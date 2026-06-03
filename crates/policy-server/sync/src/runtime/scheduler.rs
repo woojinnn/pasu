@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -20,6 +21,9 @@ pub struct SchedulerConfig {
     pub sync_intent_orders: bool,
     /// Refresh stale `LiveField` values.
     pub refresh_live_fields: bool,
+    /// Run the HL long-tail sync (staking/vaults/borrow-lend/agents) once every
+    /// N ticks; the fast core sync runs every tick. Values below 1 act as 1.
+    pub hl_longtail_every: u64,
 }
 
 impl Default for SchedulerConfig {
@@ -31,6 +35,7 @@ impl Default for SchedulerConfig {
             sync_hyperliquid_accounts: true,
             sync_intent_orders: true,
             refresh_live_fields: true,
+            hl_longtail_every: 10,
         }
     }
 }
@@ -65,6 +70,8 @@ pub struct Scheduler {
     store: Arc<dyn WalletStore>,
     config: SchedulerConfig,
     stop: watch::Sender<bool>,
+    /// Monotonic tick counter for sub-cadence scheduling (e.g. HL long-tail).
+    tick_index: AtomicU64,
 }
 
 impl Scheduler {
@@ -79,6 +86,7 @@ impl Scheduler {
             store,
             config,
             stop,
+            tick_index: AtomicU64::new(0),
         }
     }
 
@@ -87,6 +95,7 @@ impl Scheduler {
         let mut report = TickReport::default();
         let now = Time::from_unix(unix_now());
         let limit = self.config.max_wallets_per_tick;
+        let tick = self.tick_index.fetch_add(1, Ordering::Relaxed);
 
         for wid in wallets.into_iter().take(limit) {
             let mut state = match self.store.load(&wid).await {
@@ -127,9 +136,10 @@ impl Scheduler {
             }
 
             if self.config.sync_hyperliquid_accounts {
+                // Core (fast): every tick.
                 match self
                     .orchestrator
-                    .sync_hyperliquid_account(&mut state, now)
+                    .sync_hyperliquid_core(&mut state, now)
                     .await
                 {
                     Ok(hr) => {
@@ -142,7 +152,7 @@ impl Scheduler {
                         report.errors.extend(
                             hr.errors
                                 .into_iter()
-                                .map(|e| format!("hyperliquid {}: {e}", wid.address)),
+                                .map(|e| format!("hyperliquid core {}: {e}", wid.address)),
                         );
                     }
                     Err(e) => {
@@ -150,7 +160,31 @@ impl Scheduler {
                         w_failed += 1;
                         report
                             .errors
-                            .push(format!("hyperliquid {}: {}", wid.address, e));
+                            .push(format!("hyperliquid core {}: {}", wid.address, e));
+                    }
+                }
+
+                // Long-tail (slow): every Nth tick (initial tick included).
+                if tick.is_multiple_of(self.config.hl_longtail_every.max(1)) {
+                    match self
+                        .orchestrator
+                        .sync_hyperliquid_longtail(&mut state, now)
+                        .await
+                    {
+                        Ok(hr) => {
+                            report.total_hyperliquid_errors += hr.errors.len();
+                            report.errors.extend(
+                                hr.errors
+                                    .into_iter()
+                                    .map(|e| format!("hyperliquid longtail {}: {e}", wid.address)),
+                            );
+                        }
+                        Err(e) => {
+                            report.total_hyperliquid_errors += 1;
+                            report
+                                .errors
+                                .push(format!("hyperliquid longtail {}: {}", wid.address, e));
+                        }
                     }
                 }
             }
@@ -360,7 +394,8 @@ priority = 1
 
         assert_eq!(report.wallets_processed, 1);
         assert_eq!(report.total_primitive_errors, 1);
-        assert_eq!(report.total_hyperliquid_errors, 1);
+        // Unconfigured HL on tick 0: core + long-tail both report "not configured".
+        assert_eq!(report.total_hyperliquid_errors, 2);
         assert!(report
             .errors
             .iter()
