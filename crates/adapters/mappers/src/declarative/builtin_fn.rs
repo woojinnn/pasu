@@ -16,6 +16,12 @@
 use std::str::FromStr as _;
 
 use abi_resolver::decode::decode_with_signature;
+use abi_resolver::subdecode::enum_tagged::{
+    dispatch as enum_dispatch, try_dispatch as enum_try_dispatch, DecodedEnum,
+};
+use abi_resolver::subdecode::protocols::balancer_v2::{
+    BALANCER_V2_EXIT_KIND_STABLE, BALANCER_V2_EXIT_KIND_WEIGHTED, BALANCER_V2_JOIN_KIND,
+};
 use alloy_dyn_abi::DynSolValue;
 use alloy_primitives::{keccak256, Address, U256};
 use serde_json::Value as JsonValue;
@@ -44,6 +50,10 @@ pub const WHITELIST: &[&str] = &[
     "token_key_or_native",
     "uniswap_v3_pool_swap_field",
     "uniswapx_reactor_order_field",
+    "balancer_zip_token_amounts",
+    "balancer_pool_id_to_address",
+    "balancer_v2_userdata_field",
+    "balancer_v2_batch_swap_field",
 ];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
@@ -62,6 +72,10 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "token_key_or_native" => token_key_or_native(args),
         "uniswap_v3_pool_swap_field" => uniswap_v3_pool_swap_field(args),
         "uniswapx_reactor_order_field" => uniswapx_reactor_order_field(args),
+        "balancer_zip_token_amounts" => balancer_zip_token_amounts(args),
+        "balancer_pool_id_to_address" => balancer_pool_id_to_address(args),
+        "balancer_v2_userdata_field" => balancer_v2_userdata_field(args),
+        "balancer_v2_batch_swap_field" => balancer_v2_batch_swap_field(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -379,6 +393,226 @@ fn uniswapx_reactor_order_field(args: &[JsonValue]) -> Result<JsonValue, String>
             family
         )
     })
+}
+
+/// `balancer_zip_token_amounts(chain, assets: address[], amounts: uint256[]) -> [[TokenRef, U256]]`.
+///
+/// Balancer V2 `joinPool`/`exitPool` carry the pooled token set as two parallel
+/// calldata arrays — `request.assets[]` (token addresses) and
+/// `request.maxAmountsIn[]` / `request.minAmountsOut[]` (per-token amounts). The
+/// `AddLiquidity::Pooled.tokens` / `RemoveLiquidity::PooledBurn.minOut` ActionBody
+/// field is `Vec<(TokenRef, U256)>`, which the flat `$args.*` placeholder grammar
+/// cannot build from two arrays. This zips them index-aligned into the
+/// `[[{"key":{"standard":"erc20","chain":c,"address":a}}, "<amount>"], …]` shape
+/// `lower_token_amount_set` consumes. Returns the array (the second `$fn` after
+/// `token_key_or_native` to return composite JSON).
+fn balancer_zip_token_amounts(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 3 {
+        return Err(format!(
+            "balancer_zip_token_amounts expects 3 args (chain, assets, amounts), got {}",
+            args.len()
+        ));
+    }
+    let chain = args[0]
+        .as_str()
+        .ok_or("balancer_zip_token_amounts: chain arg is not a string")?;
+    let assets = args[1]
+        .as_array()
+        .ok_or("balancer_zip_token_amounts: assets arg is not an array")?;
+    let amounts = args[2]
+        .as_array()
+        .ok_or("balancer_zip_token_amounts: amounts arg is not an array")?;
+    // Real Balancer calldata guarantees assets.len() == amounts.len(); the
+    // validate's type-valid synthetic fuzz can emit unequal lengths (a
+    // would-revert tx), so zip the common prefix instead of erroring — real
+    // correctness is pinned by the corpus expect_body, not by this length.
+    let mut pairs = Vec::with_capacity(assets.len().min(amounts.len()));
+    for (i, (asset, amount)) in assets.iter().zip(amounts).enumerate() {
+        let addr = json_address(asset, &format!("balancer_zip_token_amounts: assets[{i}]"))?;
+        // Normalise the amount to a decimal string (U256 is serde-de'd from a
+        // string), matching how args_json renders width-256 uints.
+        let amount_u256 =
+            json_u256(amount, &format!("balancer_zip_token_amounts: amounts[{i}]"))?;
+        let mut key = serde_json::Map::new();
+        key.insert("standard".to_owned(), JsonValue::String("erc20".to_owned()));
+        key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
+        key.insert(
+            "address".to_owned(),
+            JsonValue::String(format!("{addr:#x}")),
+        );
+        let mut token_ref = serde_json::Map::new();
+        token_ref.insert("key".to_owned(), JsonValue::Object(key));
+        pairs.push(JsonValue::Array(vec![
+            JsonValue::Object(token_ref),
+            JsonValue::String(amount_u256.to_string()),
+        ]));
+    }
+    Ok(JsonValue::Array(pairs))
+}
+
+/// `balancer_pool_id_to_address(pool_id: bytes32) -> address` — the 20-byte pool
+/// (BPT) address packed into the high bytes of a Balancer V2 `poolId`. Balancer
+/// V2 encodes `poolId = poolAddress(20) ++ specialization(2) ++ nonce(10)`, so
+/// the pool/BPT contract address is the **first** 20 bytes (unlike
+/// `address_from_uint256`, which unmasks the low 20). Used for `exitPool`'s
+/// `lp_token` and any V2 venue pool-address need. Returns lowercase `0x` hex.
+fn balancer_pool_id_to_address(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 1 {
+        return Err(format!(
+            "balancer_pool_id_to_address expects 1 arg (pool_id bytes32), got {}",
+            args.len()
+        ));
+    }
+    let s = args[0]
+        .as_str()
+        .ok_or("balancer_pool_id_to_address: pool_id is not a hex string")?;
+    let body = s.strip_prefix("0x").unwrap_or(s);
+    if body.len() != 64 {
+        return Err(format!(
+            "balancer_pool_id_to_address: pool_id must be 32 bytes (64 hex chars), got {}",
+            body.len()
+        ));
+    }
+    let addr = Address::from_str(&format!("0x{}", &body[..40]))
+        .map_err(|e| format!("balancer_pool_id_to_address: leading 20 bytes not an address: {e}"))?;
+    Ok(JsonValue::String(format!("{addr:#x}")))
+}
+
+/// The lone BPT-amount scalar in a decoded Balancer V2 join/exit `userData`.
+///
+/// Every JoinKind/ExitKind payload is `(kind, …)` where the BPT amount
+/// (`minBPTAmountOut` / `bptAmountOut` / `bptAmountIn` / `maxBPTAmountIn`) is the
+/// single `uint256` among arg slots 1 and 2 — the other slot, when present, is the
+/// `uint256[] amountsIn/amountsOut` array. So the BPT scalar is `arg[1]` if it is a
+/// uint, else `arg[2]` if it is a uint, else `0` (e.g. `INIT` join, which carries
+/// no BPT bound). This rule is table-agnostic so it covers Weighted and Stable.
+fn balancer_bpt_scalar(decoded: &DecodedEnum) -> U256 {
+    let as_u256 = |idx: usize| -> Option<U256> {
+        match decoded.args.get(idx).map(|a| &a.value) {
+            Some(DynSolValue::Uint(v, _)) => Some(*v),
+            _ => None,
+        }
+    };
+    as_u256(1).or_else(|| as_u256(2)).unwrap_or(U256::ZERO)
+}
+
+/// `balancer_v2_userdata_field(userData: bytes, class, field) -> uint (decimal string)`.
+///
+/// Decodes a Balancer V2 `joinPool`/`exitPool` `userData` blob — a `(kind, …)`
+/// enum-tagged payload — via the protocol's [`BALANCER_V2_JOIN_KIND`] /
+/// [`BALANCER_V2_EXIT_KIND_WEIGHTED`]/[`_STABLE`] subdecode tables and returns the
+/// BPT-amount scalar (`min_lp_out` for joins, `lp_amount` burned for exits). The
+/// per-token amounts and recipient live in calldata; only this LP bound is inside
+/// `userData`. `class ∈ {join, exit}` (selects the table; exits try Weighted then
+/// Stable to resolve the kind-reuse ambiguity). `field ∈ {min_bpt, bpt_in}` is
+/// validated but extraction is uniform ([`balancer_bpt_scalar`]). Undecodable /
+/// kindless payloads fall back to `"0"` (conservative: an unknown LP bound).
+fn balancer_v2_userdata_field(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 3 {
+        return Err(format!(
+            "balancer_v2_userdata_field expects 3 args (userData, class, field), got {}",
+            args.len()
+        ));
+    }
+    let user_data = json_hex_bytes(&args[0], "balancer_v2_userdata_field: userData")?;
+    let class = args[1]
+        .as_str()
+        .ok_or("balancer_v2_userdata_field: class arg is not a string")?;
+    let field = args[2]
+        .as_str()
+        .ok_or("balancer_v2_userdata_field: field arg is not a string")?;
+    if !matches!(field, "min_bpt" | "bpt_in") {
+        return Err(format!(
+            "balancer_v2_userdata_field: unsupported field '{field}' (min_bpt | bpt_in)"
+        ));
+    }
+    let decoded = match class {
+        "join" => enum_dispatch(&user_data, &BALANCER_V2_JOIN_KIND),
+        "exit" => enum_try_dispatch(
+            &user_data,
+            &[&BALANCER_V2_EXIT_KIND_WEIGHTED, &BALANCER_V2_EXIT_KIND_STABLE],
+        ),
+        other => {
+            return Err(format!(
+                "balancer_v2_userdata_field: unknown class '{other}' (join | exit)"
+            ))
+        }
+    };
+    let value = decoded.map_or(U256::ZERO, |d| balancer_bpt_scalar(&d));
+    Ok(JsonValue::String(value.to_string()))
+}
+
+/// `balancer_v2_batch_swap_field(kind, swaps, assets, field) -> scalar`.
+///
+/// `Vault.batchSwap(kind, BatchSwapStep[] swaps, address[] assets, …)` references
+/// its tokens INDIRECTLY: step `i`'s in/out token is `assets[swaps[i].assetInIndex]`
+/// / `assets[swaps[i].assetOutIndex]` — an indirection the `$args.*` grammar cannot
+/// express. This resolves it into a single aggregate `Amm::Swap`:
+/// `token_in = assets[swaps[0].assetInIndex]`, `token_out = assets[swaps[last].assetOutIndex]`.
+/// `swaps[i]` arrives as a positional array `[poolId, assetInIndex, assetOutIndex, amount, userData]`.
+/// `field ∈ {token_in, token_out, pool_id, amount, direction_kind}`. Coarse for true
+/// multi-path batches (picks first-in/last-out + first step's amount/pool) — correct
+/// for the dominant single-route multi-hop; documented in the manifest `_note`.
+/// `kind`: `0 = GIVEN_IN` (exact input), `1 = GIVEN_OUT` (exact output).
+fn balancer_v2_batch_swap_field(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 4 {
+        return Err(format!(
+            "balancer_v2_batch_swap_field expects 4 args (kind, swaps, assets, field), got {}",
+            args.len()
+        ));
+    }
+    // kind is uint8 (0=GIVEN_IN/1=GIVEN_OUT); default GIVEN_IN if a fuzz value
+    // does not fit u64. swaps/assets/field must be the right JSON kinds (structural).
+    let kind = json_to_u64(&args[0]).unwrap_or(0);
+    let swaps = args[1]
+        .as_array()
+        .ok_or("balancer_v2_batch_swap_field: swaps arg is not an array")?;
+    let assets = args[2]
+        .as_array()
+        .ok_or("balancer_v2_batch_swap_field: assets arg is not an array")?;
+    let field = args[3]
+        .as_str()
+        .ok_or("balancer_v2_batch_swap_field: field arg is not a string")?;
+    const ZERO_ADDR: &str = "0x0000000000000000000000000000000000000000";
+    let first = swaps.first().and_then(JsonValue::as_array);
+    let last = swaps.last().and_then(JsonValue::as_array);
+    // Resolve assets[idx] for a (possibly huge / out-of-range) index by wrapping
+    // modulo assets.len() — identity on real in-bounds indices; on the validate's
+    // type-valid synthetic fuzz (huge uint / oob index = would-revert tx) it lands
+    // in-bounds so the decode stays shape-valid (real correctness pinned by corpus
+    // expect_body). Empty assets → zero-address sentinel.
+    let asset_at = |idx_val: Option<&JsonValue>| -> JsonValue {
+        if assets.is_empty() {
+            return JsonValue::String(ZERO_ADDR.to_owned());
+        }
+        let idx = idx_val
+            .and_then(|v| json_u256(v, "idx").ok())
+            .map(|u| usize::try_from(u % U256::from(assets.len())).unwrap_or(0))
+            .unwrap_or(0);
+        assets
+            .get(idx)
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String(ZERO_ADDR.to_owned()))
+    };
+    match field {
+        // BatchSwapStep = [poolId(0), assetInIndex(1), assetOutIndex(2), amount(3), userData(4)].
+        "token_in" => Ok(asset_at(first.and_then(|s| s.get(1)))),
+        "token_out" => Ok(asset_at(last.and_then(|s| s.get(2)))),
+        "pool_id" => Ok(first
+            .and_then(|s| s.first())
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String(format!("0x{}", "0".repeat(64))))),
+        "amount" => Ok(first
+            .and_then(|s| s.get(3))
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String("0".to_owned()))),
+        "direction_kind" => Ok(JsonValue::String(
+            if kind == 0 { "exact_input" } else { "exact_output" }.to_owned(),
+        )),
+        other => Err(format!(
+            "balancer_v2_batch_swap_field: unsupported field '{other}'"
+        )),
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1124,6 +1358,170 @@ mod tests {
     #[test]
     fn dispatch_unknown_fn_errors() {
         assert!(dispatch("nope", &[]).is_err());
+    }
+
+    // ── Balancer V2/V3 deeper-onboarding builtins ────────────────────────────
+
+    #[test]
+    fn balancer_zip_token_amounts_zips_index_aligned() {
+        let chain = "eip155:1";
+        let out = balancer_zip_token_amounts(&[
+            json!(chain),
+            json!([A, B]),
+            json!(["100", "200"]),
+        ])
+        .unwrap();
+        // [[{key:{standard,chain,address:A}}, "100"], [{...B}, "200"]]
+        assert_eq!(out.as_array().unwrap().len(), 2);
+        assert_eq!(out[0][0]["key"]["standard"], json!("erc20"));
+        assert_eq!(out[0][0]["key"]["chain"], json!(chain));
+        assert_eq!(out[0][0]["key"]["address"], json!(A));
+        assert_eq!(out[0][1], json!("100"));
+        assert_eq!(out[1][0]["key"]["address"], json!(B));
+        assert_eq!(out[1][1], json!("200"));
+        // length mismatch → zips the common prefix (min length), not an error
+        // (real Balancer calldata is always equal-length; this tolerates fuzz).
+        let trunc =
+            balancer_zip_token_amounts(&[json!(chain), json!([A]), json!(["1", "2"])]).unwrap();
+        assert_eq!(trunc.as_array().unwrap().len(), 1);
+        // wrong arity still errors (structural).
+        assert!(balancer_zip_token_amounts(&[json!(chain), json!([A])]).is_err());
+    }
+
+    #[test]
+    fn balancer_pool_id_to_address_takes_leading_20_bytes() {
+        // poolId = poolAddress(20) ++ specialization(2) ++ nonce(10).
+        let pool = "0xabcdef0123456789abcdef0123456789abcdef01";
+        let pool_id = format!("{pool}00000000000000000000aaaa"); // 20+2+10 bytes
+        let out = balancer_pool_id_to_address(&[json!(pool_id)]).unwrap();
+        assert_eq!(out.as_str().unwrap(), pool);
+        // wrong length + non-string error out.
+        assert!(balancer_pool_id_to_address(&[json!("0xdeadbeef")]).is_err());
+        assert!(balancer_pool_id_to_address(&[json!(123)]).is_err());
+    }
+
+    /// Encode a Balancer `userData` blob = `abi.encode(kind, …)` (no selector).
+    fn encode_userdata(values: Vec<DynSolValue>) -> String {
+        let bytes = DynSolValue::Tuple(values).abi_encode_params();
+        format!("0x{}", hex::encode(bytes))
+    }
+
+    #[test]
+    fn balancer_v2_userdata_field_join_min_bpt() {
+        // JOIN kind 1 EXACT_TOKENS_IN_FOR_BPT_OUT = (1, amountsIn[], minBPTAmountOut).
+        let user_data = encode_userdata(vec![
+            uint(1),
+            DynSolValue::Array(vec![uint(50), uint(60)]),
+            uint(777),
+        ]);
+        let out = balancer_v2_userdata_field(&[json!(user_data), json!("join"), json!("min_bpt")])
+            .unwrap();
+        assert_eq!(out, json!("777")); // minBPTAmountOut is arg[2] (arg[1] is the array)
+
+        // JOIN kind 2 TOKEN_IN_FOR_EXACT_BPT_OUT = (2, bptAmountOut, tokenIndex) → arg[1].
+        let ud2 = encode_userdata(vec![uint(2), uint(888), uint(0)]);
+        let out2 =
+            balancer_v2_userdata_field(&[json!(ud2), json!("join"), json!("min_bpt")]).unwrap();
+        assert_eq!(out2, json!("888"));
+    }
+
+    #[test]
+    fn balancer_v2_userdata_field_exit_bpt_in() {
+        // EXIT kind 0 EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = (0, bptAmountIn, tokenIndex) → arg[1].
+        let ud0 = encode_userdata(vec![uint(0), uint(1234), uint(1)]);
+        let out0 =
+            balancer_v2_userdata_field(&[json!(ud0), json!("exit"), json!("bpt_in")]).unwrap();
+        assert_eq!(out0, json!("1234"));
+
+        // EXIT kind 2 (weighted) BPT_IN_FOR_EXACT_TOKENS_OUT = (2, amountsOut[], maxBPTAmountIn) → arg[2].
+        let ud2 = encode_userdata(vec![
+            uint(2),
+            DynSolValue::Array(vec![uint(10), uint(20)]),
+            uint(4321),
+        ]);
+        let out2 =
+            balancer_v2_userdata_field(&[json!(ud2), json!("exit"), json!("bpt_in")]).unwrap();
+        assert_eq!(out2, json!("4321"));
+    }
+
+    #[test]
+    fn balancer_v2_userdata_field_unknown_kind_is_zero() {
+        // kind 99 matches no entry → conservative "0".
+        let ud = encode_userdata(vec![uint(99)]);
+        let out = balancer_v2_userdata_field(&[json!(ud), json!("join"), json!("min_bpt")]).unwrap();
+        assert_eq!(out, json!("0"));
+        // bad field / class / arity error out.
+        let ud1 = encode_userdata(vec![uint(0), uint(1), uint(0)]);
+        assert!(balancer_v2_userdata_field(&[json!(ud1), json!("exit"), json!("nope")]).is_err());
+        assert!(balancer_v2_userdata_field(&[json!("0x"), json!("nope"), json!("bpt_in")]).is_err());
+    }
+
+    #[test]
+    fn balancer_v2_batch_swap_field_resolves_indirect_indices() {
+        // 2-hop A→B→C: swaps[0] in=assets[0]=A out=assets[1]=B; swaps[1] in=B out=assets[2]=C.
+        // BatchSwapStep = [poolId, assetInIndex, assetOutIndex, amount, userData].
+        let swaps = json!([
+            [POOL1, "0", "1", "1000", "0x"],
+            [POOL2, "1", "2", "0", "0x"]
+        ]);
+        let assets = json!([A, B, C]);
+        let tin = balancer_v2_batch_swap_field(&[
+            json!(0),
+            swaps.clone(),
+            assets.clone(),
+            json!("token_in"),
+        ])
+        .unwrap();
+        let tout = balancer_v2_batch_swap_field(&[
+            json!(0),
+            swaps.clone(),
+            assets.clone(),
+            json!("token_out"),
+        ])
+        .unwrap();
+        let dir_in = balancer_v2_batch_swap_field(&[
+            json!(0),
+            swaps.clone(),
+            assets.clone(),
+            json!("direction_kind"),
+        ])
+        .unwrap();
+        let dir_out = balancer_v2_batch_swap_field(&[
+            json!(1),
+            swaps.clone(),
+            assets.clone(),
+            json!("direction_kind"),
+        ])
+        .unwrap();
+        let amount =
+            balancer_v2_batch_swap_field(&[json!(0), swaps.clone(), assets.clone(), json!("amount")])
+                .unwrap();
+        let pool =
+            balancer_v2_batch_swap_field(&[json!(0), swaps.clone(), assets, json!("pool_id")])
+                .unwrap();
+        assert_eq!(tin, json!(A));
+        assert_eq!(tout, json!(C));
+        assert_eq!(dir_in, json!("exact_input"));
+        assert_eq!(dir_out, json!("exact_output"));
+        assert_eq!(amount, json!("1000"));
+        assert_eq!(pool, json!(POOL1));
+        // out-of-range index wraps modulo assets.len() (9 % 1 = 0 → A); fuzz-tolerant.
+        let bad = json!([[POOL1, "0", "9", "1", "0x"]]);
+        assert_eq!(
+            balancer_v2_batch_swap_field(&[json!(0), bad, json!([A]), json!("token_out")]).unwrap(),
+            json!(A)
+        );
+        // empty assets → zero-address sentinel (shape-valid, fuzz would-revert case).
+        let ok_swaps = json!([[POOL1, "0", "1", "1", "0x"]]);
+        assert_eq!(
+            balancer_v2_batch_swap_field(&[json!(0), ok_swaps.clone(), json!([]), json!("token_in")])
+                .unwrap(),
+            json!("0x0000000000000000000000000000000000000000")
+        );
+        // unsupported field still errors (structural manifest bug, not data).
+        assert!(
+            balancer_v2_batch_swap_field(&[json!(0), ok_swaps, json!([A]), json!("nope")]).is_err()
+        );
     }
 
     fn v2_dutch_order_bytes() -> Vec<u8> {
