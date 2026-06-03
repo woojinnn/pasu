@@ -1,0 +1,71 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/comptroller/exitMarket@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 Comptroller exitMarket(cToken): disable a cToken market as collateral (Lending::DisableCollateral).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xede4edd0",
+    "chain_to_addresses": {
+      "1": [
+        "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exitMarket",
+    "abi": {
+      "name": "exitMarket",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "cToken",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "disable_collateral",
+        "disable_collateral": {
+          "venue": {
+            "name": "compound_v2",
+            "chain": "$chain",
+            "comptroller": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.cToken"
+            }
+          }
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_reserve_state"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_user_state_before"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

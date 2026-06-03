@@ -1,0 +1,139 @@
+{
+  "contract": "CErc20 (cToken markets)",
+  "chainId": 1,
+  "addresses": [
+    "0x041171993284df560249b57358f931d9eb7b925d",
+    "0x12392f67bdf24fae0af363c24ac620a2f67dad86",
+    "0x158079ee67fce2f58472a96584a73c7ab9ac95c1",
+    "0x35a18000230da775cac24873d00ff85bccded550",
+    "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+    "0x4b0181102a0112a2ef11abee5563bb4a3176c9d7",
+    "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+    "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+    "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4",
+    "0x7713dd9ca933848f6819f38b8352d9a15ea73f67",
+    "0x80a2ae356fc9ef4305676f7a3e2ed04e12c33946",
+    "0x95b4ef2869ebd94beb4eee400a99824bf5dc325b",
+    "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407",
+    "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
+    "0xccf4429db6322d5c611ee964527d42e5d685dd6a",
+    "0xe65cdb6479bac1e22340e4e755fae7e509ecd06c",
+    "0xf5dce57282a584d2746faf1593d3121fcac444dc",
+    "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
+    "0xface851a4921ce59e912d19329929ce6da6eb0c7"
+  ],
+  "snapshot": "cerc20.abi.json",
+  "note": "Compound v2 CErc20 cToken markets (shared CErc20Delegate impl ABI). 19 markets from on-chain Comptroller.getAllMarkets() (cETH handled separately as CEther). Deprecated markets (cBAT/cZRX/cREP/cSAI/cMKR/cFEI/cWBTC-legacy) are still COVER: redeem/repay remain callable so the decoder must handle them. cToken approve/transfer/transferFrom are standard ERC-20 (the cToken receipt itself) -> erc20 standard adapter.",
+  "functions": {
+    "0xa0712d68": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "user position: supply underlying, mint cToken receipt (Lending::Supply)"
+    },
+    "0xdb006a75": {
+      "name": "redeem",
+      "decision": "cover",
+      "reason": "user position: redeem cToken shares for underlying (Lending::Withdraw, by-shares)"
+    },
+    "0x852a12e3": {
+      "name": "redeemUnderlying",
+      "decision": "cover",
+      "reason": "user position: withdraw an exact underlying amount (Lending::Withdraw, by-underlying)"
+    },
+    "0xc5ebeaec": {
+      "name": "borrow",
+      "decision": "cover",
+      "reason": "user position: borrow underlying against collateral (Lending::Borrow)"
+    },
+    "0x0e752702": {
+      "name": "repayBorrow",
+      "decision": "cover",
+      "reason": "user position: repay own debt (Lending::Repay)"
+    },
+    "0x2608f818": {
+      "name": "repayBorrowBehalf",
+      "decision": "cover",
+      "reason": "user fund move: repay another borrower's debt (Lending::Repay on-behalf)"
+    },
+    "0xf5e3c462": {
+      "name": "liquidateBorrow",
+      "decision": "cover",
+      "reason": "liquidation: repay borrower + seize cToken collateral (Lending::Liquidate; included for completeness)"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (cToken is itself an ERC20 receipt) \u2014 covered by the erc20 standard adapter via auto-enumerate, not a per-(chain,address) manifest"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (cToken is itself an ERC20 receipt) \u2014 covered by the erc20 standard adapter via auto-enumerate, not a per-(chain,address) manifest"
+    },
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (cToken is itself an ERC20 receipt) \u2014 covered by the erc20 standard adapter via auto-enumerate, not a per-(chain,address) manifest"
+    },
+    "0xb2a02ff1": {
+      "name": "seize",
+      "decision": "exclude",
+      "reason": "inter-cToken collateral seizure; callable only by a cToken contract during liquidation, not an EOA"
+    },
+    "0xa6afed95": {
+      "name": "accrueInterest",
+      "decision": "exclude",
+      "reason": "permissionless interest accrual; moves no caller funds"
+    },
+    "0x17bfdfbc": {
+      "name": "borrowBalanceCurrent",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0x3af9e669": {
+      "name": "balanceOfUnderlying",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0x73acee98": {
+      "name": "totalBorrowsCurrent",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0xbd6d894d": {
+      "name": "exchangeRateCurrent",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0x4576b5db": {
+      "name": "_setComptroller",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0x601a0bf1": {
+      "name": "_reduceReserves",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xb71d1a0c": {
+      "name": "_setPendingAdmin",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xe9c714f2": {
+      "name": "_acceptAdmin",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xf2b3abbd": {
+      "name": "_setInterestRateModel",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xfca7820b": {
+      "name": "_setReserveFactor",
+      "decision": "exclude",
+      "reason": "admin-only"
+    }
+  }
+}

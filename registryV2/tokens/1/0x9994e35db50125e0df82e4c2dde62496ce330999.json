@@ -7,6 +7,6 @@
   "name": "Morpho Token (legacy)",
   "source": "https://docs.morpho.org/get-started/resources/addresses + etherscan (ContractName verified)",
   "token_kind": {
-    "kind": "governance"
+    "kind": "base"
   }
 }

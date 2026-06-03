@@ -1,0 +1,196 @@
+{
+  "contract": "Comptroller",
+  "chainId": 1,
+  "addresses": [
+    "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+  ],
+  "snapshot": "comptroller.abi.json",
+  "note": "Compound v2 Comptroller. Users call the Unitroller proxy (0x3d98..Cd3B); the snapshot is the Comptroller impl ABI (0xbafe01ff..). COVER = enterMarkets/exitMarket/claimComp(3 overloads). *Allowed/*Verify are internal hooks invoked by cToken contracts; _set*/governance excluded.",
+  "functions": {
+    "0xc2998238": {
+      "name": "enterMarkets",
+      "decision": "cover",
+      "reason": "user position: enable cTokens as collateral (Lending::EnableCollateral)"
+    },
+    "0xede4edd0": {
+      "name": "exitMarket",
+      "decision": "cover",
+      "reason": "user position: disable a cToken as collateral (Lending::DisableCollateral)"
+    },
+    "0xe9af0292": {
+      "name": "claimComp",
+      "decision": "cover",
+      "reason": "user reward claim: claim accrued COMP for a holder across all markets (Airdrop::Claim)"
+    },
+    "0x1c3db2e0": {
+      "name": "claimComp",
+      "decision": "cover",
+      "reason": "user reward claim: claim COMP for a holder in specific cTokens (Airdrop::Claim)"
+    },
+    "0x6810dfa6": {
+      "name": "claimComp",
+      "decision": "cover",
+      "reason": "user reward claim: batch claim COMP (holders x cTokens, borrowers/suppliers) (Airdrop::Claim)"
+    },
+    "0x741b2525": {
+      "name": "updateContributorRewards",
+      "decision": "exclude",
+      "reason": "permissionless COMP contributor-accrual flush; moves no caller funds, grants no permission"
+    },
+    "0xda3d454c": {
+      "name": "borrowAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x5c778605": {
+      "name": "borrowVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x5fc7e71e": {
+      "name": "liquidateBorrowAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x47ef3b3b": {
+      "name": "liquidateBorrowVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x4ef4c3e1": {
+      "name": "mintAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x41c728b9": {
+      "name": "mintVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0xeabe7d91": {
+      "name": "redeemAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x51dff989": {
+      "name": "redeemVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x24008a62": {
+      "name": "repayBorrowAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x1ededc91": {
+      "name": "repayBorrowVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0xd02f7351": {
+      "name": "seizeAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x6d35bf91": {
+      "name": "seizeVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0xbdcdc258": {
+      "name": "transferAllowed",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x6a56947e": {
+      "name": "transferVerify",
+      "decision": "exclude",
+      "reason": "internal protocol hook; called by cToken contracts (not an EOA), enforces policy/accounting"
+    },
+    "0x16b95e8f": {
+      "name": "fixBadAccruals",
+      "decision": "exclude",
+      "reason": "admin/infra: correct historical COMP accrual bug; not a user action"
+    },
+    "0x1d504dc6": {
+      "name": "_become",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x27efe3cb": {
+      "name": "_grantComp",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x391957d7": {
+      "name": "_setBorrowCapGuardian",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x18c882a5": {
+      "name": "_setBorrowPaused",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x317b0b77": {
+      "name": "_setCloseFactor",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0xe4028eee": {
+      "name": "_setCollateralFactor",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0xa8b43948": {
+      "name": "_setCompSpeeds",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x598ee1cb": {
+      "name": "_setContributorCompSpeed",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x4fd42e17": {
+      "name": "_setLiquidationIncentive",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x607ef6c1": {
+      "name": "_setMarketBorrowCaps",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x3bcf7ec1": {
+      "name": "_setMintPaused",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x5f5af1aa": {
+      "name": "_setPauseGuardian",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x55ee1fe1": {
+      "name": "_setPriceOracle",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x2d70db78": {
+      "name": "_setSeizePaused",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0x8ebf6364": {
+      "name": "_setTransferPaused",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    },
+    "0xa76b3fda": {
+      "name": "_supportMarket",
+      "decision": "exclude",
+      "reason": "admin/governance-only configuration"
+    }
+  }
+}

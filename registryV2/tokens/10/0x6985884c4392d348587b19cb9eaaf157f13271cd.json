@@ -7,6 +7,12 @@
   "name": "LayerZero",
   "source": "https://docs.layerzero.network/v2/deployments/token",
   "token_kind": {
-    "kind": "governance"
+    "kind": "base",
+    "category": {
+      "kind": "governance",
+      "protocol": {
+        "name": "layerzero"
+      }
+    }
   }
 }

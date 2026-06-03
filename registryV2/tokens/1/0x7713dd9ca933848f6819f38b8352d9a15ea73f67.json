@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7713dd9ca933848f6819f38b8352d9a15ea73f67",
+  "symbol": "cFEI",
+  "decimals": 8,
+  "name": "Compound Fei USD",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x956f47f50a910163d8bf957cf5846d573e7f87ca"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

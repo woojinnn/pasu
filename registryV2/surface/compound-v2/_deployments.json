@@ -1,0 +1,192 @@
+{
+  "protocol": "compound-v2",
+  "category": "lending",
+  "source": "on-chain Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B) for the live cToken market set + compound-finance/compound-config networks/mainnet.json (Comptroller/Maximillion/COMP/Governor/Timelock addrs) + Etherscan-verified ABIs",
+  "url": "https://github.com/compound-finance/compound-config/blob/master/networks/mainnet.json",
+  "fetchedAt": "2026-06-02",
+  "note": "Compound v2 (cToken/Comptroller) mainnet (chain 1) contract inventory. cover = user lending/collateral/claim/delegation surface; exclude = governance/timelock/legacy. cToken market universe is the 20 markets returned by Comptroller.getAllMarkets() (19 CErc20 share cerc20.abi.json via addresses[]; cETH=CEther separate). Deprecated markets retained as cover (redeem/repay still callable). Compound v2 is mainnet-only by protocol design (never multi-chained).",
+  "contracts": [
+    {
+      "name": "cBAT (CErc20 market)",
+      "chainId": 1,
+      "address": "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cDAI (CErc20 market)",
+      "chainId": 1,
+      "address": "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cREP (CErc20 market)",
+      "chainId": 1,
+      "address": "0x158079ee67fce2f58472a96584a73c7ab9ac95c1",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cUSDC (CErc20 market)",
+      "chainId": 1,
+      "address": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cUSDT (CErc20 market)",
+      "chainId": 1,
+      "address": "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cWBTC (legacy) (CErc20 market)",
+      "chainId": 1,
+      "address": "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cZRX (CErc20 market)",
+      "chainId": 1,
+      "address": "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cSAI (CErc20 market)",
+      "chainId": 1,
+      "address": "0xf5dce57282a584d2746faf1593d3121fcac444dc",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cUNI (CErc20 market)",
+      "chainId": 1,
+      "address": "0x35a18000230da775cac24873d00ff85bccded550",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cCOMP (CErc20 market)",
+      "chainId": 1,
+      "address": "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cWBTC2 (CErc20 market)",
+      "chainId": 1,
+      "address": "0xccf4429db6322d5c611ee964527d42e5d685dd6a",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cTUSD (CErc20 market)",
+      "chainId": 1,
+      "address": "0x12392f67bdf24fae0af363c24ac620a2f67dad86",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cLINK (CErc20 market)",
+      "chainId": 1,
+      "address": "0xface851a4921ce59e912d19329929ce6da6eb0c7",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cMKR (CErc20 market)",
+      "chainId": 1,
+      "address": "0x95b4ef2869ebd94beb4eee400a99824bf5dc325b",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cSUSHI (CErc20 market)",
+      "chainId": 1,
+      "address": "0x4b0181102a0112a2ef11abee5563bb4a3176c9d7",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cAAVE (CErc20 market)",
+      "chainId": 1,
+      "address": "0xe65cdb6479bac1e22340e4e755fae7e509ecd06c",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cYFI (CErc20 market)",
+      "chainId": 1,
+      "address": "0x80a2ae356fc9ef4305676f7a3e2ed04e12c33946",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cUSDP (CErc20 market)",
+      "chainId": 1,
+      "address": "0x041171993284df560249b57358f931d9eb7b925d",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cFEI (CErc20 market)",
+      "chainId": 1,
+      "address": "0x7713dd9ca933848f6819f38b8352d9a15ea73f67",
+      "decision": "cover",
+      "reason": "user lending market: mint/redeem/borrow/repay/liquidate (Lending domain). Verified live in Comptroller.getAllMarkets()."
+    },
+    {
+      "name": "cETH (CEther market)",
+      "chainId": 1,
+      "address": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+      "decision": "cover",
+      "reason": "user lending market for native ETH; payable mint/repay overloads"
+    },
+    {
+      "name": "Comptroller (Unitroller proxy)",
+      "chainId": 1,
+      "address": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+      "decision": "cover",
+      "reason": "user collateral + COMP-claim surface: enterMarkets/exitMarket/claimComp"
+    },
+    {
+      "name": "Maximillion",
+      "chainId": 1,
+      "address": "0xf859a1ad94bcf445a406b892ef0d3082f4174088",
+      "decision": "cover",
+      "reason": "cETH max-repay helper (repayBehalf)"
+    },
+    {
+      "name": "COMP (Comp token)",
+      "chainId": 1,
+      "address": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+      "decision": "cover",
+      "reason": "governance token: delegate/delegateBySig voting-power delegation primitive"
+    },
+    {
+      "name": "GovernorBravoDelegator",
+      "chainId": 1,
+      "address": "0xc0da02939e1441f497fd74f78ce7decb17b66529",
+      "decision": "exclude",
+      "reason": "DEFERRED: governance voting + proposal lifecycle (castVote*/propose*/queue/execute/cancel). No fund- or permission-delegation surface and no governance-vote ActionBody domain yet; the ScopeBall-relevant primitive (COMP voting-power delegation) IS covered via the COMP token. Follow-up: governance-domain round."
+    },
+    {
+      "name": "Timelock",
+      "chainId": 1,
+      "address": "0x6d903f6003cca6255d85cca4d3b5e5146dc33925",
+      "decision": "exclude",
+      "reason": "governance execution timelock; admin-only queue/execute, not a user pre-sign action"
+    },
+    {
+      "name": "GovernorAlpha (legacy)",
+      "chainId": 1,
+      "address": "0xc0da01a04c3f3e0be433606045bb7017a7323e38",
+      "decision": "exclude",
+      "reason": "retired governor superseded by GovernorBravo; no current user surface"
+    }
+  ]
+}

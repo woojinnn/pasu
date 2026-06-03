@@ -1134,6 +1134,336 @@
           "expiry": "9999999999"
         }
       }
+    },
+    {
+      "intent": "Bulker invoke SUPPLY_NATIVE_TOKEN real 0x85658f8765a1",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x6567ce7829a9d7037722b1aca8b50fab4716d58f",
+            "to": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+            "value": "1000000000000000",
+            "data": "0x555029a6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001414354494f4e5f535550504c595f4e41544956455f544f4b454e0000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000600000000000000000000000003afdc9bca9213a35503b077a6072f3d0d5ab08400000000000000000000000006567ce7829a9d7037722b1aca8b50fab4716d58f00000000000000000000000000000000000000000000000000038d7ea4c68000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.comet",
+          "op": "hex_eq",
+          "value": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].asset.key.standard",
+          "op": "equals",
+          "value": "native"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x38d7ea4c68000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].on_behalf_of",
+          "op": "hex_eq",
+          "value": "0x6567ce7829a9d7037722b1aca8b50fab4716d58f"
+        }
+      ]
+    },
+    {
+      "intent": "Bulker invoke WITHDRAW_NATIVE_TOKEN real 0xbad199bf27bc",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x9ac60bd825eb8fd0240e4daf2646c1050830013e",
+            "to": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+            "value": "0",
+            "data": "0x555029a6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001414354494f4e5f57495448445241575f4e41544956455f544f4b454e000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000600000000000000000000000003afdc9bca9213a35503b077a6072f3d0d5ab08400000000000000000000000009ac60bd825eb8fd0240e4daf2646c1050830013e00000000000000000000000000000000000000000000000ad78ebc5ac6200000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.comet",
+          "op": "hex_eq",
+          "value": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].asset.key.standard",
+          "op": "equals",
+          "value": "native"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0xad78ebc5ac6200000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x9ac60bd825eb8fd0240e4daf2646c1050830013e"
+        }
+      ]
+    },
+    {
+      "intent": "Bulker invoke SUPPLY_STETH real 0xc8a602419a6f",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x2da14d486ae663347e2e69a0189c0ae36248f681",
+            "to": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+            "value": "0",
+            "data": "0x555029a6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001414354494f4e5f535550504c595f535445544800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000060000000000000000000000000c3d688b66703497daa19211eedff47f25384cdc30000000000000000000000002da14d486ae663347e2e69a0189c0ae36248f6810000000000000000000000000000000000000000000000000595fefdfb1b46fa"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.comet",
+          "op": "hex_eq",
+          "value": "0xc3d688b66703497daa19211eedff47f25384cdc3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].asset.key.address",
+          "op": "hex_eq",
+          "value": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0x595fefdfb1b46fa"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].on_behalf_of",
+          "op": "hex_eq",
+          "value": "0x2da14d486ae663347e2e69a0189c0ae36248f681"
+        }
+      ]
+    },
+    {
+      "intent": "Bulker invoke SUPPLY_ASSET+WITHDRAW_ASSET real 0xcdd24cba90cb",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x1ddd6f79b93825158f0aa7d5964039deb2cb3361",
+            "to": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+            "value": "0",
+            "data": "0x555029a6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002414354494f4e5f535550504c595f415353455400000000000000000000000000414354494f4e5f57495448445241575f415353455400000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000800000000000000000000000005d409e56d886231adaf00c8775665ad0f9897b560000000000000000000000001ddd6f79b93825158f0aa7d5964039deb2cb3361000000000000000000000000dc035d45d973e3ec169d2276ddab16f1e407384fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000000000000000000000000000000000000000000000000000000000800000000000000000000000005d409e56d886231adaf00c8775665ad0f9897b560000000000000000000000001ddd6f79b93825158f0aa7d5964039deb2cb33610000000000000000000000007f39c581f595b53c5cb19bd0b3f8da6c935e2ca0000000000000000000000000000000000000000000000000d02ab486cedbffff"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.comet",
+          "op": "hex_eq",
+          "value": "0x5d409e56d886231adaf00c8775665ad0f9897b56"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].amount",
+          "op": "u256_hex_eq",
+          "value": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].on_behalf_of",
+          "op": "hex_eq",
+          "value": "0x1ddd6f79b93825158f0aa7d5964039deb2cb3361"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.comet",
+          "op": "hex_eq",
+          "value": "0x5d409e56d886231adaf00c8775665ad0f9897b56"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.base_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xdc035d45d973e3ec169d2276ddab16f1e407384f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].amount",
+          "op": "u256_hex_eq",
+          "value": "0xd02ab486cedbffff"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].recipient",
+          "op": "hex_eq",
+          "value": "0x1ddd6f79b93825158f0aa7d5964039deb2cb3361"
+        }
+      ]
+    },
+    {
+      "intent": "Bulker invoke CLAIM_REWARD x2 real 0x0fe7c6d0e1e4",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x4f01339b3094365f857543721740c7e8fd2ace81",
+            "to": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+            "value": "0",
+            "data": "0x555029a6000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000002414354494f4e5f434c41494d5f52455741524400000000000000000000000000414354494f4e5f434c41494d5f524557415244000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000080000000000000000000000000c3d688b66703497daa19211eedff47f25384cdc30000000000000000000000001b0e765f6224c21223aea2af16c1c46e38885a400000000000000000000000004f01339b3094365f857543721740c7e8fd2ace8100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000080000000000000000000000000a17581a9e3356d9a858b789d68b4d866e593ae940000000000000000000000001b0e765f6224c21223aea2af16c1c46e38885a400000000000000000000000004f01339b3094365f857543721740c7e8fd2ace810000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "claim"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].claim_target.contract",
+          "op": "hex_eq",
+          "value": "0x1b0e765f6224c21223aea2af16c1c46e38885a40"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].recipient",
+          "op": "hex_eq",
+          "value": "0x4f01339b3094365f857543721740c7e8fd2ace81"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].action",
+          "op": "equals",
+          "value": "claim"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].claim_target.contract",
+          "op": "hex_eq",
+          "value": "0x1b0e765f6224c21223aea2af16c1c46e38885a40"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].recipient",
+          "op": "hex_eq",
+          "value": "0x4f01339b3094365f857543721740c7e8fd2ace81"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
+  "symbol": "cUSDT",
+  "decimals": 8,
+  "name": "Compound USDT",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

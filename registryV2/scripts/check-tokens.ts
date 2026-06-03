@@ -35,7 +35,13 @@ const TOKENS_DIR = join(REGISTRY_ROOT, "tokens");
 const ADDR_RE = /^0x[0-9a-f]{40}$/;
 const ERC_KINDS = new Set(["erc20", "erc721", "erc1155", "native"]);
 const NATIVE_SENTINEL = "0x0000000000000000000000000000000000000000";
-// TOKEN_INVENTORY_GUIDE "Common values" for token_kind.kind.
+// Authoritative top-level `token_kind.kind` set = the 10 serde-snake_case
+// variants of the Rust `TokenKind` enum
+// (crates/policy-server/asset-model/state/src/token/kind.rs). NOT the
+// TOKEN_INVENTORY_GUIDE prose list — `governance` is a *nested* `BaseCategory`
+// variant (token_kind.category.kind under `base`, cf. COMP/UNI), never a
+// top-level kind; including it here would mask malformed tokens that put
+// `kind:"governance"` at the top level (the Rust deserializer rejects those).
 const TOKEN_KINDS = new Set([
   "base",
   "native_gas",
@@ -46,7 +52,6 @@ const TOKEN_KINDS = new Set([
   "stake_receipt",
   "points_token",
   "maturity_note",
-  "governance",
   "unknown",
 ]);
 const MAX_LIST = 30;

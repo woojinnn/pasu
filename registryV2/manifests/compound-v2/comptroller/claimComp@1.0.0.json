@@ -1,0 +1,86 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/comptroller/claimComp@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 Comptroller claimComp(holder): claim accrued COMP for a holder across all markets (Airdrop::Claim).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xe9af0292",
+    "chain_to_addresses": {
+      "1": [
+        "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimComp",
+    "abi": {
+      "name": "claimComp",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "holder",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "claim",
+        "claim": {
+          "source": {
+            "name": "compound"
+          },
+          "claim_target": {
+            "kind": "staking_claim",
+            "chain": "$chain",
+            "contract": "$to"
+          },
+          "recipient": "$args.holder",
+          "proof": null,
+          "sig": null
+        }
+      }
+    },
+    "live_inputs": {
+      "is_still_claimable": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_is_still_claimable"
+        },
+        "ttl_s": 60
+      },
+      "actual_amount": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_actual_amount"
+        },
+        "ttl_s": 60
+      },
+      "claim_token": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_claim_token"
+        },
+        "ttl_s": 60
+      },
+      "claim_window": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_claim_window"
+        },
+        "ttl_s": 60
+      }
+    }
+  }
+}

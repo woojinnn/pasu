@@ -1028,6 +1028,14 @@ fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -
                 "address": "0x0000000000000000000000000000000000000000"
             }
         }),
+        // -------- Airdrop (Delegate) --------
+        //
+        // `DelegateLiveInputs` (action/airdrop/delegate.rs): `current_delegate`
+        // (`LiveField<Option<Address>>` → takes the `_ => Null` fallback = `None`)
+        // and `voting_power` (`LiveField<U256>`, rejects `null`). Default the
+        // U256 to "0" until the Sync orchestrator fills the delegator's real
+        // voting power (Compound/UNI/ENS governance delegation).
+        (Some("airdrop"), Some("delegate"), "voting_power") => JsonValue::String("0".into()),
         // -------- Token --------
         (Some("token"), Some("erc20_permit"), "nonce")
         | (Some("token"), Some("permit2_approve"), "nonce") => JsonValue::String("0".into()),

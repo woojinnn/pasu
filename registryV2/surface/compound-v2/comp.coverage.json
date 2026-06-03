@@ -1,0 +1,40 @@
+{
+  "contract": "Comp (COMP)",
+  "chainId": 1,
+  "address": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+  "snapshot": "comp.abi.json",
+  "note": "Compound governance token. COVER = delegate/delegateBySig (voting-power delegation = a permission-delegation primitive, Airdrop::Delegate). transfer/transferFrom/approve are standard ERC-20 (COMP base+governance token) -> erc20 standard adapter.",
+  "functions": {
+    "0x5c19a95c": {
+      "name": "delegate",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: delegate COMP voting power to a delegatee (Airdrop::Delegate)"
+    },
+    "0xc3cda520": {
+      "name": "delegateBySig",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: EIP-712 gasless voting-power delegation (Airdrop::Delegate; on-chain submission + off-chain Delegation sig)"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (COMP) -> erc20 standard adapter"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (COMP) -> erc20 standard adapter"
+    },
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (COMP) -> erc20 standard adapter"
+    }
+  },
+  "signed_structs": {
+    "Delegation": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 message a user signs for delegateBySig; delegates COMP voting power (Airdrop::Delegate typed-data)"
+    }
+  }
+}

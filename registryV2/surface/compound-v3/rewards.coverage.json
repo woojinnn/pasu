@@ -1,0 +1,39 @@
+{
+  "contract": "CometRewards (mainnet)",
+  "chainId": 1,
+  "address": "0x1b0e765f6224c21223aea2af16c1c46e38885a40",
+  "snapshot": "rewards.abi.json",
+  "note": "Compound v3 CometRewards mainnet. COVER = claim/claimTo (COMP reward claim -> Airdrop::Claim). claimTo routes rewards to an arbitrary `to` (fund-destination signal). getRewardOwed is an accrue+view; setRewardConfig/transferGovernor/withdrawToken are governor-only.",
+  "functions": {
+    "0xb7034f7e": {
+      "name": "claim",
+      "decision": "cover",
+      "reason": "user reward claim: claim accrued COMP for src to src (Airdrop::Claim)"
+    },
+    "0x4ff85d94": {
+      "name": "claimTo",
+      "decision": "cover",
+      "reason": "user reward claim: claim src's COMP to an arbitrary recipient (Airdrop::Claim; fund-destination signal)"
+    },
+    "0x41e0cad6": {
+      "name": "getRewardOwed",
+      "decision": "exclude",
+      "reason": "accrues then returns owed amount; informational, moves no caller funds"
+    },
+    "0x95e36d2c": {
+      "name": "setRewardConfig",
+      "decision": "exclude",
+      "reason": "governor-only reward configuration"
+    },
+    "0xb8cc9ce6": {
+      "name": "transferGovernor",
+      "decision": "exclude",
+      "reason": "governor-only admin"
+    },
+    "0x01e33667": {
+      "name": "withdrawToken",
+      "decision": "exclude",
+      "reason": "governor-only treasury withdrawal"
+    }
+  }
+}

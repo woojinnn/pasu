@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+  "symbol": "cDAI",
+  "decimals": 8,
+  "name": "Compound Dai",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x6b175474e89094c44da98b954eedeac495271d0f"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

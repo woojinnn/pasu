@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x041171993284df560249b57358f931d9eb7b925d",
+  "symbol": "cUSDP",
+  "decimals": 8,
+  "name": "Compound Pax Dollar",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x8e870d67f660d95d5be530380d0ec0bd388289e1"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

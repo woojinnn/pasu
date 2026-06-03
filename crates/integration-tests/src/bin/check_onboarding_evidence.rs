@@ -3,7 +3,8 @@
 //! This is intentionally small and markdown-table oriented. The onboarding
 //! framework treats `evidence.md` as a phase gate, so this binary fails when a
 //! mandatory phase row is still pending, marked with an unsupported status, or
-//! claims `done` / `blocked` without an artifact.
+//! claims `done` / `blocked` / `n/a` without an artifact. Valid statuses are
+//! `done`, `blocked`, and `n/a` (each requires a justification cell).
 
 use std::env;
 use std::fs;
@@ -285,6 +286,21 @@ fn check_markdown(markdown: &str, phase: Phase) -> (Vec<Finding>, Stats) {
                     });
                 }
             }
+            // `n/a` is a first-class disposition: many rows end "...or explicitly
+            // not applicable", and the template itself authors the no-Codex-lane
+            // rows as `n/a`. Accept it like `done` (a settled row that needs a
+            // justification cell) — but, unlike `blocked`, it is NOT a blocker, so
+            // it does not require a concrete Blockers-table entry.
+            "n/a" | "na" | "notapplicable" => {
+                if artifact.is_empty() {
+                    findings.push(Finding {
+                        line: line_no,
+                        message: format!(
+                            "`{requirement}` is n/a but artifact/summary is empty (justify why it does not apply)"
+                        ),
+                    });
+                }
+            }
             "pending" | "todo" | "skipped" | "" => findings.push(Finding {
                 line: line_no,
                 message: format!("`{requirement}` status `{}` is incomplete", cells[1].trim()),
@@ -292,7 +308,7 @@ fn check_markdown(markdown: &str, phase: Phase) -> (Vec<Finding>, Stats) {
             other => findings.push(Finding {
                 line: line_no,
                 message: format!(
-                    "`{requirement}` has unsupported status `{other}`; use done or blocked"
+                    "`{requirement}` has unsupported status `{other}`; use done, blocked, or n/a"
                 ),
             }),
         }
@@ -499,6 +515,41 @@ mod tests {
         assert!(findings
             .iter()
             .any(|f| f.message.contains("artifact/summary is empty")));
+    }
+
+    #[test]
+    fn accepts_na_with_justification() {
+        // `n/a` is a valid disposition for rows that explicitly do not apply
+        // (e.g. no Codex lane, Dune on a mainnet-only protocol). It counts as a
+        // dispositioned row (like blocked) and must carry a justification.
+        let markdown = completed_template().replacen(
+            "| done | artifact |",
+            "| n/a | mainnet-only protocol; Etherscan sweep sufficient |",
+            1,
+        );
+        let (findings, stats) = check_markdown(&markdown, Phase::P0);
+        assert!(findings.is_empty(), "{findings:#?}");
+        // n/a is settled but NOT a blocker — no Blockers-table row required.
+        assert_eq!(stats.blocked_rows, 0);
+    }
+
+    #[test]
+    fn rejects_na_without_artifact() {
+        let markdown = r#"
+## Run Metadata
+| field | value |
+|---|---|
+| protocol | curve |
+
+## P2 Real-Tx Evidence
+| required evidence | status | artifact / exact command / summary |
+|---|---|---|
+| Dune MCP/API availability checked | n/a | |
+"#;
+        let (findings, _) = check_markdown(markdown, Phase::P2);
+        assert!(findings
+            .iter()
+            .any(|f| f.message.contains("n/a but artifact/summary is empty")));
     }
 
     #[test]

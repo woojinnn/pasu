@@ -1,0 +1,81 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/ceth/redeem@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 cETH redeem(redeemTokens): redeem cETH shares for ETH (Lending::Withdraw, by-shares).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xdb006a75",
+    "chain_to_addresses": {
+      "1": [
+        "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "redeem",
+    "abi": {
+      "name": "redeem",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "redeemTokens",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "compound_v2",
+            "chain": "$chain",
+            "comptroller": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+          },
+          "asset": {
+            "key": {
+              "standard": "native",
+              "chain": "$chain",
+              "address": "0x0000000000000000000000000000000000000000"
+            }
+          },
+          "amount": "$args.redeemTokens",
+          "recipient": "$tx.from"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_reserve_state"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_available_to_withdraw"
+        },
+        "ttl_s": 60
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_user_state_before"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

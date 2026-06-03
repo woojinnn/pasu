@@ -1,0 +1,97 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/ceth/borrow@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 cETH borrow(borrowAmount): borrow ETH against collateral (Lending::Borrow).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xc5ebeaec",
+    "chain_to_addresses": {
+      "1": [
+        "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "borrow",
+    "abi": {
+      "name": "borrow",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "borrowAmount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "borrow",
+        "borrow": {
+          "venue": {
+            "name": "compound_v2",
+            "chain": "$chain",
+            "comptroller": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+          },
+          "asset": {
+            "key": {
+              "standard": "native",
+              "chain": "$chain",
+              "address": "0x0000000000000000000000000000000000000000"
+            }
+          },
+          "amount": "$args.borrowAmount",
+          "rate_mode": "variable"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_reserve_state"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_user_state_before"
+        },
+        "ttl_s": 12
+      },
+      "asset_price_usd": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_asset_price_usd"
+        },
+        "ttl_s": 60
+      },
+      "current_borrow_rate": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_current_borrow_rate"
+        },
+        "ttl_s": 60
+      },
+      "available_liquidity": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_available_liquidity"
+        },
+        "ttl_s": 60
+      }
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/comptroller/claimComp-batch@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 Comptroller claimComp(holders,cTokens,borrowers,suppliers): batch-claim COMP, one Claim per holder (Airdrop::Claim, array_emit).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x6810dfa6",
+    "chain_to_addresses": {
+      "1": [
+        "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimComp",
+    "abi": {
+      "name": "claimComp",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "holders",
+          "type": "address[]"
+        },
+        {
+          "name": "cTokens",
+          "type": "address[]"
+        },
+        {
+          "name": "borrowers",
+          "type": "bool"
+        },
+        {
+          "name": "suppliers",
+          "type": "bool"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.holders",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "claim",
+        "claim": {
+          "source": {
+            "name": "compound"
+          },
+          "claim_target": {
+            "kind": "staking_claim",
+            "chain": "$chain",
+            "contract": "$to"
+          },
+          "recipient": "$inputs",
+          "proof": null,
+          "sig": null
+        }
+      }
+    },
+    "live_inputs": {
+      "is_still_claimable": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_is_still_claimable"
+        },
+        "ttl_s": 60
+      },
+      "actual_amount": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_actual_amount"
+        },
+        "ttl_s": 60
+      },
+      "claim_token": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_claim_token"
+        },
+        "ttl_s": 60
+      },
+      "claim_window": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_claim_window"
+        },
+        "ttl_s": 60
+      }
+    }
+  }
+}

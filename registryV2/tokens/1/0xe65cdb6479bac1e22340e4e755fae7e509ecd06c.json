@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe65cdb6479bac1e22340e4e755fae7e509ecd06c",
+  "symbol": "cAAVE",
+  "decimals": 8,
+  "name": "Compound Aave Token",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

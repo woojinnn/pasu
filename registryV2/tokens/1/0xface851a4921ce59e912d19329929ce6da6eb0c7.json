@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xface851a4921ce59e912d19329929ce6da6eb0c7",
+  "symbol": "cLINK",
+  "decimals": 8,
+  "name": "Compound ChainLink Token",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x514910771af9ca656af840dff83e8264ecf986ca"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

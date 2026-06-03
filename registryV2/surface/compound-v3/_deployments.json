@@ -1,0 +1,220 @@
+{
+  "protocol": "compound-v3",
+  "category": "lending",
+  "source": "compound-finance/comet deployments/<network>/<market>/roots.json (Comet proxies + Bulker + CometRewards) + on-chain rewardConfig() verification (CometRewards)",
+  "url": "https://github.com/compound-finance/comet/tree/main/deployments",
+  "fetchedAt": "2026-06-02",
+  "note": "Compound v3 (Comet) contract inventory. 28 Comet markets across 10 chains (cover, existing per-market coverage). CometRewards mainnet cover (claim/claimTo); MainnetBulker cover (invoke -> parallel_tagged_dispatch). Comet Configurator/CometFactory/price feeds/governance are protocol infra/admin, excluded as a class (not user pre-sign surface). Multichain Bulker/Rewards: decode follow-up.",
+  "contracts": [
+    {
+      "name": "Comet arbitrum-usdc-e",
+      "chainId": 42161,
+      "address": "0xa5edbdd9646f8dff606d7448e414884c7d905dca",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet arbitrum-usdc",
+      "chainId": 42161,
+      "address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet arbitrum-usdt",
+      "chainId": 42161,
+      "address": "0xd98be00b5d27fc98112bde293e487f8d4ca57d07",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet arbitrum-weth",
+      "chainId": 42161,
+      "address": "0x6f7d514bbd4aff3bcd1140b7344b32f063dee486",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet base-aero",
+      "chainId": 8453,
+      "address": "0x784efeb622244d2348d4f2522f8860b96fbece89",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet base-usdbc",
+      "chainId": 8453,
+      "address": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet base-usdc",
+      "chainId": 8453,
+      "address": "0xb125e6687d4313864e53df431d5425969c15eb2f",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet base-usds",
+      "chainId": 8453,
+      "address": "0x2c776041ccfe903071af44aa147368a9c8eea518",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet base-weth",
+      "chainId": 8453,
+      "address": "0x46e6b214b524310239732d51387075e0e70970bf",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet linea-usdc",
+      "chainId": 59144,
+      "address": "0x8d38a3d6b3c3b7d96d6536da7eef94a9d7dbc991",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet linea-weth",
+      "chainId": 59144,
+      "address": "0x60f2058379716a64a7a5d29219397e79bc552194",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet mantle-usde",
+      "chainId": 5000,
+      "address": "0x606174f62cd968d8e684c645080fa694c1d7786e",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet optimism-usdc",
+      "chainId": 10,
+      "address": "0x2e44e174f7d53f0212823acc11c01a11d58c5bcb",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet optimism-usdt",
+      "chainId": 10,
+      "address": "0x995e394b8b2437ac8ce61ee0bc610d617962b214",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet optimism-weth",
+      "chainId": 10,
+      "address": "0xe36a30d249f7761327fd973001a32010b521b6fd",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet polygon-usdc",
+      "chainId": 137,
+      "address": "0xf25212e676d1f7f89cd72ffee66158f541246445",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet polygon-usdt",
+      "chainId": 137,
+      "address": "0xaeb318360f27748acb200ce616e389a6c9409a07",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet ronin-weth",
+      "chainId": 2020,
+      "address": "0x4006ed4097ee51c09a04c3b0951d28ccf19e6dfe",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet ronin-wron",
+      "chainId": 2020,
+      "address": "0xc0afdbd1ceb621ef576ba969ce9d4cef78dbc0c0",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet scroll-usdc",
+      "chainId": 534352,
+      "address": "0xb2f97c1bd3bf02f5e74d13f02e3e26f93d77ce44",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet unichain-usdc",
+      "chainId": 130,
+      "address": "0x2c7118c4c88b9841fcf839074c26ae8f035f2921",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet unichain-weth",
+      "chainId": 130,
+      "address": "0x6c987dde50db1dcdd32cd4175778c2a291978e2a",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet usdc-mainnet",
+      "chainId": 1,
+      "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet usds-mainnet",
+      "chainId": 1,
+      "address": "0x5d409e56d886231adaf00c8775665ad0f9897b56",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet usdt-mainnet",
+      "chainId": 1,
+      "address": "0x3afdc9bca9213a35503b077a6072f3d0d5ab0840",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet wbtc-mainnet",
+      "chainId": 1,
+      "address": "0xe85dc543813b8c2cfeaac371517b925a166a9293",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet weth-mainnet",
+      "chainId": 1,
+      "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "Comet wsteth-mainnet",
+      "chainId": 1,
+      "address": "0x3d0bb1ccab520a66e607822fc55bc921738fafe3",
+      "decision": "cover",
+      "reason": "user Comet market: supply/withdraw/transfer/buyCollateral/allow (lending). Address from compound-finance/comet deployments roots.json."
+    },
+    {
+      "name": "CometRewards (mainnet)",
+      "chainId": 1,
+      "address": "0x1b0e765f6224c21223aea2af16c1c46e38885a40",
+      "decision": "cover",
+      "reason": "COMP reward claim: claim/claimTo. On-chain rewardConfig() confirms COMP token + rescale. Mainnet surface-gated; other chains decode-deferred (multichain follow-up)."
+    },
+    {
+      "name": "MainnetBulker (mainnet)",
+      "chainId": 1,
+      "address": "0xa397a8c2086c554b531c02e29f3291c9704b00c7",
+      "decision": "cover",
+      "reason": "user batch entrypoint: invoke(bytes32[] actions, bytes[] data) decoded by the parallel_tagged_dispatch emit strategy into a Multicall of per-action bodies (8 ACTION_* tags: supply/withdraw/transfer/claim + native/stETH variants). See bulker.coverage.json. Address from compound-finance/comet deployments mainnet roots.json (Etherscan-verified MainnetBulker)."
+    }
+  ]
+}

@@ -518,6 +518,12 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 serde_json::Value::String(asset.to_owned()),
             );
         }
+        if let Some(asset) = compound_v2_underlying(input.chain_id, &key.to) {
+            resolved.insert(
+                "compound_v2_underlying".to_owned(),
+                serde_json::Value::String(asset.to_owned()),
+            );
+        }
 
         // Tier-B synthetic derivations the declarative grammar cannot express
         // (it can index/slice but not hash). Morpho Blue's `market_id` =
@@ -745,6 +751,18 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             // trailing args with that action's `inputs_abi` into the ctx
             // `inputs`, and build that ONE action's `body` (NOT a Multicall).
             "tagged_dispatch" => build_tagged_dispatch(&ctx, emit)?,
+            // Bulker-class parallel-array tagged dispatch (Compound v3
+            // `Bulker.invoke(bytes32[] actions, bytes[] data)`): the two arrays
+            // are index-aligned; each `data[i]` is an action-specific ABI tuple
+            // keyed by the `actions[i]` tag (a `bytes32` ASCII action-name for
+            // Compound). Fans out to a `Multicall` of per-element bodies —
+            // generalises `tagged_dispatch` (ONE tagged action) to an ARRAY and
+            // `array_emit` (one homogeneous body per element) to a
+            // PER-ELEMENT-TAGGED body. Inline decode (per-tag `inputs_abi` in
+            // this one manifest) → no child callkeys, unlike `multicall_recurse`.
+            "parallel_tagged_dispatch" => {
+                build_parallel_tagged_dispatch(&ctx, emit, input.chain_id)?
+            }
             // Cat D — `multicall_recurse` (self-multicall: NFPM / SwapRouter02 /
             // V4 PositionManager `multicall(bytes[])`). The inner sub-calls are
             // the single `bytes[]` argument, each ABI-encoded calldata targeting
@@ -810,6 +828,99 @@ fn aave_weth_gateway_pool(chain_id: u64, target: &str) -> Option<&'static str> {
         }
         (42161, "0x5283beced7adf6d003225c13896e536f2d4264ff") => {
             Some("0x794a61358d6845594f94dc1db02a252b5b4814ad")
+        }
+        _ => None,
+    }
+}
+
+/// Static `$resolved.compound_v2_underlying` — the ERC-20 underlying a Compound
+/// v2 cToken market lends/borrows (cETH → the native sentinel, since `CEther`
+/// has no `underlying()`). Keyed by `(chain_id, cToken)`; mainnet-only because
+/// Compound v2 never multi-chained. Every underlying was verified on-chain via
+/// each market's `underlying()` view. The `compound_v2` analogue of
+/// [`compound_v3_base_asset`]; a no-op for every non-cToken target.
+fn compound_v2_underlying(chain_id: u64, target: &str) -> Option<&'static str> {
+    let target = target.to_ascii_lowercase();
+    match (chain_id, target.as_str()) {
+        // cBAT → BAT
+        (1, "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e") => {
+            Some("0x0d8775f648430679a709e98d2b0cb6250d2887ef")
+        }
+        // cDAI → DAI
+        (1, "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643") => {
+            Some("0x6b175474e89094c44da98b954eedeac495271d0f")
+        }
+        // cREP → REP
+        (1, "0x158079ee67fce2f58472a96584a73c7ab9ac95c1") => {
+            Some("0x1985365e9f78359a9b6ad760e32412f4a445e862")
+        }
+        // cUSDC → USDC
+        (1, "0x39aa39c021dfbae8fac545936693ac917d5e7563") => {
+            Some("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        }
+        // cUSDT → USDT
+        (1, "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9") => {
+            Some("0xdac17f958d2ee523a2206206994597c13d831ec7")
+        }
+        // cWBTC (legacy) → WBTC
+        (1, "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4") => {
+            Some("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+        }
+        // cZRX → ZRX
+        (1, "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407") => {
+            Some("0xe41d2489571d322189246dafa5ebde1f4699f498")
+        }
+        // cSAI → SAI
+        (1, "0xf5dce57282a584d2746faf1593d3121fcac444dc") => {
+            Some("0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359")
+        }
+        // cUNI → UNI
+        (1, "0x35a18000230da775cac24873d00ff85bccded550") => {
+            Some("0x1f9840a85d5af5bf1d1762f925bdaddc4201f984")
+        }
+        // cCOMP → COMP
+        (1, "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4") => {
+            Some("0xc00e94cb662c3520282e6f5717214004a7f26888")
+        }
+        // cWBTC2 → WBTC
+        (1, "0xccf4429db6322d5c611ee964527d42e5d685dd6a") => {
+            Some("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599")
+        }
+        // cTUSD → TUSD
+        (1, "0x12392f67bdf24fae0af363c24ac620a2f67dad86") => {
+            Some("0x0000000000085d4780b73119b644ae5ecd22b376")
+        }
+        // cLINK → LINK
+        (1, "0xface851a4921ce59e912d19329929ce6da6eb0c7") => {
+            Some("0x514910771af9ca656af840dff83e8264ecf986ca")
+        }
+        // cMKR → MKR
+        (1, "0x95b4ef2869ebd94beb4eee400a99824bf5dc325b") => {
+            Some("0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2")
+        }
+        // cSUSHI → SUSHI
+        (1, "0x4b0181102a0112a2ef11abee5563bb4a3176c9d7") => {
+            Some("0x6b3595068778dd592e39a122f4f5a5cf09c90fe2")
+        }
+        // cAAVE → AAVE
+        (1, "0xe65cdb6479bac1e22340e4e755fae7e509ecd06c") => {
+            Some("0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9")
+        }
+        // cYFI → YFI
+        (1, "0x80a2ae356fc9ef4305676f7a3e2ed04e12c33946") => {
+            Some("0x0bc529c00c6401aef6d220be8c6ea1667f6ad93e")
+        }
+        // cUSDP → USDP (Pax Dollar)
+        (1, "0x041171993284df560249b57358f931d9eb7b925d") => {
+            Some("0x8e870d67f660d95d5be530380d0ec0bd388289e1")
+        }
+        // cFEI → FEI
+        (1, "0x7713dd9ca933848f6819f38b8352d9a15ea73f67") => {
+            Some("0x956f47f50a910163d8bf957cf5846d573e7f87ca")
+        }
+        // cETH (CEther) → native ETH sentinel
+        (1, "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5") => {
+            Some("0x0000000000000000000000000000000000000000")
         }
         _ => None,
     }
@@ -1964,6 +2075,311 @@ fn build_tagged_dispatch(
         .map_err(|error| EngineErrorDto::new("build_action_body_failed", error.to_string()))
 }
 
+/// Named static `(chain, address) -> address` resolvers — the SAME helpers the
+/// outer route pre-populates into `$resolved`, re-exposed so
+/// [`build_parallel_tagged_dispatch`] can compute a per-element `$resolved.*`
+/// keyed by a DECODED INPUT address rather than the outer `$to`. Compound v3's
+/// Bulker is the motivating case: `invoke`'s `to` IS the Bulker, but each
+/// action's `comet` (hence its `base_asset`) is a per-element parameter. Returns
+/// `None` for an unknown resolver name or an address the resolver does not
+/// cover (a no-op augmentation, never a fail).
+fn resolve_named(chain_id: u64, name: &str, address: &str) -> Option<&'static str> {
+    match name {
+        "compound_v3_base_asset" => compound_v3_base_asset(chain_id, address),
+        "compound_v2_underlying" => compound_v2_underlying(chain_id, address),
+        _ => None,
+    }
+}
+
+/// Derive the `per_tag` lookup key from one element's tag value under the
+/// declared `tag_encoding`:
+///   * `bytes32_ascii` — the tag is a `bytes32` hex string whose bytes are an
+///     ASCII action name right-zero-padded (Solidity `bytes32` string literal,
+///     e.g. Compound `"ACTION_SUPPLY_ASSET"`). Hex-decode, trim trailing `0x00`,
+///     UTF-8. This is the legible Compound case.
+///   * `bytes32_hex` — the tag is an opaque `bytes32` (e.g. a keccak selector);
+///     normalise to lowercase `0x`-prefixed hex.
+///   * `uint` — a small numeric enum tag; a decimal string passes through, a
+///     `0x` hex string converts to decimal.
+///
+/// Fail-loud on a shape mismatch (the element then surfaces `invalid_tag`).
+fn derive_tag_key(tag: &serde_json::Value, encoding: &str) -> Result<String, String> {
+    match encoding {
+        "bytes32_ascii" => {
+            let s = tag
+                .as_str()
+                .ok_or_else(|| format!("bytes32_ascii tag must be a hex string, got {tag}"))?;
+            let bytes = hex::decode(s.strip_prefix("0x").unwrap_or(s))
+                .map_err(|error| format!("bytes32_ascii tag {s:?} not hex: {error}"))?;
+            let end = bytes.iter().rposition(|&b| b != 0).map_or(0, |p| p + 1);
+            String::from_utf8(bytes[..end].to_vec())
+                .map_err(|error| format!("bytes32_ascii tag {s:?} not UTF-8: {error}"))
+        }
+        "bytes32_hex" => {
+            let s = tag
+                .as_str()
+                .ok_or_else(|| format!("bytes32_hex tag must be a hex string, got {tag}"))?;
+            Ok(format!(
+                "0x{}",
+                s.strip_prefix("0x").unwrap_or(s).to_ascii_lowercase()
+            ))
+        }
+        "uint" => match tag {
+            serde_json::Value::Number(n) => Ok(n.to_string()),
+            serde_json::Value::String(s) => {
+                let s = s.trim();
+                if let Some(hex) = s.strip_prefix("0x") {
+                    u128::from_str_radix(hex, 16)
+                        .map(|v| v.to_string())
+                        .map_err(|error| format!("uint tag {s:?} not hex/in-range: {error}"))
+                } else {
+                    Ok(s.to_owned())
+                }
+            }
+            other => Err(format!("uint tag must be a number or string, got {other}")),
+        },
+        other => Err(format!(
+            "unknown tag_encoding {other:?} (expected bytes32_ascii|bytes32_hex|uint)"
+        )),
+    }
+}
+
+/// `parallel_tagged_dispatch` — decode a parallel-array tagged batch
+/// (`fn(tag[], data[])`) into a `Multicall` of per-element bodies. The
+/// motivating shape is Compound v3 `Bulker.invoke(bytes32[] actions, bytes[]
+/// data)` where `actions[i]` is a `bytes32` ASCII tag selecting how to
+/// ABI-decode `data[i]` (`ACTION_SUPPLY_ASSET` → `(address comet, address to,
+/// address asset, uint256 amount)`, …).
+///
+/// emit shape:
+/// ```json
+/// {
+///   "strategy": "parallel_tagged_dispatch",
+///   "actions_source": "$args.actions",
+///   "data_source":    "$args.data",
+///   "tag_encoding":   "bytes32_ascii",
+///   "max_elements":   32,
+///   "unknown_tag_policy": "warn",
+///   "resolve_from_inputs": { "compound_v3_base_asset": "comet" },
+///   "per_tag": {
+///     "ACTION_SUPPLY_ASSET": { "inputs_abi": "(…)", "body": { … }, "live_inputs": { … } },
+///     "default": { "body": { … } }
+///   }
+/// }
+/// ```
+///
+/// Posture: fail-LOUD on structural faults (length mismatch, element cap,
+/// non-hex data, per-element ABI-decode failure → `$inputs.*`
+/// `UnresolvedPlaceholder`); fail-VISIBLE on an unknown tag (`warn` → a visible
+/// `unknown` body for that element, never a silent drop; `deny` → hard error).
+/// An empty batch decodes to an empty `Multicall` (an on-chain no-op).
+fn build_parallel_tagged_dispatch(
+    ctx: &V3MapContext<'_>,
+    emit: &serde_json::Value,
+    chain_id: u64,
+) -> Result<v3_action::ActionBody, EngineErrorDto> {
+    const DEFAULT_MAX_ELEMENTS: u64 = 32;
+    const HARD_MAX_ELEMENTS: u64 = 64;
+
+    let per_tag = emit
+        .get("per_tag")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| EngineErrorDto::new("invalid_bundle", "missing emit.per_tag".to_string()))?;
+
+    let actions_source = emit
+        .get("actions_source")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit.actions_source".to_string())
+        })?;
+    let data_source = emit
+        .get("data_source")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit.data_source".to_string())
+        })?;
+
+    let tag_encoding = emit
+        .get("tag_encoding")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            EngineErrorDto::new("invalid_bundle", "missing emit.tag_encoding".to_string())
+        })?;
+
+    let max_elements = emit
+        .get("max_elements")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(DEFAULT_MAX_ELEMENTS);
+    if max_elements == 0 || max_elements > HARD_MAX_ELEMENTS {
+        return Err(EngineErrorDto::new(
+            "invalid_bundle",
+            format!("emit.max_elements must be 1..={HARD_MAX_ELEMENTS}, got {max_elements}"),
+        ));
+    }
+
+    let deny_unknown = matches!(
+        emit.get("unknown_tag_policy")
+            .and_then(serde_json::Value::as_str),
+        Some("deny")
+    );
+
+    // `resolve_from_inputs`: resolver name → the `inputs_abi` field whose decoded
+    // address keys that resolver (e.g. `compound_v3_base_asset` ← `comet`).
+    let resolve_from_inputs: Vec<(String, String)> = emit
+        .get("resolve_from_inputs")
+        .and_then(serde_json::Value::as_object)
+        .map(|map| {
+            map.iter()
+                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_owned())))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // ── Resolve the two index-aligned arrays ────────────────────────────────
+    let tags_val = substitute_placeholders(ctx, &serde_json::json!(actions_source))
+        .map_err(|error| EngineErrorDto::new("invalid_actions_source", error.to_string()))?;
+    let tags = tags_val.as_array().ok_or_else(|| {
+        EngineErrorDto::new(
+            "invalid_actions_source",
+            format!("emit.actions_source {actions_source:?} did not resolve to an array"),
+        )
+    })?;
+    let data_val = substitute_placeholders(ctx, &serde_json::json!(data_source))
+        .map_err(|error| EngineErrorDto::new("invalid_data_source", error.to_string()))?;
+    let data = data_val.as_array().ok_or_else(|| {
+        EngineErrorDto::new(
+            "invalid_data_source",
+            format!("emit.data_source {data_source:?} did not resolve to an array"),
+        )
+    })?;
+
+    if tags.len() != data.len() {
+        return Err(EngineErrorDto::new(
+            "invalid_bundle",
+            format!(
+                "parallel_tagged_dispatch: actions[] len {} != data[] len {}",
+                tags.len(),
+                data.len()
+            ),
+        ));
+    }
+    if tags.len() as u64 > max_elements {
+        return Err(EngineErrorDto::new(
+            "invalid_bundle",
+            format!(
+                "parallel_tagged_dispatch: element count {} exceeds cap {max_elements}",
+                tags.len()
+            ),
+        ));
+    }
+
+    let mut actions: Vec<v3_action::ActionBody> = Vec::with_capacity(tags.len());
+    for (index, (tag_val, data_item)) in tags.iter().zip(data.iter()).enumerate() {
+        // 1. tag → per_tag lookup key.
+        let key = derive_tag_key(tag_val, tag_encoding).map_err(|error| {
+            EngineErrorDto::new(
+                "invalid_tag",
+                format!("parallel_tagged_dispatch element #{index}: {error}"),
+            )
+        })?;
+
+        // 2. Per-tag entry, else `default`, else fail-visible Unknown body.
+        let Some(entry) = per_tag.get(&key).or_else(|| per_tag.get("default")) else {
+            if deny_unknown {
+                return Err(EngineErrorDto::new(
+                    "unknown_tag",
+                    format!(
+                        "parallel_tagged_dispatch element #{index}: tag {key:?} absent \
+                         from per_tag (unknown_tag_policy=deny)"
+                    ),
+                ));
+            }
+            eprintln!(
+                "[declarative_exports] parallel_tagged_dispatch element #{index}: tag {key:?} \
+                 absent from per_tag — fail-soft Unknown body"
+            );
+            let unknown = serde_json::json!({
+                "domain": "unknown",
+                "unknown": {
+                    "target": "$to",
+                    "chain": "$chain",
+                    "calldata": "$calldata",
+                    "value": "$tx.value"
+                }
+            });
+            let body = build_action_body(ctx, &unknown, None).map_err(|error| {
+                EngineErrorDto::new("build_action_body_failed", error.to_string())
+            })?;
+            actions.push(body);
+            continue;
+        };
+
+        let body_template = entry.get("body").ok_or_else(|| {
+            EngineErrorDto::new(
+                "invalid_bundle",
+                format!("parallel_tagged_dispatch per_tag {key:?} missing body"),
+            )
+        })?;
+
+        // 3. ABI-decode this element's `data[i]` with the entry's `inputs_abi`.
+        //    A decode failure → `Null`, so a body `$inputs.<x>` ref surfaces a
+        //    precise UnresolvedPlaceholder (no silent bogus default) — same
+        //    best-effort contract as tagged_dispatch / opcode-stream.
+        let data_hex = data_item.as_str().ok_or_else(|| {
+            EngineErrorDto::new(
+                "invalid_data_source",
+                format!("parallel_tagged_dispatch element #{index}: data not a hex string"),
+            )
+        })?;
+        let data_bytes =
+            hex::decode(data_hex.strip_prefix("0x").unwrap_or(data_hex)).map_err(|error| {
+                EngineErrorDto::new(
+                    "invalid_data_source",
+                    format!("parallel_tagged_dispatch element #{index}: data not hex: {error}"),
+                )
+            })?;
+        let decoded = entry
+            .get("inputs_abi")
+            .and_then(serde_json::Value::as_str)
+            .and_then(|sig| decode_inputs_abi_tuple(sig, &data_bytes).ok())
+            .unwrap_or(serde_json::Value::Null);
+
+        // 4. Augment a per-element `$resolved` from decoded inputs (e.g.
+        //    `compound_v3_base_asset` keyed by the decoded `comet`, since `$to`
+        //    is the Bulker, not the market). A no-op when the field is absent or
+        //    the resolver does not cover the address.
+        let mut child_resolved = ctx.resolved.clone();
+        for (resolver_name, field) in &resolve_from_inputs {
+            if let Some(addr) = decoded.get(field).and_then(serde_json::Value::as_str) {
+                if let Some(asset) = resolve_named(chain_id, resolver_name, addr) {
+                    child_resolved.insert(
+                        resolver_name.clone(),
+                        serde_json::Value::String(asset.to_owned()),
+                    );
+                }
+            }
+        }
+
+        let child_ctx = V3MapContext {
+            chain: ctx.chain.clone(),
+            tx_to: ctx.tx_to,
+            tx_from: ctx.tx_from,
+            value: ctx.value,
+            submitted_at: ctx.submitted_at,
+            args_json: ctx.args_json,
+            raw_calldata: ctx.raw_calldata,
+            resolved: child_resolved,
+            derived: ctx.derived.clone(),
+            inputs: Some(&decoded),
+        };
+        let body = build_action_body(&child_ctx, body_template, entry.get("live_inputs"))
+            .map_err(|error| EngineErrorDto::new("build_action_body_failed", error.to_string()))?;
+        actions.push(body);
+    }
+
+    Ok(v3_action::ActionBody::Multicall { actions })
+}
+
 /// Decode a single opcode's `inputs_abi` Solidity tuple signature against a
 /// raw byte buffer, returning a JSON object keyed by the tuple's named
 /// fields.
@@ -3081,6 +3497,236 @@ mod tests {
         assert_eq!(body_json["domain"], "multicall", "{body_json}");
         assert_eq!(body_json["actions"].as_array().unwrap().len(), 1);
         assert_eq!(body_json["actions"][0]["domain"], "unknown", "{body_json}");
+    }
+
+    /// `parallel_tagged_dispatch` end-to-end: a Compound v3
+    /// `Bulker.invoke(bytes32[] actions, bytes[] data)` with two index-aligned
+    /// legs (`ACTION_SUPPLY_ASSET` + `ACTION_CLAIM_REWARD`) decodes — through the
+    /// real install + route path — to a `Multicall` of one `lending::supply` and
+    /// one `airdrop::claim`. Crucially asserts the per-element `resolve_from_inputs`
+    /// mechanism: `base_asset` is resolved from the DECODED `comet` (cUSDCv3 →
+    /// USDC), NOT from `$to` (the Bulker) — the wrinkle that makes the strategy
+    /// necessary.
+    #[test]
+    fn parallel_tagged_dispatch_bulker_invoke_fans_out_to_multicall() {
+        use alloy_primitives::B256;
+
+        let bulker = "0xa397a8c2086c554b531c02e29f3291c9704b00c7";
+        let comet = "0xc3d688b66703497daa19211eedff47f25384cdc3"; // cUSDCv3 → base USDC
+        let usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+        let user = "0x000000000000000000000000000000000000aaaa";
+        let asset = "0x1111111111111111111111111111111111111111";
+        let rewards = "0x1b0e765f6224c21223aea2af16c1c46e38885a40"; // CometRewards mainnet
+        let src = "0x000000000000000000000000000000000000bbbb";
+
+        // bytes32 ASCII tags (right-zero-padded action names).
+        let tag = |name: &str| -> B256 {
+            let mut b = [0u8; 32];
+            b[..name.len()].copy_from_slice(name.as_bytes());
+            B256::from(b)
+        };
+
+        // data[i] = abi.encode(...) — params encoding (selector-stripped).
+        let params_enc = |sig: &str, vals: &[DynSolValue]| -> Vec<u8> {
+            let f = Function::parse(sig).unwrap();
+            f.abi_encode_input(vals).unwrap()[4..].to_vec()
+        };
+        let supply_data = params_enc(
+            "x(address,address,address,uint256)",
+            &[
+                DynSolValue::Address(comet.parse().unwrap()),
+                DynSolValue::Address(user.parse().unwrap()),
+                DynSolValue::Address(asset.parse().unwrap()),
+                DynSolValue::Uint(U256::from(5000_u64), 256),
+            ],
+        );
+        let claim_data = params_enc(
+            "x(address,address,address,bool)",
+            &[
+                DynSolValue::Address(comet.parse().unwrap()),
+                DynSolValue::Address(rewards.parse().unwrap()),
+                DynSolValue::Address(src.parse().unwrap()),
+                DynSolValue::Bool(true),
+            ],
+        );
+
+        // outer invoke(bytes32[],bytes[]) calldata.
+        let invoke_fn = Function::parse("invoke(bytes32[],bytes[])").unwrap();
+        let invoke_cd = invoke_fn
+            .abi_encode_input(&[
+                DynSolValue::Array(vec![
+                    DynSolValue::FixedBytes(tag("ACTION_SUPPLY_ASSET"), 32),
+                    DynSolValue::FixedBytes(tag("ACTION_CLAIM_REWARD"), 32),
+                ]),
+                DynSolValue::Array(vec![
+                    DynSolValue::Bytes(supply_data),
+                    DynSolValue::Bytes(claim_data),
+                ]),
+            ])
+            .unwrap();
+        let invoke_selector = format!("0x{}", hex::encode(&invoke_cd[0..4]));
+        let invoke_hex = format!("0x{}", hex::encode(&invoke_cd));
+
+        let bundle = json!({
+            "type": "adapter_action",
+            "id": "test/bulker-invoke@1.0.0",
+            "publisher": "test",
+            "schema_version": "3",
+            "match": {
+                "selector": invoke_selector,
+                "chain_to_addresses": { "1": [bulker] }
+            },
+            "abi_fragment": {
+                "function_name": "invoke",
+                "abi": {
+                    "name": "invoke",
+                    "type": "function",
+                    "stateMutability": "payable",
+                    "inputs": [
+                        { "name": "actions", "type": "bytes32[]" },
+                        { "name": "data", "type": "bytes[]" }
+                    ],
+                    "outputs": []
+                }
+            },
+            "emit": {
+                "strategy": "parallel_tagged_dispatch",
+                "actions_source": "$args.actions",
+                "data_source": "$args.data",
+                "tag_encoding": "bytes32_ascii",
+                "max_elements": 32,
+                "unknown_tag_policy": "warn",
+                "resolve_from_inputs": { "compound_v3_base_asset": "comet" },
+                "per_tag": {
+                    "ACTION_SUPPLY_ASSET": {
+                        "inputs_abi": "(address comet, address to, address asset, uint256 amount)",
+                        "body": {
+                            "domain": "lending",
+                            "lending": {
+                                "action": "supply",
+                                "supply": {
+                                    "venue": {
+                                        "name": "compound_v3",
+                                        "chain": "$chain",
+                                        "comet": "$inputs.comet",
+                                        "base_asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.compound_v3_base_asset" } }
+                                    },
+                                    "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.asset" } },
+                                    "amount": "$inputs.amount",
+                                    "on_behalf_of": "$inputs.to"
+                                }
+                            }
+                        },
+                        "live_inputs": {
+                            "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_reserve_state" }, "ttl_s": 30 },
+                            "supply_apy": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_supply_apy" }, "ttl_s": 30 },
+                            "a_token_price_usd": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_a_token_price_usd" }, "ttl_s": 60 },
+                            "eligible_as_collat": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_eligible_as_collat" }, "ttl_s": 60 },
+                            "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_user_state_before" }, "ttl_s": 12 }
+                        }
+                    },
+                    "ACTION_CLAIM_REWARD": {
+                        "inputs_abi": "(address comet, address rewards, address src, bool shouldAccrue)",
+                        "body": {
+                            "domain": "airdrop",
+                            "airdrop": {
+                                "action": "claim",
+                                "claim": {
+                                    "source": { "name": "compound" },
+                                    "claim_target": { "kind": "staking_claim", "chain": "$chain", "contract": "$inputs.rewards" },
+                                    "recipient": "$inputs.src",
+                                    "proof": null,
+                                    "sig": null
+                                }
+                            }
+                        },
+                        "live_inputs": {
+                            "is_still_claimable": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_is_still_claimable" }, "ttl_s": 30 },
+                            "actual_amount": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_actual_amount" }, "ttl_s": 60 },
+                            "claim_token": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_claim_token" }, "ttl_s": 60 },
+                            "claim_window": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v3_claim_window" }, "ttl_s": 60 }
+                        }
+                    }
+                }
+            },
+            "requires": {
+                "imperative": [],
+                "adapter_capabilities": [],
+                "host_capabilities": [],
+                "extension": ">=0.1.0"
+            }
+        });
+        let installed: Value =
+            serde_json::from_str(&declarative_install_v3_json(bundle.to_string())).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let route_input = json!({
+            "chain_id": 1,
+            "to": bulker,
+            "selector": invoke_selector,
+            "calldata": invoke_hex,
+            "value": "0",
+            "submitter": user,
+            "submitted_at": 1_700_000_000_u64
+        });
+        let out: Value =
+            serde_json::from_str(&declarative_route_request_v3_json(route_input.to_string()))
+                .unwrap();
+        assert_eq!(out["ok"], true, "{out}");
+
+        // One routed Action whose body is a Multicall of the two legs.
+        let routed = out["data"]["actions"].as_array().unwrap();
+        assert_eq!(routed.len(), 1, "{out}");
+        let body = &routed[0]["body"];
+        assert_eq!(body["domain"], "multicall", "{body}");
+        let children = body["actions"].as_array().unwrap();
+        assert_eq!(children.len(), 2, "{body}");
+
+        // Leg 0 — lending::supply, base_asset RESOLVED FROM the decoded comet.
+        // ActionBody serialises internally-tagged (flat): `{domain, action, …}`.
+        let c0 = &children[0];
+        assert_eq!(c0["domain"], "lending", "{c0}");
+        assert_eq!(c0["action"], "supply", "{c0}");
+        assert_eq!(c0["venue"]["name"], "compound_v3", "{c0}");
+        assert_eq!(c0["venue"]["comet"].as_str().unwrap().to_lowercase(), comet);
+        assert_eq!(
+            c0["venue"]["base_asset"]["key"]["address"]
+                .as_str()
+                .unwrap()
+                .to_lowercase(),
+            usdc,
+            "base_asset must resolve from $inputs.comet (cUSDCv3→USDC), not $to (the Bulker): {c0}"
+        );
+        assert_eq!(
+            c0["asset"]["key"]["address"]
+                .as_str()
+                .unwrap()
+                .to_lowercase(),
+            asset
+        );
+        let amount_hex = c0["amount"].as_str().unwrap();
+        let amount = u64::from_str_radix(amount_hex.strip_prefix("0x").unwrap_or(amount_hex), 16)
+            .unwrap_or_else(|_| panic!("amount not hex: {amount_hex}"));
+        assert_eq!(amount, 5000, "{c0}");
+        assert_eq!(c0["on_behalf_of"].as_str().unwrap().to_lowercase(), user);
+
+        // Leg 1 — airdrop::claim, recipient = decoded src, target = decoded rewards.
+        let c1 = &children[1];
+        assert_eq!(c1["domain"], "airdrop", "{c1}");
+        assert_eq!(c1["action"], "claim", "{c1}");
+        assert_eq!(
+            c1["recipient"].as_str().unwrap().to_lowercase(),
+            src,
+            "{c1}"
+        );
+        assert_eq!(
+            c1["claim_target"]["contract"]
+                .as_str()
+                .unwrap()
+                .to_lowercase(),
+            rewards,
+            "{c1}"
+        );
     }
 
     #[test]

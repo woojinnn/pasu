@@ -1,0 +1,63 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/comp/delegate-sign@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 COMP off-chain EIP-712 Delegation (consumed by delegateBySig). Official Comp.sol typehash: Delegation(address delegatee,uint256 nonce,uint256 expiry). 3-field domain {name:Compound, chainId, verifyingContract=COMP}. Routes on the COMP verifying_contract + primary_type Delegation. Maps to Airdrop::Delegate (voting-power delegation primitive).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": [
+        "0xc00e94cb662c3520282e6f5717214004a7f26888"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "Compound",
+      "verifying_contract": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+      "primary_type": "Delegation",
+      "types": {
+        "Delegation": [
+          { "name": "delegatee", "type": "address" },
+          { "name": "nonce", "type": "uint256" },
+          { "name": "expiry", "type": "uint256" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "Delegation",
+    "abi": {
+      "name": "Delegation",
+      "type": "function",
+      "inputs": [
+        { "name": "delegatee", "type": "address" },
+        { "name": "nonce", "type": "uint256" },
+        { "name": "expiry", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "delegate",
+        "delegate": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "delegatee": "$args.delegatee"
+        }
+      }
+    },
+    "live_inputs": {
+      "current_delegate": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v2_current_delegate" }, "ttl_s": 60 },
+      "voting_power": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "compound_v2_voting_power" }, "ttl_s": 60 }
+    }
+  }
+}
