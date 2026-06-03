@@ -21,6 +21,7 @@ const STRINGS = {
     collection: "집합/레코드",
     ops: "연산",
     ext: "확장 / Raw",
+    params: "파라미터",
   },
   en: {
     policy: "Policy",
@@ -30,6 +31,7 @@ const STRINGS = {
     collection: "Set / Record",
     ops: "Ops",
     ext: "Ext / Raw",
+    params: "Parameters",
   },
 } as const;
 
@@ -115,6 +117,12 @@ export function buildToolbox(locale: "ko" | "en" = "ko"): object {
           { kind: "block", type: BLOCK_TYPES.expr_ext_arg },
           { kind: "block", type: BLOCK_TYPES.expr_raw },
         ],
+      },
+      {
+        kind: "category",
+        name: s.params,
+        colour: "320",
+        contents: [{ kind: "block", type: BLOCK_TYPES.expr_hole }],
       },
     ],
   };

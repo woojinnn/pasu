@@ -420,6 +420,59 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         return { kind: "raw", est: null };
       }
     }
+    case BLOCK_TYPES.expr_hole: {
+      // Hidden payload (expected / default / optional / constraints) is
+      // serialised on block.data. Required.
+      const name = (block.getFieldValue("NAME") ?? "").trim();
+      if (!name) {
+        errors.push({
+          kind: "structural",
+          message: "파라미터 이름이 비어있습니다",
+          blockId: block.id,
+        });
+      }
+      const data = (block as unknown as { data?: string }).data ?? "";
+      let payload: {
+        expected?: string;
+        default?: Expr;
+        optional?: boolean;
+        constraints?: { min?: number; max?: number; enum?: (string | number)[] };
+      } = {};
+      if (data) {
+        try {
+          payload = JSON.parse(data);
+        } catch {
+          errors.push({
+            kind: "structural",
+            message: `파라미터 "${name}" 의 메타데이터가 손상되었습니다`,
+            blockId: block.id,
+          });
+        }
+      } else {
+        errors.push({
+          kind: "structural",
+          message: `파라미터 "${name}" 의 expected/default 메타데이터가 없습니다`,
+          blockId: block.id,
+        });
+      }
+      const label = (block.getFieldValue("LABEL") ?? "").trim();
+      const type = (block.getFieldValue("TYPE") ?? "").trim();
+      return {
+        kind: "hole",
+        name,
+        expected: (payload.expected ?? "lit:string") as
+          | "lit:long"
+          | "lit:string"
+          | "lit:bool"
+          | "litEntity"
+          | "set",
+        default: payload.default ?? { kind: "lit", litType: "string", value: "" },
+        ...(payload.optional ? { optional: true } : {}),
+        ...(label ? { label } : {}),
+        ...(type ? { type } : {}),
+        ...(payload.constraints ? { constraints: payload.constraints } : {}),
+      };
+    }
     default:
       errors.push({
         kind: "structural",

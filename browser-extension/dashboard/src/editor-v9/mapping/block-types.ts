@@ -68,6 +68,7 @@ export const BLOCK_TYPES = {
   expr_ext: "expr_ext",
   expr_ext_arg: "expr_ext_arg",
   expr_raw: "expr_raw",
+  expr_hole: "expr_hole",
 } as const;
 
 export type BlockTypeId = (typeof BLOCK_TYPES)[keyof typeof BLOCK_TYPES];
@@ -94,6 +95,7 @@ export const EXPR_BLOCK_TYPES: readonly BlockTypeId[] = [
   BLOCK_TYPES.expr_if,
   BLOCK_TYPES.expr_ext,
   BLOCK_TYPES.expr_raw,
+  BLOCK_TYPES.expr_hole,
 ] as const;
 
 /** Every Expr.kind that has a corresponding block. Updated as phases land. */
@@ -112,6 +114,7 @@ export const ALL_EXPR_KINDS: readonly Expr["kind"][] = [
   "if",
   "ext",
   "raw",
+  "hole",
 ] as const;
 
 export const BINARY_OPS: readonly BinaryOp[] = [
@@ -176,6 +179,6 @@ export function blockTypeForExpr(e: Expr): BlockTypeId | null {
     case "raw":
       return BLOCK_TYPES.expr_raw;
     case "hole":
-      return null; // Phase E
+      return BLOCK_TYPES.expr_hole;
   }
 }

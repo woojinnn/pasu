@@ -37,6 +37,7 @@ const WITNESSES: Record<(typeof ALL_EXPR_KINDS)[number], Expr> = {
   if: { kind: "if", cond: V_BOOL, then: V_BOOL, else: V_BOOL },
   ext: { kind: "ext", fn: "decimal", args: [{ kind: "lit", litType: "string", value: "1.0" }] },
   raw: { kind: "raw", est: { fake: true } },
+  hole: { kind: "hole", name: "x", expected: "lit:bool", default: V_BOOL },
 };
 
 describe("editor-v9 block ↔ IR coverage", () => {
@@ -58,14 +59,14 @@ describe("editor-v9 block ↔ IR coverage", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("hole returns null (parameterization is Phase E)", () => {
+  it("hole maps to expr_hole (Phase E)", () => {
     const hole: Expr = {
       kind: "hole",
       name: "x",
       expected: "lit:bool",
       default: V_BOOL,
     };
-    expect(blockTypeForExpr(hole)).toBeNull();
+    expect(blockTypeForExpr(hole)).toBe(BLOCK_TYPES.expr_hole);
   });
 
   it("EXPR_BLOCK_TYPES has no orphans (every entry is reachable from some Expr.kind)", () => {

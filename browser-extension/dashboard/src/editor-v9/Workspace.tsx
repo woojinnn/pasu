@@ -31,6 +31,9 @@ import { workspaceToIR } from "./mapping/workspaceToIR";
 import { validateIR, type EditorError } from "./errors";
 import { buildToolbox } from "./toolbox/build";
 import { BLOCK_TYPES } from "./mapping/block-types";
+import { registerMakeParamContextMenu } from "./Param/make-param";
+import { ParamSidebar } from "./Param/ParamSidebar";
+import type { PolicyIR } from "../cedar/blocks";
 
 Blockly.setLocale(En as unknown as Record<string, string>);
 
@@ -59,6 +62,7 @@ export function WorkspaceV9({
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [currentPolicy, setCurrentPolicy] = useState<PolicyIR | null>(null);
 
   const toolbox = useMemo(() => buildToolbox(locale), [locale]);
 
@@ -68,6 +72,7 @@ export function WorkspaceV9({
 
     try {
       registerBlocks();
+      registerMakeParamContextMenu();
     } catch (e) {
       setBridgeError(`registerBlocks failed: ${String(e)}`);
       return;
@@ -114,6 +119,8 @@ export function WorkspaceV9({
       const head = policies[0] ?? null;
       const validated = validateIR(head, errs);
       const wsJson = Blockly.serialization.workspaces.save(ws);
+
+      setCurrentPolicy(head);
 
       if (!validated.ok || !validated.ir) {
         setCedarText("");
@@ -191,6 +198,18 @@ export function WorkspaceV9({
 
   const errorCount = errors.length + (bridgeError ? 1 : 0);
 
+  const onJumpToHole = (name: string) => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    for (const b of ws.getAllBlocks(false)) {
+      if (b.type === BLOCK_TYPES.expr_hole && b.getFieldValue("NAME") === name) {
+        ws.centerOnBlock(b.id, true);
+        b.select();
+        return;
+      }
+    }
+  };
+
   return (
     <div style={{
       display: "flex",
@@ -218,17 +237,19 @@ export function WorkspaceV9({
         )}
       </div>
 
-      <div
-        ref={mountRef}
-        style={{
-          flex: 1,
-          width: "100%",
-          minHeight: 500,
-          height: 500,
-          position: "relative",
-          background: "#fafbfa",
-        }}
-      />
+      <div style={{ display: "flex", flex: 1, minHeight: 500 }}>
+        <div
+          ref={mountRef}
+          style={{
+            flex: 1,
+            minHeight: 500,
+            height: 500,
+            position: "relative",
+            background: "#fafbfa",
+          }}
+        />
+        <ParamSidebar policy={currentPolicy} onJump={onJumpToHole} />
+      </div>
 
       <details style={{ background: "var(--fog-200, #fafaf9)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
         <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>

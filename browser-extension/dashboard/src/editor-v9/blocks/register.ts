@@ -19,6 +19,7 @@ import {
   ACTION_SCOPE_IN_ITEM_BLOCK_JSON,
 } from "./scope-blocks";
 import { COND_WHEN_BLOCK_JSON, COND_UNLESS_BLOCK_JSON } from "./condition-blocks";
+import { EXPR_HOLE_BLOCK_JSON } from "./hole-block";
 import {
   EXPR_LIT_BOOL_BLOCK_JSON,
   EXPR_LIT_LONG_BLOCK_JSON,
@@ -76,6 +77,7 @@ const ALL_BLOCK_JSON = [
   EXPR_EXT_BLOCK_JSON,
   EXPR_EXT_ARG_BLOCK_JSON,
   EXPR_RAW_BLOCK_JSON,
+  EXPR_HOLE_BLOCK_JSON,
 ] as const;
 
 let registered = false;

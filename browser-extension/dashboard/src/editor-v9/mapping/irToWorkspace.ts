@@ -288,9 +288,21 @@ function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg
       block.setFieldValue(excerpt, "PREVIEW");
       break;
     }
-    case "hole":
-      // Phase E.
+    case "hole": {
+      block.setFieldValue(expr.name, "NAME");
+      block.setFieldValue(expr.label ?? "", "LABEL");
+      block.setFieldValue(expr.type ?? "", "TYPE");
+      // Stash expected / default / optional / constraints on block.data so the
+      // round-trip preserves typing + defaults that can't fit in visible fields.
+      const payload = {
+        expected: expr.expected,
+        default: expr.default,
+        ...(expr.optional ? { optional: true } : {}),
+        ...(expr.constraints ? { constraints: expr.constraints } : {}),
+      };
+      (block as unknown as { data: string }).data = JSON.stringify(payload);
       break;
+    }
   }
   return block;
 }
