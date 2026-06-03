@@ -1,0 +1,46 @@
+{
+  "type": "adapter_action",
+  "id": "aave/safety-module/claim-rewards-and-stake@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave stkAAVE claimRewardsAndStake(address to, uint256 amount) — claim `amount` of accrued AAVE rewards and immediately stake them; stkAAVE shares mint to `to`. Maps to staking::Stake (amount=$args.amount = the AAVE staked, recipient=$args.to). The staked AAVE is sourced from accrued rewards, not the wallet balance — net effect is a stake into the safety module. SCOPE ORACLE: 14.7% of recent stkAAVE txs. stkAAVE-only (stkGHO has no equivalent); selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x955e18af",
+    "chain_to_addresses": {
+      "1": ["0x4da27a545c0c5b758a6ba100e3a049001de870f5"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimRewardsAndStake",
+    "abi": {
+      "name": "claimRewardsAndStake",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "to", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "stake",
+        "stake": {
+          "venue": { "name": "aave_safety_module", "chain": "$chain", "module": "$to" },
+          "amount": "$args.amount",
+          "recipient": "$args.to"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
