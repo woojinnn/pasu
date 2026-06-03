@@ -1,0 +1,13 @@
+{
+  "id": "sanctioned-restaking-operator-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "delegate_to" } } },
+  "policy_rpc": [{
+    "id": "operator-sanctions",
+    "method": "address.sanctions",
+    "params": { "address": "$.action.operator" },
+    "outputs": [{ "kind": "context", "field": "sanctioned", "type": "Bool", "from": "$.result.sanctioned", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "sanctioned": "Bool" } }
+}

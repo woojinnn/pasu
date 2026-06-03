@@ -1,6 +1,6 @@
 # Policy catalog v2 — precedence-bucket tree
 
-**227** research-grounded wallet pre-sign 보안 정책 (v2 ActionBody 모델 대상). 실유스케이스 리서치
+**240** research-grounded wallet pre-sign 보안 정책 (v2 ActionBody 모델 대상). 실유스케이스 리서치
 (Pocket Universe / Blockaid / Blowfish / MetaMask / Rabby / Fireblocks / Coinbase + OFAC / FATF / Chainalysis)
 → ScopeBall expressibility 로 prune → Cedar-compile 검증된 corpus. shipped default 가 **아니다**
 (`default_policies_v2/` 9 bundle 은 별개; 이 227 은 auto-install/enforce 되지 않음).
@@ -15,10 +15,10 @@
 policy_catalog_v2/
 ├─ README.md                 # ← 이 파일 (인덱스)
 ├─ _methods/                 # 공유 aggregator-method 구현스펙 17개 (manifest "method" 문자열이 링크 키)
-├─ compliance/  [1]  규제·제재·관할 mandate (37; 정직한 천장 — §하단)
+├─ compliance/  [1]  규제·제재·관할 mandate (50; ~6 distinct mechanism × screening fan-out — §하단)
 ├─ protocol/    [2]  protocol-specific SEMANTICS 의존 (69)
 ├─ wallet/      [3]  per-wallet 유저/operator config (60)
-└─ action/      [4]  protocol-agnostic 보안 best-practice (51… 61)
+└─ action/      [4]  protocol-agnostic 보안 best-practice (61)
 ```
 
 **배치 규칙(보강2)**: `protocol/` 은 protocol-specific action tag (hl_*/set_e_mode/delegate_to/vote_for_gauge/
@@ -42,7 +42,7 @@ pt_swap/permit2_*/sign_intent_order …) 에만. generic tag (swap/erc20_*/borro
 
 ## 분포
 
-**227** = action 61 / wallet 60 / protocol 69 / compliance 37. **56 deny / 171 warn**. **109 enrichment / 118 static**.
+**240** = action 61 / wallet 60 / protocol 69 / compliance 50. **66 deny / 174 warn**. **122 enrichment / 118 static**.
 
 ### action/ (61)
 approval 18 · swap 10 · transfer 8 · lending 6 · batch 5 · permission 3 · perp 3 · token 3 · nft 2 · yield 2 · staking 1
@@ -55,8 +55,8 @@ spender-denylist · token-allowlist · token-denylist · venue-denylist
 ### protocol/ (69)
 hyperliquid 17 · aave 9 · curve 8 · eigenlayer 8 · pendle 8 · compound-morpho 5 · intent-venue 5 · permit2 5 · lido 4
 
-### compliance/ (37)
-sanctions 14 · risk 13 · issuer-freeze 4 · jurisdiction 3 · reporting 3
+### compliance/ (50)
+sanctions 21 · risk 16 · issuer-freeze 6 · reporting 4 · jurisdiction 3
 
 > **트리 자체가 인덱스다** (227개 flat 나열 대신). 한 정책 찾기: `find <bucket>/<sub> -name policy.cedar`.
 > 교차 질의: `grep -rl 'action-family:min-out-zero' --include='*.cedar'` (precedence 가 쪼갠 동일 best-practice 재봉합),
@@ -92,11 +92,13 @@ guard false → inert, false verdict 없음).
 role, 분리 유지**. 구현 우선순위(최대 정책 활성): oracle.usd_value → clock.now → address.reputation → address.sanctions →
 address.activity/category → portfolio/token.metadata → 나머지.
 
-## Compliance 정직한 천장 (37, not 50)
+## Compliance — mechanism vs surface (정직한 구분)
 
-static analyzer 의 규제 표면은 list/threshold 기반 — genuinely-distinct mechanism 은 ~6 (sanctions-list /
-risk-category / issuer-freeze / USD-threshold / jurisdiction-pack / scam-reputation). 37 은 slot×asset×domain
-fan-out 한 정직한 bind-site 수이며, 50 으로 채우려면 중복 fabrication 필요 → 거부. 추가 구조적 한계:
+static analyzer 의 규제 표면에서 **genuinely-distinct mechanism 은 ~6** (sanctions-list / risk-category /
+issuer-freeze / USD-threshold / jurisdiction-pack / scam-reputation). 50 정책은 이 6 메커니즘을 **action surface
+별로 fan-out** 한 것 — 각 행은 별개 bind-site (sanctioned 수취인을 transfer·swap·approve·permit2·nft·lending·perp·
+hl·yield·restaking·airdrop·staking·launchpad 각각에서 차단)이지 동일 정책의 cosmetic 복제가 **아니다**. 즉 50 은
+**커버리지 폭**이고 mechanism 수는 6 으로 정직히 유지. fabrication(동일 정책 rename)은 하지 않았다. 구조적 한계:
 jurisdiction 은 on-chain 추론 불가(install-time baked-set pack), Travel-Rule/CTR 는 VASP 의무(informational warn),
 OFAC near-match/PEP 는 provider-dependent(warn). 상세 = `compliance/README.md`.
 
