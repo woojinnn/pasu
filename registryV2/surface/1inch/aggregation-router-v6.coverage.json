@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0x111111125421ca6dc452d289314280a0f8842a65",
   "snapshot": "aggregation-router-v6.abi.json",
-  "note": "Function-level gate decision is binary (cover|exclude). User-facing surface that is DEFERRED (not dropped) is recorded as exclude with a reason beginning 'DEFER (data-gated)' + the precise decoder blocker; each such surface's 1st-party usage-share is measured in P2 (SCOPE ORACLE) and listed in evidence Scope Classification. Pure infra (admin/callback/view/simulation) is exclude-by-category. Only `swap` (0x07ed2379) is decoded this round.",
+  "note": "Function-level gate decision is binary (cover|exclude). User-facing surface that is DEFERRED (not dropped) is recorded as exclude with a reason beginning 'DEFER (data-gated)' + the precise decoder blocker; each such surface's 1st-party usage-share is measured in P2 (SCOPE ORACLE) and listed in evidence Scope Classification. Pure infra (admin/callback/view/simulation) is exclude-by-category. Decoded: `swap` (0x07ed2379) + `clipperSwap` (0xd2d374e5) + `clipperSwapTo` (0xc4d652af) — the latter two via the address_from_uint256 $fn (P3 follow-up round).",
   "functions": {
     "0x07ed2379": { "name": "swap", "decision": "cover", "reason": "user aggregation swap: swap(executor,SwapDescription,data); dstToken/srcToken/amount/minReturnAmount/dstReceiver all in calldata → AmmVenue::AggregatorRoute (OneInchV6), single_emit amm swap" },
 
@@ -20,8 +20,8 @@
     "0x0f449d71": { "name": "ethUnoswapTo2", "decision": "exclude", "reason": "DEFER (data-gated): 2-hop ETH-in unoswapTo; token_out from packed pool config ($fn/token_out-from-pool gap)." },
     "0x493189f0": { "name": "ethUnoswapTo3", "decision": "exclude", "reason": "DEFER (data-gated): 3-hop ETH-in unoswapTo; token_out from packed pool config ($fn/token_out-from-pool gap)." },
 
-    "0xd2d374e5": { "name": "clipperSwap", "decision": "exclude", "reason": "DEFER (data-gated): Clipper MM swap; dstToken is plain address but srcToken is a packed AddressLib uint256 (low-160-bit unmask $fn needed) — modeling viable but needs an address-from-uint256 $fn; lower priority than `swap`. Usage-share measured in P2." },
-    "0xc4d652af": { "name": "clipperSwapTo", "decision": "exclude", "reason": "DEFER (data-gated): Clipper MM swap with recipient; srcToken packed AddressLib uint256 (unmask $fn needed). Usage-share measured in P2." },
+    "0xd2d374e5": { "name": "clipperSwap", "decision": "cover", "reason": "Clipper MM swap: dstToken is a plain address, srcToken is a packed AddressLib uint256 unmasked via the address_from_uint256 $fn (low 160 bits) → AmmVenue::AggregatorRoute (OneInchV6), single_emit amm swap. recipient = msg.sender ($tx.from)." },
+    "0xc4d652af": { "name": "clipperSwapTo", "decision": "cover", "reason": "Clipper MM swap with explicit recipient: srcToken packed AddressLib uint256 unmasked via address_from_uint256 $fn → single_emit amm swap. recipient = $args.recipient." },
 
     "0x9fda64bd": { "name": "fillOrder", "decision": "exclude", "reason": "DEFER (data-gated): Limit Order Protocol v4 taker fill (taker is usually a resolver/searcher, not the signing user; maker-side surface is the EIP-712 Order signature — see signed_structs.Order). Order tuple uses packed AddressLib uint256 maker/asset fields + bit-packed makerTraits/takerTraits → needs unmask $fn + a new IntentVenue variant + typed-data routing. Usage-share measured in P2." },
     "0xf497df75": { "name": "fillOrderArgs", "decision": "exclude", "reason": "DEFER (data-gated): LOP v4 taker fill with args; same packed-Order + new IntentVenue requirement as fillOrder." },

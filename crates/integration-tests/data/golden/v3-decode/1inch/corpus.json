@@ -1,5 +1,5 @@
 {
-  "_comment": "1inch AggregationRouterV6 real mainnet swap(executor,SwapDescription,data) txs (selector 0x07ed2379) \u2014 exercises Amm::Swap on AggregatorRoute(OneInchV6) + the general keccak256 $fn for route_hash. Source: Etherscan txlist, AggregationRouterV6 0x111111125421ca6dc452d289314280a0f8842a65 (chain 1). Pins the policy-relevant swap envelope (token_in/out, amount_in, min_amount_out, recipient=dstReceiver); the executed route lives in opaque `data` (enrichment, not pinned). unoswap/clipper/LOP deferred (no manifest \u2192 route miss).",
+  "_comment": "1inch AggregationRouterV6 real mainnet swap(executor,SwapDescription,data) txs (selector 0x07ed2379) \u2014 exercises Amm::Swap on AggregatorRoute(OneInchV6) + the general keccak256 $fn for route_hash (and clipperSwap/clipperSwapTo via the address_from_uint256 $fn, P3 follow-up). Source: Etherscan txlist, AggregationRouterV6 0x111111125421ca6dc452d289314280a0f8842a65 (chain 1). Pins the policy-relevant swap envelope (token_in/out, amount_in, min_amount_out, recipient=dstReceiver); the executed route lives in opaque `data` (enrichment, not pinned). unoswap/LOP deferred (no manifest \u2192 route miss).",
   "transactions": [
     {
       "intent": "swap PAXG->USDC (exact_input, 1inch v6 AggregationRouter)",
@@ -567,6 +567,58 @@
             "to": "0x111111125421ca6dc452d289314280a0f8842a65",
             "value": "0",
             "data": "0x07ed23790000000000000000000000004c3ccc98c01103be72bcfd29e1d2454c98d1a6e3000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000000004c3ccc98c01103be72bcfd29e1d2454c98d1a6e3000000000000000000000000e20feaa33fa181a29d2986c396647707fd83b1b400000000000000000000000000000000000000000000000000470de4df8200000000000000000000000000000000000000000000000000000046fbb4429cc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000006200003c4121c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200042e1a7d4d0000000000000000000000000000000000000000000000000000000000000000e021111111125421ca6dc452d289314280a0f8842a65000000000000000000470de4df8200004a82836d"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "clipperSwap DAI->USDC (Clipper MM; srcToken=packed AddressLib uint256 unmasked via address_from_uint256 $fn; recipient=msg.sender=$tx.from)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "swap" },
+        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "aggregator_route" },
+        { "path": "$.data.actions[0].body.venue.router", "op": "hex_eq", "value": "0x111111125421ca6dc452d289314280a0f8842a65" },
+        { "path": "$.data.actions[0].body.params.token_in.key.address", "op": "hex_eq", "value": "0x6b175474e89094c44da98b954eedeac495271d0f" },
+        { "path": "$.data.actions[0].body.params.token_out.key.address", "op": "hex_eq", "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" },
+        { "path": "$.data.actions[0].body.params.direction.amount_in", "op": "u256_hex_eq", "value": "0x2799bdae95aa79d50" },
+        { "path": "$.data.actions[0].body.params.direction.min_amount_out", "op": "u256_hex_eq", "value": "0x2b89ce2" },
+        { "path": "$.data.actions[0].body.params.recipient", "op": "hex_eq", "value": "0x000000000000000000000000000000000000aaaa" }
+      ],
+      "tx_hash": "0x62f77df8ea7cc272e8f89736f5093d56858f8784a14d5d4c3edd904baf6dd154",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x111111125421ca6dc452d289314280a0f8842a65",
+            "value": "0",
+            "data": "0xd2d374e5000000000000000000000000655edce464cc797526600a462a8154650eee4b770000000000000000000000006b175474e89094c44da98b954eedeac495271d0f000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000000000000000000000000002799bdae95aa79d500000000000000000000000000000000000000000000000000000000002b89ce20000135d5d749d685879ee68000000000000001c5745a8dd068406806963af879c7fd10bd38e125ebb7443bf8f918945eb5779f85c4c5093406d1bd9732bd0574731b92fc01d0a3cf65fbc1a8a4921a4ad69e6b6f6e6880bc029c8cdb7730cffd1f115cb"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "clipperSwapTo WETH->DAI (Clipper MM with explicit recipient; srcToken=packed AddressLib uint256 unmasked via address_from_uint256 $fn)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "expect_body": [
+        { "path": "$.data.actions[0].body.action", "op": "equals", "value": "swap" },
+        { "path": "$.data.actions[0].body.venue.name", "op": "equals", "value": "aggregator_route" },
+        { "path": "$.data.actions[0].body.venue.router", "op": "hex_eq", "value": "0x111111125421ca6dc452d289314280a0f8842a65" },
+        { "path": "$.data.actions[0].body.params.token_in.key.address", "op": "hex_eq", "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" },
+        { "path": "$.data.actions[0].body.params.token_out.key.address", "op": "hex_eq", "value": "0x6b175474e89094c44da98b954eedeac495271d0f" },
+        { "path": "$.data.actions[0].body.params.direction.amount_in", "op": "u256_hex_eq", "value": "0x6a94d74f430000" },
+        { "path": "$.data.actions[0].body.params.direction.min_amount_out", "op": "u256_hex_eq", "value": "0x505e7130bdb28c000" },
+        { "path": "$.data.actions[0].body.params.recipient", "op": "hex_eq", "value": "0x1cfbc29014b5628f2054a07dc011a8d6129e8345" }
+      ],
+      "tx_hash": "0xf8a1aa23d64a9a4f69d55cc97864bf42ec9efd57da3b4f71e0af671bd5abd670",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x111111125421ca6dc452d289314280a0f8842a65",
+            "value": "0",
+            "data": "0xc4d652af000000000000000000000000655edce464cc797526600a462a8154650eee4b770000000000000000000000001cfbc29014b5628f2054a07dc011a8d6129e8345000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000006b175474e89094c44da98b954eedeac495271d0f000000000000000000000000000000000000000000000000006a94d74f43000000000000000000000000000000000000000000000000000505e7130bdb28c000000000050db13c6e1af0e4ec0000135bbe7ad46a3b4e5eb209c409c469621f643c641ef5471aa246bfc37a58e404549aad886f04a31515e4f82fb8b81f44e144c3a87413e032257a17d93f2399325760ca1d1f3e5ebffff667349fdd3bcd2600e26b9977"
           }
         ]
       }

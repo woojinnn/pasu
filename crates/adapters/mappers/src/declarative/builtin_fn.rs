@@ -20,13 +20,17 @@ use alloy_dyn_abi::DynSolValue;
 use alloy_primitives::{keccak256, Address, U256};
 use serde_json::Value as JsonValue;
 
-/// The whitelist of accepted `$fn` names. The author-time validator
-/// (`registryV2/scripts/build-index.ts` `validateEmitShape`) mirrors this so an
-/// unknown `$fn` fails at build-index time, not only at decode time.
+/// The whitelist of accepted `$fn` names — the **sole** gate on `$fn` names, and
+/// enforced at **decode time only**: [`dispatch`] rejects any name not listed here.
+/// The author-time validator (`registryV2/scripts/build-index.ts`
+/// `validateEmitShape`) checks only `emit.strategy`, NOT `$fn` names, so adding a
+/// new `$fn` is a Rust-only change (a manifest referencing an unknown `$fn` builds
+/// fine but fails to decode).
 pub const WHITELIST: &[&str] = &[
     "curve_route_last_token",
     "route_hash",
     "keccak256",
+    "address_from_uint256",
     "uniswap_v3_pool_swap_field",
     "uniswapx_reactor_order_field",
 ];
@@ -41,6 +45,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "curve_route_last_token" => curve_route_last_token(args),
         "route_hash" => route_hash(args),
         "keccak256" => keccak256_hex(args),
+        "address_from_uint256" => address_from_uint256(args),
         "uniswap_v3_pool_swap_field" => uniswap_v3_pool_swap_field(args),
         "uniswapx_reactor_order_field" => uniswapx_reactor_order_field(args),
         _ => Err(format!(
@@ -153,6 +158,26 @@ fn keccak256_hex(args: &[JsonValue]) -> Result<JsonValue, String> {
     }
     let bytes = json_hex_bytes(&args[0], "keccak256: data")?;
     Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
+}
+
+/// `address_from_uint256(packed: uint256) -> address` — unmask the low 160 bits
+/// of a `uint256` into an address. 1inch's `AddressLib` packs an address into the
+/// low 160 bits of a `uint256` (the high 96 bits carry flags), so a calldata or
+/// struct field declared `uint256` that is really an address (Clipper `srcToken`,
+/// LOP `Order` maker/makerAsset/takerAsset) is decoded to its address here.
+/// Returns a lowercase `0x` hex address.
+fn address_from_uint256(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 1 {
+        return Err(format!(
+            "address_from_uint256 expects 1 arg (packed uint256), got {}",
+            args.len()
+        ));
+    }
+    let packed = json_u256(&args[0], "address_from_uint256: packed")?;
+    // Big-endian word; the low 160 bits = the last 20 bytes = the address.
+    let bytes = packed.to_be_bytes::<32>();
+    let addr = Address::from_slice(&bytes[12..]);
+    Ok(JsonValue::String(format!("{addr:#x}")))
 }
 
 /// `uniswap_v3_pool_swap_field(amountSpecified, zeroForOne, token0, token1, field)`.
@@ -571,6 +596,29 @@ fn json_hex_bytes(value: &JsonValue, label: &str) -> Result<Vec<u8>, String> {
     hex::decode(body).map_err(|e| format!("{label} is not valid hex: {e}"))
 }
 
+/// Parse a JSON uint — decimal string (width > 64), `0x` hex string, or JSON
+/// number (width ≤ 64) — into `U256`, matching how [`super::args_json`] renders
+/// decoded uints.
+fn json_u256(value: &JsonValue, label: &str) -> Result<U256, String> {
+    match value {
+        JsonValue::Number(n) => n
+            .as_u64()
+            .map(U256::from)
+            .ok_or_else(|| format!("{label} is not a non-negative integer: {n}")),
+        JsonValue::String(s) => {
+            let trimmed = s.trim();
+            if let Some(hex) = trimmed.strip_prefix("0x") {
+                U256::from_str_radix(hex, 16)
+                    .map_err(|e| format!("{label} is not a valid hex uint ({s}): {e}"))
+            } else {
+                U256::from_str_radix(trimmed, 10)
+                    .map_err(|e| format!("{label} is not a valid decimal uint ({s}): {e}"))
+            }
+        }
+        other => Err(format!("{label} is not a uint: {other}")),
+    }
+}
+
 fn json_address(value: &JsonValue, label: &str) -> Result<Address, String> {
     let s = value
         .as_str()
@@ -753,6 +801,34 @@ mod tests {
         // wrong arg count + non-hex error out
         assert!(keccak256_hex(&[]).is_err());
         assert!(keccak256_hex(&[json!("not-hex")]).is_err());
+    }
+
+    #[test]
+    fn address_from_uint256_unmasks_low_160_bits() {
+        // High 96 bits (flags) are discarded; low 160 bits = the address.
+        // Word = 0xdeadbeef..00 (high 12 bytes) ++ 0xaa..aa (low 20 bytes).
+        let packed = json!("0xdeadbeef0000000000000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        let out = address_from_uint256(&[packed]).unwrap();
+        assert_eq!(
+            out.as_str().unwrap(),
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+
+        // Decimal-string form (how a width-256 uint is rendered) and JSON number.
+        let dec = address_from_uint256(&[json!("1")]).unwrap();
+        assert_eq!(
+            dec.as_str().unwrap(),
+            "0x0000000000000000000000000000000000000001"
+        );
+        let num = address_from_uint256(&[json!(255)]).unwrap();
+        assert_eq!(
+            num.as_str().unwrap(),
+            "0x00000000000000000000000000000000000000ff"
+        );
+
+        // Wrong arg count + non-numeric error out.
+        assert!(address_from_uint256(&[]).is_err());
+        assert!(address_from_uint256(&[json!("not-a-number")]).is_err());
     }
 
     #[test]

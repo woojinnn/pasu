@@ -1,0 +1,104 @@
+{
+  "type": "adapter_action",
+  "id": "1inch/aggregation-router-v6/clipper-swap-to@1.0.0",
+  "publisher": "1inch.io",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xc4d652af",
+    "chain_to_addresses": {
+      "1": [
+        "0x111111125421ca6dc452d289314280a0f8842a65"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "clipperSwapTo",
+    "abi": {
+      "name": "clipperSwapTo",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "clipperExchange", "type": "address" },
+        { "name": "recipient", "type": "address" },
+        { "name": "srcToken", "type": "uint256" },
+        { "name": "dstToken", "type": "address" },
+        { "name": "inputAmount", "type": "uint256" },
+        { "name": "outputAmount", "type": "uint256" },
+        { "name": "goodUntil", "type": "uint256" },
+        { "name": "r", "type": "bytes32" },
+        { "name": "vs", "type": "bytes32" }
+      ],
+      "outputs": [
+        { "name": "returnAmount", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "aggregator_route",
+            "chain": "$chain",
+            "router": "$to",
+            "route_hash": { "$fn": "keccak256", "$args": ["$args.clipperExchange"] }
+          },
+          "params": {
+            "token_in": {
+              "key": { "standard": "erc20", "chain": "$chain", "address": { "$fn": "address_from_uint256", "$args": ["$args.srcToken"] } }
+            },
+            "token_out": {
+              "key": { "standard": "erc20", "chain": "$chain", "address": "$args.dstToken" }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$args.inputAmount",
+              "min_amount_out": "$args.outputAmount"
+            },
+            "recipient": "$args.recipient",
+            "slippage_bp": 0
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [{ "scope": "global", "name": "oneinch_v6_route" }],
+                "calc_id": "oneinch_v6_route"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [{ "scope": "global", "name": "oneinch_v6_route" }],
+                "calc_id": "oneinch_v6_expected_out"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [{ "scope": "global", "name": "oneinch_v6_route" }],
+                "calc_id": "oneinch_v6_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": { "kind": "oracle_feed", "provider": "pyth", "feed_id": "gas/ethereum" },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
