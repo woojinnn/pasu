@@ -17,7 +17,7 @@ use std::time::Duration;
 use policy_state::pending::{
     AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
 };
-use policy_state::primitives::{Address, ChainId, Time, U256, VenueRef};
+use policy_state::primitives::{Address, ChainId, Time, VenueRef, U256};
 use policy_state::token::{TokenKey, TokenRef};
 use policy_state::{DataSource, StateDelta};
 
@@ -196,8 +196,8 @@ fn chain_from_eip155(chain_id: u64) -> ChainId {
 
 fn token_ref(chain: &ChainId, address: Address) -> TokenRef {
     // UniswapX uses the zero / 0xeee… sentinel for native ETH.
-    let native = Address::from_str("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
-        .unwrap_or(Address::ZERO);
+    let native =
+        Address::from_str("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee").unwrap_or(Address::ZERO);
     if address == Address::ZERO || address == native {
         TokenRef {
             key: TokenKey::Native {
@@ -333,7 +333,10 @@ mod tests {
         let p = orders[0].to_pending_tx(reactor, &swapper, Time::from_unix(1_738_000_000));
         assert_eq!(p.id, "intent:uniswap_x:0xabc123");
         assert_eq!(p.lifecycle.status, PendingStatus::Active);
-        assert_eq!(p.lifecycle.valid_until, Some(Time::from_unix(1_738_003_600)));
+        assert_eq!(
+            p.lifecycle.valid_until,
+            Some(Time::from_unix(1_738_003_600))
+        );
         match &p.kind {
             PendingKind::OffchainLimitOrder {
                 venue,
@@ -362,16 +365,17 @@ mod tests {
         assert_eq!(o.chain_id, 8453);
         assert_eq!(o.deadline, None);
         // Priority legs use a single `amount`.
-        assert_eq!(o.sell_amount, U256::from_str("3333341400000000000000000").unwrap());
+        assert_eq!(
+            o.sell_amount,
+            U256::from_str("3333341400000000000000000").unwrap()
+        );
         assert_eq!(o.buy_min, U256::from_str("3167725861604571352").unwrap());
 
         let p = o.to_pending_tx(Address::ZERO, &swapper, Time::from_unix(0));
         assert_eq!(p.lifecycle.status, PendingStatus::Filled);
         assert_eq!(p.lifecycle.valid_until, None); // no deadline on Priority
         match &p.kind {
-            PendingKind::OffchainLimitOrder {
-                venue, buy, ..
-            } => {
+            PendingKind::OffchainLimitOrder { venue, buy, .. } => {
                 assert_eq!(venue.chain, Some(ChainId("eip155:8453".into())));
                 // zero-address output token → native.
                 assert!(matches!(buy.key, TokenKey::Native { .. }));

@@ -798,9 +798,22 @@ pub(crate) fn upsert_intent_orders(
     swapper: &policy_state::Address,
     now: Time,
 ) {
+    use policy_state::pending::PendingStatus;
     for order in orders {
         let pending = order.to_pending_tx(reactor, swapper, now);
-        if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
+        // Terminal orders are pruned from `pending` — filled / cancelled /
+        // expired / failed no longer need tracking. Active ones are upserted in
+        // place (status transitions) or appended.
+        let terminal = matches!(
+            pending.lifecycle.status,
+            PendingStatus::Filled
+                | PendingStatus::Cancelled
+                | PendingStatus::Expired
+                | PendingStatus::Failed
+        );
+        if terminal {
+            state.pending.retain(|p| p.id != pending.id);
+        } else if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
             *existing = pending;
         } else {
             state.pending.push(pending);
@@ -888,7 +901,7 @@ mod tests {
     use policy_state::{Address, ChainId};
 
     #[test]
-    fn upsert_intent_orders_adds_updates_and_preserves_terminal() {
+    fn upsert_intent_orders_tracks_active_and_prunes_on_terminal() {
         use crate::fetchers::UniswapXOrder;
         use policy_state::pending::PendingStatus;
         use policy_state::{WalletId, U256};
@@ -912,19 +925,27 @@ mod tests {
             buy_token: Address::ZERO,
             buy_min: U256::from(1u64),
         };
-        super::upsert_intent_orders(&mut state, &[open.clone()], reactor, &swapper, now);
+        super::upsert_intent_orders(
+            &mut state,
+            std::slice::from_ref(&open),
+            reactor,
+            &swapper,
+            now,
+        );
         assert_eq!(state.pending.len(), 1);
         assert_eq!(state.pending[0].id, "intent:uniswap_x:0xhash1");
         assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Active);
 
-        // Round 2: same hash now filled → updated in place, not duplicated.
+        // Round 2: same hash now filled → pruned from pending (terminal cleanup).
         let filled = UniswapXOrder {
             order_status: "filled".into(),
             ..open
         };
         super::upsert_intent_orders(&mut state, &[filled], reactor, &swapper, now);
-        assert_eq!(state.pending.len(), 1, "idempotent by orderHash");
-        assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Filled);
+        assert!(
+            state.pending.is_empty(),
+            "terminal order pruned from pending"
+        );
     }
 
     #[tokio::test]
