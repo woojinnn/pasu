@@ -183,7 +183,8 @@ pub struct HyperliquidConfig {
     #[serde(default = "default_meta_ttl")]
     pub meta_ttl_secs: u64,
     /// Whether to fan account fetches out across builder-deployed perp DEXes.
-    /// Default `None` (native dex only); `All` fan-out is wired in Plan 2.
+    /// Default `All` (native + every builder dex); set `None` to sync the native
+    /// dex only. Fan-out cost is bounded by the scheduler `tick_interval`.
     #[serde(default)]
     pub builder_dex_policy: BuilderDexPolicy,
 }
@@ -197,9 +198,11 @@ fn default_meta_ttl() -> u64 {
 #[serde(rename_all = "snake_case")]
 pub enum BuilderDexPolicy {
     /// Query only the native (index-0) perp dex.
-    #[default]
     None,
-    /// Query the native dex plus every builder dex from `perpDexs`.
+    /// Query the native dex plus every builder (HIP-3) dex from `perpDexs`.
+    /// Default: a wallet's builder-dex perp positions (e.g. `xyz:NVDA`) would
+    /// otherwise be invisible to background sync.
+    #[default]
     All,
 }
 
@@ -335,14 +338,14 @@ chains = ["eip155:1"]
     }
 
     #[test]
-    fn hyperliquid_config_defaults_meta_ttl_and_native_only() {
+    fn hyperliquid_config_defaults_meta_ttl_and_all_dexs() {
         let cfg = SyncConfig::load_str(
             "[venues.hyperliquid]\nendpoint = \"https://api.hyperliquid.xyz\"\n",
         )
         .unwrap();
         let hl = cfg.venues.hyperliquid.as_ref().unwrap();
         assert_eq!(hl.meta_ttl_secs, 600);
-        assert_eq!(hl.builder_dex_policy, BuilderDexPolicy::None);
+        assert_eq!(hl.builder_dex_policy, BuilderDexPolicy::All);
     }
 
     #[test]

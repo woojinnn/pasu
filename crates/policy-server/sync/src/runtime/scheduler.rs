@@ -11,6 +11,11 @@ use crate::orchestrator::{Orchestrator, RefreshReport};
 
 #[derive(Clone, Debug)]
 pub struct SchedulerConfig {
+    /// Seconds between scheduler ticks. Each tick runs a full HL core fan-out
+    /// (native + every builder dex) per wallet, so wallets-per-IP `N` is bounded
+    /// by the HL `/info` budget (~1200 weight/min/IP): keep `N ≲ 0.1 · tick_secs`.
+    /// Raised from 15s → 60s to absorb the per-tick builder-dex fan-out cost; a
+    /// stale action read still triggers an on-demand `/sync` regardless of cadence.
     pub tick_interval: Duration,
     pub max_wallets_per_tick: usize,
     /// Refresh plain facts such as block heights, balances, and allowances.
@@ -29,7 +34,7 @@ pub struct SchedulerConfig {
 impl Default for SchedulerConfig {
     fn default() -> Self {
         Self {
-            tick_interval: Duration::from_secs(15),
+            tick_interval: Duration::from_secs(60),
             max_wallets_per_tick: 100,
             sync_primitives: true,
             sync_hyperliquid_accounts: true,
