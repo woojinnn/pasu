@@ -1,21 +1,23 @@
 /**
  * editor-v9 — Blockly Workspace mount, IR-backed.
  *
- * Replaces the prototype's direct workspace→cedar string conversion with the
- * cedar/blocks PolicyIR pipeline:
- *
+ * Pipeline:
  *   Workspace ──workspaceToIR──▶ PolicyIR[] ──blocksToText──▶ Cedar text
- *                                      │
- *                                      └─ validateIR()       (gates onChange)
+ *                                       └─ validateIR()       (gates onChange)
  *
- * StrictMode-safe: React 18 dev mounts effects twice. We guard with
- * `wsRef.current` so the second pass re-uses the first inject.
+ *   Cedar text ──textToBlocks──▶ PolicyIR[] ──irToWorkspace──▶ Workspace   (Phase D)
  *
- * Phase A scope: the IR is only filled out for the skeleton block set
- * (policy_hat / scope_all / action_scope_all / cond_when / expr_lit_bool).
- * `blocksToText` therefore round-trips through the wasm bridge for the
- * trivially-shaped Cedar these blocks emit; later phases extend the renderer
- * with no Workspace changes required.
+ * Seeding precedence on mount:
+ *   1. `initialJson`        — verbatim Blockly workspace (saved tree, v:9 wrap);
+ *   2. `initialCedarText`   — parse via wasm/SW → IR → blocks;
+ *   3. neither              — drop an empty `policy_hat` so the user has a
+ *                             starting handle.
+ *
+ * The same path powers the "Cedar 코드 가져오기" textarea below the canvas:
+ * paste a policy, hit 불러오기, and irToWorkspace replaces the current canvas.
+ *
+ * StrictMode-safe via `wsRef.current` guard. Recomputes (workspace → cedar
+ * text) are debounced 250 ms so a rapid drag burst makes one round-trip.
  */
 
 import * as Blockly from "blockly";
@@ -23,7 +25,8 @@ import * as En from "blockly/msg/en";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { registerBlocks } from "./blocks/register";
-import { blocksToText } from "./bridge";
+import { blocksToText, textToBlocks } from "./bridge";
+import { irToWorkspace } from "./mapping/irToWorkspace";
 import { workspaceToIR } from "./mapping/workspaceToIR";
 import { validateIR, type EditorError } from "./errors";
 import { buildToolbox } from "./toolbox/build";
@@ -32,7 +35,10 @@ import { BLOCK_TYPES } from "./mapping/block-types";
 Blockly.setLocale(En as unknown as Record<string, string>);
 
 export interface WorkspaceV9Props {
+  /** Serialised Blockly workspace JSON (preferred seed). */
   initialJson?: object | null;
+  /** Cedar text fallback seed; consulted only if `initialJson` is null. */
+  initialCedarText?: string | null;
   policyName?: string;
   locale?: "ko" | "en";
   onChange?: (next: { cedarText: string; json: object; errors: EditorError[] }) => void;
@@ -40,6 +46,7 @@ export interface WorkspaceV9Props {
 
 export function WorkspaceV9({
   initialJson,
+  initialCedarText,
   policyName = "untitled",
   locale = "ko",
   onChange,
@@ -49,12 +56,15 @@ export function WorkspaceV9({
   const [cedarText, setCedarText] = useState("");
   const [errors, setErrors] = useState<EditorError[]>([]);
   const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const toolbox = useMemo(() => buildToolbox(locale), [locale]);
 
   useEffect(() => {
     if (!mountRef.current) return;
-    if (wsRef.current) return; // StrictMode 2nd mount — already inited.
+    if (wsRef.current) return;
 
     try {
       registerBlocks();
@@ -78,31 +88,31 @@ export function WorkspaceV9({
     }
     wsRef.current = ws;
 
-    // Seed: prefer a serialized workspace JSON when supplied (Phase D will
-    // pass one parsed from the policy's stored tree). Otherwise drop a single
-    // empty policy_hat so the user has something to grab.
-    try {
-      if (initialJson) {
-        Blockly.serialization.workspaces.load(initialJson, ws);
-      } else {
-        const hat = ws.newBlock(BLOCK_TYPES.policy_hat);
-        hat.initSvg();
-        hat.render();
-        hat.moveBy(50, 30);
+    let cancelled = false;
+    const seed = async () => {
+      try {
+        if (initialJson) {
+          Blockly.serialization.workspaces.load(initialJson, ws);
+        } else if (initialCedarText && initialCedarText.trim()) {
+          const policies = await textToBlocks(initialCedarText);
+          if (cancelled) return;
+          irToWorkspace(ws, policies);
+          // Fallback: empty result → still drop a hat so the user can edit.
+          if (policies.length === 0) emptyHat(ws);
+        } else {
+          emptyHat(ws);
+        }
+      } catch (e) {
+        console.warn("[v9] workspace seed failed", e);
+        emptyHat(ws);
       }
-    } catch (e) {
-      console.warn("[v9] workspace seed failed", e);
-    }
+    };
 
     const recompute = async () => {
-      // L2 — structural validation while building IR.
       const errs: EditorError[] = [];
       const policies = workspaceToIR(ws, errs);
       const head = policies[0] ?? null;
       const validated = validateIR(head, errs);
-
-      // Capture early so an outstanding bridge call never overwrites a more
-      // recent edit's state.
       const wsJson = Blockly.serialization.workspaces.save(ws);
 
       if (!validated.ok || !validated.ir) {
@@ -113,8 +123,6 @@ export function WorkspaceV9({
         return;
       }
 
-      // L3/L4 — IR→EST→Cedar via wasm bridge. blocksToEst throws on holes
-      // (Phase E); est_json_to_policy_text throws on engine reject.
       try {
         const text = await blocksToText(validated.ir);
         setCedarText(text);
@@ -136,12 +144,13 @@ export function WorkspaceV9({
       debounce = setTimeout(() => void recompute(), 250);
     };
     ws.addChangeListener(listener);
-    // Initial pass without debounce so the meta-row sees the seeded text.
-    void recompute();
+
+    void seed().then(() => void recompute());
 
     requestAnimationFrame(() => Blockly.svgResize(ws));
 
     return () => {
+      cancelled = true;
       if (debounce) clearTimeout(debounce);
       ws.removeChangeListener(listener);
       ws.dispose();
@@ -158,9 +167,27 @@ export function WorkspaceV9({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // `policyName` is kept in props for caller-compat (used by Phase D once
-  // textToBlocks → workspace seeding lands). Touch it so tsc doesn't warn.
   void policyName;
+
+  const onImportClick = async () => {
+    if (!wsRef.current) return;
+    if (!importText.trim()) {
+      setImportError("Cedar 코드를 입력하세요");
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    try {
+      const policies = await textToBlocks(importText);
+      irToWorkspace(wsRef.current, policies);
+      if (policies.length === 0) emptyHat(wsRef.current);
+      setImportText("");
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const errorCount = errors.length + (bridgeError ? 1 : 0);
 
@@ -228,6 +255,54 @@ export function WorkspaceV9({
           {cedarText || (errorCount > 0 ? "" : "(빈 정책)")}
         </pre>
       </details>
+
+      <details style={{ background: "var(--fog-100, #fcfcfc)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
+        <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
+          Cedar 코드 가져오기 — 텍스트를 붙여 넣고 블록으로 변환
+        </summary>
+        <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder={'permit (\n  principal,\n  action == Action::"Swap",\n  resource\n) when { context.amount > 100 };'}
+            style={{
+              fontFamily: "var(--ff-mono, monospace)",
+              fontSize: 12,
+              minHeight: 100,
+              padding: 8,
+              border: "1px solid var(--hairline-soft, #E5E6E3)",
+              borderRadius: 4,
+              resize: "vertical",
+            }}
+            disabled={importing}
+          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              onClick={() => void onImportClick()}
+              disabled={importing || !importText.trim()}
+              style={{ padding: "4px 12px", fontSize: 12 }}
+            >
+              {importing ? "변환 중…" : "불러오기"}
+            </button>
+            {importError && (
+              <span style={{ color: "var(--fail-700, #7F4740)", fontSize: 12 }}>
+                ⚠ {importError}
+              </span>
+            )}
+            <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--slate-500, #475569)" }}>
+              주의: 현재 캔버스가 덮어쓰입니다
+            </span>
+          </div>
+        </div>
+      </details>
     </div>
   );
+}
+
+function emptyHat(ws: Blockly.WorkspaceSvg): void {
+  ws.clear();
+  const hat = ws.newBlock(BLOCK_TYPES.policy_hat);
+  hat.initSvg();
+  hat.render();
+  hat.moveBy(50, 30);
 }
