@@ -1,0 +1,13 @@
+{
+  "id": "nft-operator-to-eoa",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "nft_set_approval_for_all" } } },
+  "policy_rpc": [{
+    "id": "operator-activity",
+    "method": "address.activity",
+    "params": { "chain_id": "$.root.chain_id", "address": "$.action.spender" },
+    "outputs": [{ "kind": "context", "field": "isContract", "type": "Bool", "from": "$.result.isContract", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "isContract": "Bool" } }
+}

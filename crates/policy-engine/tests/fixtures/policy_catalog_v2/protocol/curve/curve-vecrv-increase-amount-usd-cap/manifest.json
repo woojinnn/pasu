@@ -1,0 +1,17 @@
+{
+  "id": "curve-vecrv-increase-amount-usd-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "increase_lock_amount" } } },
+  "policy_rpc": [{
+    "id": "lock-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.token",
+      "amount": "$.action.amount"
+    },
+    "outputs": [{ "kind": "context", "field": "usdValue", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "usdValue": "decimal" } }
+}

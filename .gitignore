@@ -64,6 +64,9 @@ browser-extension/public/wasm/
 # Markdown docs, research + audit notes — only README.md stays tracked.
 *.md
 !README.md
+# Policy-catalog shared aggregator-method impl-spec library — tracked so the RPC
+# server implementer (and auditors) get each method's spec alongside the policies.
+!**/policy_catalog_v2/_methods/*.md
 # Local Codex session memory; keep repo-specific copies out of git.
 AGENTS.md
 # The rest of /docs/ stays ignored (scratch research/audit notes).

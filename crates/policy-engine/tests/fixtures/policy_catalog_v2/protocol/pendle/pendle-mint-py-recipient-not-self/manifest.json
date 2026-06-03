@@ -1,0 +1,5 @@
+{
+  "id": "pendle-mint-py-recipient-not-self",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "mint_py" } } }
+}

@@ -1,0 +1,5 @@
+{
+  "id": "nft-set-approval-for-all-confirm",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "nft_set_approval_for_all" } } }
+}

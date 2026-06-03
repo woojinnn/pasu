@@ -1,0 +1,5 @@
+{
+  "id": "pt-swap-min-out-zero",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "pt_swap" } } }
+}

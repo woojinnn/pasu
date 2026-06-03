@@ -1,0 +1,5 @@
+{
+  "id": "perp-open-high-slippage",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "open_position" } } }
+}

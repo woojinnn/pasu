@@ -1,0 +1,13 @@
+{
+  "id": "new-contract-interaction-cooldown",
+  "schema_version": 2,
+  "trigger": { "where": { "action.domain": { "eq": "unknown" } } },
+  "policy_rpc": [{
+    "id": "target-activity",
+    "method": "address.activity",
+    "params": { "chain_id": "$.root.chain_id", "address": "$.action.target" },
+    "outputs": [{ "kind": "context", "field": "targetFirstSeenTs", "type": "Long", "from": "$.result.firstSeenTs", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "targetFirstSeenTs": "Long" } }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "daily-cumulative-swap-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "swap-window",
+    "method": "stat_window.swap_stats",
+    "params": {
+      "owner": "$.root.from",
+      "action": "swap"
+    },
+    "outputs": [{ "kind": "context", "field": "windowSwapUsd", "type": "Decimal", "from": "$.result.windowSwapUsd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "windowSwapUsd": "decimal" } }
+}

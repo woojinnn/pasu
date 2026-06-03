@@ -1,0 +1,13 @@
+{
+  "id": "sanctioned-yield-recipient-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "pt_swap" } } },
+  "policy_rpc": [{
+    "id": "recipient-sanctions",
+    "method": "address.sanctions",
+    "params": { "address": "$.action.recipient" },
+    "outputs": [{ "kind": "context", "field": "sanctioned", "type": "Bool", "from": "$.result.sanctioned", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "sanctioned": "Bool" } }
+}

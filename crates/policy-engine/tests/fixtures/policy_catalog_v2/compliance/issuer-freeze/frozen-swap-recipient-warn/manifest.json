@@ -1,0 +1,13 @@
+{
+  "id": "frozen-swap-recipient-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "swap-recipient-frozen",
+    "method": "address.frozen",
+    "params": { "asset": "$.action.tokenOut", "address": "$.action.recipient" },
+    "outputs": [{ "kind": "context", "field": "frozen", "type": "Bool", "from": "$.result.frozen", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "frozen": "Bool" } }
+}

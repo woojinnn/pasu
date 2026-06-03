@@ -1,0 +1,13 @@
+{
+  "id": "scam-database-recipient-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [{
+    "id": "recipient-reputation",
+    "method": "address.reputation",
+    "params": { "address": "$.action.recipient" },
+    "outputs": [{ "kind": "context", "field": "reputationFlagged", "type": "Bool", "from": "$.result.flagged", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "reputationFlagged": "Bool" } }
+}

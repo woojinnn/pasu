@@ -1,0 +1,5 @@
+{
+  "id": "pendle-mint-py-min-out-zero",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "mint_py" } } }
+}

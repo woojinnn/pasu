@@ -1,0 +1,5 @@
+{
+  "id": "nft-approve-confirm",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "nft_approve" } } }
+}
