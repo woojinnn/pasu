@@ -63,14 +63,27 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  · **scope = COVER/DEFER 경계를 P0 직후·P1 전에 명시 선언**(evidence 'Scope Classification'). scope 는
    게이트로 검증 안 되는 **사용자 고유 결정**이다. 사용자가 지정했으면 그대로(pre-authorized); 모호하면 P0 surface triage +
    제안 cover/defer 경계를 **1회 제시**하고 진행. 자율 진행은 이 contract '안'에서만(그 외 phase confirm 은 여전히 X).
+   **경계는 추측이 아니라 아래 SCOPE ORACLE ①(결정 전 cross-entry 거래량 분포 + cover 후보 wrapper 의
+   child resolution rate)을 사전입력으로 받아 정한다** — 거래량 지배 entry/실디코드되는 child 를 먼저 cover.
  · **DEFER 는 데이터-게이트.** user-facing surface(유저가 직접 서명하는 컨트랙트/selector)를 defer 하려면
    **1차 usage-share(%/count, Etherscan/Dune 실측)** 를 붙인다 — "큰 공수"같은 산문 사유만으로 defer 금지.
    ⚠️ "비중 클 것 같다"고 *추정*하면서 defer 하면 자기모순 — **defer 하기 전에 측정**한다.
    (infra/governance/keeper EXCLUDE 는 정의상 user-facing 아니라 면제.)
- · **SCOPE ORACLE = coverage-share 측정**(§9.4 field-level projection 의 **scope-level 버전**). P2 에서
-   **covered (chain,to,selector) 집합이 P0 universe 의 최근 실거래 중 몇 %를 잡는지** Etherscan/Dune 으로 측정.
-   **completion label 은 이 측정치를 초과주장 못 한다** — 40% 잡으면 "full surface" 라 못 쓰고
-   "40% subset, uncovered majority=<X>" 로 정직 라벨. 이 측정 없이 "full/dominant surface" 선언 금지.
+ · **SCOPE ORACLE = coverage 측정**(§9.4 field-level projection 의 **scope-level 버전**). **두 시점**에서 측정한다:
+   **① 결정 전(P0직후·P1전, H1)** — cover/defer 경계를 정하기 *전에* (a) 전 user-facing entry 의
+   **cross-entry 거래량 분포**(어느 entry 가 지배하는지)와 (b) cover 후보가 wrapper/router selector 면 그
+   **child resolution rate** 를 Etherscan/Dune 으로 실측해 경계 결정의 **사전입력**으로 쓴다. "비중 클 것
+   같다"는 가정으로 cover/defer 를 정하지 말 것 — 측정이 cover 우선순위를 정한다.
+   **② 빌드 후(P2)** — covered 집합이 P0 universe 실거래의 몇 %를 잡는지 측정하되 **반드시 프로토콜-레벨
+   거래량 가중(H2)**: Σ covered top-level tx / Σ all top-level tx 를 **전 entry 합산**으로 — 한 entry 의
+   per-contract selector-share 만 보고 "대부분 커버"라 하지 말 것(거래량 지배 entry 를 놓친다).
+   ⚠️ **wrapper-effective(H3): wrapper/router selector(multicall_recurse·opcode_stream·tagged_dispatch·
+   permitBatchAndCall 류)는 manifest 존재 = covered 가 아니다.** effective coverage = 그 selector 실거래
+   child 중 covered child 비율(**child resolution rate**)로 센다. (Balancer dogfood 실측: permitBatchAndCall
+   이 V3 selector 의 91.7% 지만 child 95% 가 deferred proportional/unbalanced liquidity → effective 4.9%.
+   V2 Vault 98.9% 인데 V3 Router-v2 가 거래량 6.7배·실커버 3.5% → 프로토콜-레벨 ~14.3% 인데 전 게이트 green.)
+   **completion label 은 이 측정치를 초과주장 못 한다** — 14% 잡으면 "full/dominant surface" 못 쓰고
+   "14% subset, uncovered majority=<X>" 로 정직 라벨. 이 측정 없이 "full/dominant surface" 선언 금지.
 
 [먼저 읽어라 — 인스트럭션, 방법론 1차 source-of-truth. 전부 crates/integration-tests/]
  1. PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md — protocol-agnostic completion model,
@@ -123,10 +136,18 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
     + Etherscan API/MCP bulk 최소 10,000 tx/protocol(10,000 API call 아님; 현재 txlist 최대 10k tx/call,
       2026-07-01 이후 Free tier 는 1k/request 예정이라 현재 docs 재확인)
     + Dune MCP/API calibration(**대표 체인 1개**; free 엔진 + partition WHERE). (멀티체인 pinpoint = 별도 프레임워크.)
-    + **SCOPE ORACLE — coverage-share 측정(필수)**: covered (chain,to,selector) 집합이 P0 universe(P0 의
+    + **SCOPE ORACLE — coverage 측정(필수)**: covered (chain,to,selector) 집합이 P0 universe(P0 의
       cover+defer 주소 전체)의 최근 실거래 중 **몇 %를 잡는지** Etherscan/Dune 으로 측정·기록. 이게 §9.4 field-level
       projection 의 scope-level 버전 — completion label 이 측정치를 초과주장 못 하게 P4 에서 대조. user-facing DEFER
-      마다 그 surface 의 usage-share 도 1차 실측.
+      마다 그 surface 의 usage-share 도 1차 실측. **(H1) 이 측정은 P2 가 처음이 아니다 — cover/defer 경계 결정 전
+      (P0직후·P1전)에 cross-entry 거래량 분포 + cover 후보 wrapper 의 child resolution rate 를 먼저 실측해 경계의
+      사전입력으로 쓰고**(`Scope Classification` 에 기록), P2 는 빌드 후 실커버를 *검증*하는 자리다.
+      **(H2) coverage-share 는 프로토콜-레벨 거래량 가중**: Σ covered top-level tx / Σ all top-level tx 를 **전 user-facing
+      entry 합산**으로 센다 — 한 entry 의 selector-share 만 보면 거래량 지배 entry 를 놓친다(아래 ⚠️ top-level vs internal 과 함께).
+      **(H3) wrapper/router selector(multicall_recurse·opcode_stream·tagged_dispatch·permitBatchAndCall 류)는
+      manifest 존재 = covered 가 아니라 effective coverage = child resolution rate**(실거래 child 중 covered child 비율)
+      로 센다 — selector-presence 로 세면 child 가 전부 deferred 여도 "covered" 로 과대평가된다(Balancer permitBatchAndCall:
+      selector 91.7% 커버처럼 보이나 child 95% deferred → effective 4.9%).
       ⚠️ **측정 단위 = 유저가 *서명하는* top-level tx (tx.to)** — internal call 총합이 아니다. router-heavy 는
       direct(to=target) vs router 경유(to=router, target 은 internal trace 에서 hit)를 `ethereum.traces` 의
       top-level(`cardinality(trace_address)=0`) vs internal 로 분리해 센다. **"total 호출"을 "direct"로 세면 direct
@@ -167,8 +188,9 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
  explicit-stage(git add <파일>, git add -A 금지) · 무관 churn·.env(ETHERSCAN_API_KEY 로컬) 비접촉
  · 주소/ABI **및 usage/dominance/'대부분 유저가 X 한다' 주장**은 1차 출처만(주소/ABI=Etherscan/Sourcify/공식 GitHub
    verified; **usage/비중=Etherscan/Dune 실측**), 추측·블로그·기억 금지. scope/defer 판단을 추정 usage 로 내리지 말 것
- · **대표 체인 1개**(멀티체인=별도 프레임워크). scope=COVER/DEFER 경계 P1 전 명시, user-facing DEFER 은 1차 usage-share 첨부,
-   completion label 은 P2 coverage-share 측정치 초과주장 금지
+ · **대표 체인 1개**(멀티체인=별도 프레임워크). scope=COVER/DEFER 경계 P1 전 명시(결정 전 cross-entry 거래량 분포로
+   사전측정·H1), user-facing DEFER 은 1차 usage-share 첨부, coverage-share 는 **프로토콜-레벨 거래량 가중(H2)** + **wrapper 는
+   child resolution rate 로 셈(H3, manifest 존재≠covered)**, completion label 은 측정치 초과주장 금지
  · cargo fmt --all 후 내가 안 건드린 파일 재포맷되면 stage 하지 말고, 실제 revert 는 명확히 내 변경 파일이거나 사용자 승인 받은 경우만
  · 출력 한국어(기술용어 영어), 정직한 한계, 작업/결정에 sequential-thinking.
 

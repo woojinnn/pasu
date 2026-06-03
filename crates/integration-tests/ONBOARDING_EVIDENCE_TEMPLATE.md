@@ -25,7 +25,9 @@ evidence; the phase tables below are the mandatory gate.
 |---|---|
 | representative chain (SINGLE — multichain = separate framework, deferred) | |
 | completion target | `wallet-facing` / `full-surface` / `full factory-child universe` |
-| covered real-usage coverage-share (P2-measured: % of recent P0-universe txs the covered set decodes) | |
+| **pre-decision** cross-entry volume distribution (tx-share of EACH user-facing entry; which dominates) — measured BEFORE the cover/defer boundary (H1) | |
+| per-cover-candidate wrapper/router selector child resolution-rate (effective coverage = decoded children / real children; NOT manifest-presence) (H3) | |
+| covered real-usage coverage-share — **volume-weighted protocol-level**: Σ covered top-level tx / Σ all top-level tx across every user-facing entry (NOT per-contract selector-share) (H2), wrappers counted by child resolution-rate (H3) | |
 | user-facing DEFERs, each with its 1st-party usage-share (%/count) | |
 | direct factory-child calls | covered / source-materialized sample / deferred / not applicable |
 | final claim label (MUST NOT over-claim the measured coverage-share above) | |
@@ -35,6 +37,7 @@ evidence; the phase tables below are the mandatory gate.
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
 | completion scope declared: primary chain(s), wallet-facing vs full-surface/full-universe target, and multichain status | pending | |
+| pre-decision cross-entry volume distribution measured BEFORE the cover/defer boundary (tx-share of each user-facing entry; which entry dominates), so cover/defer is data-driven not assumed (H1) | pending | |
 | Codex current-session research executed | pending | |
 | Claude Code or sub-agent research executed | pending | |
 | Claude/sub-agent exact prompt or command recorded | pending | |
@@ -98,7 +101,7 @@ evidence; the phase tables below are the mandatory gate.
 | Dune rows returned / selected tx hashes recorded | pending | |
 | representative real-tx corpus/golden entries committed or justified | pending | |
 | protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
-| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered (chain,to,selector) set decodes), and each user-facing DEFER's usage-share recorded; completion label must not over-claim it | pending | |
+| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered set decodes), **volume-weighted protocol-level (Σ covered top-level tx / Σ all top-level tx across every user-facing entry, NOT per-contract selector-share) (H2)** and **every wrapper/router selector counted by child resolution-rate, not manifest-presence (H3)**, with each user-facing DEFER's usage-share recorded; completion label must not over-claim it | pending | |
 
 ## P3 Develop Evidence
 
