@@ -55,6 +55,7 @@ pub const WHITELIST: &[&str] = &[
     "balancer_v2_userdata_field",
     "balancer_v2_batch_swap_field",
     "balancer_v3_zip_pool_tokens",
+    "balancer_v3_swap_path_field",
 ];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
@@ -78,6 +79,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "balancer_v2_userdata_field" => balancer_v2_userdata_field(args),
         "balancer_v2_batch_swap_field" => balancer_v2_batch_swap_field(args),
         "balancer_v3_zip_pool_tokens" => balancer_v3_zip_pool_tokens(args),
+        "balancer_v3_swap_path_field" => balancer_v3_swap_path_field(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -696,6 +698,70 @@ fn balancer_v2_batch_swap_field(args: &[JsonValue]) -> Result<JsonValue, String>
         )),
         other => Err(format!(
             "balancer_v2_batch_swap_field: unsupported field '{other}'"
+        )),
+    }
+}
+
+/// `balancer_v3_swap_path_field(paths, field) -> address|uint` — aggregate-`Swap`
+/// field from a Balancer V3 BatchRouter `swapExactIn`'s `SwapPathExactAmountIn[]`.
+///
+/// Unlike V2's index-indirection, V3 carries the tokens directly in the path:
+/// `path = [tokenIn, steps[], exactAmountIn, minAmountOut]` and
+/// `steps[j] = [pool, tokenOut, isBuffer]` (positional, per `args_json`). The
+/// aggregate swap is `path[0]`: `token_in = tokenIn`, `token_out = the LAST step's
+/// tokenOut`, `pool = the first step's pool`, `amount_in = exactAmountIn`,
+/// `min_out = minAmountOut`. No baked map needed (tokens are in calldata). Coarse
+/// for true multi-path batches (picks the first path) — correct for the dominant
+/// single-route multi-hop; documented in the manifest `_note`. Fuzz-tolerant:
+/// empty paths/steps degrade to zero-address / "0" (real correctness pinned by the
+/// corpus expect_body), so no harness shape-artifact entry is needed.
+fn balancer_v3_swap_path_field(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 2 {
+        return Err(format!(
+            "balancer_v3_swap_path_field expects 2 args (paths, field), got {}",
+            args.len()
+        ));
+    }
+    let paths = args[0]
+        .as_array()
+        .ok_or("balancer_v3_swap_path_field: paths arg is not an array")?;
+    let field = args[1]
+        .as_str()
+        .ok_or("balancer_v3_swap_path_field: field arg is not a string")?;
+    const ZERO_ADDR: &str = "0x0000000000000000000000000000000000000000";
+    let zero_addr = || JsonValue::String(ZERO_ADDR.to_owned());
+    let p0 = paths.first().and_then(JsonValue::as_array);
+    let steps = p0.and_then(|p| p.get(1)).and_then(JsonValue::as_array);
+    match field {
+        // path[0] = [tokenIn(0), steps(1), exactAmountIn(2), minAmountOut(3)].
+        "token_in" => Ok(p0
+            .and_then(|p| p.first())
+            .cloned()
+            .unwrap_or_else(zero_addr)),
+        // step = [pool(0), tokenOut(1), isBuffer(2)]; last step's tokenOut, else tokenIn (no-step fuzz).
+        "token_out" => Ok(steps
+            .and_then(|s| s.last())
+            .and_then(JsonValue::as_array)
+            .and_then(|st| st.get(1))
+            .cloned()
+            .or_else(|| p0.and_then(|p| p.first()).cloned())
+            .unwrap_or_else(zero_addr)),
+        "pool" => Ok(steps
+            .and_then(|s| s.first())
+            .and_then(JsonValue::as_array)
+            .and_then(|st| st.first())
+            .cloned()
+            .unwrap_or_else(zero_addr)),
+        "amount_in" => Ok(p0
+            .and_then(|p| p.get(2))
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String("0".to_owned()))),
+        "min_out" => Ok(p0
+            .and_then(|p| p.get(3))
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String("0".to_owned()))),
+        other => Err(format!(
+            "balancer_v3_swap_path_field: unsupported field '{other}'"
         )),
     }
 }
@@ -1502,6 +1568,31 @@ mod tests {
         assert_eq!(trunc.as_array().unwrap().len(), 1);
         // wrong arity errors (structural).
         assert!(balancer_v3_zip_pool_tokens(&[json!(chain), json!(pool)]).is_err());
+    }
+
+    #[test]
+    fn balancer_v3_swap_path_field_extracts_endpoints() {
+        // path = [tokenIn, steps[[pool,tokenOut,isBuffer]], exactAmountIn, minAmountOut]
+        let paths = json!([[A, [[C, B, false]], "1000", "990"]]);
+        let f = |field: &str| balancer_v3_swap_path_field(&[paths.clone(), json!(field)]).unwrap();
+        assert_eq!(f("token_in"), json!(A));
+        assert_eq!(f("token_out"), json!(B)); // last step's tokenOut
+        assert_eq!(f("pool"), json!(C));
+        assert_eq!(f("amount_in"), json!("1000"));
+        assert_eq!(f("min_out"), json!("990"));
+        // multi-hop: token_out = the LAST step's tokenOut.
+        let multi = json!([[A, [[C, B, false], [C, A, false]], "1", "1"]]);
+        assert_eq!(
+            balancer_v3_swap_path_field(&[multi, json!("token_out")]).unwrap(),
+            json!(A)
+        );
+        // empty paths (fuzz) → zero/0, not an error.
+        assert_eq!(
+            balancer_v3_swap_path_field(&[json!([]), json!("token_in")]).unwrap(),
+            json!("0x0000000000000000000000000000000000000000")
+        );
+        // unknown field errors (structural).
+        assert!(balancer_v3_swap_path_field(&[paths, json!("nope")]).is_err());
     }
 
     #[test]
