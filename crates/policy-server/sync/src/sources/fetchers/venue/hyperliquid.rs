@@ -6,6 +6,7 @@
 //! - `hl_borrow_lend`      → borrow/lend user state
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use rust_decimal::prelude::ToPrimitive;
@@ -17,6 +18,7 @@ use policy_state::position::{
     HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance, HlStakingAccount,
     HlStakingDelegation, HlVaultEquity,
 };
+use policy_state::primitives::Time;
 use policy_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
 use policy_transition::action::perp::PerpAccountState;
 
@@ -24,11 +26,16 @@ use crate::config::HyperliquidConfig;
 use crate::error::SyncError;
 use crate::walker::{ActionSlot, FieldLocation};
 
+use super::ttl_cache::TtlCache;
+
 pub const HL_API_BASE: &str = "https://api.hyperliquid.xyz";
 
 pub struct HyperliquidFetcher {
     client: reqwest::Client,
     base_url: String,
+    meta_ttl_secs: u64,
+    meta_cache: Mutex<TtlCache<String, Value>>, // key = dex ("" = native)
+    dexs_cache: Mutex<TtlCache<(), Vec<String>>>, // perpDexs list
 }
 
 impl Default for HyperliquidFetcher {
@@ -51,6 +58,9 @@ impl HyperliquidFetcher {
                 .build()
                 .expect("reqwest client init"),
             base_url,
+            meta_ttl_secs: 600,
+            meta_cache: Mutex::new(TtlCache::new()),
+            dexs_cache: Mutex::new(TtlCache::new()),
         }
     }
 
@@ -92,6 +102,33 @@ impl HyperliquidFetcher {
     pub async fn fetch_meta(&self, endpoint: &str) -> Result<Value, SyncError> {
         self.fetch_meta_for_dex(endpoint, endpoint_dex(endpoint).as_deref())
             .await
+    }
+
+    /// `meta` for a dex, cached for `meta_ttl_secs`. `now` is injected by the caller.
+    pub async fn cached_meta(&self, endpoint: &str, now: Time) -> Result<Value, SyncError> {
+        let key = endpoint_dex(endpoint).unwrap_or_default();
+        let cached = self.meta_cache.lock().unwrap().get(&key, now, self.meta_ttl_secs);
+        if let Some(v) = cached {
+            return Ok(v);
+        }
+        let v = self.fetch_meta(endpoint).await?;
+        self.meta_cache.lock().unwrap().put(key, v.clone(), now);
+        Ok(v)
+    }
+
+    /// perpDexs list, cached for `meta_ttl_secs`.
+    pub async fn cached_perp_dexs(
+        &self,
+        endpoint: &str,
+        now: Time,
+    ) -> Result<Vec<String>, SyncError> {
+        let cached = self.dexs_cache.lock().unwrap().get(&(), now, self.meta_ttl_secs);
+        if let Some(v) = cached {
+            return Ok(v);
+        }
+        let v = self.fetch_perp_dexs(endpoint).await?;
+        self.dexs_cache.lock().unwrap().put((), v.clone(), now);
+        Ok(v)
     }
 
     pub async fn fetch_clearinghouse_state(
