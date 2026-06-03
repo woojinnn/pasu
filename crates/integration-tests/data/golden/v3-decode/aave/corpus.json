@@ -1758,6 +1758,130 @@
         }
       ],
       "source": "hand fixture — GSM_USDT 0 user buyAsset/sellAsset lifetime (12+2 txs all keeper); calldata synthetic, selector keccak-verified"
+    },
+    {
+      "intent": "sGHO deposit(assets,receiver) — savings GHO ERC4626 → staking::Stake",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x6809387ab5735e9de81a4697dd06e728238a4949e60452362502d8a534a002c5",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d",
+            "value": "0",
+            "data": "0x6e553f65000000000000000000000000000000000000000000000019a7ee961954cafea3000000000000000000000000aebb96fee7e9500043f7c2113c9b6b50c737c0c1"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_savings_gho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x19a7ee961954cafea3"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xaebb96fee7e9500043f7c2113c9b6b50c737c0c1"
+        }
+      ]
+    },
+    {
+      "intent": "sGHO redeem(shares,receiver,owner) → staking::Redeem",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0x42c85a3f708e192053a463b15a2a02ed5aa72877261dd6a42dd6fee4a27d2dd4",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d",
+            "value": "0",
+            "data": "0xba08765200000000000000000000000000000000000000000000010df7621ed44550000000000000000000000000000080865adf1bfa28c2d2e1604ee11187324321a8c400000000000000000000000080865adf1bfa28c2d2e1604ee11187324321a8c4"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "redeem"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_savings_gho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x10df7621ed445500000"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x80865adf1bfa28c2d2e1604ee11187324321a8c4"
+        }
+      ]
+    },
+    {
+      "intent": "Umbrella stake-token cooldown() → staking::Cooldown",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "tx_hash": "0xac702a52774cbf80547150b48807c725a254f0787785249679f35124762bdc6c",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4f827a63755855cdf3e8f3bcd20265c833f15033",
+            "value": "0",
+            "data": "0x787a08a6"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cooldown"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "aave_umbrella_stake_token"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.stake_token",
+          "op": "hex_eq",
+          "value": "0x4f827a63755855cdf3e8f3bcd20265c833f15033"
+        }
+      ]
     }
   ]
 }
