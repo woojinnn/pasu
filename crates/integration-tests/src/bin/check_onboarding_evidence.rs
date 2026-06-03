@@ -206,6 +206,13 @@ fn usage() {
 
 fn check_markdown(markdown: &str, phase: Phase) -> (Vec<Finding>, Stats) {
     let mut section = Section::Other;
+    // Only rows inside a phase STATUS table (its header has a "status" column) are
+    // mandatory evidence rows. Explanatory tables/matrices placed inside a phase
+    // section (e.g. an L3 dropped-field disposition, a coverage matrix) must NOT be
+    // parsed as status rows. This keeps the checker protocol-agnostic to arbitrary
+    // evidence prose/tables: `### subsections` do not reset the `## ` section, so
+    // without this guard any 3-column table under a phase heading was mis-validated.
+    let mut in_status_table = false;
     let mut findings = Vec::new();
     let mut checked_rows = 0usize;
     let mut blocked_rows = 0usize;
@@ -216,13 +223,24 @@ fn check_markdown(markdown: &str, phase: Phase) -> (Vec<Finding>, Stats) {
         let line_no = idx + 1;
         if let Some(next) = section_from_heading(line) {
             section = next;
+            in_status_table = false;
             continue;
         }
 
         let Some(cells) = parse_table_row(line) else {
+            in_status_table = false;
             continue;
         };
         if is_header_or_separator(&cells) {
+            // Arm validation only inside a status table — detected by a "status"
+            // column in the header row. Separator rows (all dashes) leave the flag
+            // unchanged so the data rows after the header are still validated.
+            if cells
+                .get(1)
+                .is_some_and(|cell| cell.trim().eq_ignore_ascii_case("status"))
+            {
+                in_status_table = true;
+            }
             continue;
         }
 
@@ -248,6 +266,12 @@ fn check_markdown(markdown: &str, phase: Phase) -> (Vec<Finding>, Stats) {
         }
 
         if !phase.includes(section) {
+            continue;
+        }
+
+        // Skip non-status tables (analysis/matrix) inside a phase section — only
+        // rows under a "status"-column header are mandatory phase evidence rows.
+        if !in_status_table {
             continue;
         }
 
@@ -574,5 +598,43 @@ mod tests {
         assert!(findings
             .iter()
             .any(|f| f.message.contains("missing mandatory row")));
+    }
+
+    #[test]
+    fn ignores_non_status_tables_in_phase_sections() {
+        // A protocol may add an explanatory table (e.g. an L3 dropped-field
+        // disposition, a coverage matrix) inside a phase section. `### subsections`
+        // do not reset the `## ` section, so such a table sits "inside" P3; it must
+        // be IGNORED, not validated as status rows.
+        let base = completed_template();
+        let analysis = "### L3 — dropped-field disposition\n\
+| dropped field | scope verdict | rationale |\n\
+|---|---|---|\n\
+| appData | enrichment-only | off-chain hash, not statically decodable |\n\
+| kind | not a scope boundary | worst-case spend already captured |\n\n";
+        let with_analysis = base.replace(
+            "## P4 Land Evidence",
+            &format!("{analysis}## P4 Land Evidence"),
+        );
+        assert_ne!(base, with_analysis, "analysis table was not inserted");
+
+        let (f_base, s_base) = check_markdown(&base, Phase::All);
+        let (f_with, s_with) = check_markdown(&with_analysis, Phase::All);
+
+        assert_eq!(
+            s_base.checked_rows, s_with.checked_rows,
+            "an explanatory table must not add mandatory status rows"
+        );
+        assert_eq!(
+            f_base.len(),
+            f_with.len(),
+            "an explanatory table must not change findings: {f_with:#?}"
+        );
+        assert!(
+            !f_with
+                .iter()
+                .any(|f| f.message.contains("unsupported status")),
+            "explanatory-table cells must not be parsed as statuses: {f_with:#?}"
+        );
     }
 }
