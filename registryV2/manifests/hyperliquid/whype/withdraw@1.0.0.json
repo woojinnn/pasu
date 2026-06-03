@@ -3,7 +3,7 @@
   "id": "hyperliquid/whype/withdraw@1.0.0",
   "publisher": "hyperliquid",
   "schema_version": "3",
-  "_note": "WHYPE (Wrapped HYPE, HyperEVM chain 999) WETH9 fork. withdraw(uint256 wad) unwraps WHYPE -> native HYPE. No wrap/unwrap TokenAction variant exists -> Unknown (preserves the raw call; the wad is carried in $calldata). withdraw is non-payable so value = literal '0'. CAVEAT: WHYPE full 40-hex is D9-limited; 0x5555...5 all-5s pattern ASSUMED (see deposit@1.0.0 note).",
+  "_note": "WHYPE (Wrapped HYPE, HyperEVM chain 999) WETH9 fork. withdraw(uint256 wad) unwraps WHYPE -> native HYPE. Decoded to token::unwrap_native (token.key.address = the WHYPE contract = $to; amount = $args.wad). withdraw is non-payable (value '0'). The WrapNative/UnwrapNative TokenActions now exist (WETH wrap-action work), so unwrapping is structurally legible. WHYPE 0x5555555555555555555555555555555555555555 is 1차-confirmed (HyperLiquid docs 'Wrapped HYPE').",
   "match": {
     "selector": "0x2e1a7d4d",
     "chain_to_addresses": {
@@ -25,12 +25,13 @@
   "emit": {
     "strategy": "single_emit",
     "body": {
-      "domain": "unknown",
-      "unknown": {
-        "target": "$to",
-        "chain": "$chain",
-        "calldata": "$calldata",
-        "value": "0"
+      "domain": "token",
+      "token": {
+        "action": "unwrap_native",
+        "unwrap_native": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "amount": "$args.wad"
+        }
       }
     }
   },

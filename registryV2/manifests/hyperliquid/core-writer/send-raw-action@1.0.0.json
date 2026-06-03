@@ -26,18 +26,16 @@
     "version_byte": "0x01",
     "tag_offset": 1,
     "tag_size": 3,
-    "_note": "CoreWriter sendRawAction(bytes): data[0]=0x01 version, data[1:4]=action_id (uint24 BE), data[4:]=abi.encode(action args). action 11 (cancel by cloid) maps to a structured Perp(CancelOrder) body; every other action + default maps to Unknown (raw call preserved via $calldata). See ~/.claude-web3/plans/hl-corewriter-cover.md for the grounded per-action decision (perp struct types vs HL raw uint fixed-point; no matching domain for vault/staking/delegate/transfer/permission ops).",
+    "_note": "CoreWriter sendRawAction(bytes): data[0]=0x01 version, data[1:4]=action_id (uint24 BE), data[4:]=abi.encode(action args). action 11 (cancel by cloid) maps to a structured Perp(CancelOrder) body; every other action + default maps to hyperliquid_core::hl_unknown carrying a descriptive action_type (e.g. 'vaultTransfer') so a policy can gate the specific CoreWriter op by name. Structured-with-amounts is deferred: the args are HL uint64 fixed-point (token/asset are L1 ids, amounts need per-asset szDecimals/weiDecimals scaling) which the declarative grammar cannot scale without an HL meta snapshot; mislabeling a raw integer as a human amount would be worse than hl_unknown. See ~/.claude-web3/plans/hl-corewriter-cover.md for the grounded per-action decision (perp struct types vs HL raw uint fixed-point; no matching domain for vault/staking/delegate/transfer/permission ops).",
     "per_action_body": {
       "1": {
         "name": "limit_order",
         "inputs_abi": "(uint32 asset, bool isBuy, uint64 limitPx, uint64 sz, bool reduceOnly, uint8 encodedTif, uint128 cloid)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "limitOrder" }
           }
         },
         "_note": "PlaceLimitOrderAction needs symbol:String (asset=uint32 number), side:PerpSide-enum (isBuy=bool), price:Decimal-String (limitPx=uint64 number), size.amount:U256-String (sz=uint64 number), time_in_force:TimeInForce-enum (encodedTif=uint8), plus live_inputs with no perp catalog default — none expressible declaratively from HL fixed-point ints. Unknown is the honest mapping."
@@ -46,12 +44,10 @@
         "name": "vault_transfer",
         "inputs_abi": "(address vault, bool isDeposit, uint64 usd)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "vaultTransfer" }
           }
         }
       },
@@ -59,12 +55,10 @@
         "name": "token_delegate",
         "inputs_abi": "(address validator, uint64 wei, bool isUndelegate)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "tokenDelegate" }
           }
         }
       },
@@ -72,12 +66,10 @@
         "name": "staking_deposit",
         "inputs_abi": "(uint64 wei)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "stakingDeposit" }
           }
         }
       },
@@ -85,12 +77,10 @@
         "name": "staking_withdraw",
         "inputs_abi": "(uint64 wei)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "stakingWithdraw" }
           }
         }
       },
@@ -98,12 +88,10 @@
         "name": "spot_send",
         "inputs_abi": "(address destination, uint64 token, uint64 wei)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "spotSend" }
           }
         },
         "_note": "token/wei are uint64 L1 identifiers (not EVM address/U256), so token.erc20_transfer would mislabel. Kept Unknown."
@@ -112,12 +100,10 @@
         "name": "usd_class_transfer",
         "inputs_abi": "(uint64 ntl, bool toPerp)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "usdClassTransfer" }
           }
         }
       },
@@ -125,12 +111,10 @@
         "name": "finalize_evm_contract",
         "inputs_abi": "(uint64 token, uint8 encodedFinalizeEvmContractVariant, uint64 createNonce)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "finalizeEvmContract" }
           }
         }
       },
@@ -138,12 +122,10 @@
         "name": "add_api_wallet",
         "inputs_abi": "(address apiWalletAddress, string apiWalletName)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "addApiWallet" }
           }
         }
       },
@@ -151,12 +133,10 @@
         "name": "cancel_order_by_oid",
         "inputs_abi": "(uint32 asset, uint64 oid)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "cancelOrderByOid" }
           }
         },
         "_note": "Same semantics as action 11 but oid is uint64 (renders as JSON number); CancelOrderAction.order_id is a String which rejects a number. Unknown. (action 11 cloid=uint128 renders as string and maps structurally.)"
@@ -180,12 +160,10 @@
         "name": "approve_builder_fee",
         "inputs_abi": "(uint64 maxFeeRate, address builder)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "approveBuilderFee" }
           }
         }
       },
@@ -193,12 +171,10 @@
         "name": "send_asset",
         "inputs_abi": "(address destination, address subAccount, uint32 source_dex, uint32 destination_dex, uint64 token, uint64 wei)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "sendAsset" }
           }
         }
       },
@@ -206,12 +182,10 @@
         "name": "reflect_evm_supply_change",
         "inputs_abi": "(uint64 token, uint64 wei, bool is_mint)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "reflectEvmSupplyChange" }
           }
         }
       },
@@ -219,12 +193,10 @@
         "name": "borrow_lend_operation",
         "inputs_abi": "(uint8 encodedOperation, uint64 token, uint64 wei)",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "borrowLendOperation" }
           }
         },
         "_note": "HL native borrow/lend, but token/wei are uint64 L1 identifiers and encodedOperation (0=Supply,1=Withdraw) is a uint8 not a lending action tag — does not fit the lending domain (TokenRef address + U256 amount). Unknown."
@@ -232,12 +204,10 @@
       "default": {
         "name": "unrecognized_action",
         "body": {
-          "domain": "unknown",
-          "unknown": {
-            "target": "$to",
-            "chain": "$chain",
-            "calldata": "$calldata",
-            "value": "$tx.value"
+          "domain": "hyperliquid_core",
+          "hyperliquid_core": {
+            "action": "hl_unknown",
+            "hl_unknown": { "action_type": "unrecognizedCoreWriterAction" }
           }
         },
         "_note": "Fail-soft fallback for version mismatch / unknown action_id / future action 16+. Raw call preserved via $calldata."

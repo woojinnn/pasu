@@ -5866,7 +5866,7 @@ fn b3_hl_bridge2_usdc_permit() {
 }
 
 // ---------------------------------------------------------------------------
-// b3.whype.deposit — deposit() (payable wrap) → Unknown ($calldata, $tx.value)
+// b3.whype.deposit — deposit() (payable wrap) → token::wrap_native (amount = $tx.value)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -5891,17 +5891,19 @@ fn b3_hl_whype_deposit() {
     let parsed = route_ok(input);
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_WHYPE, "{parsed}");
-    assert_eq!(body["chain"], "eip155:999", "{parsed}");
-    // value = $tx.value (deposit is payable). 1e18 wei = 0xde0b6b3a7640000.
-    assert_eq!(body["value"], "0xde0b6b3a7640000", "{parsed}");
-    // $calldata preserves the raw deposit() call (the wrap intent), not "0x".
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    // Structured wrap: the WrapNative TokenAction (added in the WETH wrap-action
+    // work) lets HYPE wrapping be legible instead of an anonymous Unknown call.
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "wrap_native", "{parsed}");
+    // token.key.address = $to = the WHYPE contract (lowercased), chain = HyperEVM.
+    assert_eq!(body["token"]["key"]["address"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["token"]["key"]["chain"], "eip155:999", "{parsed}");
+    // amount = $tx.value (the wrapped HYPE). 1e18 wei = 0xde0b6b3a7640000.
+    assert_eq!(body["amount"], "0xde0b6b3a7640000", "{parsed}");
 }
 
 // ---------------------------------------------------------------------------
-// b3.whype.withdraw — withdraw(uint256 wad) (unwrap) → Unknown (value "0")
+// b3.whype.withdraw — withdraw(uint256 wad) (unwrap) → token::unwrap_native (amount = $args.wad)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -5930,13 +5932,13 @@ fn b3_hl_whype_withdraw() {
     let parsed = route_ok(input);
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_WHYPE, "{parsed}");
-    assert_eq!(body["chain"], "eip155:999", "{parsed}");
-    // withdraw is non-payable → value literal "0" → "0x0".
-    assert_eq!(body["value"], "0x0", "{parsed}");
-    // $calldata preserves the wad (the unwrap amount) for scope analysis.
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    // Structured unwrap: the UnwrapNative TokenAction carries the wad amount.
+    assert_eq!(body["domain"], "token", "{parsed}");
+    assert_eq!(body["action"], "unwrap_native", "{parsed}");
+    assert_eq!(body["token"]["key"]["address"], HL_WHYPE, "{parsed}");
+    assert_eq!(body["token"]["key"]["chain"], "eip155:999", "{parsed}");
+    // amount = $args.wad (the unwrapped amount). 0.5 WHYPE = 5e17 = 0x6f05b59d3b20000.
+    assert_eq!(body["amount"], "0x6f05b59d3b20000", "{parsed}");
 }
 
 // ---------------------------------------------------------------------------
@@ -6036,129 +6038,14 @@ fn b3_hl_whype_transfer_from() {
 //     the honest representation, not a mislabel.
 //
 // This const is byte-identical to the on-disk manifest JSON.
-const HL_COREWRITER_FULL_MANIFEST: &str = r#"{
-  "type": "adapter_action",
-  "id": "hyperliquid/core-writer/sendRawAction@1.0.0",
-  "publisher": "hyperliquid",
-  "schema_version": "3",
-  "match": {
-    "selector": "0x17938e13",
-    "chain_to_addresses": {
-      "999": ["0x3333333333333333333333333333333333333333"],
-      "998": ["0x3333333333333333333333333333333333333333"]
-    }
-  },
-  "abi_fragment": {
-    "function_name": "sendRawAction",
-    "abi": {
-      "name": "sendRawAction",
-      "type": "function",
-      "stateMutability": "nonpayable",
-      "inputs": [{ "name": "data", "type": "bytes" }],
-      "outputs": []
-    }
-  },
-  "emit": {
-    "strategy": "tagged_dispatch",
-    "bytes_source": "$args.data",
-    "version_byte": "0x01",
-    "tag_offset": 1,
-    "tag_size": 3,
-    "per_action_body": {
-      "1": {
-        "name": "limit_order",
-        "inputs_abi": "(uint32 asset, bool isBuy, uint64 limitPx, uint64 sz, bool reduceOnly, uint8 encodedTif, uint128 cloid)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "2": {
-        "name": "vault_transfer",
-        "inputs_abi": "(address vault, bool isDeposit, uint64 usd)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "3": {
-        "name": "token_delegate",
-        "inputs_abi": "(address validator, uint64 wei, bool isUndelegate)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "4": {
-        "name": "staking_deposit",
-        "inputs_abi": "(uint64 wei)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "5": {
-        "name": "staking_withdraw",
-        "inputs_abi": "(uint64 wei)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "6": {
-        "name": "spot_send",
-        "inputs_abi": "(address destination, uint64 token, uint64 wei)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "7": {
-        "name": "usd_class_transfer",
-        "inputs_abi": "(uint64 ntl, bool toPerp)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "8": {
-        "name": "finalize_evm_contract",
-        "inputs_abi": "(uint64 token, uint8 encodedFinalizeEvmContractVariant, uint64 createNonce)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "9": {
-        "name": "add_api_wallet",
-        "inputs_abi": "(address apiWalletAddress, string apiWalletName)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "10": {
-        "name": "cancel_order_by_oid",
-        "inputs_abi": "(uint32 asset, uint64 oid)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "11": {
-        "name": "cancel_order_by_cloid",
-        "inputs_abi": "(uint32 asset, uint128 cloid)",
-        "body": {
-          "domain": "perp",
-          "perp": {
-            "action": "cancel_order",
-            "cancel_order": { "venue": { "name": "hyperliquid", "chain": "$chain" }, "order_id": "$inputs.cloid" }
-          }
-        }
-      },
-      "12": {
-        "name": "approve_builder_fee",
-        "inputs_abi": "(uint64 maxFeeRate, address builder)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "13": {
-        "name": "send_asset",
-        "inputs_abi": "(address destination, address subAccount, uint32 source_dex, uint32 destination_dex, uint64 token, uint64 wei)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "14": {
-        "name": "reflect_evm_supply_change",
-        "inputs_abi": "(uint64 token, uint64 wei, bool is_mint)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "15": {
-        "name": "borrow_lend_operation",
-        "inputs_abi": "(uint8 encodedOperation, uint64 token, uint64 wei)",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      },
-      "default": {
-        "name": "unrecognized_action",
-        "body": { "domain": "unknown", "unknown": { "target": "$to", "chain": "$chain", "calldata": "$calldata", "value": "$tx.value" } }
-      }
-    }
-  },
-  "requires": {
-    "imperative": ["core-writer-dispatcher@^1.0"],
-    "adapter_capabilities": [],
-    "host_capabilities": [],
-    "extension": ">=0.1.0"
-  }
-}"#;
+// Pin the ON-DISK CoreWriter manifest (single source of truth) so these WASM
+// route tests track the production decoder exactly. Action 11 (cancel by cloid)
+// → structured Perp(CancelOrder); every other action + default → HL-attributed
+// `hyperliquid_core::hl_unknown { action_type }` (the args are HL uint64
+// fixed-point that the declarative grammar cannot scale to human amounts, so a
+// named-but-unstructured body is the honest mapping — see the manifest _note).
+const HL_COREWRITER_FULL_MANIFEST: &str =
+    include_str!("../../../registryV2/manifests/hyperliquid/core-writer/send-raw-action@1.0.0.json");
 
 // b3.a — action 11 (Cancel by cloid) → STRUCTURED `Perp(CancelOrder)` body.
 // The headline structured-perp win: cloid (uint128) decodes to a JSON string
@@ -6230,9 +6117,9 @@ fn b3_corewriter_action_1_limit_unknown() {
     let parsed = hl_route(calldata.clone());
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], "hl_unknown", "{parsed}");
+    assert_eq!(body["action_type"], "limitOrder", "{parsed}");
 }
 
 // b3.c — action 10 (Cancel by oid) → Unknown. Semantically identical to
@@ -6253,9 +6140,9 @@ fn b3_corewriter_action_10_cancel_oid_unknown() {
     let parsed = hl_route(calldata.clone());
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], "hl_unknown", "{parsed}");
+    assert_eq!(body["action_type"], "cancelOrderByOid", "{parsed}");
 }
 
 // b3.d — action 4 (Staking deposit) → Unknown. No matching ActionBody domain
@@ -6273,9 +6160,9 @@ fn b3_corewriter_action_4_staking_deposit_unknown() {
     let parsed = hl_route(calldata.clone());
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], "hl_unknown", "{parsed}");
+    assert_eq!(body["action_type"], "stakingDeposit", "{parsed}");
 }
 
 // b3.e — action 6 (Spot send) → Unknown. token/wei are uint64 L1 identifiers
@@ -6296,9 +6183,9 @@ fn b3_corewriter_action_6_spot_send_unknown() {
     let parsed = hl_route(calldata.clone());
 
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], "hl_unknown", "{parsed}");
+    assert_eq!(body["action_type"], "spotSend", "{parsed}");
 }
 
 // b3.f — bad version byte (0x02 ≠ 0x01) → `default` Unknown body (fail-soft).
@@ -6321,9 +6208,9 @@ fn b3_corewriter_bad_version_default_unknown() {
     // Fail-soft (ok:true), routed to the manifest's "default" Unknown body.
     assert_eq!(parsed["ok"], true, "{parsed}");
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_CORE_WRITER, "{parsed}");
-    assert_eq!(body["calldata"], calldata, "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], "hl_unknown", "{parsed}");
+    assert_eq!(body["action_type"], "unrecognizedCoreWriterAction", "{parsed}");
 }
 
 // ===========================================================================
@@ -6338,14 +6225,13 @@ fn b3_corewriter_bad_version_default_unknown() {
 // STRING ("100.0", not U256); `token`/`destination` are L1 STRING identifiers
 // (not EVM address / U256).
 //
-// MAPPING DECISION: transfer/delegation payloads whose semantics are
-// HyperLiquid L1 strings / decimal strings still route to best-effort
-// `ActionBody::Unknown`; mapping those into token transfers would be a MISLABEL.
-// Permission primitives with plain EVM addresses (`ApproveAgent`,
-// `ApproveBuilderFee`) map to Permission::ProtocolAuthorization so policy can
-// distinguish them from opaque L1 money movement. These tests pin the on-disk
-// manifests (`include_str!`) and route representative payloads covering both
-// paths.
+// MAPPING DECISION: fund/staking payloads decode to STRUCTURED
+// `hyperliquid_core::hl_*` bodies (the HL-native off-chain domain, reused from
+// the /exchange Flow-3 path) — decimal-string amounts + address strings map
+// losslessly, so a policy sees destination / amount instead of an anonymous
+// Unknown. Permission primitives (`ApproveAgent`, `ApproveBuilderFee`) map to
+// Permission::ProtocolAuthorization. These tests pin the on-disk manifests
+// (`include_str!`) and route representative payloads covering both paths.
 
 const HL_REST_USD_SEND: &str =
     include_str!("../../../registryV2/manifests/hyperliquid/rest/usd-send@1.0.0.json");
@@ -6379,11 +6265,17 @@ fn hl_typed_data_input(chain_id: u64, primary_type: &str, message: Value) -> Str
     .to_string()
 }
 
-/// Common assertions every Mode B sig must satisfy: recognized (ok:true, the
-/// expected decoder_id), routed to the best-effort Unknown body with the frozen
-/// sentinel shape, and carried under an OffchainSig meta nature whose domain is
-/// the HyperLiquid sign-transaction domain bound to the routed chain.
-fn assert_hl_best_effort_unknown(parsed: &Value, decoder_id: &str, chain_id: u64) {
+/// Common assertions for a HyperLiquid Mode B sig that decodes to a STRUCTURED
+/// `hyperliquid_core` body: recognized (ok, decoder_id), exactly one action
+/// under an OffchainSig meta nature whose domain is bound to the routed chain,
+/// and `domain == "hyperliquid_core"` with the expected `action`. Returns the
+/// body so each test can pin its own protocol-native fields.
+fn assert_hl_structured<'a>(
+    parsed: &'a Value,
+    decoder_id: &str,
+    chain_id: u64,
+    action: &str,
+) -> &'a Value {
     assert_eq!(parsed["ok"], true, "route failed: {parsed}");
     assert_eq!(parsed["data"]["decoder_id"], decoder_id, "{parsed}");
 
@@ -6396,28 +6288,25 @@ fn assert_hl_best_effort_unknown(parsed: &Value, decoder_id: &str, chain_id: u64
     assert_eq!(meta["nature"]["domain"]["name"], HL_DOMAIN, "{parsed}");
     assert_eq!(meta["nature"]["domain"]["chain_id"], chain_id, "{parsed}");
 
-    // Best-effort Unknown body — the frozen sentinel shape.
+    // Structured HyperliquidCore body (reused from the /exchange Flow-3 path).
     let body = &actions[0]["body"];
-    assert_eq!(body["domain"], "unknown", "{parsed}");
-    assert_eq!(body["target"], HL_VC_ZERO, "{parsed}");
-    assert_eq!(body["chain"], format!("eip155:{chain_id}"), "{parsed}");
-    // value "0" → U256 ZERO → "0x0"; calldata literal "0x" (sigs have none).
-    assert_eq!(body["value"], "0x0", "{parsed}");
-    assert_eq!(body["calldata"], "0x", "{parsed}");
+    assert_eq!(body["domain"], "hyperliquid_core", "{parsed}");
+    assert_eq!(body["action"], action, "{parsed}");
+    body
 }
 
-// b3.usdSend — string destination + decimal amount → best-effort Unknown.
+// b3.usdSend — string destination + decimal amount → structured hl_usd_send.
 #[test]
-fn b3_hl_usd_send_routes_to_unknown() {
+fn b3_hl_usd_send_routes_to_structured() {
     let install = install_ok(HL_REST_USD_SEND);
     assert_eq!(
         install["data"]["bundle_id"],
         "hyperliquid/rest/usd-send@1.0.0"
     );
 
-    // The decimal `amount` ("100.0") + L1 `destination` are deliberately NOT
-    // mapped into a structured body — they are the data the Unknown bucket
-    // cannot carry (the deferred off-chain-exchange variant would).
+    // The decimal `amount` + L1 `destination` now decode into a structured
+    // hyperliquid_core::hl_usd_send (the off-chain-exchange variant the old note
+    // deferred now exists), so a policy can scope on destination / amount.
     let message = json!({
         "hyperliquidChain": "Mainnet",
         "destination": "0x00000000000000000000000000000000deadbeef",
@@ -6428,12 +6317,14 @@ fn b3_hl_usd_send_routes_to_unknown() {
 
     let out = declarative_route_typed_data_v3_json(input);
     let parsed: Value = serde_json::from_str(&out).unwrap();
-    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/usd-send@1.0.0", HL_MAINNET);
+    let body = assert_hl_structured(&parsed, "hyperliquid/rest/usd-send@1.0.0", HL_MAINNET, "hl_usd_send");
+    assert_eq!(body["destination"], "0x00000000000000000000000000000000deadbeef", "{parsed}");
+    assert_eq!(body["amount"], "100.0", "{parsed}");
 }
 
-// b3.tokenDelegate — validator:address + wei:uint64 + isUndelegate:bool mix.
+// b3.tokenDelegate — validator:address + wei + isUndelegate → structured hl_token_delegate.
 #[test]
-fn b3_hl_token_delegate_routes_to_unknown() {
+fn b3_hl_token_delegate_routes_to_structured() {
     let install = install_ok(HL_REST_TOKEN_DELEGATE);
     assert_eq!(
         install["data"]["bundle_id"],
@@ -6443,7 +6334,7 @@ fn b3_hl_token_delegate_routes_to_unknown() {
     let message = json!({
         "hyperliquidChain": "Mainnet",
         "validator": "0x00000000000000000000000000000000cafef00d",
-        "wei": 5_000_000_000_u64,
+        "wei": "5000000000",
         "isUndelegate": false,
         "nonce": 1_700_000_000_u64
     });
@@ -6451,7 +6342,11 @@ fn b3_hl_token_delegate_routes_to_unknown() {
 
     let out = declarative_route_typed_data_v3_json(input);
     let parsed: Value = serde_json::from_str(&out).unwrap();
-    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/token-delegate@1.0.0", HL_MAINNET);
+    let body =
+        assert_hl_structured(&parsed, "hyperliquid/rest/token-delegate@1.0.0", HL_MAINNET, "hl_token_delegate");
+    assert_eq!(body["validator"], "0x00000000000000000000000000000000cafef00d", "{parsed}");
+    assert_eq!(body["is_undelegate"], false, "{parsed}");
+    assert_eq!(body["wei"], "5000000000", "{parsed}");
 }
 
 // b3.approveAgent — agentAddress:address maps to protocol permission. D9: SDK
@@ -6558,10 +6453,10 @@ fn b3_hl_approve_builder_fee_routes_to_permission() {
     assert_eq!(body["is_authorized"], true, "{parsed}");
 }
 
-// b3.spotSend — adds an L1 `token` string. Also exercises the TESTNET chain
-// (421614) to prove the second `chain_to_addresses` entry installs + routes.
+// b3.spotSend — adds an L1 `token` string → structured hl_spot_send. Also
+// exercises the TESTNET chain (421614) to prove the 2nd chain_to_addresses entry routes.
 #[test]
-fn b3_hl_spot_send_routes_to_unknown_testnet() {
+fn b3_hl_spot_send_routes_to_structured_testnet() {
     let install = install_ok(HL_REST_SPOT_SEND);
     assert_eq!(
         install["data"]["bundle_id"],
@@ -6579,5 +6474,8 @@ fn b3_hl_spot_send_routes_to_unknown_testnet() {
 
     let out = declarative_route_typed_data_v3_json(input);
     let parsed: Value = serde_json::from_str(&out).unwrap();
-    assert_hl_best_effort_unknown(&parsed, "hyperliquid/rest/spot-send@1.0.0", 421_614);
+    let body = assert_hl_structured(&parsed, "hyperliquid/rest/spot-send@1.0.0", 421_614, "hl_spot_send");
+    assert_eq!(body["destination"], "0x00000000000000000000000000000000deadbeef", "{parsed}");
+    assert_eq!(body["token"], "PURR:0xc1fb593aeffbeb02f85e0b7c0f6f3b8a7e7f7e7e", "{parsed}");
+    assert_eq!(body["amount"], "42.5", "{parsed}");
 }

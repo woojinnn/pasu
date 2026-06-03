@@ -562,6 +562,181 @@
           "value": "userSetAbstraction"
         }
       ]
+    },
+    {
+      "intent": "WHYPE deposit() — wrap native HYPE (real HyperEVM tx)",
+      "expect": "pass",
+      "expect_domain": "token",
+      "expect_action": "wrap_native",
+      "chain_id": 999,
+      "tx_hash": "0x38e5fa1aced98d0d41be614b4f3b11a7a3024a6b523c2edbe5e32db3325373f0",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5555555555555555555555555555555555555555",
+            "value": "9200000000000000000",
+            "data": "0xd0e30db0"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "wrap_native"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x5555555555555555555555555555555555555555"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "9200000000000000000"
+        }
+      ]
+    },
+    {
+      "intent": "WHYPE withdraw(wad) — unwrap to native HYPE (real HyperEVM tx)",
+      "expect": "pass",
+      "expect_domain": "token",
+      "expect_action": "unwrap_native",
+      "chain_id": 999,
+      "tx_hash": "0xc8755e412eb3f6f94152fae7118f932432e393d389ce4da03e39f1de7cb1e4f8",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x5555555555555555555555555555555555555555",
+            "value": "0",
+            "data": "0x2e1a7d4d000000000000000000000000000000000000000000000004e30760ae9dbabb6b"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "unwrap_native"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x4e30760ae9dbabb6b"
+        }
+      ]
+    },
+    {
+      "intent": "CoreWriter sendRawAction action_id=13 sendAsset (real, 68% of CoreWriter)",
+      "expect": "pass",
+      "expect_domain": "hyperliquid_core",
+      "expect_action": "hl_unknown",
+      "chain_id": 999,
+      "tx_hash": "0x7521f64455653b5edf7f033fbbf533a834be34c9d15af5fbf5bc93dfd4160bee",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3333333333333333333333333333333333333333",
+            "value": "0",
+            "data": "0x17938e13000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000c40100000d0000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffff00000000000000000000000000000000000000000000000000000000ffffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e75941edc8800000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "hyperliquid_core"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "hl_unknown"
+        },
+        {
+          "path": "$.data.actions[0].body.action_type",
+          "op": "equals",
+          "value": "sendAsset"
+        }
+      ]
+    },
+    {
+      "intent": "CoreWriter sendRawAction action_id=6 spotSend (real, 19% of CoreWriter)",
+      "expect": "pass",
+      "expect_domain": "hyperliquid_core",
+      "expect_action": "hl_unknown",
+      "chain_id": 999,
+      "tx_hash": "0x5a8b961a72e1e58279071c1c9b02678ebb0a3b6ab11b8b72027772ce2108a0db",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3333333333333333333333333333333333333333",
+            "value": "0",
+            "data": "0x17938e130000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000006401000006000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000024f2184400000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "hyperliquid_core"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "hl_unknown"
+        },
+        {
+          "path": "$.data.actions[0].body.action_type",
+          "op": "equals",
+          "value": "spotSend"
+        }
+      ]
+    },
+    {
+      "intent": "CoreWriter sendRawAction action_id=2 vaultTransfer (real)",
+      "expect": "pass",
+      "expect_domain": "hyperliquid_core",
+      "expect_action": "hl_unknown",
+      "chain_id": 999,
+      "tx_hash": "0x495bb23ac3bc7a39f3e3fbb25fd018b1dd223f9ed22674722a0b0ed1f82fd0d4",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3333333333333333333333333333333333333333",
+            "value": "0",
+            "data": "0x17938e130000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000006401000002000000000000000000000000dfc24b077bc1425ad1dea75bcb6f8158e10df303000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004c4b4000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "hyperliquid_core"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "hl_unknown"
+        },
+        {
+          "path": "$.data.actions[0].body.action_type",
+          "op": "equals",
+          "value": "vaultTransfer"
+        }
+      ]
     }
   ]
 }
