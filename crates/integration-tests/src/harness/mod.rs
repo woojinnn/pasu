@@ -36,6 +36,7 @@ pub mod route;
 pub mod semantic;
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use anyhow::Result;
 
@@ -86,13 +87,16 @@ pub fn run_synthetic_all_filtered(
 }
 
 fn filter_surface(
-    mut surface: adapters::RoutableSurface,
+    surface: Arc<adapters::RoutableSurface>,
     filter: Option<&str>,
-) -> adapters::RoutableSurface {
+) -> Arc<adapters::RoutableSurface> {
     let Some(filter) = filter else {
         return surface;
     };
+    // Only the (rare) protocol-scoped fuzz path clones the shared surface to
+    // prune it; the common unfiltered path returns the cached `Arc` untouched.
     let filter = filter.to_ascii_lowercase();
+    let mut surface = (*surface).clone();
     surface.calls.retain(|c| {
         c.source_callkey.contains(&filter) || c.bundle_id.to_ascii_lowercase().contains(&filter)
     });
@@ -106,7 +110,7 @@ fn filter_surface(
         surface.calls.iter().any(|c| c.bundle_id == *id)
             || surface.typed.iter().any(|t| t.bundle_id == *id)
     });
-    surface
+    Arc::new(surface)
 }
 
 /// Replay one `single_emit` callkey at a fixed seed, returning the raw route

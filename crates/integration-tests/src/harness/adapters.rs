@@ -11,9 +11,11 @@
 //! auto-enumerate), so installs are de-duplicated by `bundle_id` while the
 //! routable surface is built per-callkey for honest coverage accounting.
 
-use std::collections::{BTreeMap, HashSet};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use anyhow::{anyhow, bail, Context, Result};
 use serde_json::{Map, Value};
@@ -85,7 +87,10 @@ pub struct RoutableCall {
     /// Top-level ABI inputs of `abi_fragment.abi`.
     pub abi_inputs: Vec<AbiInput>,
     /// Full `emit` block (per-opcode / per-action / array source descriptors).
-    pub emit: Value,
+    /// `Arc`-shared across every callkey of the same bundle: the surface holds
+    /// ~53k callkeys but only ~890 distinct bundles, so sharing the (often large)
+    /// emit template keeps the cached surface small.
+    pub emit: Arc<Value>,
     /// Whether the bundle also carries `match.typed_data` (a sign-primary flow).
     /// Such entries are routed via the typed-data fuzzer, not the calldata one:
     /// their callkey selector is often a synthetic sentinel and their body uses
@@ -462,25 +467,125 @@ fn bundle_from_index_entry(index_root: &Path, entry: &Value, path: &Path) -> Res
     bail!("no `bundle` field in {}", path.display())
 }
 
-/// Load every local index entry, install unique bundles into the WASM
-/// thread-local, and build the routable surface.
-///
-/// **Must run on the same OS thread that subsequently routes** (the WASM v3
-/// install state is thread-local).
-pub fn load_and_install() -> Result<RoutableSurface> {
+// ───────────────────────────────────────────────────────────────────────────
+// Surface cache — build once, share an `Arc`
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Building the routable surface reads the whole committed index (~53k
+// `by-callkey` files) and is byte-identical across every test. libtest runs each
+// `#[test]` on its own thread, so the previous "rebuild on every call" made up to
+// ~`num_cpus` of these multi-GB builds run concurrently → ~49 GB RSS. We now
+// build once per `LoadOptions`, cache an `Arc<RoutableSurface>`, and only replay
+// the (cheap, pre-serialized) bundle install into each thread's WASM thread-local.
+
+/// Cache key = the `LoadOptions` fields that change the built surface.
+type LoadKey = (Option<String>, bool, bool);
+
+#[derive(Clone)]
+struct CachedSurface {
+    surface: Arc<RoutableSurface>,
+    /// `(bundle_id, bundle_json)` for every unique bundle, replayed into each
+    /// thread's `DECLARATIVE_V3_STATE`. libtest gives every test a fresh thread,
+    /// so the thread-local install can't be shared — but this is ~890 cheap
+    /// inserts, next to the file load which is now done once and cached.
+    install_list: Arc<Vec<(String, String)>>,
+}
+
+static SURFACE_CACHE: OnceLock<Mutex<HashMap<LoadKey, CachedSurface>>> = OnceLock::new();
+
+thread_local! {
+    /// Load keys whose bundles are already installed into THIS thread's WASM
+    /// thread-local, so repeated calls on one thread don't reinstall.
+    static INSTALLED_KEYS: RefCell<HashSet<LoadKey>> = RefCell::new(HashSet::new());
+}
+
+fn load_key(options: &LoadOptions) -> LoadKey {
+    (
+        options.filter.clone(),
+        options.representative_source_refs,
+        options.include_typed_data,
+    )
+}
+
+/// Load + install the full local surface with default options.
+pub fn load_and_install() -> Result<Arc<RoutableSurface>> {
     load_and_install_with_options(LoadOptions::from_env())
 }
 
-/// Load and install a filtered/representative surface subset.
-pub fn load_and_install_with_options(options: LoadOptions) -> Result<RoutableSurface> {
+/// Load + install a filtered/representative surface subset.
+///
+/// The expensive surface build is memoized process-wide. The first caller builds
+/// it (holding the cache lock so concurrent first-callers serialize on one build
+/// rather than each allocating a multi-GB copy); every later call — and every
+/// other test thread — gets the cached `Arc` and only replays the bundle install
+/// into its own WASM thread-local.
+pub fn load_and_install_with_options(options: LoadOptions) -> Result<Arc<RoutableSurface>> {
+    let key = load_key(&options);
+    let cache = SURFACE_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+
+    let mut built_here = false;
+    let cached = {
+        // Recover the guard even if a prior build panicked while holding it — the
+        // cached data is still valid, and a poisoned harness mutex should not turn
+        // every later test into a panic.
+        let mut guard = cache
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(cached) = guard.get(&key) {
+            cached.clone()
+        } else {
+            let cached = build_surface(options)?;
+            guard.insert(key.clone(), cached.clone());
+            built_here = true;
+            cached
+        }
+    };
+
+    // `build_surface` already installed into the building thread; any *other*
+    // thread that gets a cache hit must replay the install into its own
+    // thread-local once (libtest spawns a fresh thread per test).
+    INSTALLED_KEYS.with(|installed| {
+        let first_on_thread = installed.borrow_mut().insert(key.clone());
+        if first_on_thread && !built_here {
+            replay_install(&cached.install_list);
+        }
+    });
+
+    Ok(cached.surface)
+}
+
+/// (Re)install every cached bundle into the calling thread's `DECLARATIVE_V3_STATE`.
+/// Installs are idempotent (replace by `bundle_id`); failures were already
+/// recorded on the building thread, so they are ignored here.
+fn replay_install(install_list: &[(String, String)]) {
+    for (_bundle_id, bundle_json) in install_list {
+        let _ = policy_engine_wasm::declarative_install_v3_json(bundle_json.clone());
+    }
+}
+
+/// Per-bundle decode fields, shared by `Arc`/clone across every callkey of that
+/// bundle so the surface does not carry one copy per materialized callkey.
+struct BundleFields {
+    strategy: Strategy,
+    abi_inputs: Vec<AbiInput>,
+    emit: Arc<Value>,
+    has_typed_data: bool,
+}
+
+/// Read the local index and build the routable surface once, installing every
+/// unique bundle into the calling thread's WASM thread-local.
+fn build_surface(options: LoadOptions) -> Result<CachedSurface> {
     let index_root = registry_index_root()?;
     let by_callkey = index_root.join("by-callkey");
     let by_typed = index_root.join("by-typed-data");
 
-    // Pass 1: collect unique bundles (first-wins) for de-duplicated install.
+    // Pass 1: collect unique bundles (first-wins) + per-callkey coordinates.
+    // Only the `bundle_id` is kept per callkey (NOT a full bundle clone — that
+    // clone over ~53k callkeys was the dominant allocation); the per-bundle
+    // decode fields are built once below and shared.
     let callkey_files = sorted_json_files(&by_callkey)?;
     let mut bundles: BTreeMap<String, Value> = BTreeMap::new();
-    let mut parsed_calls: Vec<(String, u64, String, String, Value, Option<String>)> = Vec::new();
+    let mut parsed_calls: Vec<(String, u64, String, String, Option<String>)> = Vec::new();
     let mut seen_source_ref_keys = HashSet::new();
 
     for path in &callkey_files {
@@ -515,58 +620,12 @@ pub fn load_and_install_with_options(options: LoadOptions) -> Result<RoutableSur
         let Some((chain, to, selector)) = parse_callkey_stem(stem) else {
             bail!("callkey filename not <chain>__<addr>__<selector>: {stem}");
         };
-        bundles
-            .entry(bundle_id.clone())
-            .or_insert_with(|| bundle.clone());
-        parsed_calls.push((bundle_id, chain, to, selector, bundle, source_ref_key));
+        bundles.entry(bundle_id.clone()).or_insert(bundle);
+        parsed_calls.push((bundle_id, chain, to, selector, source_ref_key));
     }
 
-    // Pass 2: install each unique bundle exactly once.
-    let mut installed_bundle_ids = Vec::new();
-    let mut install_failures = Vec::new();
-    for (bundle_id, bundle) in &bundles {
-        let out = policy_engine_wasm::declarative_install_v3_json(bundle.to_string());
-        let env: Value = serde_json::from_str(&out)
-            .with_context(|| format!("install envelope parse for {bundle_id}"))?;
-        if env.get("ok").and_then(Value::as_bool) == Some(true) {
-            installed_bundle_ids.push(bundle_id.clone());
-        } else {
-            install_failures.push((
-                bundle_id.clone(),
-                env.get("error")
-                    .map_or_else(|| "unknown".to_owned(), std::string::ToString::to_string),
-            ));
-        }
-    }
-
-    // Build the per-callkey routable surface.
-    let total_callkeys = parsed_calls.len();
-    let calls = parsed_calls
-        .into_iter()
-        .map(|(bundle_id, chain, to, selector, bundle, source_ref_key)| {
-            let emit = bundle.get("emit").cloned().unwrap_or(Value::Null);
-            let has_typed_data = bundle
-                .get("match")
-                .and_then(|m| m.get("typed_data"))
-                .is_some();
-            let source_callkey = format!("{chain}__{to}__{selector}");
-            RoutableCall {
-                chain_id: chain,
-                to,
-                selector,
-                bundle_id,
-                strategy: strategy_of(&bundle),
-                abi_inputs: parse_abi_inputs(&bundle),
-                emit,
-                has_typed_data,
-                source_callkey,
-                source_ref_key,
-            }
-        })
-        .collect();
-
-    // Typed-data surface (bundles are already installed above when they also
-    // appear under by-callkey; install any typed-only bundles here too).
+    // Typed-data surface — collect entries and fold any typed-only bundles into
+    // the unique-bundle set so they are installed (and replayed) too.
     let mut typed = Vec::new();
     let mut total_typed_keys = 0;
     if options.include_typed_data && by_typed.is_dir() {
@@ -582,19 +641,6 @@ pub fn load_and_install_with_options(options: LoadOptions) -> Result<RoutableSur
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_owned();
-            if !bundles.contains_key(&bundle_id) {
-                let out = policy_engine_wasm::declarative_install_v3_json(bundle.to_string());
-                let env: Value = serde_json::from_str(&out).unwrap_or(Value::Null);
-                if env.get("ok").and_then(Value::as_bool) == Some(true) {
-                    installed_bundle_ids.push(bundle_id.clone());
-                } else {
-                    install_failures.push((
-                        bundle_id.clone(),
-                        env.get("error")
-                            .map_or_else(|| "unknown".to_owned(), std::string::ToString::to_string),
-                    ));
-                }
-            }
             let td = bundle.get("match").and_then(|m| m.get("typed_data"));
             let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
             typed.push(RoutableTypedData {
@@ -621,7 +667,7 @@ pub fn load_and_install_with_options(options: LoadOptions) -> Result<RoutableSur
                     .and_then(|t| t.get("domain_name"))
                     .and_then(Value::as_str)
                     .map(ToOwned::to_owned),
-                bundle_id,
+                bundle_id: bundle_id.clone(),
                 strategy: strategy_of(&bundle),
                 types: td
                     .and_then(|t| t.get("types"))
@@ -635,18 +681,92 @@ pub fn load_and_install_with_options(options: LoadOptions) -> Result<RoutableSur
                 emit: bundle.get("emit").cloned().unwrap_or(Value::Null),
                 source_key: stem.to_owned(),
             });
+            bundles.entry(bundle_id).or_insert(bundle);
         }
     }
+
+    // Build per-bundle decode fields once (shared by every callkey of the bundle).
+    let bundle_fields: HashMap<String, BundleFields> = bundles
+        .iter()
+        .map(|(id, bundle)| {
+            (
+                id.clone(),
+                BundleFields {
+                    strategy: strategy_of(bundle),
+                    abi_inputs: parse_abi_inputs(bundle),
+                    emit: Arc::new(bundle.get("emit").cloned().unwrap_or(Value::Null)),
+                    has_typed_data: bundle
+                        .get("match")
+                        .and_then(|m| m.get("typed_data"))
+                        .is_some(),
+                },
+            )
+        })
+        .collect();
+
+    // Install every unique bundle into this (building) thread, recording the
+    // install list (for per-thread replay) and the install outcomes.
+    let mut installed_bundle_ids = Vec::new();
+    let mut install_failures = Vec::new();
+    let mut install_list: Vec<(String, String)> = Vec::with_capacity(bundles.len());
+    for (bundle_id, bundle) in &bundles {
+        let json = bundle.to_string();
+        let out = policy_engine_wasm::declarative_install_v3_json(json.clone());
+        let env: Value = serde_json::from_str(&out)
+            .with_context(|| format!("install envelope parse for {bundle_id}"))?;
+        if env.get("ok").and_then(Value::as_bool) == Some(true) {
+            installed_bundle_ids.push(bundle_id.clone());
+        } else {
+            install_failures.push((
+                bundle_id.clone(),
+                env.get("error")
+                    .map_or_else(|| "unknown".to_owned(), std::string::ToString::to_string),
+            ));
+        }
+        install_list.push((bundle_id.clone(), json));
+    }
+
+    // Build the per-callkey routable surface, sharing each bundle's decode fields.
+    let total_callkeys = parsed_calls.len();
+    let calls = parsed_calls
+        .into_iter()
+        .map(|(bundle_id, chain, to, selector, source_ref_key)| {
+            // Every callkey's bundle_id came from `bundles`, which `bundle_fields`
+            // is built from, so the lookup cannot miss — propagate instead of
+            // panicking if that invariant is ever broken.
+            let fields = bundle_fields.get(&bundle_id).ok_or_else(|| {
+                anyhow!("callkey bundle_id {bundle_id} missing from bundle_fields")
+            })?;
+            let source_callkey = format!("{chain}__{to}__{selector}");
+            Ok(RoutableCall {
+                chain_id: chain,
+                to,
+                selector,
+                bundle_id,
+                strategy: fields.strategy,
+                abi_inputs: fields.abi_inputs.clone(),
+                emit: Arc::clone(&fields.emit),
+                has_typed_data: fields.has_typed_data,
+                source_callkey,
+                source_ref_key,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
 
     installed_bundle_ids.sort();
     installed_bundle_ids.dedup();
 
-    Ok(RoutableSurface {
+    let surface = RoutableSurface {
         calls,
         typed,
         installed_bundle_ids,
         total_callkeys,
         total_typed_keys,
         install_failures,
+    };
+
+    Ok(CachedSurface {
+        surface: Arc::new(surface),
+        install_list: Arc::new(install_list),
     })
 }
