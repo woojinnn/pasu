@@ -22,7 +22,7 @@ use policy_state::primitives::Time;
 use policy_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
 use policy_transition::action::perp::PerpAccountState;
 
-use crate::config::HyperliquidConfig;
+use crate::config::{BuilderDexPolicy, HyperliquidConfig};
 use crate::error::SyncError;
 use crate::walker::{ActionSlot, FieldLocation};
 
@@ -34,6 +34,9 @@ pub struct HyperliquidFetcher {
     client: reqwest::Client,
     base_url: String,
     meta_ttl_secs: u64,
+    /// When `true`, `fetch_hl_core` fans out across native + every builder
+    /// (HIP-3) perp dex from `perpDexs`; when `false`, native dex only.
+    builder_dex_all: bool,
     meta_cache: Mutex<TtlCache<String, Value>>, // key = dex ("" = native)
     dexs_cache: Mutex<TtlCache<(), Vec<String>>>, // perpDexs list
 }
@@ -59,6 +62,7 @@ impl HyperliquidFetcher {
                 .expect("reqwest client init"),
             base_url,
             meta_ttl_secs: 600,
+            builder_dex_all: true,
             meta_cache: Mutex::new(TtlCache::new()),
             dexs_cache: Mutex::new(TtlCache::new()),
         }
@@ -68,6 +72,7 @@ impl HyperliquidFetcher {
     pub fn from_sync_config(cfg: &HyperliquidConfig) -> Self {
         let mut fetcher = Self::with_base_url(cfg.endpoint.clone());
         fetcher.meta_ttl_secs = cfg.meta_ttl_secs;
+        fetcher.builder_dex_all = cfg.builder_dex_policy == BuilderDexPolicy::All;
         fetcher
     }
 
@@ -106,9 +111,21 @@ impl HyperliquidFetcher {
             .await
     }
 
-    /// `meta` for a dex, cached for `meta_ttl_secs`. `now` is injected by the caller.
+    /// `meta` for the endpoint's configured dex, cached for `meta_ttl_secs`.
     pub async fn cached_meta(&self, endpoint: &str, now: Time) -> Result<Value, SyncError> {
-        let key = endpoint_dex(endpoint).unwrap_or_default();
+        self.cached_meta_for_dex(endpoint, endpoint_dex(endpoint).as_deref(), now)
+            .await
+    }
+
+    /// `meta` for an explicit `dex` (`None` = native), cached per dex for
+    /// `meta_ttl_secs`. `now` is injected by the caller.
+    pub async fn cached_meta_for_dex(
+        &self,
+        endpoint: &str,
+        dex: Option<&str>,
+        now: Time,
+    ) -> Result<Value, SyncError> {
+        let key = dex.unwrap_or_default().to_owned();
         let cached = self
             .meta_cache
             .lock()
@@ -117,7 +134,7 @@ impl HyperliquidFetcher {
         if let Some(v) = cached {
             return Ok(v);
         }
-        let v = self.fetch_meta(endpoint).await?;
+        let v = self.fetch_meta_for_dex(endpoint, dex).await?;
         self.meta_cache.lock().unwrap().put(key, v.clone(), now);
         Ok(v)
     }
@@ -141,29 +158,74 @@ impl HyperliquidFetcher {
         Ok(v)
     }
 
-    /// Best-effort **core** fetch for the **native** dex (no perp-dex fan-out).
-    /// Returns `(account, fresh, errors)`; `fresh` tells the caller which core
-    /// domains to overwrite vs preserve.
+    /// Best-effort **core** fetch across the native dex plus every builder
+    /// (HIP-3) perp dex (when `builder_dex_all`). Each dex is atomic best-effort:
+    /// a failed dex is omitted from `fresh_dexs`, so [`HlAccount::merge_core`]
+    /// preserves that dex's prior positions / orders / leverage / margin. Spot is
+    /// dex-independent; `perp_usdc` is re-derived from the merged per-dex margins.
     pub async fn fetch_hl_core(
         &self,
         endpoint: &str,
         user: &Address,
         now: Time,
     ) -> (HlAccount, CoreFresh, Vec<String>) {
-        let meta = match self.cached_meta(endpoint, now).await {
-            Ok(m) => m,
-            Err(e) => {
-                return (
-                    HlAccount::default(),
-                    CoreFresh::default(),
-                    vec![format!("meta: {e}")],
-                );
+        let mut acct = HlAccount::default();
+        let mut fresh_dexs: Vec<Option<String>> = Vec::new();
+        let mut errors = Vec::new();
+
+        // Native dex (None) + builder dexs from the cached `perpDexs` list.
+        let mut dexs: Vec<Option<String>> = vec![None];
+        if self.builder_dex_all {
+            match self.cached_perp_dexs(endpoint, now).await {
+                Ok(list) => dexs.extend(list.into_iter().map(Some)),
+                Err(e) => errors.push(format!("perpDexs: {e}")),
             }
-        };
-        let clearinghouse = self.fetch_clearinghouse_state(endpoint, user).await;
-        let spot = self.fetch_spot_clearinghouse_state(endpoint, user).await;
-        let open_orders = self.fetch_open_orders(endpoint, user).await;
-        assemble_core(clearinghouse, spot, open_orders, &meta)
+        }
+
+        for dex in &dexs {
+            let d = dex.as_deref();
+            let label = d.unwrap_or("native");
+            let meta = match self.cached_meta_for_dex(endpoint, d, now).await {
+                Ok(m) => m,
+                Err(e) => {
+                    errors.push(format!("{label} meta: {e}"));
+                    continue;
+                }
+            };
+            let clearinghouse = self.fetch_clearinghouse_state_for_dex(endpoint, user, d).await;
+            let open_orders = self.fetch_open_orders_for_dex(endpoint, user, d).await;
+            let (frag, ok, mut errs) = assemble_core_dex(d, clearinghouse, open_orders, &meta);
+            errors.append(&mut errs);
+            if ok {
+                acct.positions.extend(frag.positions);
+                acct.open_orders.extend(frag.open_orders);
+                acct.leverage_settings.extend(frag.leverage_settings);
+                acct.perp_dex_margins.extend(frag.perp_dex_margins);
+                fresh_dexs.push(dex.clone());
+            }
+        }
+
+        // Spot balances are dex-independent (one `spotClearinghouseState` call).
+        let mut spot_fresh = false;
+        match self.fetch_spot_clearinghouse_state(endpoint, user).await {
+            Ok(v) => match parse_hl_spot_balances(&v) {
+                Ok(b) => {
+                    acct.spot_balances = b;
+                    spot_fresh = true;
+                }
+                Err(e) => errors.push(format!("spot parse: {e}")),
+            },
+            Err(e) => errors.push(format!("spot: {e}")),
+        }
+
+        (
+            acct,
+            CoreFresh {
+                fresh_dexs,
+                spot: spot_fresh,
+            },
+            errors,
+        )
     }
 
     /// Best-effort **long-tail** fetch (staking / vaults / borrow-lend / agents).
@@ -485,60 +547,45 @@ pub(crate) enum FeeSide {
     Taker,
 }
 
-/// Assemble the **core** `HlAccount` from already-fetched parts, best-effort.
-/// `clearinghouse` is the anchor (no `perp_usdc` / positions / leverage without
-/// it); `spot` and `open_orders` are additive. Returns `(account, fresh, errors)`
-/// where `fresh` marks exactly the domains that fetched **and** parsed OK, so the
-/// caller's `merge_core` overwrites only those and preserves the rest.
-pub(crate) fn assemble_core(
+/// Assemble **one dex's** core contribution from its already-fetched parts.
+/// Returns `(fragment, fresh, errors)`. `fresh` is `true` iff the dex's
+/// `clearinghouse` fetched **and** parsed OK (orders are best-effort within the
+/// dex — a failed `openOrders` yields empty orders but still a fresh dex). When
+/// `fresh`, the caller marks this dex authoritative and `merge_core` replaces its
+/// prior entries; otherwise the dex is preserved. The fragment carries only this
+/// dex's positions / orders / leverage / one `perp_dex_margins` entry.
+pub(crate) fn assemble_core_dex(
+    dex: Option<&str>,
     clearinghouse: Result<Value, SyncError>,
-    spot: Result<Value, SyncError>,
     open_orders: Result<Value, SyncError>,
     meta: &Value,
-) -> (HlAccount, CoreFresh, Vec<String>) {
+) -> (HlAccount, bool, Vec<String>) {
+    let label = dex.unwrap_or("native");
     let mut errors = Vec::new();
-    let mut fresh = CoreFresh::default();
-    let empty_agents = Value::Array(Vec::new());
 
     let clearinghouse = match clearinghouse {
         Ok(v) => v,
         Err(e) => {
-            errors.push(format!("clearinghouse: {e}"));
-            // No anchor → all-false mask → caller preserves all core fields.
-            return (HlAccount::default(), fresh, errors);
+            errors.push(format!("{label} clearinghouse: {e}"));
+            // No anchor → dex not fresh → caller preserves this dex's prior state.
+            return (HlAccount::default(), false, errors);
         }
     };
-    let orders_val = match open_orders {
+    let orders = match open_orders {
         Ok(v) => v,
         Err(e) => {
-            errors.push(format!("open_orders: {e}"));
+            errors.push(format!("{label} open_orders: {e}"));
             Value::Array(Vec::new())
         }
     };
-    let mut account = match parse_account_snapshot(&clearinghouse, &orders_val, &empty_agents, meta, None)
-    {
-        Ok(a) => {
-            // Native dex bundle parsed → native is fresh. (Task 4 generalizes this
-            // to per-builder-dex fan-out via `assemble_core_dex`.)
-            fresh.fresh_dexs.push(None);
-            a
-        }
+    let empty_agents = Value::Array(Vec::new());
+    match parse_account_snapshot(&clearinghouse, &orders, &empty_agents, meta, dex) {
+        Ok(a) => (a, true, errors),
         Err(e) => {
-            errors.push(format!("parse core: {e}"));
-            return (HlAccount::default(), CoreFresh::default(), errors);
+            errors.push(format!("{label} parse: {e}"));
+            (HlAccount::default(), false, errors)
         }
-    };
-    match spot {
-        Ok(v) => match parse_hl_spot_balances(&v) {
-            Ok(b) => {
-                account.spot_balances = b;
-                fresh.spot = true;
-            }
-            Err(e) => errors.push(format!("spot parse: {e}")),
-        },
-        Err(e) => errors.push(format!("spot: {e}")),
     }
-    (account, fresh, errors)
 }
 
 /// Assemble the **long-tail** fields best-effort. Each domain is independent; a
@@ -1585,25 +1632,26 @@ mod tests {
     use policy_state::Decimal;
 
     #[test]
-    fn assemble_core_is_best_effort() {
-        // clearinghouse OK, spot FAILS, openOrders OK, meta OK.
-        let clearinghouse = serde_json::json!({ "withdrawable": "600.5", "assetPositions": [] });
-        let open_orders = serde_json::json!([]);
-        let meta = serde_json::json!({ "universe": [] });
-        let spot_err: Result<Value, SyncError> = Err(SyncError::FetchFailed {
-            source_id: "hyperliquid".into(),
-            reason: "boom".into(),
-        });
+    fn assemble_core_dex_marks_fresh_on_success() {
+        let ch = json!({ "withdrawable": "0", "marginSummary": { "accountValue": "0" }, "assetPositions": [] });
+        let meta = json!({ "universe": [] });
+        let (acct, fresh, errors) = assemble_core_dex(Some("xyz"), Ok(ch), Ok(json!([])), &meta);
+        assert!(fresh); // dex bundle parsed OK → caller marks xyz fresh
+        assert!(errors.is_empty());
+        assert_eq!(acct.perp_dex_margins.len(), 1);
+        assert_eq!(acct.perp_dex_margins[0].dex.as_deref(), Some("xyz"));
+    }
 
-        let (acct, fresh, errors) =
-            assemble_core(Ok(clearinghouse), spot_err, Ok(open_orders), &meta);
-        // core present despite spot failure
-        assert_eq!(acct.perp_usdc, Some(Decimal::new("600.5")));
-        assert!(acct.spot_balances.is_empty()); // failed → left empty
-        assert!(fresh.fresh_dexs.contains(&None)); // native dex bundle fresh
-        assert!(!fresh.spot); // spot NOT fresh → caller preserves prior value
-        assert_eq!(errors.len(), 1); // one recorded error (spot)
-        assert!(errors[0].contains("spot"));
+    #[test]
+    fn assemble_core_dex_preserves_on_clearinghouse_failure() {
+        // clearinghouse fetch FAILS → dex NOT fresh → caller preserves prior xyz
+        // positions/margin (the resilience guarantee), and an error is recorded.
+        let meta = json!({ "universe": [] });
+        let ch_err: Result<Value, SyncError> = Err(sync_error("boom"));
+        let (acct, fresh, errors) = assemble_core_dex(Some("xyz"), ch_err, Ok(json!([])), &meta);
+        assert!(!fresh);
+        assert!(acct.perp_dex_margins.is_empty());
+        assert!(errors.iter().any(|e| e.contains("xyz clearinghouse")));
     }
 
     #[test]
