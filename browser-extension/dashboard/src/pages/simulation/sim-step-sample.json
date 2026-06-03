@@ -1,0 +1,106 @@
+{
+  "state": {
+    "wallet_id": {
+      "address": "0x000000000000000000000000000000000000a01c",
+      "chains": [
+        "eip155:1"
+      ]
+    },
+    "tokens": [
+      [
+        {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "key": {
+            "standard": "erc20",
+            "chain": "eip155:1",
+            "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+          },
+          "kind": {
+            "kind": "base",
+            "category": {
+              "kind": "stable"
+            },
+            "peg_to": {
+              "kind": "fiat",
+              "usd": null
+            }
+          },
+          "symbol": "USDC",
+          "decimals": 6,
+          "balance": {
+            "form": "fungible",
+            "amount": "0x3b9aca00"
+          },
+          "committed": {
+            "form": "fungible",
+            "amount": "0x0"
+          },
+          "last_synced_at": 1000000,
+          "primitives_source": {
+            "kind": "onchain_view",
+            "chain": "eip155:1",
+            "contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "function": "balanceOf(address)",
+            "decoder_id": "erc20_balance"
+          }
+        }
+      ]
+    ],
+    "approvals": {
+      "erc20": [],
+      "set_for_all": [],
+      "permit2": []
+    },
+    "positions": [],
+    "pending": [],
+    "block_heights": {}
+  },
+  "action": {
+    "meta": {
+      "submitted_at": 1738000000,
+      "submitter": "0x000000000000000000000000000000000000a01c",
+      "nature": {
+        "kind": "onchain_tx",
+        "chain": "eip155:1",
+        "nonce": 0,
+        "gas_limit": "0x186a0",
+        "gas_price": {
+          "value": "0x4a817c800",
+          "source": {
+            "kind": "onchain_view",
+            "chain": "eip155:1",
+            "contract": "0x0000000000000000000000000000000000000000",
+            "function": "gasPrice()",
+            "decoder_id": "stub"
+          },
+          "synced_at": 1738000000
+        },
+        "value": "0x0"
+      }
+    },
+    "body": {
+      "domain": "token",
+      "action": "erc20_transfer",
+      "token": {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        }
+      },
+      "recipient": "0x000000000000000000000000000000000000beef",
+      "amount": "0xee6b280"
+    }
+  },
+  "ctx": {
+    "chain": "eip155:1",
+    "now": 1738000000,
+    "action_index": 0,
+    "request_kind": "transaction",
+    "simulation": "preview"
+  }
+}

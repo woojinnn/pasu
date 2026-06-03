@@ -47,6 +47,7 @@ import { PolicyPanel } from "./simulation/PolicyPanel";
 import { inferPolicyRefs } from "./simulation/policy-refs";
 import { nameFromPolicy, severityFromCedar } from "./editor/policy-meta";
 import { DEFAULT_INITIAL_STATE, buildTimeline } from "./simulation/state-mock";
+import { WasmStepProbe } from "./simulation/WasmStepProbe";
 
 import "./simulation.css";
 
@@ -314,6 +315,8 @@ export function SimulationPage() {
           flashPolicyId={flashPolicyId}
         />
       </div>
+
+      <WasmStepProbe />
     </>
   );
 }
