@@ -171,11 +171,27 @@ pub struct VenuesConfig {
     /// Hyperliquid REST API.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hyperliquid: Option<HyperliquidConfig>,
+    /// Uniswap Trade API (UniswapX order status).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uniswap: Option<UniswapConfig>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HyperliquidConfig {
     pub endpoint: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UniswapConfig {
+    /// Base URL for the Trade API, e.g. `https://trade-api.gateway.uniswap.org/v1`.
+    pub orders_endpoint: String,
+    /// `x-api-key` value. `${VAR}` is expanded from the environment by
+    /// `SyncConfig::load_*` before this struct is built.
+    pub api_key: String,
+    /// Chains to poll (CAIP-2). The numeric `chainId` query param is derived
+    /// from each entry's `eip155:<n>` suffix.
+    #[serde(default)]
+    pub chains: Vec<ChainId>,
 }
 
 // ---------------------------------------------------------------------------
@@ -275,6 +291,25 @@ endpoint = "https://api.hyperliquid.xyz"
         assert!(cfg.oracles.chainlink.chains.is_empty());
         assert!(cfg.oracles.pyth.is_none());
         assert!(cfg.venues.hyperliquid.is_none());
+    }
+
+    #[test]
+    fn parses_uniswap_venue_with_env_key() {
+        std::env::set_var("TEST_UNISWAP_KEY", "uni_secret_7");
+        let toml_text = r#"
+[venues.uniswap]
+orders_endpoint = "https://trade-api.gateway.uniswap.org/v1"
+api_key = "${TEST_UNISWAP_KEY}"
+chains = ["eip155:1"]
+"#;
+        let cfg = SyncConfig::load_str(toml_text).unwrap();
+        let uni = cfg.venues.uniswap.as_ref().unwrap();
+        assert_eq!(
+            uni.orders_endpoint,
+            "https://trade-api.gateway.uniswap.org/v1"
+        );
+        assert_eq!(uni.api_key, "uni_secret_7");
+        assert_eq!(uni.chains, vec![ChainId::ethereum_mainnet()]);
     }
 
     #[test]
