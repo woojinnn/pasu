@@ -5,6 +5,7 @@
 //! normalizing aggregate read models before their product contract settles.
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -24,8 +25,12 @@ use crate::error::{DbError, DbResult};
 /// Keep migrations as runtime files instead of using `sqlx::migrate!()`.
 /// The macro pulls in `SQLx`'s macro crate, which currently exposes optional
 /// `MySQL` dependencies to `cargo audit` even though this server is Postgres-only.
+fn migrations_dir(override_dir: Option<PathBuf>) -> PathBuf {
+    override_dir.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations"))
+}
+
 fn postgres_migrations_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations")
+    migrations_dir(std::env::var_os("POLICY_DB_MIGRATIONS_DIR").map(PathBuf::from))
 }
 
 /// A row from the `users` table.
@@ -106,7 +111,7 @@ impl PostgresGlobalDb {
     ///
     /// Returns the underlying `SQLx` error if the connection or migration fails.
     pub async fn connect(database_url: &str) -> Result<Self, SqlxError> {
-        let pool = connect_pool(database_url).await?;
+        let pool = connect_pool(database_url, 10, Duration::from_secs(10)).await?;
         let db = Self::new(pool);
         db.migrate().await?;
         Ok(db)
@@ -505,9 +510,14 @@ fn unix_now_or_default() -> i64 {
 /// # Errors
 ///
 /// Returns the underlying `SQLx` error if the pool cannot connect.
-pub async fn connect_pool(database_url: &str) -> Result<PgPool, SqlxError> {
+pub async fn connect_pool(
+    database_url: &str,
+    max_connections: u32,
+    acquire_timeout: Duration,
+) -> Result<PgPool, SqlxError> {
     PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(max_connections)
+        .acquire_timeout(acquire_timeout)
         .connect(database_url)
         .await
 }
@@ -541,7 +551,8 @@ pub fn derive_user_id(email_lower: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{derive_user_id, postgres_migrations_path};
+    use super::{derive_user_id, migrations_dir, postgres_migrations_path};
+    use std::path::PathBuf;
 
     #[test]
     fn derive_user_id_is_deterministic_and_canonical() {
@@ -557,5 +568,19 @@ mod tests {
         let initial = postgres_migrations_path().join("0001_initial.sql");
         let sql = std::fs::read_to_string(initial).expect("initial migration exists");
         assert!(sql.contains("CREATE TABLE IF NOT EXISTS users"));
+    }
+
+    #[test]
+    fn migrations_dir_uses_override_when_present() {
+        assert_eq!(
+            migrations_dir(Some(PathBuf::from("/srv/app/migrations"))),
+            PathBuf::from("/srv/app/migrations")
+        );
+    }
+
+    #[test]
+    fn migrations_dir_falls_back_to_manifest_dir() {
+        let p = migrations_dir(None);
+        assert!(p.ends_with("migrations"));
     }
 }
