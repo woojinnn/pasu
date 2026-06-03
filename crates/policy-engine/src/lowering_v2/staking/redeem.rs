@@ -38,7 +38,9 @@ mod tests {
     use policy_transition::action::staking::{RedeemAction, StakingAction};
     use policy_transition::action::ActionBody;
 
-    use super::super::test_support::{aave_safety_module_venue, assert_conforms, onchain_meta, other};
+    use super::super::test_support::{
+        aave_safety_module_venue, assert_conforms, onchain_meta, other,
+    };
 
     #[test]
     fn redeem_to_recipient_conforms() {
