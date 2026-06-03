@@ -1526,6 +1526,25 @@ fn maybe_normalize_v4_swap_params(decoded: &mut serde_json::Value, opcode_key: &
     }
 }
 
+/// Build an `Unknown` leg for a batch position the decoder could not map — an
+/// unknown opcode under the `warn` policy, or a `Call[]` leg with no installed
+/// adapter / a bare value transfer. Surfacing it (instead of dropping) lets the
+/// orchestrator warn-close a partially-decoded batch rather than evaluate — or
+/// PASS-aggregate — only the legible legs (N2/N3/K3).
+fn unknown_leg(
+    target: V3Address,
+    chain: V3ChainId,
+    calldata: String,
+    value: V3U256,
+) -> v3_action::ActionBody {
+    v3_action::ActionBody::Unknown {
+        target,
+        chain,
+        calldata,
+        value,
+    }
+}
+
 /// B.1.c.2 — recursive opcode-stream → `ActionBody::Multicall` dispatch.
 ///
 /// Loops the masked `commands_bytes` and, per opcode, dispatches the matching
@@ -1592,10 +1611,22 @@ fn dispatch_opcode_stream(
                 }
                 V3UnknownOpcodePolicy::Warn => {
                     eprintln!(
-                        "[declarative_exports] warn: unknown opcode 0x{opcode:02x} at index {i}"
+                        "[declarative_exports] warn: unknown opcode 0x{opcode:02x} at index {i} — surfacing Unknown leg (not dropping)"
                     );
+                    // N2/K3: emit an Unknown leg instead of dropping, so an
+                    // all-unknown opcode stream decodes to a Multicall of Unknown
+                    // legs (→ warn-closed) rather than an empty Multicall (→ PASS).
+                    actions.push(unknown_leg(
+                        ctx.tx_to,
+                        ctx.chain.clone(),
+                        ctx.raw_calldata.to_string(),
+                        ctx.value,
+                    ));
                     continue;
                 }
+                // `Skip` is an explicit manifest opt-in to drop — left as-is, but
+                // it is the author's responsibility (a dropped leg is invisible to
+                // policy). The DEFAULT is `Warn` above, which now surfaces Unknown.
                 V3UnknownOpcodePolicy::Skip => continue,
             }
         };
@@ -2706,11 +2737,25 @@ fn process_call_legs(
             )
         })?;
         if data_bytes.len() < 4 {
-            // A bare value-transfer leg (empty / `<4B` data) has no selector to
-            // route — skip it; the mapped legs carry the intent.
+            // A `<4B` data leg has no selector to route. If it MOVES native value
+            // (a bare ETH transfer inside the bundle) surface it as Unknown so the
+            // movement is policy-visible (N3); a zero-value poke is still dropped.
+            let leg_val_u256 = parse_v3_u256(leg_value, "multicall_call_array leg value")?;
+            if leg_val_u256 != V3U256::ZERO {
+                actions.push(unknown_leg(
+                    parse_v3_address(leg_to, "multicall_call_array leg to")?,
+                    V3ChainId::new(format!("eip155:{chain_id}")),
+                    leg_data.to_string(),
+                    leg_val_u256,
+                ));
+            }
             continue;
         }
         let leg_selector = format!("0x{}", hex::encode(&data_bytes[0..4]));
+        // N3: track whether THIS leg contributes any action. A leg that resolves
+        // to nothing (no mapped body, no reenter callback children) used to vanish
+        // silently; below we surface it as Unknown so the batch warn-closes.
+        let actions_before_leg = actions.len();
 
         // Re-enter the public entrypoint AT THE LEG'S OWN `to` (the per-leg-to
         // difference vs `multicall_recurse`).
@@ -2824,6 +2869,18 @@ fn process_call_legs(
                     actions.extend(nested);
                 }
             }
+        }
+
+        // N3: this leg resolved to NOTHING (no mapped body, no reenter callback
+        // children) — it used to vanish silently, letting a benign sibling carry
+        // the whole-batch verdict. Surface it as Unknown so the batch warn-closes.
+        if actions.len() == actions_before_leg {
+            actions.push(unknown_leg(
+                parse_v3_address(leg_to, "multicall_call_array leg to")?,
+                V3ChainId::new(format!("eip155:{chain_id}")),
+                leg_data.to_string(),
+                parse_v3_u256(leg_value, "multicall_call_array leg value")?,
+            ));
         }
     }
 
@@ -2982,6 +3039,117 @@ mod tests {
             parsed["error"]["kind"], "no_declarative_v3_mapper",
             "{parsed}"
         );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // N2/N3/K3 — a batch leg the decoder cannot map must surface as `Unknown`
+    // (warn-closed downstream), NOT be silently dropped (which let a benign
+    // sibling, or an empty batch, aggregate to PASS).
+    // ──────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn opcode_stream_unknown_under_warn_surfaces_unknown_leg_not_drop() {
+        // An unknown opcode under the DEFAULT `warn` policy used to `continue`
+        // (drop the leg). It must now emit an `Unknown` leg so a UR `execute`
+        // whose commands are all-unknown decodes to a Multicall of Unknown legs
+        // (→ warn-closed) instead of an empty Multicall (→ PASS).
+        let args = json!({});
+        let ctx = V3MapContext {
+            chain: V3ChainId::new("eip155:1".to_string()),
+            tx_to: parse_v3_address("0x000000000000000000000000000000000000babe", "to").unwrap(),
+            tx_from: parse_v3_address("0x000000000000000000000000000000000000aaaa", "from")
+                .unwrap(),
+            value: V3U256::ZERO,
+            submitted_at: V3Time::from_unix(1_700_000_000),
+            args_json: &args,
+            raw_calldata: "0xabcdef",
+            resolved: std::collections::BTreeMap::new(),
+            derived: std::collections::BTreeMap::new(),
+            inputs: None,
+        };
+        let per_opcode_body = serde_json::Map::new(); // nothing mapped → 0x01 unknown
+        let commands = [0x01u8];
+        let body = dispatch_opcode_stream(
+            &ctx,
+            &per_opcode_body,
+            &commands,
+            &[],
+            0xff,
+            0x00,
+            V3UnknownOpcodePolicy::Warn,
+            0,
+            5,
+        )
+        .unwrap();
+        let body_json = serde_json::to_value(body).unwrap();
+        assert_eq!(body_json["domain"], "multicall", "{body_json}");
+        let actions = body_json["actions"].as_array().unwrap();
+        assert_eq!(
+            actions.len(),
+            1,
+            "unknown opcode under warn must surface 1 Unknown leg, not drop: {body_json}"
+        );
+        assert_eq!(actions[0]["domain"], "unknown", "{body_json}");
+    }
+
+    #[test]
+    fn multicall_call_array_unmapped_leg_surfaces_unknown_not_dropped() {
+        // A `Call[]` leg whose `to` has NO installed adapter previously vanished
+        // (silent drop), letting a benign sibling carry the whole-batch verdict
+        // (N3). It must now surface as an `Unknown` leg. With a SINGLE unmapped
+        // leg, the old behaviour errored ("no inner leg resolved"); the fix makes
+        // it a Multicall carrying one Unknown.
+        let submitter = "0x000000000000000000000000000000000000aaaa";
+        let unmapped = "0x000000000000000000000000000000000000dead";
+        // >= 4 bytes so it has a selector, but no mapper is installed for `unmapped`.
+        let leg_hex = "0xdeadbeef0000000000000000000000000000000000000000000000000000000000000001";
+        let zero32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let args = json!({ "bundle": [[unmapped, leg_hex, "0", false, zero32]] });
+        let body = build_multicall_call_array_body(
+            1,
+            submitter,
+            1_700_000_000,
+            &args,
+            &json!({ "strategy": "multicall_call_array", "recurse_arg": "bundle", "max_depth": 3 }),
+        )
+        .unwrap();
+        let body_json = serde_json::to_value(body).unwrap();
+        assert_eq!(body_json["domain"], "multicall", "{body_json}");
+        let actions = body_json["actions"].as_array().unwrap();
+        assert_eq!(
+            actions.len(),
+            1,
+            "an unmapped leg must surface as 1 Unknown, not drop: {body_json}"
+        );
+        assert_eq!(actions[0]["domain"], "unknown", "{body_json}");
+    }
+
+    #[test]
+    fn multicall_call_array_bare_value_transfer_leg_surfaces_unknown() {
+        // A `<4B` data leg that MOVES native value (a bare ETH transfer inside a
+        // bundle) used to `continue` (invisible). With value > 0 it must surface
+        // as Unknown so the transfer is policy-visible.
+        let submitter = "0x000000000000000000000000000000000000aaaa";
+        let recipient = "0x000000000000000000000000000000000000cafe";
+        let zero32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+        // empty calldata, value = 1 ETH (decimal wei).
+        let args = json!({ "bundle": [[recipient, "0x", "1000000000000000000", false, zero32]] });
+        let body = build_multicall_call_array_body(
+            1,
+            submitter,
+            1_700_000_000,
+            &args,
+            &json!({ "strategy": "multicall_call_array", "recurse_arg": "bundle", "max_depth": 3 }),
+        )
+        .unwrap();
+        let body_json = serde_json::to_value(body).unwrap();
+        let actions = body_json["actions"].as_array().unwrap();
+        assert_eq!(
+            actions.len(),
+            1,
+            "value-bearing bare leg must surface: {body_json}"
+        );
+        assert_eq!(actions[0]["domain"], "unknown", "{body_json}");
     }
 
     #[test]
@@ -3146,22 +3314,29 @@ mod tests {
         // (Per-leg-to is proven structurally: the child mapper is installed ONLY at
         // `adapter`, so a successful decode REQUIRES routing the leg at its own `to`.)
 
-        // A bundle whose ONLY leg targets an uninstalled `to` resolves nothing →
-        // reject (never an empty no-op).
+        // A bundle whose ONLY leg targets an uninstalled `to` no longer ERRORS:
+        // it surfaces the leg as an `Unknown` so the batch warn-closes downstream
+        // (N3), preserving the bundle structure + any sibling verdicts instead of
+        // an opaque whole-bundle error. (Both old error and new Unknown warn-close,
+        // but Unknown is the more precise, structure-preserving signal.)
         let unmapped = "0x000000000000000000000000000000000000dead";
         let only_unmapped = json!({ "bundle": [[unmapped, child_hex, "0", false, zero32]] });
-        let err = build_multicall_call_array_body(
+        let body = build_multicall_call_array_body(
             1,
             submitter,
             1_700_000_000,
             &only_unmapped,
             &json!({ "strategy": "multicall_call_array", "recurse_arg": "bundle" }),
         )
-        .unwrap_err();
-        assert!(
-            err.message.contains("no inner leg resolved"),
-            "expected resolved==0 rejection, got {err:?}"
+        .unwrap();
+        let body_json = serde_json::to_value(body).unwrap();
+        assert_eq!(body_json["domain"], "multicall", "{body_json}");
+        assert_eq!(
+            body_json["actions"].as_array().unwrap().len(),
+            1,
+            "{body_json}"
         );
+        assert_eq!(body_json["actions"][0]["domain"], "unknown", "{body_json}");
     }
 
     #[test]
