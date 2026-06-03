@@ -155,6 +155,7 @@ impl Reducer for SignIntentOrderAction {
                 // not the wallet's Permit2 / EIP-2612 namespaces.
                 nonce: None,
                 on_chain_tx: None,
+                raw_status: None,
             },
             sync: DataSource::UserSupplied,
             signed_at: ctx.now,
