@@ -20,8 +20,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tracing_subscriber::EnvFilter;
-
 use policy_server::app::{build_router_with_config, AppState, ShutdownRx};
 use policy_server::config::ServerConfig;
 use policy_server::coordination::build_coordinator;
@@ -40,15 +38,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Walks up from CWD to find `.env`. Silent if missing — production
     // deployments inject env vars directly.
     let _ = dotenvy::dotenv();
-
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,policy_server=debug")),
-        )
-        .init();
-
     let config = ServerConfig::from_env();
+    policy_server::logging::init_tracing(config.log_format);
     tracing::info!("opening PostgreSQL policy-server storage");
     let storage = StorageBackend::open(&config).await?;
     let coordinator = build_coordinator(&config).await?;

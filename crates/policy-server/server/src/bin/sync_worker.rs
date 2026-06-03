@@ -6,19 +6,12 @@ use policy_server::coordination::build_coordinator;
 use policy_server::events::{publish_tick_events, RedisEventPublisher};
 use policy_server::storage::StorageBackend;
 use policy_sync::{Orchestrator, Scheduler, SchedulerConfig, SyncConfig};
-use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = dotenvy::dotenv();
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,policy_server=debug")),
-        )
-        .init();
-
     let config = ServerConfig::from_env();
+    policy_server::logging::init_tracing(config.log_format);
     let storage = StorageBackend::open(&config).await?;
 
     let sync_config_path = std::env::var("SCOPEBALL_SYNC_CONFIG")
