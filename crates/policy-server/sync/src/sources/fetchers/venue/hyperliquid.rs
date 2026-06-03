@@ -192,7 +192,9 @@ impl HyperliquidFetcher {
                     continue;
                 }
             };
-            let clearinghouse = self.fetch_clearinghouse_state_for_dex(endpoint, user, d).await;
+            let clearinghouse = self
+                .fetch_clearinghouse_state_for_dex(endpoint, user, d)
+                .await;
             let open_orders = self.fetch_open_orders_for_dex(endpoint, user, d).await;
             let (frag, ok, mut errs) = assemble_core_dex(d, clearinghouse, open_orders, &meta);
             errors.append(&mut errs);
@@ -1810,7 +1812,10 @@ mod tests {
         assert_eq!(acct.perp_dex_margins.len(), 1);
         assert_eq!(acct.perp_dex_margins[0].dex.as_deref(), Some("xyz"));
         assert_eq!(acct.perp_dex_margins[0].withdrawable, Decimal::new("5"));
-        assert_eq!(acct.perp_dex_margins[0].account_value, Decimal::new("3219.36"));
+        assert_eq!(
+            acct.perp_dex_margins[0].account_value,
+            Decimal::new("3219.36")
+        );
     }
 
     #[test]
@@ -1886,7 +1891,10 @@ mod tests {
         assert_eq!(acct.perp_dex_margins.len(), 1);
         assert_eq!(acct.perp_dex_margins[0].dex, None);
         assert_eq!(acct.perp_dex_margins[0].withdrawable, Decimal::new("600.5"));
-        assert_eq!(acct.perp_dex_margins[0].account_value, Decimal::new("1000.5"));
+        assert_eq!(
+            acct.perp_dex_margins[0].account_value,
+            Decimal::new("1000.5")
+        );
         assert_eq!(acct.pending_outflow, Decimal::new("0"));
         assert_eq!(acct.positions.len(), 1);
         assert_eq!(acct.positions[0].asset_index, 0);
