@@ -69,7 +69,7 @@ Tier 3 선행이 필요한 경우 순서:
 2. **기존 domain 확장 우선** — 새 protocol 전용 domain 을 만들기 전에 `token`/`amm`/`lending`/`permission`/`staking` 등 기존 domain 의 새 action 으로 충분한지 검토.
 3. **새 domain 은 마지막 선택** — 기존 domain 으로 의미가 왜곡되거나 정책/UX/위험 모델이 완전히 다를 때만 추가.
 4. **권한 grant 는 Unknown 금지** — `approve/permit/authorize/delegate/operator/allow` 류는 맞는 Action 이 없으면 Tier 3 를 추가한다. ScopeBall 핵심 surface 라서 "표현 안 됨"을 이유로 skip 하지 않는다.
-5. **`ACTIONBODY_EXTENSION_GUIDE.md` 먼저 실행** — Rust ActionBody, reducer/view, VALID_DOMAINS, Cedar/lowering, TS/export, conformance/golden 를 동기화한 뒤 manifest 를 작성한다.
+5. **`ACTIONBODY_EXTENSION_GUIDE.md` 먼저 실행** — Rust ActionBody, reducer/view, Cedar/lowering, TS/export, conformance/golden 를 동기화한 뒤 manifest 를 작성한다.
 
 즉 P0 자체는 여전히 먼저 돈다. 다만 COVER selector 의 의미가 현재 Action catalog 에 없으면 **P1 manifest 보다 Tier 3 schema design/extension 이 선행**된다. 존재하지 않는 domain/action 을 manifest 가 target 하면 production decoder 가 hard-fail 하므로 schema-first 가 안전하다.
 
@@ -352,7 +352,7 @@ P0 contract discovery 는 **다운스트림 안전망이 없는 유일한 완비
 함수 X 의 의미가:
   기존 domain + 기존 action 에 매핑됨?   → YES: 스키마 무수정, 4b 로
   기존 domain, 새 action?                → 그 domain 모듈에 variant + 파일 추가 (release PR)
-  새 domain 필요?                        → ActionBody variant + 모듈 + VALID_DOMAINS + Cedar + TS (큰 blast)
+  새 domain 필요?                        → ActionBody variant + 모듈 + Cedar + TS (큰 blast; VALID_DOMAINS 하니스 등록은 제거됨)
   ⚠️ 권한 grant(approve/authorize/delegate…)인데 맞는 action 없음? → Tier 3 신규 action 필수 (Unknown 금지 — §3 red-flag). market 무관 grant 면 venue 없는 bespoke locator 가능 (Morpho SetAuthorization 선례).
   매핑 불가 + 권한 grant 아님 (admin/opaque)? → Unknown 허용 (warn/deny, 테스트는 excluded)
 ```
@@ -423,7 +423,7 @@ pub struct Erc20ApproveAction { pub token: TokenRef, pub spender: Address, pub a
 
 #### 새 domain 추가 (드묾, 큰 blast)
 위 + 반드시 **동기화**:
-- `crates/integration-tests/src/harness/oracle.rs:22` `VALID_DOMAINS` 에 새 domain 문자열 추가 (안 하면 하니스가 invalid domain 으로 fail).
+- ~~`oracle.rs` `VALID_DOMAINS` 등록~~ → **제거됨**(2026-06-03 정정): `VALID_DOMAINS` 는 cross-crate drift trap 이라 삭제됨. `oracle.rs` 가 L3 domain-validity 를 hand-list 없이 L2 typed round-trip(serde tag)으로 검증하므로, 새 domain 은 하니스 등록 **불필요** — `ActionBody` enum 추가만으로 인식.
 - `action_builder.rs::flatten_body` 의 cross-cutting 분기(multicall/unknown 류 특수 처리) 검토.
 - `crates/policy-engine/src/lowering_v2/dispatch.rs` + `lowering_v2/<domain>/` + `schema/policy-schema/actions/<domain>/*.cedarschema` + schema resolver 등록 + conformance test.
 - TS(tsify) 바인딩은 `wasm-build` 에서 재생성. 손수 `.d.ts` 를 수정하지 않는다.
@@ -812,8 +812,8 @@ selector 필터(`WHERE ...`)·decoded 테이블·cross-chain·빈도 통계용. 
 ### 5c. Hybrid Oracle (정확성 판정)
 
 **현재 하니스가 하는 것 (oracle.rs `judge`):** shape + domain 까지만.
-- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<policy_transition::action::Action>` 역직렬화) / L3 Domain(`VALID_DOMAINS`) / L4 ErrorClass.
-- `VALID_DOMAINS` 는 `crates/integration-tests/src/harness/oracle.rs` 를 직접 재확인. 새 domain 추가 시 §4a 의 downstream contract 와 함께 동기화한다.
+- L1 Envelope(ok 필드) / L2 TypedRoundTrip(`Vec<policy_transition::action::Action>` 역직렬화) / L3 Domain(L2 round-trip 이 serde `tag="domain"` 으로 검증 — hand-list 없음) / L4 ErrorClass.
+- **L3 domain validity 는 hand-maintained list 불필요**(2026-06-03 정정): `VALID_DOMAINS` 는 cross-crate drift trap 이라 `oracle.rs` 에서 제거됨. 새 domain 은 `ActionBody` enum 추가만으로 인식(serde 가 검증). 하니스 동기화 불요.
 - `SOFT_ERROR_KINDS`(tolerate) = no_declarative_v3_mapper, unsupported_strategy_for_typed_data, no_typed_data_mapper.
 - corpus `expect` 는 `expect_domain` 을 비교하고, 선택적 `expect_body` 가 있으면 필드값도 비교한다. `expect_action` 은 아직 reserved.
 
@@ -979,7 +979,7 @@ cd registryV2 && npx tsx scripts/build-index.ts && cd ..
 ```
 
 ### 8.2 ActionBody domain 카탈로그 (요약)
-현재 domain (= `crates/integration-tests/src/harness/oracle.rs` 의 `VALID_DOMAINS`, 측정 `grep -n VALID_DOMAINS`): token · amm · lending · airdrop · launchpad · liquid_staking · perp · permission · yield · restaking · staking · hyperliquid_core · multicall · unknown. 각 domain 의 action 목록·상세 = §4a 표(**SSOT**). **작성 전 `<domain>/mod.rs` 직접 확인** — 도메인·스키마 둘 다 확장된다.
+현재 domain (= `crates/policy-server/asset-model/action/src/lib.rs` 의 `ActionBody` enum, 측정 `grep -n 'pub enum ActionBody'`; oracle.rs `VALID_DOMAINS` 는 drift trap 이라 제거됨): token · amm · lending · airdrop · launchpad · liquid_staking · perp · permission · yield · restaking · staking · hyperliquid_core · multicall · unknown. 각 domain 의 action 목록·상세 = §4a 표(**SSOT**). **작성 전 `<domain>/mod.rs` 직접 확인** — 도메인·스키마 둘 다 확장된다.
 
 ### 8.3 알려진 함정 (DEFECT_CATALOG.md — gitignored `docs/`, fresh clone 부재; 핵심 D-code 는 아래 inline)
 - **nested tuple per-component 타입 유실** (D010 류): `[i][j]` 접근 시 uint width 정보 유실 → string 화 → u64 coercion 실패. **Permit2 류는 commit `3f93f5c` 에서 해결**(chained-numeric + coercion). 새 프로토콜 nested-tuple 에서 재발 가능 → 같은 패턴 점검.

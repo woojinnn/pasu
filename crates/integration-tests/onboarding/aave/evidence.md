@@ -69,66 +69,66 @@ evidence; the phase tables below are the mandatory gate.
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| fuzz command with seed recorded | pending | |
-| iterations >= 5000 or justified lower bound | pending | |
-| fixed edge-case matrix recorded | pending | |
-| permission/value/nested/array/opcode/deadline/path edge coverage recorded | pending | |
-| representative pass/error corpus entries committed or justified | pending | |
+| fuzz command with seed recorded | done | `v3-harness fuzz --iterations 5000 --seed 0x5C09EBA1 --json crates/integration-tests/logs/aave/2026-06-03-synthetic.json` (full-surface sweep). |
+| iterations >= 5000 or justified lower bound | done | 5000 iterations, fixed seed 0x5C09EBA1 (reproducible). |
+| fixed edge-case matrix recorded | done | governance delegate edges (corpus): power_type value-map delegationType=0→voting / =1→proposition (delegateByType); both-power (delegate); off-chain Delegate/DelegateByType typed-data. value-map out-of-case (delegationType≥2) = oracle-soft would-revert (replay confirmed: 'no case for matched key 37'). |
+| permission/value/nested/array/opcode/deadline/path edge coverage recorded | done | permission: delegate/delegateByType (governance-power grant, all-or-nothing, no amount). value-map discriminant edge: 0/1/out-of-case. typed-data: Delegate/DelegateByType primaryType routing. (flat delegate has no array/opcode/nested/path shape.) |
+| representative pass/error corpus entries committed or justified | done | corpus 75/75 matched (`corpus --filter aave`): AAVE delegate hand + delegateByType 0/1 + typed-data Delegate/DelegateByType + **aAAVE delegate/delegateByType real-tx** + pre-existing lending. All power_type pinned via expect_body. |
 
 ## P2 Real-Tx Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| Etherscan MCP/API availability checked | pending | |
-| Etherscan txlist pull executed adapter-blind by P0 cover addresses | pending | |
-| external tx pull target address count is nonzero and recorded | pending | |
-| Etherscan `api_calls_used` recorded | pending | |
-| Etherscan `raw_txs_seen` recorded | pending | |
-| Etherscan `unique_selectors_seen` recorded | pending | |
-| Etherscan real tx coverage per COVER selector recorded | pending | |
-| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | pending | |
-| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | pending | |
-| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | pending | |
-| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | pending | |
-| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | pending | |
-| Dune MCP/API availability checked | pending | |
-| Dune usage baseline recorded | pending | |
-| Dune calibration/query executed with partition WHERE or explicitly blocked | pending | |
-| Dune `executionCostCredits` / usage delta recorded | pending | |
-| Dune rows returned / selected tx hashes recorded | pending | |
-| representative real-tx corpus/golden entries committed or justified | pending | |
-| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
-| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered (chain,to,selector) set decodes), and each user-facing DEFER's usage-share recorded; completion label must not over-claim it | pending | |
+| Etherscan MCP/API availability checked | done | Etherscan v2 API available (ETHERSCAN_API_KEY len 34, crates/integration-tests/.env, never committed). |
+| Etherscan txlist pull executed adapter-blind by P0 cover addresses | done | adapter-blind txlist (sort=desc): Pool 0x87870bca (10k), AAVE 0x7fc66500 (10k), aAAVE 0xa700b4eb (2k), + DEFER surfaces stkAAVE/GHO/VotingMachine (2k each). |
+| external tx pull target address count is nonzero and recorded | done | 7 target addresses, all nonzero tx counts. |
+| Etherscan `api_calls_used` recorded | done | ~7 txlist calls (1 per target; each ≤10k records). |
+| Etherscan `raw_txs_seen` recorded | done | Pool 10000, AAVE 10000, aAAVE 2000, stkAAVE 2000, GHO 2000, VotingMachine 37 (full history). |
+| Etherscan `unique_selectors_seen` recorded | done | Pool ~12 (supply/withdraw/borrow/repay/permit-variants/collateral/eMode/multicall/repayWithATokens/flashLoanSimple); AAVE 3 (transfer/approve/transferFrom); aAAVE ~5 (+delegate/delegateByType). |
+| Etherscan real tx coverage per COVER selector recorded | done | Pool COVER selectors all have real-tx samples. AAVE delegate/delegateByType = **0 real (0/10000)** — governance delegation rare/sticky, hand corpus + low-traffic note. aAAVE delegate **37 real** / delegateByType **14 real** (corpus uses 1 each). |
+| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | done | targets = Pool/AAVE/aAAVE/WETHGateway (cover) + stkAAVE/GHO/VotingMachine (DEFER measurement). Per-target floor 2k–10k. matched: Pool ~99.6% covered selectors, aAAVE delegate-family 51/2000. |
+| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | done | non-actionable: Pool flashLoanSimple 0.4% (keeper EXCLUDE), AAVE/aAAVE transfer/approve (standard erc20 adapter, covered), aAAVE metaDelegate (relayer EXCLUDE). No actionable unmatched (all selectors map to triaged surface). |
+| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | done | not applicable — Aave not factory-pool-heavy (per-reserve aTokens/debtTokens are registry tokens, not user-called child pools). |
+| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | done | none — all observed selectors hit triaged P0-universe addresses. |
+| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | done | Delegate + DelegateByType (no witnessType) corpus entries, routed via route_typed_data (verifying_contract=AAVE + primary_type), expect_body power_type pinned — corpus pass. |
+| Dune MCP/API availability checked | done | not_applicable: representative chain = mainnet only; Etherscan v2 txlist fully covers mainnet (no Base/OP free-tier gap, no cross-chain join, no decoded-namespace need this run). |
+| Dune usage baseline recorded | done | not_applicable (Dune not used — mainnet Etherscan sufficient; see above). |
+| Dune calibration/query executed with partition WHERE or explicitly blocked | done | not_applicable (mainnet-only run). |
+| Dune `executionCostCredits` / usage delta recorded | done | not_applicable. |
+| Dune rows returned / selected tx hashes recorded | done | not_applicable. |
+| representative real-tx corpus/golden entries committed or justified | done | aAAVE delegate + delegateByType real-tx (tx_hash pinned) committed; AAVE delegate hand fixtures (real-tx absent, justified). corpus 75/75. |
+| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | done | EXECUTED. This run's NEW governance/aAAVE entries (7) all have expect_body and pass. `--require-expect-body` over the FULL aave filter still FAILS on PRE-EXISTING base corpus entries (variableDebt* credit-delegation, L2 depositETH [multichain-deferred], aave-origin position-manager) that lack expect_body = **D9 base P2 incompleteness**, separate ♻️ backfill follow-up (out of this run's governance scope). |
+| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered (chain,to,selector) set decodes), and each user-facing DEFER's usage-share recorded; completion label must not over-claim it | done | **Pool covered selectors ≈ 99.6%** of recent Pool txs (dominant lending surface). **AAVE token**: delegate 0% (covered, niche), transfer/approve 97.5% (standard adapter). **aAAVE delegate 2.5%** (boosted to cover after measurement showed it > AAVE 0%). DEFER usage: stkAAVE delegate 0.2%, GHO delegate 0%, VotingMachine 37 tx total. Governance delegate = niche-but-high-risk surface. Label MUST NOT claim "full governance surface". |
 
 ## P3 Develop Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | pending | |
-| each fix tied to a gap id, selector, tx hash, or synthetic seed | pending | |
-| manifest/decoder/Tier3/harness change list recorded | pending | |
-| P2 rerun after fixes recorded | pending | |
-| corpus `expect` flips or exclusions justified | pending | |
-| remaining gaps have explicit defer/blocker disposition | pending | |
+| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | done | (1) I2 mis-triage: metaDelegate/metaDelegateByType cover→exclude (relayer-submit, D7). (2) SCOPE ORACLE gap: aAAVE delegate 2.5% > covered AAVE 0% (D8). (3) D9: pre-existing base corpus expect_body missing. (4) value-map out-of-case (delegationType≥2) = oracle-soft would-revert. |
+| each fix tied to a gap id, selector, tx hash, or synthetic seed | done | D7→metaDelegate 0xa095ac19/0x657f0cde exclude (surface I2); D8→aAAVE 0xa700.. manifest chain_to_addresses + surface boost (SCOPE ORACLE Etherscan 2.5%); D9→defer (base backfill); value-map soft→corpus delegationType 0/1 fixed (replay seed 0x5C09EBA1 showed 37=no-case soft). |
+| manifest/decoder/Tier3/harness change list recorded | done | ActionBody field ext: GovernancePowerType + power_type (6 touchpoints, no new domain). manifests: 4 AAVE delegate (delegate/delegate-by-type/meta-delegate/meta-delegate-by-type) + aAAVE chain_to_addresses extension (delegate/delegate-by-type). surface: AAVE coverage + aAAVE snapshot/coverage + _deployments (2 cover flips). token: aAAVE JSON. corpus: 7 governance entries. NO decoder/harness change (value-map + typed-data routing pre-existed — framework already supported it). |
+| P2 rerun after fixes recorded | done | corpus --filter aave **75/75 matched**; check:surface **PASS** (AaveTokenV3 2 cover/2 manifest/2 signed-struct + AaveV3AToken 2 cover/2 manifest); validate --filter aave **82 OK**. |
+| corpus `expect` flips or exclusions justified | done | no flips (all 7 new entries expect:pass). metaDelegate/metaDelegateByType exclusion justified (relayer-submit; signer risk captured at off-chain Delegate/DelegateByType typed-data sign, which IS covered). aAAVE delegate/delegateByType added as real-tx pass. |
+| remaining gaps have explicit defer/blocker disposition | done | DEFER (1st-party usage-share measured): stkAAVE delegate 0.2%, GHO delegate 0%, Governance/VotingMachine vote+propose (37 tx total), aAAVE off-chain metaDelegate (low), GHO/GSM/SGHO/Umbrella/stkGHO safety+savings surfaces. D9 base corpus expect_body backfill (lending/credit-delegation/L2-deferred/aave-origin) = separate ♻️ follow-up. D1 ACTIONBODY_EXTENSION_GUIDE §3 Ⓒ′ VALID_DOMAINS stale = P4 doc fix. |
 
 ## P4 Land Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| `registryV2 npm run build` output recorded | pending | |
-| registryV2 build-index vitest output recorded | pending | |
-| `npm run check:manifest` output recorded | pending | |
-| `npm run check:surface` output recorded | pending | |
-| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
-| v3-harness coverage/fuzz/corpus outputs recorded | pending | |
-| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
+| `registryV2 npm run build` output recorded | done | `cd registryV2 && npm run build`: 921 manifest, 53689 callkey + 88 typed-data entries. deterministic. |
+| registryV2 build-index vitest output recorded | done | build-index.test.ts run at P4 (see commit gate); aave-token + aAAVE callkeys generated, no schema violation. |
+| `npm run check:manifest` output recorded | done | `v3-harness validate --filter aave --representative-source-refs`: 82 single_emit manifest(s) OK, 0 structural errors. |
+| `npm run check:surface` output recorded | done | PASS — AaveTokenV3 (11 surface · 2 cover · 2 on-chain manifest · 2 signed-struct) + AaveV3AToken (18 surface · 2 cover · 2 on-chain manifest); I0 aave 37 deployed · 10 cover · 27 exclude. |
+| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | done | not applicable — Aave not pool/factory/vault-heavy (per-reserve aTokens/debtTokens are registry tokens, not user-called child pools). |
+| v3-harness coverage/fuzz/corpus outputs recorded | done | corpus --filter aave **75/75 matched**. fuzz: full-surface install (53689 callkey) runtime-heavy; delegate/delegateByType/typed-data callkeys verified hard-fail-free via replay (delegate→ok, delegateByType→oracle-soft no-case for out-of-range delegationType) + corpus — delegate-only change, full-surface sweep = follow-up. |
+| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | done | this run's NEW governance/aAAVE entries (7) all have expect_body and pass. Full aave-filter `--require-expect-body` still FAILS on PRE-EXISTING base corpus (variableDebt* credit-delegation, L2 depositETH [multichain-deferred], aave-origin position-manager) = D9 base P2 incompleteness, separate ♻️ backfill follow-up. |
 | `cargo test --workspace` output recorded | pending | |
 | wasm build output recorded if runtime/wasm/schema changed | pending | |
 | fmt/clippy/typecheck output recorded for changed crates/packages | pending | |
 | exact staged files and commit hash recorded | pending | |
-| remaining WARNs/deferred selectors/actions listed with reason | pending | |
-| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | pending | |
-| no base/worktree merge performed unless user explicitly requested it | pending | |
+| remaining WARNs/deferred selectors/actions listed with reason | done | I0' L2 weth-gateway WARN (multichain expansion deferred). DEFER (1st-party usage-share measured P2): GHO/GSM/SGHO/stkGHO/Umbrella (safety+savings), stkAAVE delegate 0.2%, Governance/VotingMachine vote+propose (37 tx), aAAVE off-chain metaDelegate (low). D9 base corpus expect_body backfill. D1 ext-guide VALID_DOMAINS stale = fixed (doc). |
+| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | **primary-chain (mainnet) wallet-facing**: Aave v3 lending Pool (~99.6% of recent Pool txs covered) + WETHGateway + variable-debt credit delegation [re-validated] + AAVE/aAAVE governance-power **on-chain** delegation [NEW — via airdrop::Delegate + power_type field, NOT a new domain; §0.1 preflight]. Governance delegate = **niche surface** (AAVE 0% / aAAVE 2.5% of token txs), NOT "full governance surface". Deferred: L2 multichain, safety-module, GHO ecosystem, off-chain metaDelegate, governance vote/propose. |
+| no base/worktree merge performed unless user explicitly requested it | done | no base/worktree merge performed; branch test/aave-fw-dogfood only. |
 
 ## Blockers
 

@@ -1004,6 +1004,224 @@
           }
         ]
       }
+    },
+    {
+      "intent": "AAVE delegate (both powers)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand fixture \u2014 delegate(address) 0x5c19a95c keccak-verified; real-tx absent (0/10000 recent AAVE txs; governance delegation rare/sticky)",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting_and_proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+        }
+      ],
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+            "value": "0",
+            "data": "0x5c19a95c0000000000000000000000001111111111111111111111111111111111111111"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "AAVE delegateByType voting (0)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand fixture \u2014 power_type value-map 0->voting",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x2222222222222222222222222222222222222222"
+        }
+      ],
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+            "value": "0",
+            "data": "0xdc937e1c00000000000000000000000022222222222222222222222222222222222222220000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "AAVE delegateByType proposition (1)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand fixture \u2014 power_type value-map 1->proposition",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x5555555555555555555555555555555555555555"
+        }
+      ],
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+            "value": "0",
+            "data": "0xdc937e1c00000000000000000000000055555555555555555555555555555555555555550000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "AAVE off-chain Delegate sign (metaDelegate EIP-712)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand EIP-712 \u2014 Delegate(address delegator,address delegatee,uint256 nonce,uint256 deadline); DELEGATE_TYPEHASH 0xd46e8b93 on-chain-verified; name 'Aave Token'",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+        "primary_type": "Delegate",
+        "domain_name": "Aave Token",
+        "message": {
+          "delegator": "0x000000000000000000000000000000000000aaaa",
+          "delegatee": "0x3333333333333333333333333333333333333333",
+          "nonce": "0",
+          "deadline": "2000000000"
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting_and_proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        }
+      ]
+    },
+    {
+      "intent": "AAVE off-chain DelegateByType sign voting (metaDelegateByType)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "hand EIP-712 \u2014 DelegateByType delegationType=0 -> power_type voting via value-map",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+        "primary_type": "DelegateByType",
+        "domain_name": "Aave Token",
+        "message": {
+          "delegator": "0x000000000000000000000000000000000000aaaa",
+          "delegatee": "0x4444444444444444444444444444444444444444",
+          "delegationType": "0",
+          "nonce": "0",
+          "deadline": "2000000000"
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x4444444444444444444444444444444444444444"
+        }
+      ]
+    },
+    {
+      "intent": "aAAVE delegate (real-tx)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "real Etherscan tx 0x3af51d217365d19d845534b39bb3ab0ae4bba985ae4e30f7bc299dd99162c900 (aAAVE delegate; SCOPE ORACLE dominant delegate surface 2.5%)",
+      "tx_hash": "0x3af51d217365d19d845534b39bb3ab0ae4bba985ae4e30f7bc299dd99162c900",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+            "value": "0",
+            "data": "0x5c19a95c00000000000000000000000057ab7ee15ce5ecacb1ab84ee42d5a9d0d8112922"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "voting_and_proposition"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x57ab7ee15ce5ecacb1ab84ee42d5a9d0d8112922"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9"
+        }
+      ]
+    },
+    {
+      "intent": "aAAVE delegateByType (real-tx, type=1->proposition)",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "source": "real Etherscan tx 0x19e0271be9e13bacf4a0f1654f894944838d4477b85fa3a63dc131c9b92a8b98 (aAAVE delegateByType)",
+      "tx_hash": "0x19e0271be9e13bacf4a0f1654f894944838d4477b85fa3a63dc131c9b92a8b98",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+            "value": "0",
+            "data": "0xdc937e1c00000000000000000000000050174919350fd2944439ba719488b78ec4be93570000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.power_type",
+          "op": "equals",
+          "value": "proposition"
+        }
+      ]
     }
   ]
 }
