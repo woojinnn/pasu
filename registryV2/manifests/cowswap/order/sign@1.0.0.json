@@ -1,0 +1,114 @@
+{
+  "type": "adapter_action",
+  "id": "cowswap/order/sign@1.0.0",
+  "publisher": "cowswap",
+  "schema_version": "3",
+  "note": "CoW Protocol off-chain EIP-712 Order signature (the dominant CowSwap gasless-intent action). domain name='Gnosis Protocol' version='v2', verifying_contract=GPv2Settlement 0x9008d19f58aabd9ed0d60971565aa8510560ab41 (mainnet, verifyingContract=address(this)), primary_type=Order. ORDER_TYPE_HASH 0xd5a25ba2e97094ad7d83dc28a6572da797d6b3e7fc6663bd93efb789fc17e489. NOTE kind/sellTokenBalance/buyTokenBalance are EIP-712 'string' (the Solidity struct stores them as bytes32 keccak enum hashes); since this is sign-only (no on-chain call) the EIP-712 shape governs, so abi_fragment mirrors the typed_data types. selector 0x0000000d is a sign-only placeholder (no on-chain call); routing is by (chain, verifying_contract, primary_type) via the typed-data bridge. -> amm sign_intent_order (venue=cow_swap, order_kind=limit). sell=sellToken, buy=buyToken, sell_amount=sellAmount, buy_min=buyAmount, recipient=receiver, valid_until=validTo. 1st-party: github.com/cowprotocol/contracts src/contracts/libraries/GPv2Order.sol + mixins/GPv2Signing.sol.",
+  "match": {
+    "selector": "0x0000000d",
+    "chain_to_addresses": {
+      "1": [
+        "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "Gnosis Protocol",
+      "verifying_contract": "0x9008d19f58aabd9ed0d60971565aa8510560ab41",
+      "primary_type": "Order",
+      "types": {
+        "Order": [
+          { "name": "sellToken", "type": "address" },
+          { "name": "buyToken", "type": "address" },
+          { "name": "receiver", "type": "address" },
+          { "name": "sellAmount", "type": "uint256" },
+          { "name": "buyAmount", "type": "uint256" },
+          { "name": "validTo", "type": "uint32" },
+          { "name": "appData", "type": "bytes32" },
+          { "name": "feeAmount", "type": "uint256" },
+          { "name": "kind", "type": "string" },
+          { "name": "partiallyFillable", "type": "bool" },
+          { "name": "sellTokenBalance", "type": "string" },
+          { "name": "buyTokenBalance", "type": "string" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "signOrder",
+    "abi": {
+      "name": "signOrder",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "order",
+          "type": "tuple",
+          "components": [
+            { "name": "sellToken", "type": "address" },
+            { "name": "buyToken", "type": "address" },
+            { "name": "receiver", "type": "address" },
+            { "name": "sellAmount", "type": "uint256" },
+            { "name": "buyAmount", "type": "uint256" },
+            { "name": "validTo", "type": "uint32" },
+            { "name": "appData", "type": "bytes32" },
+            { "name": "feeAmount", "type": "uint256" },
+            { "name": "kind", "type": "string" },
+            { "name": "partiallyFillable", "type": "bool" },
+            { "name": "sellTokenBalance", "type": "string" },
+            { "name": "buyTokenBalance", "type": "string" }
+          ]
+        },
+        { "name": "signature", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "sign_intent_order",
+        "sign_intent_order": {
+          "venue": {
+            "name": "cow_swap",
+            "chain": "$chain",
+            "settlement": "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          },
+          "sell": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.sellToken" } },
+          "buy": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.buyToken" } },
+          "sell_amount": "$args.order.sellAmount",
+          "buy_min": "$args.order.buyAmount",
+          "order_kind": "limit",
+          "recipient": "$args.order.receiver",
+          "valid_until": "$args.order.validTo"
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_fill_price": {
+        "source": {
+          "kind": "venue_api",
+          "endpoint": "https://api.cow.fi/mainnet/api/v1/quote",
+          "parser_id": "cow_quote"
+        },
+        "ttl_s": 6
+      },
+      "competing_orders": {
+        "source": {
+          "kind": "venue_api",
+          "endpoint": "https://api.cow.fi/mainnet/api/v1/orders",
+          "parser_id": "cow_open_orders"
+        },
+        "ttl_s": 6
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "type": "adapter_action",
+  "id": "cowswap/ethflow/create-order@1.0.0",
+  "publisher": "cowswap",
+  "schema_version": "3",
+  "note": "CoW Protocol native-ETH order placement. CoWSwapEthFlow.createOrder(EthFlowOrder.Data order) payable, selector 0x322bba21. This is the ON-CHAIN path users take to sell native ETH on CoW (an EOA cannot EIP-712-presign a WETH order without first wrapping, so ethflow wraps msg.value to WETH and places the order on-chain). Covers BOTH active mainnet ethflow contracts: 0xba3cb449bd2b4adddbc894d8697f5170800eadec (current, ~99% of ethflow) + 0x40a50cf069e992aa4536211b23f286ef88752187 (v1, minor but still active). EthFlowOrder.Data has NO sellToken field — the sell token is ALWAYS the wrapped native token (WETH 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 on mainnet), so sell is baked. msg.value = order.sellAmount + order.feeAmount (the native ETH the user spends); sell_amount mirrors the off-chain Order mapping (= order.sellAmount, fee dropped). -> amm sign_intent_order with OnchainTx meta.nature (same economic intent as the off-chain Order — place a CoW limit order selling X for min Y to recipient, expiring at validTo — but established on-chain rather than by signature; meta.nature distinguishes it). venue=cow_swap, settlement=GPv2Settlement 0x9008d19f58aabd9ed0d60971565aa8510560ab41 (where the wrapped order settles). 1st-party: github.com/cowprotocol/ethflowcontract src/CoWSwapEthFlow.sol (createOrder) + src/libraries/EthFlowOrder.sol (Data struct).",
+  "match": {
+    "selector": "0x322bba21",
+    "chain_to_addresses": {
+      "1": [
+        "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+        "0x40a50cf069e992aa4536211b23f286ef88752187"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "createOrder",
+    "abi": {
+      "name": "createOrder",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "order",
+          "type": "tuple",
+          "components": [
+            { "name": "buyToken", "type": "address" },
+            { "name": "receiver", "type": "address" },
+            { "name": "sellAmount", "type": "uint256" },
+            { "name": "buyAmount", "type": "uint256" },
+            { "name": "appData", "type": "bytes32" },
+            { "name": "feeAmount", "type": "uint256" },
+            { "name": "validTo", "type": "uint32" },
+            { "name": "partiallyFillable", "type": "bool" },
+            { "name": "quoteId", "type": "int64" }
+          ]
+        }
+      ],
+      "outputs": [
+        { "name": "orderHash", "type": "bytes32" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "sign_intent_order",
+        "sign_intent_order": {
+          "venue": {
+            "name": "cow_swap",
+            "chain": "$chain",
+            "settlement": "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          },
+          "sell": { "key": { "standard": "erc20", "chain": "$chain", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" } },
+          "buy": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.buyToken" } },
+          "sell_amount": "$args.sellAmount",
+          "buy_min": "$args.buyAmount",
+          "order_kind": "limit",
+          "recipient": "$args.receiver",
+          "valid_until": "$args.validTo"
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_fill_price": {
+        "source": {
+          "kind": "venue_api",
+          "endpoint": "https://api.cow.fi/mainnet/api/v1/quote",
+          "parser_id": "cow_quote"
+        },
+        "ttl_s": 6
+      },
+      "competing_orders": {
+        "source": {
+          "kind": "venue_api",
+          "endpoint": "https://api.cow.fi/mainnet/api/v1/orders",
+          "parser_id": "cow_open_orders"
+        },
+        "ttl_s": 6
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
