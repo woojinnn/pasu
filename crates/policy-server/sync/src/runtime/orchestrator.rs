@@ -20,7 +20,10 @@ use crate::calc::{CalcContext, CalcRegistry};
 use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
 use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
-use crate::fetchers::{ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher};
+use crate::fetchers::{
+    ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher, UniswapXFetcher,
+    UniswapXOrder,
+};
 use crate::walker::{walk_stale, FieldLocation, WalkStats};
 
 #[derive(Debug, Default, Clone)]
@@ -38,12 +41,19 @@ pub struct HyperliquidAccountReport {
     pub errors: Vec<String>,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct IntentOrdersReport {
+    pub orders_updated: usize,
+    pub errors: Vec<String>,
+}
+
 pub struct Orchestrator {
     onchain: OnchainViewFetcher,
     // Normalized oracle provider key to fetcher.
     price_fetchers: HashMap<String, Arc<dyn PriceFetcher>>,
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
+    uniswap_x: Option<UniswapXFetcher>,
     calc: CalcRegistry,
     // Global values used by derived live-field inputs.
     globals: crate::resolver::GlobalValues,
@@ -59,6 +69,7 @@ impl Orchestrator {
             price_fetchers: HashMap::new(),
             registry: None,
             hyperliquid: None,
+            uniswap_x: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: None,
@@ -105,6 +116,12 @@ impl Orchestrator {
     }
 
     #[must_use]
+    pub fn with_uniswap_x(mut self, uni: UniswapXFetcher) -> Self {
+        self.uniswap_x = Some(uni);
+        self
+    }
+
+    #[must_use]
     pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
         self.calc = calc;
         self
@@ -121,6 +138,7 @@ impl Orchestrator {
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid: Some(HyperliquidFetcher::new()),
+            uniswap_x: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -148,11 +166,17 @@ impl Orchestrator {
             .hyperliquid
             .as_ref()
             .map(HyperliquidFetcher::from_sync_config);
+        let uniswap_x = cfg
+            .venues
+            .uniswap
+            .as_ref()
+            .map(UniswapXFetcher::from_sync_config);
         Ok(Self {
             onchain,
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid,
+            uniswap_x,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -225,6 +249,36 @@ impl Orchestrator {
             account_updated: true,
             errors: Vec::new(),
         })
+    }
+
+    /// Discover and reconcile UniswapX (intent) order status for this wallet.
+    /// Venue is the source of truth: each configured chain is polled and the
+    /// returned orders are upserted into `state.pending` (keyed by `orderHash`).
+    pub async fn sync_intent_orders(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<IntentOrdersReport, SyncError> {
+        let Some(uni) = self.uniswap_x.as_ref() else {
+            return Ok(IntentOrdersReport {
+                orders_updated: 0,
+                errors: vec!["uniswap_x fetcher is not configured".into()],
+            });
+        };
+        let swapper = state.wallet_id.address;
+        let mut report = IntentOrdersReport::default();
+        let reactor = uniswap_x_reactor();
+        for chain in uni.chains().to_vec() {
+            match uni.fetch_orders(&swapper, &chain).await {
+                Ok(orders) => {
+                    let n = orders.len();
+                    upsert_intent_orders(state, &orders, &chain, reactor, &swapper, now);
+                    report.orders_updated += n;
+                }
+                Err(e) => report.errors.push(format!("uniswap_x {chain:?}: {e}")),
+            }
+        }
+        Ok(report)
     }
 
     pub async fn refresh_action(
@@ -727,6 +781,35 @@ fn upsert_hyperliquid_account(
     Ok(())
 }
 
+/// UniswapX V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
+/// reactors can be threaded through config later (spec §12).
+fn uniswap_x_reactor() -> policy_state::Address {
+    use std::str::FromStr;
+    policy_state::Address::from_str("0x00000011f84b9aa48e5f8aa8b9897600006289be")
+        .unwrap_or(policy_state::Address::ZERO)
+}
+
+/// Upsert discovered UniswapX orders into `state.pending`, keyed by the venue
+/// `orderHash` embedded in `PendingTx.id`. Existing entries are replaced in
+/// place (status transitions); new ones are appended.
+pub(crate) fn upsert_intent_orders(
+    state: &mut WalletState,
+    orders: &[UniswapXOrder],
+    chain: &policy_state::ChainId,
+    reactor: policy_state::Address,
+    swapper: &policy_state::Address,
+    now: Time,
+) {
+    for order in orders {
+        let pending = order.to_pending_tx(chain, reactor, swapper, now);
+        if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
+            *existing = pending;
+        } else {
+            state.pending.push(pending);
+        }
+    }
+}
+
 fn is_hyperliquid_endpoint(endpoint: &str) -> bool {
     endpoint.is_empty()
         || endpoint.contains("hyperliquid")
@@ -805,6 +888,46 @@ fn state_position_market_symbol(state: &WalletState, position_id: &str) -> Optio
 mod tests {
     use super::*;
     use policy_state::{Address, ChainId};
+
+    #[test]
+    fn upsert_intent_orders_adds_updates_and_preserves_terminal() {
+        use crate::fetchers::UniswapXOrder;
+        use policy_state::pending::PendingStatus;
+        use policy_state::{WalletId, U256};
+
+        let chain = ChainId::ethereum_mainnet();
+        let reactor = Address::ZERO;
+        let swapper = Address::ZERO;
+        let now = Time::from_unix(1_738_000_000);
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // Round 1: one open order is discovered → added as Active.
+        let open = UniswapXOrder {
+            order_hash: "0xhash1".into(),
+            order_status: "open".into(),
+            order_type: "Dutch_V2".into(),
+            deadline: 1_738_003_600,
+            sell_token: Address::ZERO,
+            sell_amount: U256::from(600u64),
+            buy_token: Address::ZERO,
+            buy_min: U256::from(1u64),
+        };
+        super::upsert_intent_orders(&mut state, &[open.clone()], &chain, reactor, &swapper, now);
+        assert_eq!(state.pending.len(), 1);
+        assert_eq!(state.pending[0].id, "intent:uniswap_x:0xhash1");
+        assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Active);
+
+        // Round 2: same hash now filled → updated in place, not duplicated.
+        let filled = UniswapXOrder {
+            order_status: "filled".into(),
+            ..open
+        };
+        super::upsert_intent_orders(&mut state, &[filled], &chain, reactor, &swapper, now);
+        assert_eq!(state.pending.len(), 1, "idempotent by orderHash");
+        assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Filled);
+    }
 
     #[tokio::test]
     async fn refresh_empty_state_is_noop() {
