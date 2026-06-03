@@ -13,6 +13,16 @@
 
 ---
 
+## STATUS (2026-06-03) — all Addressable items resolved
+
+**L1 ✅ L2 ✅ L3 ✅ L4 ✅ L5 ✅** — committed on `feat/lido-onboarding`
+(`fcf1a473` L1 · `b8a87038` L2 · `8280ad57` L3 · `74c08354` L4 · `9c0655af` L5),
+each gate-checked + evidence-updated. **Larger (L6 enrichment-RPC, L7 multichain)
+remain DEFERRED — separate scope, awaiting a user decision (not started).
+Structural items remain accepted-by-design (not faked).** Not pushed/merged.
+
+---
+
 ## Addressable — fix these (priority order)
 
 ### L1 — bare-ETH selectorless stake  ✅ RESOLVED (was HIGH)
