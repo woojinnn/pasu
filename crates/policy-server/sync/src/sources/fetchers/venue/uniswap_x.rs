@@ -2,6 +2,7 @@
 //! API: <https://trade-api.gateway.uniswap.org/v1/orders> (header `x-api-key`).
 
 use std::str::FromStr;
+use std::time::Duration;
 
 use policy_state::pending::{
     AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
@@ -9,6 +10,99 @@ use policy_state::pending::{
 use policy_state::primitives::{Address, ChainId, Time, U256, VenueRef};
 use policy_state::token::{TokenKey, TokenRef};
 use policy_state::{DataSource, StateDelta};
+
+use crate::config::UniswapConfig;
+use crate::error::SyncError;
+
+/// Fetches UniswapX order status from the Uniswap Trade API (`GET /v1/orders`).
+pub struct UniswapXFetcher {
+    client: reqwest::Client,
+    base_url: String,
+    api_key: String,
+    chains: Vec<ChainId>,
+}
+
+impl UniswapXFetcher {
+    #[must_use]
+    pub fn from_sync_config(cfg: &UniswapConfig) -> Self {
+        Self {
+            client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .build()
+                .expect("reqwest client init"),
+            base_url: cfg.orders_endpoint.clone(),
+            api_key: cfg.api_key.clone(),
+            chains: cfg.chains.clone(),
+        }
+    }
+
+    #[must_use]
+    pub fn chains(&self) -> &[ChainId] {
+        &self.chains
+    }
+
+    /// `GET {base}/orders?swapper={swapper}&chainId={n}&limit=50`, following
+    /// `cursor` pages, returning the decoded orders for one chain. Non-eip155
+    /// chains are not on the Trade API and yield an empty list.
+    pub async fn fetch_orders(
+        &self,
+        swapper: &Address,
+        chain: &ChainId,
+    ) -> Result<Vec<UniswapXOrder>, SyncError> {
+        let Some(chain_num) = eip155_chain_id(chain) else {
+            return Ok(Vec::new());
+        };
+        let mut out = Vec::new();
+        let mut cursor: Option<String> = None;
+        loop {
+            let mut url = format!(
+                "{}/orders?swapper={:#x}&chainId={chain_num}&limit=50",
+                self.base_url.trim_end_matches('/'),
+                swapper,
+            );
+            if let Some(c) = &cursor {
+                url.push_str(&format!("&cursor={c}"));
+            }
+            let resp = self
+                .client
+                .get(&url)
+                .header("x-api-key", &self.api_key)
+                .send()
+                .await
+                .map_err(|e| SyncError::FetchFailed {
+                    source_id: "uniswap_x".into(),
+                    reason: format!("http: {e}"),
+                })?;
+            if !resp.status().is_success() {
+                return Err(SyncError::FetchFailed {
+                    source_id: "uniswap_x".into(),
+                    reason: format!("status {}", resp.status()),
+                });
+            }
+            let body: serde_json::Value =
+                resp.json().await.map_err(|e| SyncError::FetchFailed {
+                    source_id: "uniswap_x".into(),
+                    reason: format!("decode: {e}"),
+                })?;
+            if let Some(page) = parse_orders(&body) {
+                out.extend(page);
+            }
+            cursor = body
+                .get("cursor")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned);
+            if cursor.is_none() {
+                break;
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// `eip155:<n>` → `n`. Returns `None` for non-eip155 CAIP-2 ids.
+fn eip155_chain_id(chain: &ChainId) -> Option<u64> {
+    chain.0.strip_prefix("eip155:")?.parse().ok()
+}
 
 /// Map a Uniswap Trade API `orderStatus` string to our canonical
 /// `PendingStatus`. The second tuple element is the verbatim venue string,
