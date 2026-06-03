@@ -13,3 +13,6 @@ crates/policy-engine-wasm/pkg/
 
 **/*.log
 **/*.tsbuildinfo
+**/node_modules/
+docs/
+deploy-local/
