@@ -57,11 +57,11 @@ use super::{
     TOKEN_ERC20_PERMIT_SCHEMA, TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA,
     TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA, TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA,
     TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA, TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA,
-    TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA,
-    YIELD_ADD_MARKET_LIQUIDITY_SCHEMA, YIELD_CANCEL_LIMIT_ORDER_SCHEMA, YIELD_CLAIM_YIELD_SCHEMA,
-    YIELD_MINT_PY_SCHEMA, YIELD_MINT_SY_SCHEMA, YIELD_PT_SWAP_SCHEMA, YIELD_REDEEM_PY_SCHEMA,
-    YIELD_REDEEM_SY_SCHEMA, YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA, YIELD_SIGN_LIMIT_ORDER_SCHEMA,
-    YIELD_YT_SWAP_SCHEMA,
+    TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA, TOKEN_REVOKE_APPROVAL_SCHEMA, TOKEN_UNWRAP_NATIVE_SCHEMA,
+    TOKEN_WRAP_NATIVE_SCHEMA, YIELD_ADD_MARKET_LIQUIDITY_SCHEMA, YIELD_CANCEL_LIMIT_ORDER_SCHEMA,
+    YIELD_CLAIM_YIELD_SCHEMA, YIELD_MINT_PY_SCHEMA, YIELD_MINT_SY_SCHEMA, YIELD_PT_SWAP_SCHEMA,
+    YIELD_REDEEM_PY_SCHEMA, YIELD_REDEEM_SY_SCHEMA, YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA,
+    YIELD_SIGN_LIMIT_ORDER_SCHEMA, YIELD_YT_SWAP_SCHEMA,
 };
 
 /// One row of the action resolver: the `(domain, action_tag)` a trigger can
@@ -602,6 +602,18 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("revoke_approval"),
         schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
         pascal_stub: "RevokeApproval",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("unwrap_native"),
+        schema_text: TOKEN_UNWRAP_NATIVE_SCHEMA,
+        pascal_stub: "UnwrapNative",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("wrap_native"),
+        schema_text: TOKEN_WRAP_NATIVE_SCHEMA,
+        pascal_stub: "WrapNative",
     },
     // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
     ActionEntry {
@@ -1158,12 +1170,13 @@ mod tests {
         // included), plus 13 more HyperliquidCore actions (the `hl_unknown`
         // catch-all + 8 fund-movement + 2 permission + 2 trading/margin) = 98,
         // plus UniswapX `settle_intent_order` and two Permit2 SignatureTransfer
-        // rows = 101.
+        // rows = 101, plus the two Token native wrap/unwrap rows
+        // (`wrap_native` / `unwrap_native`) = 103.
         // Guards against a row being dropped or duplicated.
         assert_eq!(
             RESOLVER_TABLE.len(),
-            101,
-            "resolver table must have 101 rows"
+            103,
+            "resolver table must have 103 rows"
         );
     }
 

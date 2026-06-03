@@ -24,6 +24,10 @@ pub mod permit2_sign;
 pub mod permit2_transfer;
 /// Revoke-approval action and its scope enum.
 pub mod revoke;
+/// Native-currency unwrap (`withdraw`) — WETH-style 1:1 wrapper → native.
+pub mod unwrap_native;
+/// Native-currency wrap (`deposit`) — native → WETH-style 1:1 wrapper.
+pub mod wrap_native;
 
 pub use self::erc20_approve::*;
 pub use self::erc20_permit::*;
@@ -35,6 +39,8 @@ pub use self::permit2_approve::*;
 pub use self::permit2_sign::*;
 pub use self::permit2_transfer::*;
 pub use self::revoke::*;
+pub use self::unwrap_native::*;
+pub use self::wrap_native::*;
 
 /// Domain-agnostic, token-level actions that can occur anywhere.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
@@ -63,6 +69,10 @@ pub enum TokenAction {
     NftTransfer(NftTransferAction),
     /// Revoke a previously granted approval (any scope).
     RevokeApproval(RevokeApprovalAction),
+    /// Native-currency wrap (e.g. WETH `deposit()`) — native → 1:1 ERC20 wrapper.
+    WrapNative(WrapNativeAction),
+    /// Native-currency unwrap (e.g. WETH `withdraw()`) — 1:1 ERC20 wrapper → native.
+    UnwrapNative(UnwrapNativeAction),
 }
 
 impl TokenAction {
@@ -83,6 +93,8 @@ impl TokenAction {
             Self::NftSetApprovalForAll(_) => "nft_set_approval_for_all",
             Self::NftTransfer(_) => "nft_transfer",
             Self::RevokeApproval(_) => "revoke_approval",
+            Self::WrapNative(_) => "wrap_native",
+            Self::UnwrapNative(_) => "unwrap_native",
         }
     }
 

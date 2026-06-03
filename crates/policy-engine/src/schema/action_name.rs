@@ -158,7 +158,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "lock",
     "unlock",
     "vote_for_gauge",
-    // Token (11) — `delegate` already listed above under Airdrop
+    // Token (13) — `delegate` already listed above under Airdrop
     "erc20_approve",
     "erc20_permit",
     "erc20_transfer",
@@ -170,6 +170,8 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "permit2_sign_transfer",
     "permit2_transfer_from",
     "revoke_approval",
+    "unwrap_native",
+    "wrap_native",
     // HyperliquidCore (18) — thin off-chain L1 action model. `hl_`-prefixed so
     // the tags stay globally unique (e.g. `withdraw` already exists in Lending).
     "hl_order",
@@ -249,7 +251,7 @@ mod tests {
         // vault_transfer / sub_account_transfer) + 2 permission (approve_builder_fee
         // / token_delegate) + 2 trading/margin (twap_order / update_isolated_margin)
         // = 98, plus `settle_intent_order` for on-chain intent settlement = 99.
-        assert_eq!(REGISTERED_ACTIONS.len(), 101);
+        assert_eq!(REGISTERED_ACTIONS.len(), 103);
     }
 
     #[test]

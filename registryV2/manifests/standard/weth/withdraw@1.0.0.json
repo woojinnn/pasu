@@ -1,0 +1,50 @@
+{
+  "type": "adapter_action",
+  "id": "standard/weth/withdraw@1.0.0",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x2e1a7d4d",
+    "chain_to_addresses": {
+      "1": ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"],
+      "10": ["0x4200000000000000000000000000000000000006"],
+      "8453": ["0x4200000000000000000000000000000000000006"],
+      "42161": ["0x82af49447d8a07e3bd95bd0d56f35241523fbab1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [{ "name": "wad", "type": "uint256" }],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "unwrap_native",
+        "unwrap_native": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "amount": "$args.wad"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
