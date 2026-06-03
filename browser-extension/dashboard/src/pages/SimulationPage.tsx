@@ -48,6 +48,7 @@ import { inferPolicyRefs } from "./simulation/policy-refs";
 import { nameFromPolicy, severityFromCedar } from "./editor/policy-meta";
 import { DEFAULT_INITIAL_STATE, buildTimeline } from "./simulation/state-mock";
 import { WasmStepProbe } from "./simulation/WasmStepProbe";
+import { CalldataProbe } from "./simulation/CalldataProbe";
 
 import "./simulation.css";
 
@@ -317,6 +318,7 @@ export function SimulationPage() {
       </div>
 
       <WasmStepProbe />
+      <CalldataProbe />
     </>
   );
 }

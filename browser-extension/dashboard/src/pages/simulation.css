@@ -528,3 +528,83 @@
   color: var(--slate-900);
   white-space: pre;
 }
+
+/* Calldata probe — input grid */
+.sim-wasm-probe .probe-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px; margin: 8px 0 12px;
+}
+.sim-wasm-probe .probe-grid label {
+  display: flex; flex-direction: column; gap: 4px;
+  font: 600 11.5px/1.2 var(--ff-mono); color: var(--slate-500);
+}
+.sim-wasm-probe .probe-grid .probe-wide { grid-column: 1 / -1; }
+.sim-wasm-probe .probe-grid input,
+.sim-wasm-probe .probe-grid textarea {
+  font: 500 12px/1.4 var(--ff-mono); color: var(--slate-900);
+  background: var(--surface);
+  border: 1px solid var(--fog-600); border-radius: 4px;
+  padding: 6px 8px;
+}
+.sim-wasm-probe .probe-grid textarea {
+  resize: vertical; white-space: pre; overflow-x: auto;
+}
+.sim-wasm-probe .probe-grid input:focus,
+.sim-wasm-probe .probe-grid textarea:focus {
+  outline: none; border-color: var(--pass-500);
+}
+.sim-wasm-probe .probe-meta code {
+  font: 500 11px/1 var(--ff-mono);
+  background: var(--fog-100, #f0f0f0);
+  padding: 1px 4px; border-radius: 3px;
+}
+
+/* Calldata probe — base state strip */
+.sim-wasm-probe .probe-base-state {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--fog-100, #f7f7f7); border-radius: 4px;
+}
+.sim-wasm-probe .probe-base-label {
+  font: 600 11.5px/1 var(--ff-mono); color: var(--slate-500);
+}
+.sim-wasm-probe .probe-base-input {
+  flex: 1 1 280px; min-width: 200px;
+  font: 500 12px/1.4 var(--ff-mono); color: var(--slate-900);
+  background: var(--surface);
+  border: 1px solid var(--fog-600); border-radius: 4px;
+  padding: 4px 8px;
+}
+.sim-wasm-probe .btn.ghost {
+  background: transparent; color: var(--slate-500);
+  border: 1px solid var(--fog-600);
+}
+.sim-wasm-probe .btn.ghost:hover:not(:disabled) {
+  color: var(--slate-900);
+  border-color: var(--slate-300);
+}
+
+/* Tx queue rows */
+.sim-wasm-probe .probe-rows {
+  display: flex; flex-direction: column; gap: 10px;
+  margin: 8px 0 12px;
+}
+.sim-wasm-probe .probe-row {
+  border: 1px solid var(--fog-600);
+  border-radius: 6px;
+  padding: 8px 10px 4px;
+  background: var(--surface);
+}
+.sim-wasm-probe .probe-row-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.sim-wasm-probe .probe-row-tag {
+  font: 700 11px/1 var(--ff-mono);
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--slate-500);
+}
+.sim-wasm-probe .probe-rows .probe-grid {
+  grid-template-columns: 1fr 1fr;
+}

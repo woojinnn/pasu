@@ -67,3 +67,58 @@ export async function simulateStepLocal(
     BRIDGE_TIMEOUT_MS,
   );
 }
+
+// ── calldata decode ───────────────────────────────────────────────────────
+
+/** Wire shape for `sim-decode`. Mirrors the SW's
+ *  `DeclarativeRouteRequestV3Input` — every numeric (`uint256`) field is a
+ *  base-10 decimal string so the wasm boundary parses safely without losing
+ *  precision through JS numbers. */
+export interface DecodeCalldataInput {
+  chain_id: number;
+  /** "0x" + 40 hex. Case-insensitive. */
+  to: string;
+  /** "0x" + 8 hex. Case-insensitive. */
+  selector: string;
+  /** Raw "0x"-prefixed calldata. */
+  calldata: string;
+  /** `msg.value` as a base-10 decimal string. */
+  value?: string;
+  /** Declared gas limit as a base-10 decimal string. */
+  gas_limit?: string;
+  /** Current gas price as a base-10 decimal string. */
+  gas_price?: string;
+  /** `tx.from` — "0x" + 40 hex. */
+  submitter: string;
+  /** Unix epoch seconds at which the Action was submitted. */
+  submitted_at: number;
+  /** Sequential transaction nonce of `submitter`. */
+  nonce?: number;
+  /** Optional `block.timestamp` distinct from `submitted_at`. */
+  block_timestamp?: number;
+}
+
+export interface DecodeCalldataOutput {
+  /** Typed `policy_transition::action::Action[]` produced by the v3 route
+   *  engine. A simple ERC20 transfer / approve decodes to one Action; batched
+   *  calls (Universal Router, Multicall) decode to many. */
+  actions: OpaqueAction[];
+  /** Decoder id (`<registry-path>@<version>`) the bundle matched on. Empty
+   *  string when the input didn't match any installed manifest — the
+   *  `actions` array is then a single `Unknown`-bodied stub. */
+  decoder_id: string;
+}
+
+/**
+ * Decode a raw EVM tx into `Action[]`. One call = one calldata; multicall
+ * batches surface as multiple entries in `actions`. The host then feeds each
+ * `Action` through `simulateStepLocal` in order.
+ */
+export async function decodeCalldataLocal(
+  input: DecodeCalldataInput,
+): Promise<DecodeCalldataOutput> {
+  return await sendToExtension<DecodeCalldataOutput>(
+    { type: "sim-decode", input },
+    BRIDGE_TIMEOUT_MS,
+  );
+}
