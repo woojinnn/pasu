@@ -41,7 +41,17 @@ const EXCLUDE: &[&str] = &[
     "data/golden/",
 ];
 const SRC_EXT: &[&str] = &[
-    ".rs", ".ts", ".tsx", ".mjs", ".cjs", ".json", ".sh", ".toml", ".cedarschema", ".md", ".lock",
+    ".rs",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".cjs",
+    ".json",
+    ".sh",
+    ".toml",
+    ".cedarschema",
+    ".md",
+    ".lock",
 ];
 
 fn repo_root() -> PathBuf {
@@ -53,9 +63,7 @@ fn repo_root() -> PathBuf {
 }
 
 fn is_path_char(c: char) -> bool {
-    c.is_ascii_alphanumeric()
-        || matches!(c, '/' | '.' | '_' | '-' | ':' | '@')
-        || META.contains(&c)
+    c.is_ascii_alphanumeric() || matches!(c, '/' | '.' | '_' | '-' | ':' | '@') || META.contains(&c)
 }
 
 /// Strip trailing markdown/sentence punctuation and a `:line(-range)` suffix.
@@ -64,7 +72,11 @@ fn normalize(tok: &str) -> &str {
         matches!(c, '.' | ',' | ';' | ')' | ']' | '`' | '"' | '·' | ':')
     });
     if let Some(i) = t.find(':') {
-        if t[i + 1..].chars().next().is_some_and(|c| c.is_ascii_digit()) {
+        if t[i + 1..]
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit())
+        {
             return &t[..i];
         }
     }
@@ -149,5 +161,8 @@ fn methodology_docs_reference_live_paths() {
             misses.join("\n")
         ));
     }
-    assert!(err.is_empty(), "\n{err}\n(checked {checked} concrete paths)");
+    assert!(
+        err.is_empty(),
+        "\n{err}\n(checked {checked} concrete paths)"
+    );
 }

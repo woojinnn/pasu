@@ -7,5 +7,9 @@
   "coalesce_address",
   "token_key_or_native",
   "uniswap_v3_pool_swap_field",
-  "uniswapx_reactor_order_field"
+  "uniswapx_reactor_order_field",
+  "balancer_zip_token_amounts",
+  "balancer_pool_id_to_address",
+  "balancer_v2_userdata_field",
+  "balancer_v2_batch_swap_field"
 ]

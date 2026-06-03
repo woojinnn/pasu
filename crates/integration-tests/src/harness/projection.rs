@@ -136,9 +136,16 @@ pub fn evaluate(
 
 /// Build a [`semantic::BodyAssertion`] whose expected side is resolved from the
 /// projection source grammar (or the literal value).
-fn build_assertion(exp: &ProjExpect, raw: &RawArgs, tx: &TxContext<'_>) -> Result<BodyAssertion, String> {
+fn build_assertion(
+    exp: &ProjExpect,
+    raw: &RawArgs,
+    tx: &TxContext<'_>,
+) -> Result<BodyAssertion, String> {
     // Ops that take no expected value pass through unchanged.
-    let needs_value = !matches!(exp.op, AssertionOp::Exists | AssertionOp::Absent | AssertionOp::NonzeroAddress);
+    let needs_value = !matches!(
+        exp.op,
+        AssertionOp::Exists | AssertionOp::Absent | AssertionOp::NonzeroAddress
+    );
     let (value, values) = match &exp.from {
         Some(src) if needs_value => (resolve_source(src, raw, tx)?, Vec::new()),
         _ => (exp.value.clone(), exp.values.clone()),
@@ -170,7 +177,9 @@ fn resolve_source(src: &str, raw: &RawArgs, tx: &TxContext<'_>) -> Result<Value,
     if let Some(rest) = src.strip_prefix("$derive.") {
         return resolve_derive(rest, raw, tx);
     }
-    Err(format!("unsupported source `{src}` (expected $tx.* / $raw.* / $derive.*)"))
+    Err(format!(
+        "unsupported source `{src}` (expected $tx.* / $raw.* / $derive.*)"
+    ))
 }
 
 /// `<name>` or `<name>[i]` against the decoded args.
@@ -186,10 +195,12 @@ fn resolve_raw(rest: &str, raw: &RawArgs) -> Result<Value, String> {
             .cloned()
             .ok_or_else(|| format!("$raw.{name}[{idx}]: not an array index"));
     }
-    raw.by_name
-        .get(rest)
-        .cloned()
-        .ok_or_else(|| format!("$raw.{rest}: no such argument (have: {:?})", raw.by_name.keys().collect::<Vec<_>>()))
+    raw.by_name.get(rest).cloned().ok_or_else(|| {
+        format!(
+            "$raw.{rest}: no such argument (have: {:?})",
+            raw.by_name.keys().collect::<Vec<_>>()
+        )
+    })
 }
 
 /// `<fn>(<inner-source>)` — harness-owned independent derivations.
@@ -208,7 +219,9 @@ fn resolve_derive(rest: &str, raw: &RawArgs, tx: &TxContext<'_>) -> Result<Value
         "uniswap_v3_path_first_token" => v3_path_token(hex, true),
         "uniswap_v3_path_last_token" => v3_path_token(hex, false),
         "uniswap_v3_path_first_fee" => v3_path_first_fee(hex),
-        _ => Err(format!("unknown $derive function `{func}` (extend the catalog deliberately)")),
+        _ => Err(format!(
+            "unknown $derive function `{func}` (extend the catalog deliberately)"
+        )),
     }
 }
 
@@ -230,7 +243,10 @@ fn v3_path_token(hex: &str, first: bool) -> Result<Value, String> {
 fn v3_path_first_fee(hex: &str) -> Result<Value, String> {
     let bytes = decode_hex(hex)?;
     if bytes.len() < 23 {
-        return Err(format!("v3 path too short for a fee ({} bytes)", bytes.len()));
+        return Err(format!(
+            "v3 path too short for a fee ({} bytes)",
+            bytes.len()
+        ));
     }
     let fee = (u32::from(bytes[20]) << 16) | (u32::from(bytes[21]) << 8) | u32::from(bytes[22]);
     Ok(Value::from(fee))
@@ -250,7 +266,8 @@ fn decode_args(signature: &str, calldata_hex: &str) -> Result<RawArgs, String> {
     if bytes.len() < 4 {
         return Err("calldata shorter than a 4-byte selector".to_owned());
     }
-    let func = Function::parse(signature).map_err(|e| format!("parse signature `{signature}`: {e}"))?;
+    let func =
+        Function::parse(signature).map_err(|e| format!("parse signature `{signature}`: {e}"))?;
     let decoded = func
         .abi_decode_input(&bytes[4..], true)
         .map_err(|e| format!("abi_decode_input: {e}"))?;
@@ -270,7 +287,9 @@ fn decode_args(signature: &str, calldata_hex: &str) -> Result<RawArgs, String> {
 /// (so `u256_hex_eq` normalizes either side); tuples/arrays -> positional array.
 fn dyn_to_json(value: &DynSolValue) -> Value {
     match value {
-        DynSolValue::Address(a) => Value::from(format!("0x{}", hex::encode(a.0 .0)).to_ascii_lowercase()),
+        DynSolValue::Address(a) => {
+            Value::from(format!("0x{}", hex::encode(a.0 .0)).to_ascii_lowercase())
+        }
         DynSolValue::Bool(b) => Value::from(*b),
         DynSolValue::Uint(u, _) => Value::from(u.to_string()),
         DynSolValue::Int(i, _) => Value::from(i.to_string()),
@@ -285,7 +304,11 @@ fn dyn_to_json(value: &DynSolValue) -> Value {
 }
 
 fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
-    let s = s.trim().strip_prefix("0x").or_else(|| s.trim().strip_prefix("0X")).unwrap_or(s.trim());
+    let s = s
+        .trim()
+        .strip_prefix("0x")
+        .or_else(|| s.trim().strip_prefix("0X"))
+        .unwrap_or(s.trim());
     hex::decode(s).map_err(|e| format!("invalid hex: {e}"))
 }
 
@@ -326,7 +349,12 @@ mod tests {
     const TOKEN: &str = "0x2222222222222222222222222222222222222222";
 
     fn tx() -> TxContext<'static> {
-        TxContext { chain_id: 1, to: TOKEN, from: "0x9999999999999999999999999999999999999999", value: "0" }
+        TxContext {
+            chain_id: 1,
+            to: TOKEN,
+            from: "0x9999999999999999999999999999999999999999",
+            value: "0",
+        }
     }
 
     #[test]
@@ -342,7 +370,8 @@ mod tests {
                 "amount": "0x1388"  // 5000, hex — u256_hex_eq normalizes vs decimal $raw.amount
             }}]}
         });
-        evaluate(&approve_projection(), &calldata, &tx(), &envelope).expect("faithful decode should pass");
+        evaluate(&approve_projection(), &calldata, &tx(), &envelope)
+            .expect("faithful decode should pass");
     }
 
     #[test]
@@ -362,7 +391,10 @@ mod tests {
         });
         let err = evaluate(&approve_projection(), &calldata, &tx(), &envelope)
             .expect_err("mis-decoded spender must be caught");
-        assert!(err.iter().any(|e| e.contains("spender")), "expected a spender mismatch, got {err:?}");
+        assert!(
+            err.iter().any(|e| e.contains("spender")),
+            "expected a spender mismatch, got {err:?}"
+        );
     }
 
     #[test]
@@ -374,8 +406,12 @@ mod tests {
                 "domain": "permission", "token": TOKEN, "spender": SPENDER, "amount": "0x270f" // 9999 != 5000
             }}]}
         });
-        let err = evaluate(&approve_projection(), &calldata, &tx(), &envelope).expect_err("wrong amount caught");
-        assert!(err.iter().any(|e| e.contains("amount")), "expected amount mismatch, got {err:?}");
+        let err = evaluate(&approve_projection(), &calldata, &tx(), &envelope)
+            .expect_err("wrong amount caught");
+        assert!(
+            err.iter().any(|e| e.contains("amount")),
+            "expected amount mismatch, got {err:?}"
+        );
     }
 
     #[test]

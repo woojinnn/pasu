@@ -2793,7 +2793,9 @@ fn process_call_legs(
                     .unwrap_or("");
                 return Err(EngineErrorDto::new(
                     "build_multicall_failed",
-                    format!("multicall_call_array leg #{index} ({leg_selector}): {kind}: {message}"),
+                    format!(
+                        "multicall_call_array leg #{index} ({leg_selector}): {kind}: {message}"
+                    ),
                 ));
             }
         }
@@ -2850,14 +2852,16 @@ fn decode_reenter_call_array(
             format!("reenter callback: data not hex: {error}"),
         )
     })?;
-    let bundle =
-        decode_inputs_abi_tuple("((address,bytes,uint256,bool,bytes32)[] bundle)", &data_bytes)
-            .map_err(|error| {
-                EngineErrorDto::new(
-                    "build_multicall_failed",
-                    format!("reenter callback: Call[] decode failed: {error}"),
-                )
-            })?;
+    let bundle = decode_inputs_abi_tuple(
+        "((address,bytes,uint256,bool,bytes32)[] bundle)",
+        &data_bytes,
+    )
+    .map_err(|error| {
+        EngineErrorDto::new(
+            "build_multicall_failed",
+            format!("reenter callback: Call[] decode failed: {error}"),
+        )
+    })?;
     let legs = bundle
         .get("bundle")
         .and_then(serde_json::Value::as_array)
@@ -3231,7 +3235,8 @@ mod tests {
         assert_eq!(installed["ok"], true, "{installed}");
 
         let receiver: AlloyAddress = submitter.parse().unwrap();
-        let emit = json!({ "strategy": "multicall_call_array", "recurse_arg": "bundle", "max_depth": 3 });
+        let emit =
+            json!({ "strategy": "multicall_call_array", "recurse_arg": "bundle", "max_depth": 3 });
         let encode_leg = |vault: &str| -> String {
             let cd = erc4626
                 .abi_encode_input(&[
@@ -3246,8 +3251,9 @@ mod tests {
 
         // KNOWN vault (snapshot[0]) → underlying resolves to USDC, decodes clean.
         let known_vault = "0x0b2d98bbf3e38df1d1b7be7343732e32e8b1f818";
-        let known_underlying: AlloyAddress =
-            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".parse().unwrap();
+        let known_underlying: AlloyAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+            .parse()
+            .unwrap();
         let known_bundle =
             json!({ "bundle": [[adapter, encode_leg(known_vault), "0", false, zero32]] });
         let body =

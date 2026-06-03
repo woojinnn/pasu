@@ -261,7 +261,10 @@ fn bundler3_multicall_legs_decode_expected_fields() {
         "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
         "sweep token (wstETH)"
     );
-    assert_eq!(s(t, "/recipient"), "0x5a6e5fe82536c16a678e859a404a6a8f7d870cb3");
+    assert_eq!(
+        s(t, "/recipient"),
+        "0x5a6e5fe82536c16a678e859a404a6a8f7d870cb3"
+    );
     assert_eq!(s(t, "/amount"), MAX_UINT, "sweep amount = max-uint");
 
     // ── tx 0xeea1e0df…: Permit2 permit (→Permit2) + permit2TransferFrom (WBTC
@@ -331,8 +334,7 @@ fn bundler3_multicall_legs_decode_expected_fields() {
     //    reenter(Call[]) callback (D-C) borrows USDT against the supplied
     //    collateral. The borrow leg has NO top-level source, so its presence
     //    PROVES the nested callback decoded. Index-independent (find by action).
-    let env3 =
-        route_tx("0x5c27d91dad83e273eda6e48e713f0e48136bc760767fc399d8d00eeefdadf303");
+    let env3 = route_tx("0x5c27d91dad83e273eda6e48e713f0e48136bc760767fc399d8d00eeefdadf303");
     let legs3 = env3
         .pointer("/data/actions/0/body/actions")
         .and_then(serde_json::Value::as_array)
@@ -356,18 +358,23 @@ fn bundler3_multicall_legs_decode_expected_fields() {
 
     // ── tx 0x1b7307b0…: Lido deleverage — the GA1 unwrapStEth leg (D-D) decodes
     //    as liquid_staking/unwrap (venue=lido), no longer a skipped staking leg.
-    let env4 =
-        route_tx("0x1b7307b031762dbbc55af5a4164bd771b5a4d2e923f6f07740a9fddfe1b9e645");
+    let env4 = route_tx("0x1b7307b031762dbbc55af5a4164bd771b5a4d2e923f6f07740a9fddfe1b9e645");
     let legs4 = env4
         .pointer("/data/actions/0/body/actions")
         .and_then(serde_json::Value::as_array)
         .expect("lido deleverage multicall legs");
     let unwrap = legs4
         .iter()
-        .find(|l| l.pointer("/domain").and_then(serde_json::Value::as_str) == Some("liquid_staking"))
+        .find(|l| {
+            l.pointer("/domain").and_then(serde_json::Value::as_str) == Some("liquid_staking")
+        })
         .expect("D-D: the unwrapStEth leg must surface as liquid_staking");
     assert_eq!(s(unwrap, "/action"), "unwrap");
-    assert_eq!(s(unwrap, "/venue/name"), "lido", "GA1 unwrapStEth → Lido unwrap");
+    assert_eq!(
+        s(unwrap, "/venue/name"),
+        "lido",
+        "GA1 unwrapStEth → Lido unwrap"
+    );
 }
 
 /// Recursively find the first `"<field>": <bool>` entry in a JSON value.
