@@ -232,3 +232,14 @@
   font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400);
 }
 .search-item-go { font-size: 12px; color: var(--slate-400); }
+
+/* External nav link (e.g. Market — opens standalone src/market/ bundle in
+   a new tab; ext-mark mirrors the visual cue MDN uses for external links). */
+.nav-rail .nav-item .ext-mark {
+  margin-left: auto;
+  font: 600 11px/1 var(--ff-mono);
+  color: var(--slate-500);
+  opacity: 0.7;
+  padding-right: 8px;
+}
+.nav-rail .nav-item:hover .ext-mark { opacity: 1; color: var(--slate-900); }

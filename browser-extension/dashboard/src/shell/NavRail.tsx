@@ -37,6 +37,11 @@ export function NavRail() {
         <RailItem to="/editor" label="Editor" icon={<EditorIcon />} />
         <RailItem to="/simulation" label="Simulation" icon={<SimIcon />} />
         <RailItem to="/monitoring" label="Monitoring" icon={<MonIcon />} />
+        <ExternalRailItem
+          href="/src/market/Market.html"
+          label="Market"
+          icon={<MarketIcon />}
+        />
       </div>
 
       <div className="nav-divider" />
@@ -72,6 +77,30 @@ interface RailItemProps {
   disabled?: boolean;
   badge?: string;
   showDot?: boolean;
+}
+
+interface ExternalRailItemProps {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
+/** External / non-SPA route. Opens in a new tab (the market page is a
+ *  standalone React+Babel-in-browser bundle under src/market/, served as-is
+ *  by Vite — it doesn't share the dashboard's router or QueryClient). */
+function ExternalRailItem({ href, label, icon }: ExternalRailItemProps) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="nav-item"
+    >
+      <span className="icon">{icon}</span>
+      <span className="label">{label}</span>
+      <span className="ext-mark" aria-hidden>↗</span>
+    </a>
+  );
 }
 
 function RailItem({ to, label, icon, end, disabled, badge, showDot }: RailItemProps) {
@@ -124,5 +153,11 @@ const HistoryIcon = () => (
   <svg viewBox="0 0 24 24" {...stroke}>
     <path d="M3 3v18h18" />
     <path d="m7 14 4-4 4 3 5-7" />
+  </svg>
+);
+const MarketIcon = () => (
+  <svg viewBox="0 0 24 24" {...stroke}>
+    <path d="M3 8h18l-2 12H5z" />
+    <path d="M8 8V5a4 4 0 0 1 8 0v3" />
   </svg>
 );
