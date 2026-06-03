@@ -6,26 +6,46 @@
  *   2. `mapping/workspaceToIR.ts` and `mapping/irToWorkspace.ts` switch on the
  *      same ids to convert between Blockly Workspace and PolicyIR.
  *
- * Phase A added: policy_hat, scope_all, action_scope_all, cond_when, expr_lit_bool.
- * Phase B adds: cond_unless, expr_var, expr_lit_long, expr_lit_string, expr_attr,
- *   expr_has, expr_binary, expr_unary.
+ * Phase coverage:
+ *   A — policy_hat, scope_all, action_scope_all, cond_when, expr_lit_bool.
+ *   B — cond_unless, expr_var, expr_lit_long, expr_lit_string, expr_attr,
+ *       expr_has, expr_binary, expr_unary.
+ *   C — scope variants (scope_eq/in/is/slot, action_scope_eq/in), remaining
+ *       Expr.kinds (litEntity, set, record, like, is, if, ext, raw), and the
+ *       child-wrapper blocks for variable-arity nodes (set_item, record_pair,
+ *       action_scope_in_item, ext_arg).
+ *   E — expr_hole (parameterization).
  *
- * Adding a new Expr.kind: append here, add a block JSON in blocks/, add round-
- * trip arms in workspaceToIR.ts / irToWorkspace.ts. coverage.test.ts fails if
- * any of the three is missing.
+ * Adding a new Expr.kind: append here, add a block JSON in blocks/, add
+ * round-trip arms in workspaceToIR.ts / irToWorkspace.ts. coverage.test.ts
+ * fails if any of the three is missing.
  */
 
 import type { BinaryOp, Expr, UnaryOp } from "../../cedar/blocks";
 
-/** Blockly value-input connector check kinds. Used to gate which blocks plug
- *  into which slots. */
-export type ConnectorCheck = "Expr" | "Scope" | "ActionScope" | "Cond";
+/** Blockly value-input connector check kinds. */
+export type ConnectorCheck =
+  | "Expr"
+  | "Scope"
+  | "ActionScope"
+  | "Cond"
+  | "SetItem"
+  | "RecordPair"
+  | "ActionScopeInItem"
+  | "ExtArg";
 
 export const BLOCK_TYPES = {
   // ── policy / scope / condition (structural) ──
   policy_hat: "policy_hat",
   scope_all: "scope_all",
+  scope_eq: "scope_eq",
+  scope_in: "scope_in",
+  scope_is: "scope_is",
+  scope_slot: "scope_slot",
   action_scope_all: "action_scope_all",
+  action_scope_eq: "action_scope_eq",
+  action_scope_in: "action_scope_in",
+  action_scope_in_item: "action_scope_in_item",
   cond_when: "cond_when",
   cond_unless: "cond_unless",
   // ── expressions ──
@@ -33,41 +53,67 @@ export const BLOCK_TYPES = {
   expr_lit_bool: "expr_lit_bool",
   expr_lit_long: "expr_lit_long",
   expr_lit_string: "expr_lit_string",
+  expr_lit_entity: "expr_lit_entity",
   expr_attr: "expr_attr",
   expr_has: "expr_has",
   expr_binary: "expr_binary",
   expr_unary: "expr_unary",
+  expr_set: "expr_set",
+  expr_set_item: "expr_set_item",
+  expr_record: "expr_record",
+  expr_record_pair: "expr_record_pair",
+  expr_like: "expr_like",
+  expr_is: "expr_is",
+  expr_if: "expr_if",
+  expr_ext: "expr_ext",
+  expr_ext_arg: "expr_ext_arg",
+  expr_raw: "expr_raw",
 } as const;
 
 export type BlockTypeId = (typeof BLOCK_TYPES)[keyof typeof BLOCK_TYPES];
 
-/** Block types that carry `output: "Expr"`. Used by the coverage test to assert
- *  every value-producing block type round-trips through PolicyIR. */
+/** Blocks that carry `output: "Expr"` — i.e. plug into any Expr value slot.
+ *  Used by the coverage test to assert every value-producing block id is
+ *  reachable from some Expr.kind. Wrapper blocks (set_item, record_pair,
+ *  action_scope_in_item, ext_arg) are NOT expressions; they're statement-list
+ *  children of their parent and excluded here. */
 export const EXPR_BLOCK_TYPES: readonly BlockTypeId[] = [
   BLOCK_TYPES.expr_var,
   BLOCK_TYPES.expr_lit_bool,
   BLOCK_TYPES.expr_lit_long,
   BLOCK_TYPES.expr_lit_string,
+  BLOCK_TYPES.expr_lit_entity,
   BLOCK_TYPES.expr_attr,
   BLOCK_TYPES.expr_has,
   BLOCK_TYPES.expr_binary,
   BLOCK_TYPES.expr_unary,
+  BLOCK_TYPES.expr_set,
+  BLOCK_TYPES.expr_record,
+  BLOCK_TYPES.expr_like,
+  BLOCK_TYPES.expr_is,
+  BLOCK_TYPES.expr_if,
+  BLOCK_TYPES.expr_ext,
+  BLOCK_TYPES.expr_raw,
 ] as const;
 
-/** Expr.kind values that Phase A+B handles end-to-end. Phase C adds the rest
- *  (set, record, litEntity, like, is, if, ext, raw, hole). coverage.test.ts
- *  uses this to skip not-yet-implemented kinds without going red. */
-export const PHASE_AB_EXPR_KINDS: readonly Expr["kind"][] = [
+/** Every Expr.kind that has a corresponding block. Updated as phases land. */
+export const ALL_EXPR_KINDS: readonly Expr["kind"][] = [
   "var",
   "lit",
+  "litEntity",
+  "set",
+  "record",
   "attr",
   "has",
   "binary",
   "unary",
+  "like",
+  "is",
+  "if",
+  "ext",
+  "raw",
 ] as const;
 
-/** All BinaryOp values surfaced as a dropdown in `expr_binary`. Kept in the
- *  same order Cedar's spec lists them so the UI is predictable. */
 export const BINARY_OPS: readonly BinaryOp[] = [
   "==",
   "!=",
@@ -88,11 +134,9 @@ export const BINARY_OPS: readonly BinaryOp[] = [
   "hasTag",
 ] as const;
 
-/** Unary-op dropdown. `neg` is rendered as `-` in Cedar source. */
 export const UNARY_OPS: readonly UnaryOp[] = ["!", "neg", "isEmpty"] as const;
 
-/** Reverse map for irToWorkspace: pick the block type for a given Expr. Returns
- *  null when no Phase-A/B block matches (Phase C / Phase E will broaden this). */
+/** Pick the block type for a given Expr. Returns null for `hole` (Phase E). */
 export function blockTypeForExpr(e: Expr): BlockTypeId | null {
   switch (e.kind) {
     case "var":
@@ -107,6 +151,12 @@ export function blockTypeForExpr(e: Expr): BlockTypeId | null {
           return BLOCK_TYPES.expr_lit_string;
       }
       return null;
+    case "litEntity":
+      return BLOCK_TYPES.expr_lit_entity;
+    case "set":
+      return BLOCK_TYPES.expr_set;
+    case "record":
+      return BLOCK_TYPES.expr_record;
     case "attr":
       return BLOCK_TYPES.expr_attr;
     case "has":
@@ -115,7 +165,17 @@ export function blockTypeForExpr(e: Expr): BlockTypeId | null {
       return BLOCK_TYPES.expr_binary;
     case "unary":
       return BLOCK_TYPES.expr_unary;
-    default:
-      return null; // litEntity / set / record / like / is / if / ext / raw / hole → Phase C+
+    case "like":
+      return BLOCK_TYPES.expr_like;
+    case "is":
+      return BLOCK_TYPES.expr_is;
+    case "if":
+      return BLOCK_TYPES.expr_if;
+    case "ext":
+      return BLOCK_TYPES.expr_ext;
+    case "raw":
+      return BLOCK_TYPES.expr_raw;
+    case "hole":
+      return null; // Phase E
   }
 }
