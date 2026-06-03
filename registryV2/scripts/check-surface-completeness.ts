@@ -246,6 +246,11 @@ const UNISWAP_V2_PAIR_SOURCE = "uniswap:v2_pair_candidates";
 const UNISWAP_V2_PAIR_BATCH = "uniswap-v2-child-universe-deferred";
 const UNISWAP_V3_POOL_SOURCE = "uniswap:v3_pool_candidates";
 const UNISWAP_V3_POOL_BATCH = "uniswap-v3-child-universe-deferred";
+// Balancer V3 liquidity manifests are source-materialized but, unlike Curve/Uniswap
+// (one callkey per pool), they materialize to the SINGLE V3 Router; the per-pool
+// token list rides as `$source.pool_tokens` context, not as per-pool callkeys.
+const BALANCER_V3_POOL_TOKENS_SOURCE = "balancer_v3:pool_tokens";
+const BALANCER_V3_ROUTER_MAINNET = "0xae563e3f8219521950555f5962419c8919758ea2";
 
 function coverageAddresses(cov: Coverage): Hex[] {
   return (
@@ -349,6 +354,10 @@ function gatedSourceAddresses(
       candidates = uniswapCandidateAddresses(chainId, UNISWAP_V2_PAIR_BATCH);
     } else if (sourceSpec === UNISWAP_V3_POOL_SOURCE) {
       candidates = uniswapCandidateAddresses(chainId, UNISWAP_V3_POOL_BATCH);
+    } else if (sourceSpec === BALANCER_V3_POOL_TOKENS_SOURCE) {
+      // Materializes to the single V3 Router (mainnet); cover selectors live on
+      // the Router and the pool->tokens map rides as $source context.
+      candidates = chainId === 1 ? [BALANCER_V3_ROUTER_MAINNET] : [];
     } else {
       continue;
     }

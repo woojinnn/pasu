@@ -11,5 +11,6 @@
   "balancer_zip_token_amounts",
   "balancer_pool_id_to_address",
   "balancer_v2_userdata_field",
-  "balancer_v2_batch_swap_field"
+  "balancer_v2_batch_swap_field",
+  "balancer_v3_zip_pool_tokens"
 ]

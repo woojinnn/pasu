@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0xAE563E3f8219521950555F5962419C8919758Ea2",
   "snapshot": "v3-router-v2-mainnet.abi.json",
-  "note": "Balancer V3 Router v2 user pre-sign surface triage (deeper-onboarding pass 2026-06-03). Manifests now cover single-token swaps, multicall, single-token add/remove liquidity, AND permitBatchAndCall (the dominant entry — 91.7% of recent direct Router tx, decoded via multicall_recurse over multicallData). Proportional/unbalanced liquidity stays deferred (amounts[]-only, pool-token list not in calldata → needs a decode-time resolver). donate/initialize/custom/hook excluded with reasons.",
+  "note": "Balancer V3 Router v2 user pre-sign surface triage (deeper-onboarding pass 2026-06-03). Manifests now cover single-token swaps, multicall, single-token add/remove liquidity, AND permitBatchAndCall (the dominant entry \u2014 91.7% of recent direct Router tx, decoded via multicall_recurse over multicallData). Proportional/unbalanced liquidity NOW COVERED via the balancer_v3:pool_tokens baked map ($source.pool_tokens) + balancer_v3_zip_pool_tokens $fn (decode-time pool->tokens resolution; pool absent from map \u2192 warn-closed). donate/initialize/custom/hook excluded with reasons. donate/initialize/custom/hook excluded with reasons.",
   "functions": {
     "0x0ca078ec": {
       "name": "addLiquidityCustom",
@@ -17,18 +17,18 @@
     },
     "0x724dba33": {
       "name": "addLiquidityProportional",
-      "decision": "exclude",
-      "reason": "DEFERRED user liquidity path: maxAmountsIn[] is amounts-ONLY (the pool token list is NOT in calldata); faithful add_liquidity tokens need a decode-time pool-token resolver, which is not wired (live_inputs are eval-time, not decode-time). Measured 0.6% of recent direct Router tx. Follow-up."
+      "decision": "cover",
+      "reason": "user AMM action: V3 add liquidity proportional. Decoded via balancer_v3:pool_tokens baked map ($source.pool_tokens) + balancer_v3_zip_pool_tokens $fn (amounts[] indexed by the pool's baked token list). Dominant V3 liquidity entry (~48% of permitBatchAndCall children, 1st-party Etherscan 2026-06)."
     },
     "0x72657d17": {
       "name": "addLiquiditySingleTokenExactOut",
       "decision": "cover",
-      "reason": "user liquidity action: single-token add (tokenIn + maxAmountIn in calldata → add_liquidity Pooled, 1-element tokens). Covered by router-add-liquidity-single-token-exact-out manifest."
+      "reason": "user liquidity action: single-token add (tokenIn + maxAmountIn in calldata \u2192 add_liquidity Pooled, 1-element tokens). Covered by router-add-liquidity-single-token-exact-out manifest."
     },
     "0xc08bc851": {
       "name": "addLiquidityUnbalanced",
-      "decision": "exclude",
-      "reason": "DEFERRED user liquidity path: exactAmountsIn[] is amounts-ONLY (pool token list NOT in calldata); needs a decode-time pool-token resolver (unwired). Measured 0.5% of recent direct Router tx. Follow-up."
+      "decision": "cover",
+      "reason": "user AMM action: V3 add liquidity unbalanced. Decoded via balancer_v3:pool_tokens baked map + balancer_v3_zip_pool_tokens $fn."
     },
     "0xbf6ee3fd": {
       "name": "donate",
@@ -53,7 +53,7 @@
     "0x19c6989f": {
       "name": "permitBatchAndCall",
       "decision": "cover",
-      "reason": "user wrapper (DOMINANT entry — 91.7% of recent direct Router tx): multicall_recurse over multicallData decodes each child Router self-call (swaps + single-token liquidity) to concrete ActionBody; deferred-liquidity children are skipped. LIMITATION (documented in manifest): the bundled Permit2 batch grant is not separately surfaced."
+      "reason": "user wrapper (DOMINANT entry \u2014 91.7% of recent direct Router tx): multicall_recurse over multicallData decodes each child Router self-call (swaps + single-token liquidity) to concrete ActionBody; deferred-liquidity children are skipped. LIMITATION (documented in manifest): the bundled Permit2 batch grant is not separately surfaced."
     },
     "0x452db952": {
       "name": "queryAddLiquidityCustom",
@@ -142,8 +142,8 @@
     },
     "0x51682750": {
       "name": "removeLiquidityProportional",
-      "decision": "exclude",
-      "reason": "DEFERRED user liquidity path: minAmountsOut[] is amounts-ONLY (pool token list NOT in calldata); needs a decode-time pool-token resolver (unwired). Measured 2.3% of recent direct Router tx. Follow-up."
+      "decision": "cover",
+      "reason": "user AMM action: V3 remove liquidity proportional. Decoded via balancer_v3:pool_tokens baked map + balancer_v3_zip_pool_tokens $fn (V3 BPT == pool). ~47% of permitBatchAndCall children."
     },
     "0x08c04793": {
       "name": "removeLiquidityRecovery",
@@ -158,12 +158,12 @@
     "0xecb2182c": {
       "name": "removeLiquiditySingleTokenExactIn",
       "decision": "cover",
-      "reason": "user liquidity action: single-token withdraw (tokenOut + minAmountOut in calldata → remove_liquidity PooledBurn, 1-element min_out; lp_token = pool). Covered by router-remove-liquidity-single-token-exact-in manifest."
+      "reason": "user liquidity action: single-token withdraw (tokenOut + minAmountOut in calldata \u2192 remove_liquidity PooledBurn, 1-element min_out; lp_token = pool). Covered by router-remove-liquidity-single-token-exact-in manifest."
     },
     "0xe7326def": {
       "name": "removeLiquiditySingleTokenExactOut",
       "decision": "cover",
-      "reason": "user liquidity action: single-token exact-out withdraw (tokenOut + exactAmountOut in calldata → remove_liquidity PooledBurn; lp_amount = maxBptAmountIn). Covered by router-remove-liquidity-single-token-exact-out manifest."
+      "reason": "user liquidity action: single-token exact-out withdraw (tokenOut + exactAmountOut in calldata \u2192 remove_liquidity PooledBurn; lp_amount = maxBptAmountIn). Covered by router-remove-liquidity-single-token-exact-out manifest."
     },
     "0x750283bc": {
       "name": "swapSingleTokenExactIn",

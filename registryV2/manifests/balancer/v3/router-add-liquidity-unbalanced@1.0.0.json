@@ -1,0 +1,85 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v3/router-add-liquidity-unbalanced@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V3 Router.addLiquidityUnbalanced(address pool, uint256[] exactAmountsIn, uint256 minBptAmountOut, bool wethIsEth, bytes userData) — selector 0xc08bc851. Source: balancer/balancer-deployments v3/tasks/20250307-v3-router-v2 Router artifact. exactAmountsIn[i] is indexed by the pool's registered token list, NOT in calldata — resolved via the baked balancer_v3:pool_tokens map ($source.pool_tokens) + balancer_v3_zip_pool_tokens $fn. min_lp_out = minBptAmountOut. recipient = tx.from. Mainnet only; resolved as a permitBatchAndCall child too via multicall_recurse.",
+  "match": {
+    "selector": "0xc08bc851",
+    "chain_to_addresses_source": "balancer_v3:pool_tokens",
+    "chain_ids": [1]
+  },
+  "abi_fragment": {
+    "function_name": "addLiquidityUnbalanced",
+    "abi": {
+      "name": "addLiquidityUnbalanced",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "pool",            "type": "address"   },
+        { "name": "exactAmountsIn",  "type": "uint256[]" },
+        { "name": "minBptAmountOut", "type": "uint256"   },
+        { "name": "wethIsEth",       "type": "bool"      },
+        { "name": "userData",        "type": "bytes"     }
+      ],
+      "outputs": [ { "name": "bptAmountOut", "type": "uint256" } ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "add_liquidity",
+        "add_liquidity": {
+          "venue": {
+            "name":      "balancer_v3",
+            "chain":     "$chain",
+            "pool_id":   "$args.pool",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "kind": "pooled",
+            "tokens": {
+              "$fn": "balancer_v3_zip_pool_tokens",
+              "$args": [ "$chain", "$args.pool", "$args.exactAmountsIn", "$source.pool_tokens" ]
+            },
+            "min_lp_out": "$args.minBptAmountOut",
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$args.pool",
+                "function":   "getCurrentLiveBalances()",
+                "decoder_id": "balancer_v3_pool_balances"
+              },
+              "ttl_s": 12
+            },
+            "current_price": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [],
+                "calc_id": "balancer_v3_pool_price"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "balancer_v3:pool_tokens",
+    "note": "build-index materializes the single mainnet V3 Router bundle and inlines $source.pool_tokens (the baked pool->tokens map from surface/balancer/_pool_universe.json)"
+  }
+}

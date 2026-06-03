@@ -54,6 +54,7 @@ pub const WHITELIST: &[&str] = &[
     "balancer_pool_id_to_address",
     "balancer_v2_userdata_field",
     "balancer_v2_batch_swap_field",
+    "balancer_v3_zip_pool_tokens",
 ];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
@@ -76,6 +77,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "balancer_pool_id_to_address" => balancer_pool_id_to_address(args),
         "balancer_v2_userdata_field" => balancer_v2_userdata_field(args),
         "balancer_v2_batch_swap_field" => balancer_v2_batch_swap_field(args),
+        "balancer_v3_zip_pool_tokens" => balancer_v3_zip_pool_tokens(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -432,6 +434,81 @@ fn balancer_zip_token_amounts(args: &[JsonValue]) -> Result<JsonValue, String> {
         // Normalise the amount to a decimal string (U256 is serde-de'd from a
         // string), matching how args_json renders width-256 uints.
         let amount_u256 = json_u256(amount, &format!("balancer_zip_token_amounts: amounts[{i}]"))?;
+        let mut key = serde_json::Map::new();
+        key.insert("standard".to_owned(), JsonValue::String("erc20".to_owned()));
+        key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
+        key.insert(
+            "address".to_owned(),
+            JsonValue::String(format!("{addr:#x}")),
+        );
+        let mut token_ref = serde_json::Map::new();
+        token_ref.insert("key".to_owned(), JsonValue::Object(key));
+        pairs.push(JsonValue::Array(vec![
+            JsonValue::Object(token_ref),
+            JsonValue::String(amount_u256.to_string()),
+        ]));
+    }
+    Ok(JsonValue::Array(pairs))
+}
+
+/// `balancer_v3_zip_pool_tokens(chain, pool: address, amounts: uint256[], pool_token_map: {pool->[token]}) -> [[TokenRef, U256]]`.
+///
+/// Balancer V3 `addLiquidityProportional` / `addLiquidityUnbalanced` /
+/// `removeLiquidityProportional` carry the per-token `amounts[]` array but **not**
+/// the token addresses — `amounts[i]` is indexed by the pool's registered token
+/// list, which lives on-chain (V3 Vault `getPoolTokens`) and is absent from
+/// calldata. Since ScopeBall is static (no sim), that list is supplied as a
+/// build-time-baked `pool -> [token]` map (registry `_pool_universe.json`,
+/// inlined into the manifest via `$source.pool_tokens`). This looks up the pool's
+/// token list and zips it with `amounts[]` index-aligned into the
+/// `[[{"key":{…}}, "<amount>"], …]` shape that `AddLiquidity::Pooled.tokens` /
+/// `RemoveLiquidity::PooledBurn.min_out` consume.
+///
+/// Pool absent from the baked map (a deferred long-tail pool, or one created
+/// after the snapshot) → **error**, so the route misses and the user is
+/// warned — never a silent pass of an unresolved deposit/withdrawal.
+fn balancer_v3_zip_pool_tokens(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 4 {
+        return Err(format!(
+            "balancer_v3_zip_pool_tokens expects 4 args (chain, pool, amounts, pool_token_map), got {}",
+            args.len()
+        ));
+    }
+    let chain = args[0]
+        .as_str()
+        .ok_or("balancer_v3_zip_pool_tokens: chain arg is not a string")?;
+    let pool = json_address(&args[1], "balancer_v3_zip_pool_tokens: pool")?;
+    // Map keys are lowercase 0x hex (resolver convention); `{:#x}` lowercases.
+    let pool_key = format!("{pool:#x}");
+    let amounts = args[2]
+        .as_array()
+        .ok_or("balancer_v3_zip_pool_tokens: amounts arg is not an array")?;
+    let map = args[3]
+        .as_object()
+        .ok_or("balancer_v3_zip_pool_tokens: pool_token_map arg is not an object")?;
+    let tokens = map
+        .get(&pool_key)
+        .and_then(JsonValue::as_array)
+        .ok_or_else(|| {
+            format!(
+                "balancer_v3_zip_pool_tokens: pool {pool_key} not in baked pool_token_map \
+             (deferred long-tail or post-snapshot pool → fail-closed)"
+            )
+        })?;
+    // Real calldata guarantees tokens.len() == amounts.len() (the pool's token
+    // count); type-valid synthetic fuzz can emit a mismatched `amounts` length,
+    // so zip the common prefix (min length) instead of erroring — real
+    // correctness is pinned by the corpus expect_body, not by this length.
+    let mut pairs = Vec::with_capacity(tokens.len().min(amounts.len()));
+    for (i, (token, amount)) in tokens.iter().zip(amounts).enumerate() {
+        let addr = json_address(
+            token,
+            &format!("balancer_v3_zip_pool_tokens: pool_token_map[{pool_key}][{i}]"),
+        )?;
+        let amount_u256 = json_u256(
+            amount,
+            &format!("balancer_v3_zip_pool_tokens: amounts[{i}]"),
+        )?;
         let mut key = serde_json::Map::new();
         key.insert("standard".to_owned(), JsonValue::String("erc20".to_owned()));
         key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
@@ -1390,6 +1467,41 @@ mod tests {
         assert_eq!(trunc.as_array().unwrap().len(), 1);
         // wrong arity still errors (structural).
         assert!(balancer_zip_token_amounts(&[json!(chain), json!([A])]).is_err());
+    }
+
+    #[test]
+    fn balancer_v3_zip_pool_tokens_looks_up_and_zips() {
+        let chain = "eip155:1";
+        let pool = "0x2222222222222222222222222222222222222222";
+        let map = json!({ "0x2222222222222222222222222222222222222222": [A, B] });
+        let out = balancer_v3_zip_pool_tokens(&[
+            json!(chain),
+            json!(pool),
+            json!(["100", "200"]),
+            map.clone(),
+        ])
+        .unwrap();
+        assert_eq!(out.as_array().unwrap().len(), 2);
+        assert_eq!(out[0][0]["key"]["standard"], json!("erc20"));
+        assert_eq!(out[0][0]["key"]["chain"], json!(chain));
+        assert_eq!(out[0][0]["key"]["address"], json!(A));
+        assert_eq!(out[0][1], json!("100"));
+        assert_eq!(out[1][0]["key"]["address"], json!(B));
+        assert_eq!(out[1][1], json!("200"));
+        // pool absent from the baked map → fail-closed error (warns, never silent-passes).
+        let missing = balancer_v3_zip_pool_tokens(&[
+            json!(chain),
+            json!("0x9999999999999999999999999999999999999999"),
+            json!(["1", "2"]),
+            map.clone(),
+        ]);
+        assert!(missing.is_err());
+        // amounts shorter than the pool token list → zips common prefix (fuzz-tolerant).
+        let trunc =
+            balancer_v3_zip_pool_tokens(&[json!(chain), json!(pool), json!(["1"]), map]).unwrap();
+        assert_eq!(trunc.as_array().unwrap().len(), 1);
+        // wrong arity errors (structural).
+        assert!(balancer_v3_zip_pool_tokens(&[json!(chain), json!(pool)]).is_err());
     }
 
     #[test]
