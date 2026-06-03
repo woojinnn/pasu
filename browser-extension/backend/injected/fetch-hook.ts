@@ -46,7 +46,8 @@ import type { MessageData, VenueOrderPayload } from "@lib/types";
 import { buildHyperliquidExecutionReport } from "./hl-execution-report";
 import {
   matchVenue,
-  parseHyperliquidExchangeOrders,
+  decideVenueBody,
+  type VenueBodyDecision,
 } from "./hl-exchange-parse";
 
 const FETCH_INSTALL_STATE = Symbol.for(
@@ -91,33 +92,24 @@ function install(): void {
     }
   }
 
-  function parseVenuePayloads(
+  function logInPageParse(
     url: string,
     venue: string,
-    body: unknown,
-  ): VenueOrderPayload[] | null {
-    const payloads = parseHyperliquidExchangeOrders(
-      venue,
-      url,
-      location.hostname,
-      body,
-    ) as VenueOrderPayload[] | null;
-    if (payloads) {
-      // Devtools: the in-page parsed result (one entry per guarded leg), visible
-      // in the PAGE console on the venue site + queryable from a probe via
-      // `window.__scopeball_last_parse__`. (The fully-normalized ActionBody is
-      // logged SW-side; this is the wire-level parse the page actually produced.)
-      const actions = payloads.map((p) => ({ ...p.hlAction }));
-      // eslint-disable-next-line no-console
-      console.info("[Scopeball] HL /exchange parsed (in-page):", { url, venue, actions });
-      try {
-        const ww = window as unknown as Record<string, unknown>;
-        ww.__scopeball_last_parse__ = { url, venue, actions, at: Date.now() };
-      } catch {
-        /* ignore */
-      }
+    payloads: VenueOrderPayload[],
+  ): void {
+    // Devtools: the in-page parsed result (one entry per guarded leg), visible
+    // in the PAGE console on the venue site + queryable from a probe via
+    // `window.__scopeball_last_parse__`. (The fully-normalized ActionBody is
+    // logged SW-side; this is the wire-level parse the page actually produced.)
+    const actions = payloads.map((p) => ({ ...p.hlAction }));
+    // eslint-disable-next-line no-console
+    console.info("[Scopeball] HL /exchange parsed (in-page):", { url, venue, actions });
+    try {
+      const ww = window as unknown as Record<string, unknown>;
+      ww.__scopeball_last_parse__ = { url, venue, actions, at: Date.now() };
+    } catch {
+      /* ignore */
     }
-    return payloads;
   }
 
   // Evaluate every order in a POST body; return false if ANY is denied
@@ -228,22 +220,38 @@ function install(): void {
           // The body can ride on `init.body` OR on a `Request` first arg
           // (`fetch(new Request(url, { body }))`). Read both so a Request-shaped
           // call cannot smuggle an order past the guard.
-          const body =
+          const rawBody =
             init?.body != null
               ? init.body
               : input instanceof Request
                 ? await input.clone().text()
                 : null;
-          if (body != null) {
-            const payloads = parseVenuePayloads(url, venue, body);
-            if (payloads) {
-              const allowed = await evaluatePayloads(payloads);
-              recordVerdict(url, venue, allowed);
-              if (!allowed) {
-                throw new Error("Scopeball: venue order blocked by policy");
-              }
-              allowedPayloads = payloads;
+          if (rawBody != null) {
+            // HL-1: the SHARED deny-closed gate coerces ANY BodyInit to text (a
+            // non-string body must not slip past), parses, and evaluates — one
+            // real code path for both fetch + XHR.
+            const decision = await decideVenueBody(
+              venue,
+              url,
+              location.hostname,
+              rawBody,
+              evaluatePayloads,
+            );
+            if (decision.kind === "deny") {
+              recordVerdict(url, venue, false);
+              if (decision.payloads) logInPageParse(url, venue, decision.payloads);
+              throw new Error(
+                decision.reason === "unreadable_body"
+                  ? "Scopeball: venue order blocked (unreadable body)"
+                  : "Scopeball: venue order blocked by policy",
+              );
             }
+            if (decision.kind === "allow") {
+              recordVerdict(url, venue, true);
+              logInPageParse(url, venue, decision.payloads);
+              allowedPayloads = decision.payloads;
+            }
+            // passthrough → not a recognized order; proceed untouched.
           }
         }
       } catch (err) {
@@ -331,14 +339,11 @@ function install(): void {
         XHR_META
       ] as XhrMeta | undefined;
 
-      // Not a venue-order POST → behave exactly like native send.
-      if (
-        !meta ||
-        !meta.venue ||
-        meta.method !== "POST" ||
-        body == null ||
-        typeof body !== "string"
-      ) {
+      // Not a venue-order POST → behave exactly like native send. A non-string
+      // body is NO LONGER short-circuited here (HL-1): a Blob / ArrayBuffer
+      // order would otherwise reach the native send unevaluated. Venue POSTs
+      // with ANY body are deferred + coerced below.
+      if (!meta || !meta.venue || meta.method !== "POST" || body == null) {
         return originalSend.call(
           this,
           body as Parameters<XMLHttpRequest["send"]>[0],
@@ -349,27 +354,37 @@ function install(): void {
       const xhr = this;
       const { url, venue } = meta;
       void (async () => {
-        let allowed = true;
-        let payloads: VenueOrderPayload[] | null = null;
+        let decision: VenueBodyDecision;
         try {
-          payloads = parseVenuePayloads(url, venue, body);
-          allowed = payloads ? await evaluatePayloads(payloads) : true;
+          // HL-1: the SAME shared deny-closed gate as the fetch path — coerce
+          // ANY body to text (an unreadable venue body is un-inspectable →
+          // deny, never reaching the native send), parse, evaluate.
+          decision = await decideVenueBody(
+            venue,
+            url,
+            location.hostname,
+            body,
+            evaluatePayloads,
+          );
         } catch (err) {
           // Fail-CLOSED (D6): a fault while evaluating a venue order (bridge
           // down, parse throw, SW unreachable, …) must BLOCK, not waive the
-          // order through. This is a venue-order POST (guarded above), so a
-          // failed verdict path defaults to deny — matching the fetch path and
-          // the SW lifecycle's deny-closed contract.
+          // order through — matches the fetch path + the SW lifecycle's
+          // deny-closed contract.
           console.error(
             "[Scopeball] xhr-hook fault — blocking (fail-closed)",
             err,
           );
-          allowed = false;
+          decision = { kind: "deny", reason: "policy", payloads: null };
         }
+        const parsedPayloads =
+          decision.kind === "passthrough" ? null : decision.payloads;
+        if (parsedPayloads) logInPageParse(url, venue, parsedPayloads);
+        const allowed = decision.kind !== "deny";
         recordVerdict(url, venue, allowed);
         if (allowed) {
-          if (payloads) {
-            const reportedPayloads = payloads;
+          if (decision.kind === "allow") {
+            const reportedPayloads = decision.payloads;
             let reported = false;
             const reportOnce = () => {
               if (reported) return;
@@ -379,7 +394,10 @@ function install(): void {
             xhr.addEventListener("loadend", reportOnce);
             xhr.addEventListener("error", reportOnce);
           }
-          originalSend.call(xhr, body);
+          originalSend.call(
+            xhr,
+            body as Parameters<XMLHttpRequest["send"]>[0],
+          );
           return;
         }
         // DENY: do not call the native send. Simulate a failed request so the

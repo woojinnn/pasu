@@ -405,6 +405,48 @@ describe("orchestrator", () => {
     );
   });
 
+  it("WASM-1: a sibling leg's plan throw does NOT demote an already-computed FAIL to a warn", async () => {
+    // Two real top-level actions. Leg 0 evaluates to a deny `fail`; leg 1's
+    // planActionRpcV2 throws (a flaky WASM/RPC fault). The fault must NOT
+    // discard leg 0's computed Fail — deny-overrides means the tx stays `fail`,
+    // never silently downgraded to an approvable warn. (Before the fix the
+    // per-leg `return undefined` dropped the whole tx into the warn tail.)
+    const legA = {
+      meta: v3SwapAction.meta,
+      body: { domain: "amm", swap: { recipient: OWNER } },
+    };
+    const legB = {
+      meta: v3SwapAction.meta,
+      body: { domain: "amm", swap: { recipient: ROUTER } },
+    };
+    mocks.tryDeclarativeRouteV3.mockResolvedValueOnce({
+      kind: "hit" as const,
+      value: { actions: [legA, legB], decoderId: "registry-v2.test/multi-leg" },
+    });
+    // Leg 0: no planned calls → evaluates to a deny fail. Leg 1: plan throws.
+    mocks.planActionRpcV2
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("plan_failed: flaky leg"));
+    mocks.evaluateActionV2.mockResolvedValueOnce({
+      kind: "fail",
+      matched: [
+        {
+          policy_id: "deny-policy",
+          reason: "blocked by policy",
+          severity: "deny",
+          origin: "action",
+        },
+      ],
+    });
+
+    const result = await decideMessage(txMessage("wasm1-fail-survives"));
+
+    // The computed FAIL from leg 0 survives leg 1's fault (was "warn" pre-fix).
+    expect(result.verdict.kind).toBe("fail");
+    expect(result.ok).toBe(false);
+    expect(mocks.evaluateActionV2).toHaveBeenCalledOnce();
+  });
+
   // ── Phase A — multicall per-child fan-out (evaluateBodyTree) ─────────────
   // A UR `execute` decodes to ONE `Multicall` Action whose `body.actions` are
   // full child ActionBodies. The SW must evaluate the outer batch AND re-enter

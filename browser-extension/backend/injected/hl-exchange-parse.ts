@@ -418,3 +418,82 @@ export function parseHyperliquidExchangeOrders(
       return unknown();
   }
 }
+
+/**
+ * Read a fetch/XHR `BodyInit` to the UTF-8 string {@link parseHyperliquidExchangeOrders}
+ * needs. Handles the encodings a venue POST can realistically carry (string /
+ * Blob / ArrayBuffer / typed-array view / `URLSearchParams`). Returns `null`
+ * when the body cannot be read to text here (FormData / ReadableStream /
+ * Document / unknown) so the caller can fail CLOSED (HL-1): a non-string body
+ * must never slip past the deny-closed guard by reaching the parser as a
+ * non-string (which yields `null` = "not an order" = pass-through) or, for XHR,
+ * by short-circuiting straight to the native `send()`. Lives here (the pure,
+ * stream-free module) so it is unit-testable and shared by both hook branches.
+ */
+export async function coerceBodyToString(body: unknown): Promise<string | null> {
+  if (body == null) return null;
+  if (typeof body === "string") return body;
+  try {
+    if (typeof Blob !== "undefined" && body instanceof Blob) return await body.text();
+    if (body instanceof ArrayBuffer) {
+      return new TextDecoder().decode(new Uint8Array(body));
+    }
+    if (ArrayBuffer.isView(body)) {
+      return new TextDecoder().decode(body as ArrayBufferView);
+    }
+    if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) {
+      return body.toString();
+    }
+  } catch {
+    return null;
+  }
+  return null; // FormData / ReadableStream / Document / unknown — not text here
+}
+
+/** Verdict for a whole venue `/exchange` POST body (deny-closed). */
+export type VenueBodyDecision =
+  | { kind: "passthrough" }
+  | { kind: "allow"; payloads: VenueOrderPayload[] }
+  | {
+      kind: "deny";
+      reason: "unreadable_body" | "policy";
+      payloads: VenueOrderPayload[] | null;
+    };
+
+/**
+ * Decide a venue `/exchange` POST from its raw body + an `evaluate` callback
+ * (which asks the SW for a per-leg verdict). The SINGLE deny-closed body-gate
+ * shared by BOTH the fetch and XHR branches of the MAIN-world hook, so the
+ * HL-1-critical body handling is one real, unit-testable code path — not a
+ * per-branch copy that can drift:
+ *   - body unreadable to text (FormData / stream / …) → deny (an un-inspectable
+ *     venue order must never pass — HL-1),
+ *   - body not a recognized order action → passthrough (info/cancel/etc.),
+ *   - any leg denied → deny (deny-closed: one denied leg blocks the batch),
+ *   - else allow.
+ * Side effects (recordVerdict / throw / event dispatch / execution reports /
+ * in-page logging) stay in the caller; this function is pure modulo `evaluate`.
+ */
+export async function decideVenueBody(
+  venue: string,
+  endpoint: string,
+  hostname: string,
+  rawBody: unknown,
+  evaluate: (payloads: VenueOrderPayload[]) => Promise<boolean>,
+): Promise<VenueBodyDecision> {
+  const bodyStr = await coerceBodyToString(rawBody);
+  if (bodyStr === null) {
+    return { kind: "deny", reason: "unreadable_body", payloads: null };
+  }
+  const payloads = parseHyperliquidExchangeOrders(
+    venue,
+    endpoint,
+    hostname,
+    bodyStr,
+  );
+  if (!payloads) return { kind: "passthrough" };
+  const allowed = await evaluate(payloads);
+  return allowed
+    ? { kind: "allow", payloads }
+    : { kind: "deny", reason: "policy", payloads };
+}

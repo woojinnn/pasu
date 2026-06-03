@@ -236,15 +236,25 @@ async function checkTypedSignature(
   readRequest?: ProviderRequest,
 ): Promise<boolean> {
   const [first, second] = params;
-  const address = looksLikeAddress(first) ? first : second;
+  // EIP-712 convention is params=[signer, typedData]; tolerate the reversed
+  // order. `typedData` is whichever param is NOT the 40-hex signer address.
   const typedData = looksLikeAddress(first) ? second : first;
-  if (!looksLikeAddress(address) || typedData === undefined) return true;
+  // Only skip when there is genuinely no typed-data payload to evaluate. A
+  // missing / non-address signer must NOT waive the verdict (F2-1): the SW
+  // routes on (verifyingContract, primaryType), not `from`, so fall back to the
+  // zero address and still evaluate the payload rather than passing it through.
+  if (typedData === undefined || typedData === null) return true;
+  const signer = looksLikeAddress(first)
+    ? first
+    : looksLikeAddress(second)
+      ? second
+      : `0x${"0".repeat(40)}`;
 
   return sendToStreamAndAwaitResponse(stream, {
     type: RequestType.TYPED_SIGNATURE,
     chainId: await readChainId(provider, readRequest),
     hostname: location.hostname,
-    address: String(address) as `0x${string}`,
+    address: String(signer) as `0x${string}`,
     typedData,
   });
 }

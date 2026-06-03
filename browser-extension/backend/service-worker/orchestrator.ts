@@ -1008,6 +1008,7 @@ async function typedSignatureLifecycle(
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   const verdicts: VerdictDto[] = [];
+  let anyLegThrew = false;
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
     const meta = (a as { meta?: unknown }).meta;
@@ -1026,33 +1027,43 @@ async function typedSignatureLifecycle(
         )),
       );
     } catch (err) {
-      // A plan/dispatch/evaluate throw is a fault → warn-closed (mirrors tx).
-      console.warn("[Scopeball] typed-sig-verdict threw", {
+      // A plan/dispatch/evaluate throw makes THIS leg unevaluable. Record the
+      // fault but KEEP aggregating siblings — the old early-return discarded
+      // every already-computed verdict and demoted a sibling leg's computed Fail
+      // to an approvable warn (WASM-1). Resolution below honours deny-overrides.
+      console.warn("[Scopeball] typed-sig-verdict leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
       });
-      return {
-        verdict: noDecoderVerdict(),
-        verdictSource: "fail_closed",
-        declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
-      };
+      anyLegThrew = true;
     }
   }
 
-  const verdict = aggregateV2Verdicts(verdicts);
+  // Deny-overrides with a fault floor (mirrors tryV2VerdictPath): a real `fail`
+  // from any leg outranks a sibling fault; otherwise a fault with no computed
+  // deny warn-closes (preserving the fail_closed labeling); otherwise the real
+  // pass/warn aggregate stands.
+  const aggregate = aggregateV2Verdicts(verdicts);
+  if (aggregate.kind !== "fail" && anyLegThrew) {
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
+    };
+  }
   console.info("[Scopeball] typed-sig-verdict", {
     requestId: message.requestId,
     verdictSource: "declarative-v2",
-    verdict: verdict.kind,
+    verdict: aggregate.kind,
     decoderId: routed.decoderId,
     matched:
-      verdict.matched?.map((m) => ({
+      aggregate.matched?.map((m) => ({
         id: m.policy_id,
         severity: m.severity,
       })) ?? [],
   });
-  return { verdict, verdictSource: "declarative-v2", declarativeV3 };
+  return { verdict: aggregate, verdictSource: "declarative-v2", declarativeV3 };
 }
 
 /** Synthetic deny verdict for the venue-order deny-closed paths. */
@@ -1163,6 +1174,11 @@ async function tryV2VerdictPath(
   });
   if (realActions.length === 0) return undefined;
 
+  // Warm the v2 bundle cache (idempotent) before reading it — closes the
+  // post-SW-restart boot race where a tx arriving early sees [] and degrades an
+  // enforced deny to an approvable warn (F1-1). Mirrors the venue + typed-sig
+  // paths, which already await the loader.
+  await loadDefaultPolicySetV2();
   const bundles = getDefaultPolicyBundlesV2();
   if (bundles.length === 0) return undefined;
   // The plan phase MUST see the identical manifest set the bundles carry —
@@ -1180,6 +1196,7 @@ async function tryV2VerdictPath(
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   const verdicts: VerdictDto[] = [];
+  let anyLegThrew = false;
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
     const meta = (a as { meta?: unknown }).meta;
@@ -1209,18 +1226,31 @@ async function tryV2VerdictPath(
       // in to Scopeball. Recorded per TOP-LEVEL action (granularity unchanged).
       void recordSimulationOnServer({ action, meta, tx });
     } catch (err) {
-      // A plan/dispatch throw is a fault, NOT a verdict — the caller fails
-      // closed (a flaky WASM/RPC call must not waive a tx through).
-      console.warn("[Scopeball] declarative-verdict-v2 threw", {
+      // A plan/dispatch throw makes THIS leg unevaluable. Record the fault but
+      // KEEP evaluating siblings — the old `return undefined` here discarded
+      // every already-computed verdict and dropped the whole tx into the warn
+      // tail, silently demoting a sibling leg's computed Fail to an approvable
+      // warn (WASM-1). Resolution below honours deny-overrides.
+      console.warn("[Scopeball] declarative-verdict-v2 leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
       });
-      return undefined;
+      anyLegThrew = true;
     }
   }
 
-  return aggregateV2Verdicts(verdicts);
+  // Deny-overrides resolution with a fault floor:
+  //   - a real `fail` from ANY leg outranks the fault → return it (never let a
+  //     sibling fault demote a computed deny — WASM-1),
+  //   - otherwise a fault with no computed deny falls through to the caller's
+  //     fail-closed WARN tail (`undefined`), preserving the prior fail_closed
+  //     semantics/labeling for a pure plan/dispatch fault,
+  //   - otherwise the real pass/warn aggregate stands.
+  const aggregate = aggregateV2Verdicts(verdicts);
+  if (aggregate.kind === "fail") return aggregate;
+  if (anyLegThrew) return undefined;
+  return aggregate;
 }
 
 /**
