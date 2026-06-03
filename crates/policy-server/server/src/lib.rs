@@ -40,6 +40,7 @@ pub mod docs;
 pub mod dto;
 pub mod events;
 pub mod handler;
+pub mod logging;
 pub mod market_dto;
 pub mod market_handlers;
 pub mod read_handlers;
