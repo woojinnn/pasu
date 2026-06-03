@@ -782,6 +782,25 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             }
         };
 
+        // N2 (catch-all): a decoded body that is an EMPTY Multicall — e.g. an
+        // `array_emit` over a length-0 dynamic array (Permit2 `lockdown([])`,
+        // `permitBatch([])`, …) — must NOT pass through. An empty Multicall has
+        // domain "multicall", survives the orchestrator's realActions filter, and
+        // aggregates to PASS (no children, no policy) — a fail-open. Surface it as
+        // Unknown so it warn-closes. (A strictly-empty batch is an on-chain no-op,
+        // so warn-closing costs the user nothing.) `dispatch_opcode_stream` already
+        // returns Unknown for an empty stream; this is the single chokepoint for
+        // every other strategy.
+        let body = match body {
+            v3_action::ActionBody::Multicall { ref actions } if actions.is_empty() => unknown_leg(
+                ctx.tx_to,
+                ctx.chain.clone(),
+                ctx.raw_calldata.to_string(),
+                ctx.value,
+            ),
+            other => other,
+        };
+
         let action = v3_action::Action { meta, body };
 
         Ok(DeclarativeRouteRequestV3ResultDto {
@@ -1526,11 +1545,13 @@ fn maybe_normalize_v4_swap_params(decoded: &mut serde_json::Value, opcode_key: &
     }
 }
 
-/// Build an `Unknown` leg for a batch position the decoder could not map — an
-/// unknown opcode under the `warn` policy, or a `Call[]` leg with no installed
-/// adapter / a bare value transfer. Surfacing it (instead of dropping) lets the
-/// orchestrator warn-close a partially-decoded batch rather than evaluate — or
-/// PASS-aggregate — only the legible legs (N2/N3/K3).
+/// Build an `Unknown` body for a batch that decoded to NOTHING — an opcode
+/// stream whose every opcode was unmapped+dropped, or any other strategy that
+/// yielded an empty `Multicall` (e.g. an `array_emit` over a length-0 array).
+/// Surfacing Unknown (instead of an empty Multicall) makes the route warn-close
+/// rather than PASS (an empty Multicall has no children to evaluate, so it
+/// aggregates to pass — the N2 fail-open). A PARTIAL decode keeps its mapped
+/// legs (the registry `warn`=skip intent for the dropped ones).
 fn unknown_leg(
     target: V3Address,
     chain: V3ChainId,
@@ -3066,6 +3087,53 @@ mod tests {
             body_json["domain"], "unknown",
             "all-unknown opcode stream must surface Unknown (not an empty Multicall \
              that aggregates to PASS): {body_json}"
+        );
+    }
+
+    #[test]
+    fn array_emit_empty_array_routes_to_unknown_not_empty_multicall() {
+        // N2 catch-all: an `array_emit` over a length-0 dynamic array (Permit2
+        // lockdown([]) / permitBatch([]) etc.) builds an empty Multicall, which
+        // would aggregate to PASS. The route-level guard must surface it as Unknown
+        // so it warn-closes. (An empty batch is an on-chain no-op — warn-closing
+        // costs the user nothing; it just denies the silent PASS.)
+        let contract = "0x000000000000000000000000000000000000c0de";
+        let batch_fn = Function::parse("batch(uint256[] xs)").unwrap();
+        let calldata = batch_fn
+            .abi_encode_input(&[DynSolValue::Array(vec![])])
+            .unwrap();
+        let selector = format!("0x{}", hex::encode(&calldata[0..4]));
+        let calldata_hex = format!("0x{}", hex::encode(&calldata));
+
+        let bundle = json!({
+            "type": "adapter_action", "id": "test/array-emit-empty@1.0.0",
+            "publisher": "test", "schema_version": "3",
+            "match": { "selector": selector, "chain_to_addresses": { "1": [contract] } },
+            "abi_fragment": { "function_name": "batch", "abi": {
+                "name": "batch", "type": "function", "stateMutability": "nonpayable",
+                "inputs": [{ "name": "xs", "type": "uint256[]" }], "outputs": [] } },
+            "emit": { "strategy": "array_emit", "array_source": "$args.xs", "body": {
+                "domain": "token", "token": { "action": "erc20_transfer", "erc20_transfer": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+                    "recipient": "$submitter", "amount": "$inputs" } } } },
+            "requires": { "imperative": [], "adapter_capabilities": [], "host_capabilities": [], "extension": ">=0.1.0" }
+        });
+        let installed: Value =
+            serde_json::from_str(&declarative_install_v3_json(bundle.to_string())).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let out = declarative_route_request_v3_json(
+            json!({
+                "chain_id": 1, "to": contract, "selector": selector, "calldata": calldata_hex,
+                "submitter": "0x000000000000000000000000000000000000aaaa", "submitted_at": 1_700_000_000_u64
+            })
+            .to_string(),
+        );
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(
+            parsed["data"]["actions"][0]["body"]["domain"], "unknown",
+            "empty array_emit must route to Unknown, not an empty Multicall (PASS): {parsed}"
         );
     }
 

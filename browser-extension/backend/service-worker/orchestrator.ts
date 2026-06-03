@@ -1129,11 +1129,13 @@ async function evaluateBodyTree(
       await evaluateActionV2({ action: body, meta, tx, bundles, results }),
     );
   } else if (domain === "unknown") {
-    // N2/N3: a decoded-but-unmapped leg — the WASM decoder now surfaces an
-    // undecodable batch position (unknown opcode / no-adapter Call[] leg) as an
-    // `Unknown` child instead of dropping it. Contribute a warn so a partially-
-    // decoded batch cannot aggregate to PASS on its legible siblings alone; a
-    // sibling DENY still outranks this warn via deny-overrides.
+    // N2: a nested batch position that decoded to NOTHING — the WASM decoder
+    // surfaces an all-empty nested opcode stream as an `Unknown` child (rather
+    // than an empty Multicall that would PASS). Contribute a warn so the parent
+    // batch cannot aggregate to PASS on its legible siblings alone; a sibling
+    // DENY still outranks this warn via deny-overrides. (A single dropped opcode
+    // in an otherwise-decoded stream is NOT surfaced — registry `warn`=skip
+    // intent — so this fires only for the all-empty case.)
     console.debug("[Scopeball] per-child unknown leg → partial-decode warn", {
       requestId,
     });

@@ -82,9 +82,10 @@ function checkMetaMaskBypass(messageData: any): void {
 }
 
 window.addEventListener("message", (event) => {
-  // N7: only trust messages from the top window. A cross-frame / forged source
-  // must not inject observe-only bypass rows. (Same-origin same-page forgery is
-  // an accepted residual — these rows are observe-only and never gate a verdict.)
+  // N7: only trust messages posted from THIS frame's own window (the wallet's
+  // in-page relay posts same-window). A cross-frame / forged source must not
+  // inject observe-only bypass rows. (Same-origin same-page forgery is an
+  // accepted residual — these rows are observe-only and never gate a verdict.)
   if (event.source !== window) return;
   const target = event?.data?.target;
   const inner = event?.data?.data;

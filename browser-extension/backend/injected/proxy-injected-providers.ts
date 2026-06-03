@@ -647,6 +647,15 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
 
   const proxiedRequest = new Proxy(originalRequest, {
     apply: async (target, _thisArg, args) => {
+      if (Array.isArray(args[0])) {
+        // N4: EIP-1193 `request` takes a single object, but some non-standard
+        // wallets honour a JSON-RPC batch ARRAY here too. An array has no
+        // top-level `.method`, so the gate below would forward it ungated —
+        // gate each leg first (any deny throws, rejecting the request), then
+        // forward intact. (gateBatchArray is closed over from below.)
+        await gateBatchArray(args[0] as unknown[]);
+        return Reflect.apply(target, provider, args);
+      }
       const request = (args[0] ?? {}) as JsonRpcRequest;
       const method = request.method;
       const params = paramsArray(request.params);

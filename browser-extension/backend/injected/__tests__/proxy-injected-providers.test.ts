@@ -382,6 +382,49 @@ describe("inpage provider proxy", () => {
     expect(originalSend).not.toHaveBeenCalled();
   });
 
+  it("N4: gates each eth_sendTransaction in a request([...]) batch array (any deny blocks)", async () => {
+    streamState.responses.push(true, false); // leg1 allow, leg2 deny
+    const originalRequest = vi.fn(async (request: unknown) => {
+      if ((request as { method?: string }).method === "eth_chainId") return "0x1";
+      return "request-result";
+    });
+    (window as any).ethereum = { request: originalRequest };
+
+    await import("../proxy-injected-providers");
+
+    const tx1 = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+    const tx2 = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x3333333333333333333333333333333333333333",
+      value: "0x0",
+      data: "0x",
+    };
+
+    // EIP-1193 `request` takes a single object, but a non-standard wallet may
+    // honour an array; the array has no top-level `.method` so it used to
+    // forward ungated.
+    await expect(
+      (window as any).ethereum.request([
+        { method: "eth_sendTransaction", params: [tx1] },
+        { method: "eth_sendTransaction", params: [tx2] },
+      ]),
+    ).rejects.toMatchObject({ code: 4001 });
+
+    expect(policyWrites()).toHaveLength(2);
+    // The native request was only used for eth_chainId reads, never for the
+    // ungated batch array.
+    expect(
+      originalRequest.mock.calls.every(
+        ([r]) => (r as { method?: string }).method === "eth_chainId",
+      ),
+    ).toBe(true);
+  });
+
   it("wraps newly added provider methods without double-gating request", async () => {
     streamState.responses.push(true);
     const provider = {
