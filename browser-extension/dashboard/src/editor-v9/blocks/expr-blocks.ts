@@ -1,19 +1,18 @@
 /**
- * Expression blocks (Phase B: core + bool from Phase A).
- *
- * Each `expr_*` block carries `output: "Expr"` so it plugs into any value slot
- * with `check: "Expr"`. Phase C adds the remaining Expr.kind variants
- * (set / record / litEntity / like / is / if / ext / raw / hole).
+ * Expression blocks. Phase A added bool literal; Phase B added the core
+ * exprs (var, lit:long/string, attr, has, binary, unary); Phase C completes
+ * the Expr surface (litEntity, set, record, like, is, if, ext, raw).
  *
  * Block JSON design notes:
- *   - Dropdowns use Blockly's `field_dropdown` with [[label, value], ...] pairs.
- *     For operators, label = symbol, value = the canonical Expr op string.
- *   - Field-name inputs (FIELD on attr/has) use `field_input` with a sensible
- *     default so the block isn't dangling; workspaceToIR pushes a structural
- *     error if the user clears it.
- *   - Colours track category: structural blocks use the policy palette,
- *     expressions use the green/teal family (160-180). Binary/unary share a
- *     distinct hue so the operator chain is visually scannable.
+ *   - Variable-arity nodes (set elements, record pairs, ext args) use the
+ *     statement-list wrapper pattern (mirrors Cond) instead of Blockly mutators.
+ *     This trades a slightly noisier serialised tree for a much simpler
+ *     authoring + maintenance story.
+ *   - Like patterns are entered as a single string; `*` becomes a Wildcard
+ *     token at IR build time (workspaceToIR.ts handles split / join).
+ *   - Raw blocks persist their EST payload via Blockly's `data` field
+ *     (`block.data = JSON.stringify(est)`). The visible label shows a short
+ *     ellipsised excerpt so the user knows what's there.
  */
 
 import { BINARY_OPS, UNARY_OPS } from "../mapping/block-types";
@@ -47,7 +46,19 @@ export const EXPR_LIT_STRING_BLOCK_JSON = {
   tooltip: "문자열 리터럴",
 } as const;
 
-// ── request variables (principal / action / resource / context) ─────────
+export const EXPR_LIT_ENTITY_BLOCK_JSON = {
+  type: "expr_lit_entity",
+  message0: '%1 :: "%2"',
+  args0: [
+    { type: "field_input", name: "TYPE", text: "User" },
+    { type: "field_input", name: "ID", text: "alice" },
+  ],
+  output: "Expr",
+  colour: 160,
+  tooltip: "엔티티 리터럴 (값으로 사용; 예: User::\"alice\")",
+} as const;
+
+// ── request variables ──────────────────────────────────────────────────
 
 export const EXPR_VAR_BLOCK_JSON = {
   type: "expr_var",
@@ -99,9 +110,6 @@ export const EXPR_HAS_BLOCK_JSON = {
 
 // ── binary / unary ──────────────────────────────────────────────────────
 
-/** Operator symbols shown in the dropdown UI; values are the canonical op
- *  strings consumed by PolicyIR. `getTag`/`hasTag` are method-like in Cedar
- *  source but shaped as binary here (matches PolicyIR). */
 const BINARY_OP_LABELS: Record<string, string> = {
   "==": "=",
   "!=": "≠",
@@ -161,4 +169,137 @@ export const EXPR_UNARY_BLOCK_JSON = {
   inputsInline: true,
   colour: 260,
   tooltip: "단항 연산 (! / − / isEmpty)",
+} as const;
+
+// ── collections (set / record) ─────────────────────────────────────────
+
+export const EXPR_SET_BLOCK_JSON = {
+  type: "expr_set",
+  message0: "[ %1 ]",
+  args0: [{ type: "input_statement", name: "ITEMS", check: "SetItem" }],
+  output: "Expr",
+  colour: 140,
+  tooltip: "집합 리터럴 — 원소 블록(•)을 stack 안에 채워 넣으세요",
+} as const;
+
+export const EXPR_SET_ITEM_BLOCK_JSON = {
+  type: "expr_set_item",
+  message0: "• %1",
+  args0: [{ type: "input_value", name: "ITEM", check: "Expr" }],
+  previousStatement: "SetItem",
+  nextStatement: "SetItem",
+  colour: 140,
+  tooltip: "집합 원소",
+} as const;
+
+export const EXPR_RECORD_BLOCK_JSON = {
+  type: "expr_record",
+  message0: "{ %1 }",
+  args0: [{ type: "input_statement", name: "PAIRS", check: "RecordPair" }],
+  output: "Expr",
+  colour: 140,
+  tooltip: "레코드 리터럴 — 키:값 블록을 stack 안에 채워 넣으세요",
+} as const;
+
+export const EXPR_RECORD_PAIR_BLOCK_JSON = {
+  type: "expr_record_pair",
+  message0: "%1 : %2",
+  args0: [
+    { type: "field_input", name: "KEY", text: "key" },
+    { type: "input_value", name: "VALUE", check: "Expr" },
+  ],
+  previousStatement: "RecordPair",
+  nextStatement: "RecordPair",
+  inputsInline: true,
+  colour: 140,
+  tooltip: "레코드의 키:값 쌍",
+} as const;
+
+// ── string / type / control ────────────────────────────────────────────
+
+export const EXPR_LIKE_BLOCK_JSON = {
+  type: "expr_like",
+  message0: '%1 like "%2"',
+  args0: [
+    { type: "input_value", name: "OF", check: "Expr" },
+    { type: "field_input", name: "PATTERN", text: "abc*" },
+  ],
+  output: "Expr",
+  inputsInline: true,
+  colour: 180,
+  tooltip: "문자열 패턴 매치 (`*`는 와일드카드)",
+} as const;
+
+export const EXPR_IS_BLOCK_JSON = {
+  type: "expr_is",
+  message0: "%1 is %2",
+  args0: [
+    { type: "input_value", name: "OF", check: "Expr" },
+    { type: "field_input", name: "TYPE", text: "User" },
+  ],
+  message1: "  in %1",
+  args1: [{ type: "input_value", name: "IN", check: "Expr" }],
+  output: "Expr",
+  colour: 180,
+  tooltip: "엔티티 타입 확인 (in 슬롯은 옵션)",
+} as const;
+
+export const EXPR_IF_BLOCK_JSON = {
+  type: "expr_if",
+  message0: "if %1",
+  args0: [{ type: "input_value", name: "COND", check: "Expr" }],
+  message1: "  then %1",
+  args1: [{ type: "input_value", name: "THEN", check: "Expr" }],
+  message2: "  else %1",
+  args2: [{ type: "input_value", name: "ELSE", check: "Expr" }],
+  output: "Expr",
+  colour: 290,
+  tooltip: "조건식 (Cedar `if c then a else b`)",
+} as const;
+
+// ── extension function (variable-arity args) ───────────────────────────
+
+export const EXPR_EXT_BLOCK_JSON = {
+  type: "expr_ext",
+  message0: "%1 ( %2 )",
+  args0: [
+    { type: "field_input", name: "FN", text: "fn" },
+    { type: "input_statement", name: "ARGS", check: "ExtArg" },
+  ],
+  output: "Expr",
+  colour: 50,
+  tooltip: "확장 함수 호출 (예: decimal, ip, ...). 인자 블록을 stack 안에 추가",
+} as const;
+
+export const EXPR_EXT_ARG_BLOCK_JSON = {
+  type: "expr_ext_arg",
+  message0: "arg %1",
+  args0: [{ type: "input_value", name: "ARG", check: "Expr" }],
+  previousStatement: "ExtArg",
+  nextStatement: "ExtArg",
+  colour: 50,
+  tooltip: "확장 함수 인자",
+} as const;
+
+// ── escape hatch ───────────────────────────────────────────────────────
+
+/** Raw block — the IR-side `raw` escape hatch. Read-only display of a short
+ *  excerpt; the full EST JSON lives in `block.data` (Blockly persists this
+ *  alongside the block). workspaceToIR pulls JSON.parse(block.data) into
+ *  `{kind:"raw", est:...}`. */
+export const EXPR_RAW_BLOCK_JSON = {
+  type: "expr_raw",
+  message0: "⟨raw⟩ %1",
+  args0: [
+    {
+      // Visible label only; the real payload sits in block.data so users can't
+      // accidentally corrupt it via the editor.
+      type: "field_label_serializable",
+      name: "PREVIEW",
+      text: "(empty)",
+    },
+  ],
+  output: "Expr",
+  colour: 0,
+  tooltip: "Cedar 식이지만 블록으로 매핑 안 됨 — 원본 EST 보존 (편집 불가)",
 } as const;
