@@ -268,15 +268,14 @@ impl Orchestrator {
         let swapper = state.wallet_id.address;
         let mut report = IntentOrdersReport::default();
         let reactor = uniswap_x_reactor();
-        for chain in uni.chains().to_vec() {
-            match uni.fetch_orders(&swapper, &chain).await {
-                Ok(orders) => {
-                    let n = orders.len();
-                    upsert_intent_orders(state, &orders, &chain, reactor, &swapper, now);
-                    report.orders_updated += n;
-                }
-                Err(e) => report.errors.push(format!("uniswap_x {chain:?}: {e}")),
+        // v2 lists by swapper across all chains in one call; each order carries
+        // its own chainId, so there is no per-chain loop.
+        match uni.fetch_orders(&swapper).await {
+            Ok(orders) => {
+                report.orders_updated = orders.len();
+                upsert_intent_orders(state, &orders, reactor, &swapper, now);
             }
+            Err(e) => report.errors.push(format!("uniswap_x: {e}")),
         }
         Ok(report)
     }
@@ -795,13 +794,12 @@ fn uniswap_x_reactor() -> policy_state::Address {
 pub(crate) fn upsert_intent_orders(
     state: &mut WalletState,
     orders: &[UniswapXOrder],
-    chain: &policy_state::ChainId,
     reactor: policy_state::Address,
     swapper: &policy_state::Address,
     now: Time,
 ) {
     for order in orders {
-        let pending = order.to_pending_tx(chain, reactor, swapper, now);
+        let pending = order.to_pending_tx(reactor, swapper, now);
         if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
             *existing = pending;
         } else {
@@ -895,7 +893,6 @@ mod tests {
         use policy_state::pending::PendingStatus;
         use policy_state::{WalletId, U256};
 
-        let chain = ChainId::ethereum_mainnet();
         let reactor = Address::ZERO;
         let swapper = Address::ZERO;
         let now = Time::from_unix(1_738_000_000);
@@ -908,13 +905,14 @@ mod tests {
             order_hash: "0xhash1".into(),
             order_status: "open".into(),
             order_type: "Dutch_V2".into(),
-            deadline: 1_738_003_600,
+            chain_id: 1,
+            deadline: Some(1_738_003_600),
             sell_token: Address::ZERO,
             sell_amount: U256::from(600u64),
             buy_token: Address::ZERO,
             buy_min: U256::from(1u64),
         };
-        super::upsert_intent_orders(&mut state, &[open.clone()], &chain, reactor, &swapper, now);
+        super::upsert_intent_orders(&mut state, &[open.clone()], reactor, &swapper, now);
         assert_eq!(state.pending.len(), 1);
         assert_eq!(state.pending[0].id, "intent:uniswap_x:0xhash1");
         assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Active);
@@ -924,7 +922,7 @@ mod tests {
             order_status: "filled".into(),
             ..open
         };
-        super::upsert_intent_orders(&mut state, &[filled], &chain, reactor, &swapper, now);
+        super::upsert_intent_orders(&mut state, &[filled], reactor, &swapper, now);
         assert_eq!(state.pending.len(), 1, "idempotent by orderHash");
         assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Filled);
     }
