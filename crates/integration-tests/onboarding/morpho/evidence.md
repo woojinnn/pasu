@@ -235,19 +235,31 @@ keccak-derived, asset=wstETH collateral / amount / recipient pinned); a `[Permit
 morphoSupplyCollateral, erc20Transfer(skip)]` bundle → `Multicall[permit2, supply]` — demonstrating
 per-leg-to routing to **TWO different contracts** (Permit2 + GeneralAdapter1) and unmapped-leg skipping.
 
-**Gates (all green).** check:surface PASS (Bundler3 2/1/1; GeneralAdapter1 26/10/16; I0 morpho 3 cover);
-check:manifest 1752 OK / 0 errors; check:universe 73 cover-linkage; engine unit test
-`multicall_call_array_routes_each_leg_by_its_own_to`; extension vitest 2/2; **full `v3_decode_harness`
-golden 60/60 PASS** (additive strategy → no cross-protocol regression); `cargo test --workspace` 10 crates /
-0 fail; engine compiles to `wasm32-unknown-unknown`.
+**Gates (all green) — post Q2 honest-review fixes (D-A…D-E2).** check:surface PASS (Bundler3 2/1/1;
+GeneralAdapter1 26/**19**/7; I0 morpho 3 cover); check:manifest **1761** OK / 0 errors; check:universe 73
+cover-linkage; check:tokens PASS; engine unit tests (`multicall_call_array_routes_each_leg_by_its_own_to`,
+`…unknown_vault_metamorpho_fails_whole_bundle` [D-A], `extract_morpho_reenter_legs_decodes_supplycollateral_callback`
+[D-C]); extension vitest **3/3** (incl D-C callback pre-install); **`v3_decode_harness` golden 61/61** +
+bundler3 corpus **4/4 field-pinned** (withdraw+sweep / permit2+pull+supply+sweep / flashLoan-leverage / Lido
+deleverage); `cargo test --workspace` 0 fail; wasm32 compile + wasm-pack bundle + tsc 0.
 
-**Honest coverage re-measurement.** Q2 raises all-entrypoint coverage **~2.7% → ~17%**: direct-to-vault
-(~2.7%, Q1) + Bundler3 (~14.5%, Q2) of all vault-touching txs (FW-2 8-cover Dune sample; not re-run — the
-distribution is established). The remaining **~83%** routes through OTHER aggregators / routers / ERC-4337
-AA-entrypoints — still deferred (diverse long tail, lower individual share). For the morpho-blue / metamorpho
-legs INSIDE a Bundler3 bundle, decode is FULL (per-leg-to → `ActionBody::Multicall`). Deferred WITHIN
-Bundler3: nested `reenter` callbacks (inside a morpho leg's `data`), erc4626* underlying for any vault outside
-the 73-snapshot, swap/plumbing legs (token-domain transfers, ParaswapAdapter, stake/wrap).
+**Honest coverage re-measurement — FRESH all-73 (supersedes the ~17% 8-cover estimate).** A fresh Dune
+measurement over ALL 73 listed mainnet vaults (30d, ERC-4626 `Deposit` events bucketed by tx.to entrypoint,
+n=10,860) gives the true post-Q2 split: **direct-to-vault 1.64%** (Q1) + **Bundler3 11.95%** (Q2) =
+**covered ≈ 13.6%**; **other 86.41%**. The prior ~17% (direct 2.7% + Bundler3 14.5%) was extrapolated from
+the 8-cover FW-2 sample, which over-weighted Bundler3 — the all-73 reality is lower. The 86% "other" is a
+FRAGMENTED long tail of zapper/aggregator/router contracts (top 3 unknown routers ≈ 32%:
+`0x33024d47…` 11.5% / `0x50461744…` 10.7% / `0x8a25a24e…` 10.3%), **NOT AA-dominated** — the ERC-4337
+EntryPoint `0x0000000071727de2…` is only ~2.1% (correcting the prior "AA-entrypoints" framing). (GA1-direct =
+0%, confirming GA1 is reached only via Bundler3.) WITHIN a Bundler3 bundle the morpho-blue/metamorpho legs
+decode FULL (per-leg-to → `ActionBody::Multicall`), and the Q2 honest-review deficiencies are CLOSED:
+**D-A** unknown-vault erc4626 → REFUSE the bundle (warn-closed), never a 0x0-asset silent decode;
+**D-B** transfer/plumbing legs (erc20/permit2/native transfer, wrap/unwrap) → token-domain `erc20_transfer`;
+**D-C** nested `reenter(Call[])` callbacks (leverage/flash-loan loops) → recursed (even on EXCLUDE
+morphoFlashLoan); **D-D** Lido stake legs (stakeEth/wrapStEth/unwrapStEth) → liquid_staking. Residual
+within-Bundler3 defers: **ParaswapAdapter swap** (srcToken/destToken ARE explicit, but the AMOUNTS live in the
+opaque Augustus `bytes callData` and amm SwapAction needs concrete amounts — 0.49% of bundles) + **erc4626*
+underlying for any vault outside the 73-snapshot** (D-A refuses it; re-gen the snapshot to extend).
 
 ## Final Completion Claim
 
@@ -255,9 +267,9 @@ the 73-snapshot, swap/plumbing legs (token-domain transfers, ParaswapAdapter, st
 
 > **wallet-facing, Ethereum mainnet (`1`) ONLY: Morpho Blue Full-8 — supply/withdraw/borrow/repay/supplyCollateral/withdrawCollateral/setAuthorization + off-chain Authorization — plus MetaMorpho ERC-4626 ALL 73 listed mainnet vaults (Q1, direct) plus Bundler3 `multicall(Call[])` decoded per-leg-to into GeneralAdapter1 position legs (Q2).**
 >
-> **Measured coverage:** Q1 covers 100% of listed mainnet vaults / TVL / vault-direct txs. Q2 adds the Bundler3 router. Together they decode **~17% of all txs** reaching these vaults (direct ~2.7% + Bundler3 ~14.5%, FW-2 sample). This is **NOT "the full surface a Morpho user signs"** — the remaining **~83%** routes through other aggregators / routers / ERC-4337 AA-entrypoints, still deferred.
+> **Measured coverage (FRESH all-73, 30d Deposit-entrypoint split, n=10,860):** Q1 covers 100% of listed mainnet vaults / TVL / vault-direct txs. Q2 + the D-A…D-D fixes add the Bundler3 router (full per-leg decode incl `reenter` callbacks). Across all 73 vaults' deposit entrypoints: **covered ≈ 13.6%** (direct-to-vault 1.64% + Bundler3 11.95%). This **supersedes the prior ~17%** (an 8-cover-sample extrapolation that over-weighted Bundler3). This is **NOT "the full surface a Morpho user signs"** — the remaining **~86%** routes through a FRAGMENTED long tail of other zapper/aggregator/router contracts (top 3 ≈ 32%; ERC-4337 AA only ~2.1%, NOT the dominant path), still deferred.
 >
-> **Deferred (data-gated, separate-surface or separate-framework):** other routers/aggregators/ERC-4337 AA-entrypoints (~83% of all, fragmented long tail); Bundler3 nested-`reenter` callbacks + non-snapshot erc4626 underlying + swap/plumbing adapter legs (within-Bundler3 follow-ups); Base & all other chains (multichain framework); MetaMorpho V2/VaultV2; URD claim; mint/redeem §4d `convertToAssets` enrichment. *(The 65-vault long-tail [Q1] and Bundler3 [Q2] are no longer deferred.)*
+> **Deferred (data-gated, separate-surface or separate-framework):** other routers/aggregators (~86% of deposit entrypoints, fragmented long tail — top 3 unknown routers ≈ 32%); ParaswapAdapter swap (amounts in opaque Augustus callData; 0.49% of Bundler3 bundles); erc4626* underlying for vaults outside the 73-snapshot (D-A refuses, not silent); Base & all other chains (multichain framework); MetaMorpho V2/VaultV2; URD claim; mint/redeem §4d `convertToAssets` enrichment. *(The 65-vault long-tail [Q1], Bundler3 [Q2], and the Q2 honest-review deficiencies [D-A transfer-IN/0x0-asset, D-B plumbing, D-C nested callbacks, D-D Lido] are no longer deferred.)*
 
 Verify:
 
