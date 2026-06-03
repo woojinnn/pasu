@@ -280,6 +280,51 @@ impl Orchestrator {
         Ok(report)
     }
 
+    /// Best-effort **core** account sync (every tick): fetch the native-dex core,
+    /// then field-scoped-merge so a partial failure preserves prior values
+    /// instead of clobbering them to defaults.
+    pub async fn sync_hyperliquid_core(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+        let user = state.wallet_id.address;
+        let (core, fresh, errors) = hl.fetch_hl_core("", &user, now).await;
+        upsert_hyperliquid_merge(state, |a| a.merge_core(core, fresh), now);
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors,
+        })
+    }
+
+    /// Best-effort **long-tail** account sync (sub-cadence): staking / vaults /
+    /// borrow-lend / agents, each preserved on failure.
+    pub async fn sync_hyperliquid_longtail(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+        let user = state.wallet_id.address;
+        let (lt, fresh, errors) = hl.fetch_hl_longtail("", &user).await;
+        upsert_hyperliquid_merge(state, |a| a.merge_longtail(lt, fresh), now);
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors,
+        })
+    }
+
     pub async fn refresh_action(
         &self,
         action: &mut policy_transition::action::Action,
@@ -821,6 +866,38 @@ pub(crate) fn upsert_intent_orders(
     }
 }
 
+/// Load-or-create the HL account position, apply `f` (a field-scoped merge), and
+/// store it back. Preserves whatever fields `f` leaves untouched; only ever
+/// creates/updates the single reserved `HL_ACCOUNT_ID` position. A pre-existing
+/// position of a different kind is left alone (the id is reserved for HL).
+fn upsert_hyperliquid_merge(
+    state: &mut WalletState,
+    f: impl FnOnce(&mut policy_state::HlAccount),
+    now: Time,
+) {
+    if let Some(pos) = state.positions.iter_mut().find(|p| p.id == HL_ACCOUNT_ID) {
+        if let PositionKind::HyperliquidAccount(acct) = &mut pos.kind {
+            f(acct);
+            pos.primitives_synced_at = now;
+        }
+    } else {
+        let mut acct = policy_state::HlAccount::default();
+        f(&mut acct);
+        state.positions.push(Position {
+            id: HL_ACCOUNT_ID.to_owned(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(acct),
+            primitives_synced_at: now,
+            primitives_source: DataSource::VenueApi {
+                endpoint: "https://api.hyperliquid.xyz/info".into(),
+                parser_id: "hl_account".into(),
+                auth: None,
+            },
+        });
+    }
+}
+
 fn is_hyperliquid_endpoint(endpoint: &str) -> bool {
     endpoint.is_empty()
         || endpoint.contains("hyperliquid")
@@ -971,6 +1048,70 @@ priority = 1
         assert_eq!(report.walked.total_live_fields, 0);
         assert_eq!(report.fields_updated, 0);
         assert_eq!(report.batches_processed, 0);
+    }
+
+    #[test]
+    fn upsert_hl_merge_creates_updates_and_preserves_across_domains() {
+        use policy_state::{CoreFresh, Decimal, HlAccount, LongtailFresh, WalletId};
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // (1) first core sync creates the HL position.
+        let core = HlAccount {
+            perp_usdc: Some(Decimal::new("5")),
+            ..Default::default()
+        };
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| {
+                a.merge_core(
+                    core,
+                    CoreFresh {
+                        clearinghouse: true,
+                        ..Default::default()
+                    },
+                )
+            },
+            Time::from_unix(0),
+        );
+
+        // (2) a long-tail sync (all-stale here) must NOT wipe the core perp_usdc.
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_longtail(HlAccount::default(), LongtailFresh::default()),
+            Time::from_unix(1),
+        );
+
+        // (3) a second core sync updates the same position in place.
+        let core2 = HlAccount {
+            perp_usdc: Some(Decimal::new("9")),
+            ..Default::default()
+        };
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| {
+                a.merge_core(
+                    core2,
+                    CoreFresh {
+                        clearinghouse: true,
+                        ..Default::default()
+                    },
+                )
+            },
+            Time::from_unix(2),
+        );
+
+        let hits: Vec<_> = state
+            .positions
+            .iter()
+            .filter(|p| p.id == HL_ACCOUNT_ID)
+            .collect();
+        assert_eq!(hits.len(), 1); // upsert, not duplicate
+        let PositionKind::HyperliquidAccount(acct) = &hits[0].kind else {
+            panic!("not an HL account");
+        };
+        assert_eq!(acct.perp_usdc, Some(Decimal::new("9"))); // last core, preserved across long-tail
     }
 
     #[tokio::test]
