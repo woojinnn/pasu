@@ -1,0 +1,80 @@
+{
+  "contract": "Bridge2",
+  "chainId": 42161,
+  "address": "0x2df1c51e09aecf9cacb7bc98cb1742757f163df7",
+  "snapshot": "bridge2.abi.json",
+  "note": "HyperLiquid Bridge2 on Arbitrum (chain 42161). The ONLY user (pre-sign) function is batchedDepositWithPermit (USDC deposit to HyperCore). The 13 other mutating fns are validator/finalizer rotation (batched*Withdrawals/invalidate) + bridge governance (change*/modify*/updateValidatorSet/*ValidatorSetUpdate) + emergency-lock voting \u2014 all privileged operator calls on a 4-EOA validator rotation, not user wallets. cover=1, exclude=13.",
+  "functions": {
+    "0xb30b5bce": {
+      "name": "batchedDepositWithPermit",
+      "decision": "cover",
+      "reason": "User USDC deposit to HyperCore: an array of {user,usd,deadline,signature} EIP-2612-permit-backed deposits. The pre-sign wallet surface (decoded as multicall of token transfers). cover."
+    },
+    "0xc5bdf3ca": {
+      "name": "batchedFinalizeWithdrawals",
+      "decision": "exclude",
+      "reason": "Validator/finalizer infra (the Bridge2 operates on a 4-EOA validator rotation, not user wallets \u2014 confirmed by Etherscan caller analysis). Not a pre-sign user surface. exclude."
+    },
+    "0x1f12171f": {
+      "name": "batchedRequestWithdrawals",
+      "decision": "exclude",
+      "reason": "Validator/finalizer infra (the Bridge2 operates on a 4-EOA validator rotation, not user wallets \u2014 confirmed by Etherscan caller analysis). Not a pre-sign user surface. exclude."
+    },
+    "0x4aad6210": {
+      "name": "changeBlockDurationMillis",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0x91ed1344": {
+      "name": "changeDisputePeriodSeconds",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0xfc3f7ad3": {
+      "name": "changeLockerThreshold",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0x9770e2c8": {
+      "name": "emergencyUnlock",
+      "decision": "exclude",
+      "reason": "Emergency-lock governance (privileged multisig vote). exclude."
+    },
+    "0x058731e5": {
+      "name": "finalizeValidatorSetUpdate",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0x0fb61a2e": {
+      "name": "invalidateWithdrawals",
+      "decision": "exclude",
+      "reason": "Validator/finalizer infra (the Bridge2 operates on a 4-EOA validator rotation, not user wallets \u2014 confirmed by Etherscan caller analysis). Not a pre-sign user surface. exclude."
+    },
+    "0xe73ea41e": {
+      "name": "modifyFinalizer",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0x180f2e8c": {
+      "name": "modifyLocker",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0xb091049c": {
+      "name": "unvoteEmergencyLock",
+      "decision": "exclude",
+      "reason": "Emergency-lock governance (privileged multisig vote). exclude."
+    },
+    "0xe3e6c441": {
+      "name": "updateValidatorSet",
+      "decision": "exclude",
+      "reason": "Bridge governance / validator-set / locker admin (privileged operator call, not a user wallet pre-sign action). exclude."
+    },
+    "0x4878ee53": {
+      "name": "voteEmergencyLock",
+      "decision": "exclude",
+      "reason": "Emergency-lock governance (privileged multisig vote). exclude."
+    }
+  },
+  "signed_structs": {}
+}

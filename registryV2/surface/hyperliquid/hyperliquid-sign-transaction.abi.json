@@ -1,0 +1,9 @@
+{
+  "source": "HyperLiquid official docs (Signing) + hyperliquid-python-sdk signing.py (sign_user_signed_action type defs)",
+  "url": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/signing",
+  "chainId": 42161,
+  "address": "0x0000000000000000000000000000000000000000",
+  "fetchedAt": "2026-06-03",
+  "note": "Off-chain EIP-712 domain HyperliquidSignTransaction (verifyingContract=0x0). There is NO deployed contract and therefore NO function ABI \u2014 abi is intentionally empty. The real surface is the EIP-712 user-signed-action types (see signed_structs in the coverage file); this snapshot exists only to satisfy the surface-gate snapshot-reference invariant for a signed-structs-only surface.",
+  "abi": []
+}

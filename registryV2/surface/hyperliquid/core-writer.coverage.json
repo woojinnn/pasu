@@ -1,0 +1,15 @@
+{
+  "contract": "CoreWriter",
+  "chainId": 999,
+  "address": "0x3333333333333333333333333333333333333333",
+  "snapshot": "core-writer.abi.json",
+  "note": "CoreWriter system contract (HyperEVM->HyperCore writes), verified on hyperevmscan. One mutating fn sendRawAction(bytes) \u2014 the dispatch envelope ScopeBall decodes via tagged_dispatch. cover.",
+  "functions": {
+    "0x17938e13": {
+      "name": "sendRawAction",
+      "decision": "cover",
+      "reason": "The single HyperCore write entry point on HyperEVM. tagged_dispatch decodes the version+action_id envelope into 15 CoreWriter actions: action 11 (cancel by cloid) -> structured Perp(CancelOrder); the rest + default -> hyperliquid_core::hl_unknown{action_type} (HL-attributed; uint64 fixed-point amounts not scaled). cover."
+    }
+  },
+  "signed_structs": {}
+}

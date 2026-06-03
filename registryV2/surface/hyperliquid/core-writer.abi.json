@@ -1,0 +1,41 @@
+{
+  "source": "Etherscan v2 getsourcecode (verified CoreWriter)",
+  "url": "https://hyperevmscan.io/address/0x3333333333333333333333333333333333333333",
+  "chainId": 999,
+  "address": "0x3333333333333333333333333333333333333333",
+  "fetchedAt": "2026-06-03",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "RawAction",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "sendRawAction",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}

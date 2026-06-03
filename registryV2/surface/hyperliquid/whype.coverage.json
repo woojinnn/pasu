@@ -1,0 +1,35 @@
+{
+  "contract": "WHYPE9",
+  "chainId": 999,
+  "address": "0x5555555555555555555555555555555555555555",
+  "snapshot": "whype.abi.json",
+  "note": "WHYPE = Wrapped HYPE (HyperEVM chain 999), a verified WETH9 fork. ALL 5 external-mutating functions are the standard ERC20 + wrap/unwrap wallet surface and are covered: approve/transfer/transferFrom (token::erc20_*), deposit/withdraw (token::wrap_native/unwrap_native).",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "ERC20 approve \u2014 wallet grants a spender allowance over WHYPE; cover (token::erc20_approve)."
+    },
+    "0xd0e30db0": {
+      "name": "deposit",
+      "decision": "cover",
+      "reason": "WETH9 deposit() \u2014 wraps native HYPE into WHYPE (amount = msg.value); cover (token::wrap_native)."
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "cover",
+      "reason": "ERC20 transfer \u2014 wallet moves WHYPE; cover (token::erc20_transfer)."
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "ERC20 transferFrom \u2014 spender-initiated WHYPE move; cover (token::erc20_transfer)."
+    },
+    "0x2e1a7d4d": {
+      "name": "withdraw",
+      "decision": "cover",
+      "reason": "WETH9 withdraw(wad) \u2014 unwraps WHYPE back to native HYPE; cover (token::unwrap_native)."
+    }
+  },
+  "signed_structs": {}
+}
