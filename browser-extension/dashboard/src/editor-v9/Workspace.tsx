@@ -33,6 +33,7 @@ import { buildToolbox } from "./toolbox/build";
 import { BLOCK_TYPES } from "./mapping/block-types";
 import { registerMakeParamContextMenu } from "./Param/make-param";
 import { ParamSidebar } from "./Param/ParamSidebar";
+import { ParamFillPanel } from "./Param/ParamFillPanel";
 import type { PolicyIR } from "../cedar/blocks";
 
 Blockly.setLocale(En as unknown as Record<string, string>);
@@ -63,6 +64,8 @@ export function WorkspaceV9({
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [currentPolicy, setCurrentPolicy] = useState<PolicyIR | null>(null);
+  const [filledText, setFilledText] = useState<string | null>(null);
+  const [filledError, setFilledError] = useState<string | null>(null);
 
   const toolbox = useMemo(() => buildToolbox(locale), [locale]);
 
@@ -210,6 +213,31 @@ export function WorkspaceV9({
     }
   };
 
+  const onFilledIR = async (filled: PolicyIR) => {
+    setFilledError(null);
+    try {
+      const text = await blocksToText(filled);
+      setFilledText(text);
+    } catch (e) {
+      setFilledError(e instanceof Error ? e.message : String(e));
+      setFilledText(null);
+    }
+  };
+
+  const onApplyFilledToCanvas = () => {
+    if (!wsRef.current || !filledText) return;
+    void (async () => {
+      try {
+        const policies = await textToBlocks(filledText);
+        irToWorkspace(wsRef.current!, policies);
+        setFilledText(null);
+        setFilledError(null);
+      } catch (e) {
+        setFilledError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+  };
+
   return (
     <div style={{
       display: "flex",
@@ -276,6 +304,51 @@ export function WorkspaceV9({
           {cedarText || (errorCount > 0 ? "" : "(빈 정책)")}
         </pre>
       </details>
+
+      <ParamFillPanel template={currentPolicy} onFilled={(p) => void onFilledIR(p)} />
+
+      {filledText !== null && (
+        <details
+          open
+          style={{
+            background: "var(--ok-50, #f0f6f1)",
+            borderTop: "1px solid var(--hairline-soft, #E5E6E3)",
+          }}
+        >
+          <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12 }}>
+            적용된 정책 (파라미터 채움 완료)
+          </summary>
+          <pre style={{
+            margin: 0, padding: 12, fontSize: 12,
+            fontFamily: "var(--ff-mono, monospace)",
+            maxHeight: 200, overflow: "auto",
+          }}>
+            {filledText}
+          </pre>
+          <div style={{ padding: "6px 12px", display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={onApplyFilledToCanvas} style={{ padding: "4px 12px", fontSize: 12 }}>
+              결과로 캔버스 교체
+            </button>
+            <button
+              onClick={() => navigator.clipboard?.writeText(filledText).catch(() => {})}
+              style={{ padding: "4px 12px", fontSize: 12 }}
+            >
+              복사
+            </button>
+            <button
+              onClick={() => { setFilledText(null); setFilledError(null); }}
+              style={{ padding: "4px 12px", fontSize: 12 }}
+            >
+              닫기
+            </button>
+          </div>
+          {filledError && (
+            <div style={{ padding: "6px 12px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
+              ⚠ {filledError}
+            </div>
+          )}
+        </details>
+      )}
 
       <details style={{ background: "var(--fog-100, #fcfcfc)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
         <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
