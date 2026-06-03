@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 use policy_state::position::{
     CoreFresh, HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance,
     HlBorrowLendTokenState, HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance,
-    HlStakingAccount, HlStakingDelegation, HlVaultEquity,
+    HlStakingAccount, HlStakingDelegation, HlVaultEquity, LongtailFresh,
 };
 use policy_state::primitives::Time;
 use policy_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
@@ -150,6 +150,22 @@ impl HyperliquidFetcher {
         let spot = self.fetch_spot_clearinghouse_state(endpoint, user).await;
         let open_orders = self.fetch_open_orders(endpoint, user).await;
         assemble_core(clearinghouse, spot, open_orders, &meta)
+    }
+
+    /// Best-effort **long-tail** fetch (staking / vaults / borrow-lend / agents).
+    /// Returns `(account, fresh, errors)`; `fresh` tells the caller which long-tail
+    /// domains to overwrite vs preserve.
+    pub async fn fetch_hl_longtail(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> (HlAccount, LongtailFresh, Vec<String>) {
+        let staking = self.fetch_delegator_summary(endpoint, user).await;
+        let delegations = self.fetch_delegations(endpoint, user).await;
+        let vaults = self.fetch_user_vault_equities(endpoint, user).await;
+        let borrow = self.fetch_borrow_lend_user_state(endpoint, user).await;
+        let agents = self.fetch_agents(endpoint, user).await;
+        assemble_longtail(staking, delegations, vaults, borrow, agents)
     }
 
     pub async fn fetch_clearinghouse_state(
@@ -508,6 +524,71 @@ pub(crate) fn assemble_core(
         Err(e) => errors.push(format!("spot: {e}")),
     }
     (account, fresh, errors)
+}
+
+/// Assemble the **long-tail** fields best-effort. Each domain is independent; a
+/// failed/unparseable one is recorded and left unmarked. Returns
+/// `(account, fresh, errors)` where `account` carries only the long-tail fields
+/// and `fresh` marks the ones that succeeded (caller merges via `merge_longtail`).
+pub(crate) fn assemble_longtail(
+    staking_summary: Result<Value, SyncError>,
+    delegations: Result<Value, SyncError>,
+    vault_equities: Result<Value, SyncError>,
+    borrow_lend: Result<Value, SyncError>,
+    agents: Result<Value, SyncError>,
+) -> (HlAccount, LongtailFresh, Vec<String>) {
+    let mut errors = Vec::new();
+    let mut fresh = LongtailFresh::default();
+    let mut acct = HlAccount::default();
+
+    match (staking_summary, delegations) {
+        (Ok(s), Ok(d)) => match parse_hl_staking_account(&s, &d) {
+            Ok(st) => {
+                acct.staking = Some(st);
+                fresh.staking = true;
+            }
+            Err(e) => errors.push(format!("staking parse: {e}")),
+        },
+        (s, d) => {
+            if let Err(e) = s {
+                errors.push(format!("staking: {e}"));
+            }
+            if let Err(e) = d {
+                errors.push(format!("delegations: {e}"));
+            }
+        }
+    }
+    match vault_equities {
+        Ok(v) => match parse_hl_vault_equities(&v) {
+            Ok(ve) => {
+                acct.vault_equities = ve;
+                fresh.vault_equities = true;
+            }
+            Err(e) => errors.push(format!("vault parse: {e}")),
+        },
+        Err(e) => errors.push(format!("vault: {e}")),
+    }
+    match borrow_lend {
+        Ok(v) => match parse_hl_borrow_lend_account(&v) {
+            Ok(bl) => {
+                acct.borrow_lend = Some(bl);
+                fresh.borrow_lend = true;
+            }
+            Err(e) => errors.push(format!("borrow_lend parse: {e}")),
+        },
+        Err(e) => errors.push(format!("borrow_lend: {e}")),
+    }
+    match agents {
+        Ok(v) => match parse_hl_agents(&v) {
+            Ok(ag) => {
+                acct.agents = ag;
+                fresh.agents = true;
+            }
+            Err(e) => errors.push(format!("agents parse: {e}")),
+        },
+        Err(e) => errors.push(format!("agents: {e}")),
+    }
+    (acct, fresh, errors)
 }
 
 pub(crate) fn parse_account_snapshot(
@@ -1475,6 +1556,31 @@ mod tests {
         assert!(!fresh.spot); // spot NOT fresh → caller preserves prior value
         assert_eq!(errors.len(), 1); // one recorded error (spot)
         assert!(errors[0].contains("spot"));
+    }
+
+    #[test]
+    fn assemble_longtail_is_best_effort() {
+        // vaults OK (empty), agents FAIL → agents unmarked + one recorded error.
+        let staking = serde_json::json!({
+            "delegated": "0",
+            "undelegated": "0",
+            "totalPendingWithdrawal": "0",
+            "nPendingWithdrawals": 0
+        });
+        let delegations = serde_json::json!([]);
+        let vaults = serde_json::json!([]);
+        let borrow = serde_json::json!({});
+        let agents_err: Result<Value, SyncError> = Err(SyncError::FetchFailed {
+            source_id: "hyperliquid".into(),
+            reason: "boom".into(),
+        });
+
+        let (lt, fresh, errors) =
+            assemble_longtail(Ok(staking), Ok(delegations), Ok(vaults), Ok(borrow), agents_err);
+        assert!(lt.agents.is_empty()); // failed → left empty
+        assert!(!fresh.agents); // NOT fresh → caller preserves prior agents
+        assert!(fresh.vault_equities); // vaults parsed OK → fresh
+        assert!(errors.iter().any(|e| e.contains("agents")));
     }
 
     #[test]
