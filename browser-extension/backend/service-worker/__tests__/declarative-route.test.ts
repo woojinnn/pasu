@@ -239,6 +239,18 @@ describe("tryDeclarativeRouteV3", () => {
         ],
       },
     ] as const;
+    // The installed morphoFlashLoan manifest tells the pre-installer (via
+    // emit.reenter_callback_arg + the ABI) that arg `data` is a reenter callback —
+    // NO hardcoded selector. strategy=reenter_only (a pure trampoline, no body).
+    const flashLoanBundle: V3Bundle = {
+      type: "adapter_action",
+      id: "morpho/general-adapter1/1-morphoFlashLoan@1.0.0",
+      publisher: "morpho.eth",
+      schema_version: "3",
+      match: { selector: "0xe2975912", chain_to_addresses: { "1": [GA1] } },
+      abi_fragment: { function_name: "morphoFlashLoan", abi: morphoFlashLoanAbi[0] },
+      emit: { strategy: "reenter_only", reenter_callback_arg: "data" },
+    };
 
     // The flashLoan's reenter callback carries one leg (selector 0xaabbccdd at
     // GA1) that exists ONLY inside the callback — never at the top level.
@@ -275,10 +287,11 @@ describe("tryDeclarativeRouteV3", () => {
     });
 
     mocks.installDeclarativeBundleV3.mockImplementation(
-      async ({ selector }: { selector: string }) =>
-        selector === "0x374f435d"
-          ? installed(bundler3MulticallBundle)
-          : installed(childBundle),
+      async ({ selector }: { selector: string }) => {
+        if (selector === "0x374f435d") return installed(bundler3MulticallBundle);
+        if (selector === "0xe2975912") return installed(flashLoanBundle);
+        return installed(childBundle);
+      },
     );
     mocks.declarativeRouteRequestV3.mockResolvedValue({
       decoder_id: "morpho/bundler3/1-multicall@1.0.0",

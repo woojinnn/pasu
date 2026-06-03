@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
   "snapshot": "general-adapter1.abi.json",
-  "note": "GeneralAdapter1 — the adapter Bundler3 multicall(Call[]) legs target on Ethereum mainnet. EVERY external-mutating selector triaged (I1). cover = 19 legs: 10 user position legs (erc4626Deposit/Mint/Withdraw/Redeem → metamorpho; morphoSupply/SupplyCollateral/Borrow/Repay/Withdraw/WithdrawCollateral → morpho_blue) + 6 funding/plumbing legs (erc20Transfer/erc20TransferFrom/permit2TransferFrom/nativeTransfer → token/erc20_transfer; wrapNative/unwrapNative → net WETH/native credit) + 3 Lido staking legs (stakeEth → liquid_staking/stake; wrapStEth/unwrapStEth → wrap/unwrap), reached per-leg-to from a Bundler3 bundle. exclude = onMorpho* callbacks (reenterHash-guarded; their reenter(Call[]) payload is decoded via D-C, not as a direct leg), morphoFlashLoan (no body — but its reenter callback IS decoded via D-C), MORPHO wrapper (governance migration).",
+  "note": "GeneralAdapter1 — the adapter Bundler3 multicall(Call[]) legs target on Ethereum mainnet. EVERY external-mutating selector triaged (I1). cover = 20 legs: 10 user position legs (erc4626Deposit/Mint/Withdraw/Redeem → metamorpho; morphoSupply/SupplyCollateral/Borrow/Repay/Withdraw/WithdrawCollateral → morpho_blue) + 6 funding/plumbing legs (erc20Transfer/erc20TransferFrom/permit2TransferFrom/nativeTransfer → token/erc20_transfer; wrapNative/unwrapNative → net WETH/native credit) + 3 Lido staking legs (stakeEth → liquid_staking/stake; wrapStEth/unwrapStEth → wrap/unwrap) + morphoFlashLoan (reenter_only — no body, callback recurses), reached per-leg-to from a Bundler3 bundle. morphoSupply/Repay/SupplyCollateral + morphoFlashLoan declare emit.reenter_callback_arg=data so the reenter(Call[]) callback is decoded generically (no engine selector list). exclude = onMorpho* callbacks (reenterHash-guarded; their payload IS the decoded reenter callback), MORPHO governance wrapper.",
   "functions": {
     "0x6ef5eeae": {
       "name": "erc4626Deposit(address,uint256,uint256,address)",
@@ -77,8 +77,8 @@
     },
     "0xe2975912": {
       "name": "morphoFlashLoan(address,uint256,bytes)",
-      "decision": "exclude",
-      "reason": "DEFERRED: flash-loan is transient (not a standing user position); the inner reenter(Call[]) callback carries the real intent — nested-reenter decode follow-up."
+      "decision": "cover",
+      "reason": "GA1 morphoFlashLoan: borrows assets via a Morpho Blue flash loan; the borrowed funds are used+repaid in the reenter(Call[]) callback carried in `data` (the leverage intent). Net-neutral, so strategy=reenter_only (NO own body) — only the callback legs recurse via emit.reenter_callback_arg. Per-leg-to multicall child."
     },
     "0x54f09129": {
       "name": "stakeEth(uint256,uint256,address,address)",

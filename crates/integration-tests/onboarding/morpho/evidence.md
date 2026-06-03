@@ -236,7 +236,7 @@ morphoSupplyCollateral, erc20Transfer(skip)]` bundle → `Multicall[permit2, sup
 per-leg-to routing to **TWO different contracts** (Permit2 + GeneralAdapter1) and unmapped-leg skipping.
 
 **Gates (all green) — post Q2 honest-review fixes (D-A…D-E2).** check:surface PASS (Bundler3 2/1/1;
-GeneralAdapter1 26/**19**/7; I0 morpho 3 cover); check:manifest **1761** OK / 0 errors; check:universe 73
+GeneralAdapter1 26/**20**/6; I0 morpho 3 cover); check:manifest **1761** OK / 0 errors; check:universe 73
 cover-linkage; check:tokens PASS; engine unit tests (`multicall_call_array_routes_each_leg_by_its_own_to`,
 `…unknown_vault_metamorpho_fails_whole_bundle` [D-A], `extract_morpho_reenter_legs_decodes_supplycollateral_callback`
 [D-C]); extension vitest **3/3** (incl D-C callback pre-install); **`v3_decode_harness` golden 61/61** +

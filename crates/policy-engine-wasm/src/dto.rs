@@ -284,6 +284,13 @@ pub struct DeclarativeRouteTypedDataV3InputDto {
 pub struct DeclarativeRouteRequestV3ResultDto {
     pub actions: Vec<policy_transition::action::Action>,
     pub decoder_id: String,
+    /// When the matched manifest declares `emit.reenter_callback_arg`, the raw
+    /// `bytes` value of that arg — an `abi.encode(Call[])` re-entry callback the
+    /// caller (a `multicall_call_array` decode) recurses into. Generic: any
+    /// bundler-adapter that nests a `Call[]` in a leg arg declares the arg name in
+    /// its manifest, so the engine carries no per-protocol selector list.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reenter_callback: Option<String>,
 }
 
 /// One entry in the base alias table surfaced through `get_alias_table_json`.

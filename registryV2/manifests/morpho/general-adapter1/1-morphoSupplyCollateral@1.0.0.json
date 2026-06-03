@@ -72,6 +72,7 @@
   },
   "emit": {
     "strategy": "single_emit",
+    "reenter_callback_arg": "data",
     "body": {
       "domain": "lending",
       "lending": {

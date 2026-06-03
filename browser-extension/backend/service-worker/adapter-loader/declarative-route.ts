@@ -22,9 +22,11 @@ import {
 } from "../wasm-bridge";
 import type { V3Bundle } from "./bundle-schema";
 import { extractSelector } from "./declarative-decode";
+import { type Abi, type Hex, decodeFunctionData } from "viem";
 import {
   installDeclarativeBundleV3,
   InstallDeclarativeV3Error,
+  type InstallDeclarativeV3Result,
 } from "./declarative-adapter-loader";
 
 /**
@@ -232,64 +234,77 @@ function decodeCallArrayArg(
   return decodeCallTuplesAt(calldataHex, argsStart + arrayRelativeOffset);
 }
 
-/** Head-word index of the trailing `bytes data` (the `reenter(Call[])` callback)
- * for each GeneralAdapter1 Morpho call that carries one. `marketParams` is a
- * static 5-word tuple, so `data` is the only dynamic param. Mirrors the engine's
- * `extract_morpho_reenter_legs` (verified vs github morpho-org/bundler3). */
-const MORPHO_REENTER_DATA_WORD: Record<string, number> = {
-  "0x5b866db6": 9, // morphoSupply(market[5],assets,shares,sharePrice,onBehalf,data)
-  "0x4d5fcf68": 9, // morphoRepay(market[5],assets,shares,sharePrice,onBehalf,data)
-  "0xca463673": 7, // morphoSupplyCollateral(market[5],assets,onBehalf,data)
-  "0xe2975912": 2, // morphoFlashLoan(token,assets,data)
-};
+/** When `leg`'s installed `bundle` declares `emit.reenter_callback_arg`, extract
+ * the `reenter(Call[])` callback legs nested in that `bytes` arg. Manifest-driven
+ * + ABI-driven — NO per-protocol selector or arg-position list: the bundle names
+ * the arg, and its `abi_fragment.abi` locates it (viem decode handles the static
+ * `marketParams` tuple etc.). The arg value is the raw `abi.encode(Call[])`. */
+function reenterCallbackLegs(
+  bundle: V3Bundle,
+  legDataHex: string,
+): DecodedCallLeg[] {
+  const emit = bundle.emit as { reenter_callback_arg?: unknown } | null | undefined;
+  const arg = emit?.reenter_callback_arg;
+  if (typeof arg !== "string") return [];
+  const abi = bundle.abi_fragment?.abi as
+    | { inputs?: Array<{ name?: unknown }> }
+    | undefined;
+  const inputs = abi?.inputs;
+  if (!Array.isArray(inputs)) return [];
+  const argIndex = inputs.findIndex((input) => input?.name === arg);
+  if (argIndex < 0) return [];
 
-/** If `leg` is a Morpho call carrying a `reenter(Call[])` callback, extract the
- * callback's raw `abi.encode(Call[])` bytes (NO selector prefix). */
-function morphoReenterData(leg: DecodedCallLeg): string | null {
-  const wordIndex = MORPHO_REENTER_DATA_WORD[leg.selector.toLowerCase()];
-  if (wordIndex === undefined) return null;
-  const dataRelOffset = readAbiWordNumber(leg.dataHex, 4 + wordIndex * 32);
-  if (dataRelOffset === null) return null;
-  const dataStart = 4 + dataRelOffset;
-  const dataLength = readAbiWordNumber(leg.dataHex, dataStart);
-  if (dataLength === null || dataLength === 0) return null;
-  const contentStart = 2 + (dataStart + 32) * 2;
-  const body = leg.dataHex.slice(contentStart, contentStart + dataLength * 2);
-  if (body.length !== dataLength * 2) return null;
-  return `0x${body}`;
+  let args: readonly unknown[];
+  try {
+    ({ args = [] } = decodeFunctionData({
+      abi: [abi] as unknown as Abi,
+      data: legDataHex as Hex,
+    }));
+  } catch {
+    return [];
+  }
+  const callbackHex = args[argIndex];
+  if (typeof callbackHex !== "string" || !isHexCalldata(callbackHex)) return [];
+  // callbackHex == abi.encode(Call[]): the array `count` sits at the offset in
+  // word 0 (a single dynamic param is [offset][array data]).
+  const arrayStart = readAbiWordNumber(callbackHex, 0);
+  if (arrayStart === null) return [];
+  return decodeCallTuplesAt(callbackHex, arrayStart);
 }
 
-/** Collect the (`to`, `selector`) of every leg in a `multicall(Call[])` tree —
- * the top-level legs PLUS the legs nested in any Morpho `reenter(Call[])` callback
- * (D-C: a flashLoan/leverage callback's legs target GeneralAdapter1 too and must
- * be pre-installed or the engine's callback re-route would miss them). Deduped;
- * recursion bounded by `MAX_REENTER_DEPTH`. */
-function collectCallTreeChildren(
-  calldataHex: string,
-  argIndex: number,
-): Array<{ to: string; selector: string }> {
+/** Install the WHOLE `multicall(Call[])` call tree at each leg's OWN `to`: the
+ * top-level legs PLUS the legs nested in any `reenter(Call[])` callback (D-C —
+ * leverage/flash-loan callbacks target the adapter too and must be pre-installed
+ * or the engine's recursive re-route would drop them). INSTALL-DRIVEN: each leg's
+ * installed manifest tells us (via `reenter_callback_arg`) whether it carries a
+ * callback, so there is NO per-protocol selector list. Bundles are cached per
+ * callkey; recursion bounded by `MAX_REENTER_DEPTH`. */
+async function installCallTree(
+  chainId: number,
+  legs: DecodedCallLeg[],
+  depth: number,
+  cache: Map<string, InstallDeclarativeV3Result | null>,
+): Promise<void> {
   const MAX_REENTER_DEPTH = 4;
-  const out: Array<{ to: string; selector: string }> = [];
-  const seen = new Set<string>();
-  const visit = (legs: DecodedCallLeg[], depth: number): void => {
-    for (const leg of legs) {
+  await Promise.all(
+    legs.map(async (leg) => {
       const key = `${leg.to}:${leg.selector}`.toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        out.push({ to: leg.to, selector: leg.selector });
+      let installed = cache.get(key);
+      if (installed === undefined) {
+        installed = await installDeclarativeBundleV3({
+          chainId,
+          to: leg.to,
+          selector: leg.selector,
+        });
+        cache.set(key, installed);
       }
-      if (depth >= MAX_REENTER_DEPTH) continue;
-      const reenter = morphoReenterData(leg);
-      if (reenter === null) continue;
-      // `reenter` == abi.encode(Call[]): the array `count` sits at the offset in
-      // word 0 (a single dynamic param is [offset][array data]).
-      const arrayStart = readAbiWordNumber(reenter, 0);
-      if (arrayStart === null) continue;
-      visit(decodeCallTuplesAt(reenter, arrayStart), depth + 1);
-    }
-  };
-  visit(decodeCallArrayArg(calldataHex, argIndex), 0);
-  return out;
+      if (depth >= MAX_REENTER_DEPTH || !installed) return;
+      const callbackLegs = reenterCallbackLegs(installed.bundle, leg.dataHex);
+      if (callbackLegs.length > 0) {
+        await installCallTree(chainId, callbackLegs, depth + 1, cache);
+      }
+    }),
+  );
 }
 
 async function preinstallMulticallChildren(args: {
@@ -310,18 +325,14 @@ async function preinstallMulticallChildren(args: {
   if (emit?.strategy === "multicall_call_array") {
     const argIndex = callArrayArgIndex(args.installedBundle);
     if (argIndex === null || !args.calldataHex) return;
-    // Pre-install the WHOLE call tree: top-level legs PLUS any legs nested in a
-    // Morpho `reenter(Call[])` callback (D-C), so the engine's recursive re-route
-    // finds every child mapper instead of dropping callback legs.
-    const legs = collectCallTreeChildren(args.calldataHex, argIndex);
-    await Promise.all(
-      legs.map((leg) =>
-        installDeclarativeBundleV3({
-          chainId: args.chainId,
-          to: leg.to,
-          selector: leg.selector,
-        }),
-      ),
+    // Install the WHOLE call tree — top-level legs PLUS the legs nested in any
+    // `reenter(Call[])` callback (D-C) — so the engine's recursive re-route finds
+    // every child mapper instead of dropping callback legs. Manifest-driven.
+    await installCallTree(
+      args.chainId,
+      decodeCallArrayArg(args.calldataHex, argIndex),
+      0,
+      new Map(),
     );
     return;
   }

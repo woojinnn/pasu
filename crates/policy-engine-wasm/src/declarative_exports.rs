@@ -545,6 +545,27 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             inputs: None,
         };
 
+        // D-C (generalized): a manifest's `emit.reenter_callback_arg` names the
+        // `bytes` arg carrying an `abi.encode(Call[])` re-entry callback the
+        // `multicall_call_array` caller recurses into — manifest-driven, so the
+        // engine has NO per-protocol callback-selector list.
+        let reenter_callback = emit
+            .get("reenter_callback_arg")
+            .and_then(serde_json::Value::as_str)
+            .and_then(|arg| args_json.get(arg))
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        // `reenter_only` is a pure re-entry trampoline (e.g. a Morpho flash loan):
+        // it has NO own body — the whole intent is in the callback the caller
+        // recurses into. Emit no action; surface only the callback.
+        if strategy == "reenter_only" {
+            return Ok(DeclarativeRouteRequestV3ResultDto {
+                actions: vec![],
+                decoder_id: bundle_id,
+                reenter_callback,
+            });
+        }
+
         let body = match strategy.as_str() {
             "single_emit" => {
                 let body_template = emit.get("body").ok_or_else(|| {
@@ -766,6 +787,7 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
         Ok(DeclarativeRouteRequestV3ResultDto {
             actions: vec![action],
             decoder_id: bundle_id,
+            reenter_callback,
         })
     })();
 
@@ -1108,6 +1130,8 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
         Ok(DeclarativeRouteRequestV3ResultDto {
             actions: vec![action],
             decoder_id: bundle_id,
+            // Typed-data signatures carry no calldata, hence no re-entry callback.
+            reenter_callback: None,
         })
     })();
 
@@ -2774,25 +2798,29 @@ fn process_call_legs(
             }
         }
 
-        // D-C: a Morpho supply/repay/supplyCollateral/flashLoan leg carries a
-        // `bytes data` = `abi.encode(Call[])` reenter callback (Bundler3 re-enters
-        // it at the just-called adapter mid-execution — leverage loops: the
-        // borrowed-funds swap, collateral re-supply, …). The primary body (if any)
-        // is already pushed above; ALSO decode the callback legs so they aren't
-        // opaque. Runs even when the leg ITSELF didn't map (morphoFlashLoan is
-        // EXCLUDE yet its callback is the whole intent). Bounded by `max_depth`; an
-        // all-unmapped callback contributes nothing.
+        // D-C (generalized): the route surfaces `data.reenter_callback` when the
+        // leg's manifest declares `emit.reenter_callback_arg` — the raw
+        // `abi.encode(Call[])` re-entry callback (Bundler3 re-enters it at the
+        // just-called adapter mid-execution: leverage / flash-loan loops). The
+        // primary body (if any) is already pushed; ALSO decode the callback legs so
+        // they aren't opaque. Bounded by `max_depth`; an all-unmapped callback
+        // contributes nothing. NO per-protocol selector list — fully manifest-driven.
         if depth < max_depth {
-            if let Some(callback_legs) = extract_morpho_reenter_legs(&leg_selector, &data_bytes)? {
-                let nested = process_call_legs(
-                    chain_id,
-                    submitter,
-                    submitted_at,
-                    &callback_legs,
-                    depth + 1,
-                    max_depth,
-                )?;
-                actions.extend(nested);
+            if let Some(callback_hex) = parsed
+                .pointer("/data/reenter_callback")
+                .and_then(serde_json::Value::as_str)
+            {
+                if let Some(callback_legs) = decode_reenter_call_array(callback_hex)? {
+                    let nested = process_call_legs(
+                        chain_id,
+                        submitter,
+                        submitted_at,
+                        &callback_legs,
+                        depth + 1,
+                        max_depth,
+                    )?;
+                    actions.extend(nested);
+                }
             }
         }
     }
@@ -2800,74 +2828,34 @@ fn process_call_legs(
     Ok(actions)
 }
 
-/// D-C: if `selector` is a Morpho adapter call that carries a `reenter(Call[])`
-/// callback (`morphoSupply` / `morphoSupplyCollateral` / `morphoRepay` /
-/// `morphoFlashLoan` on GeneralAdapter1), decode the leg's trailing `bytes data`
-/// callback into its `Call[]` legs. `Ok(None)` for a non-callback selector or an
-/// EMPTY callback (a plain deposit/withdraw/repay/flash with no re-entry).
-///
-/// The callback `data` is the raw `abi.encode(Call[])` with NO `reenter` selector
-/// prefix — Bundler3 concatenates `reenter.selector` itself (verified against
-/// github morpho-org/bundler3 `CoreAdapter.reenterBundler3`:
-/// `BUNDLER3.call(bytes.concat(IBundler3.reenter.selector, data))`).
-fn extract_morpho_reenter_legs(
-    selector: &str,
-    calldata: &[u8],
+/// Decode a `reenter(Call[])` callback — the raw `abi.encode(Call[])` bytes a
+/// manifest's `emit.reenter_callback_arg` points at (surfaced by the route as
+/// `data.reenter_callback`) — into its positional `Call[]` legs. `Ok(None)` for an
+/// empty callback. PROTOCOL-AGNOSTIC: the `Call = (address,bytes,uint256,bool,
+/// bytes32)` tuple is the framework's standard re-entry shape, so this carries no
+/// per-protocol knowledge — any bundler-adapter that nests a `Call[]` in a leg arg
+/// reuses it by declaring the arg name in its manifest. (The callback `data` has
+/// NO `reenter` selector prefix — Bundler3's `CoreAdapter.reenterBundler3` does
+/// `bytes.concat(reenter.selector, data)` itself.)
+fn decode_reenter_call_array(
+    callback_hex: &str,
 ) -> Result<Option<Vec<serde_json::Value>>, EngineErrorDto> {
-    // 1st-party signatures (github morpho-org/bundler3 `GeneralAdapter1.sol`); the
-    // trailing `bytes data` is the reenter callback. `marketParams` is a fully
-    // static tuple (4×address + uint256), so `data` is the only dynamic param.
-    let sig = match selector {
-        // morphoSupply (0x5b866db6) / morphoRepay (0x4d5fcf68)
-        "0x5b866db6" | "0x4d5fcf68" => {
-            "((address,address,address,address,uint256) marketParams, uint256 assets, uint256 shares, uint256 sharePriceE27, address onBehalf, bytes data)"
-        }
-        // morphoSupplyCollateral (0xca463673)
-        "0xca463673" => {
-            "((address,address,address,address,uint256) marketParams, uint256 assets, address onBehalf, bytes data)"
-        }
-        // morphoFlashLoan (0xe2975912)
-        "0xe2975912" => "(address token, uint256 assets, bytes data)",
-        _ => return Ok(None),
-    };
-
-    if calldata.len() < 4 {
+    let stripped = callback_hex.strip_prefix("0x").unwrap_or(callback_hex);
+    if stripped.is_empty() {
         return Ok(None);
     }
-    let decoded = decode_inputs_abi_tuple(sig, &calldata[4..]).map_err(|error| {
+    let data_bytes = hex::decode(stripped).map_err(|error| {
         EngineErrorDto::new(
             "build_multicall_failed",
-            format!("reenter callback: decode {selector} args failed: {error}"),
+            format!("reenter callback: data not hex: {error}"),
         )
     })?;
-    let data_hex = decoded
-        .get("data")
-        .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| {
-            EngineErrorDto::new(
-                "build_multicall_failed",
-                format!("reenter callback: {selector} missing `data` arg"),
-            )
-        })?;
-    let data_stripped = data_hex.strip_prefix("0x").unwrap_or(data_hex);
-    if data_stripped.is_empty() {
-        // Plain deposit/withdraw/repay/flash with no callback (empty `data`).
-        return Ok(None);
-    }
-    let data_bytes = hex::decode(data_stripped).map_err(|error| {
-        EngineErrorDto::new(
-            "build_multicall_failed",
-            format!("reenter callback: {selector} data not hex: {error}"),
-        )
-    })?;
-
-    // `data` == `abi.encode(Call[])`: decode it as a single `Call[]` tuple param.
     let bundle =
         decode_inputs_abi_tuple("((address,bytes,uint256,bool,bytes32)[] bundle)", &data_bytes)
             .map_err(|error| {
                 EngineErrorDto::new(
                     "build_multicall_failed",
-                    format!("reenter callback: {selector} Call[] decode failed: {error}"),
+                    format!("reenter callback: Call[] decode failed: {error}"),
                 )
             })?;
     let legs = bundle
@@ -3295,10 +3283,11 @@ mod tests {
     }
 
     #[test]
-    fn extract_morpho_reenter_legs_decodes_supplycollateral_callback() {
-        // D-C: a morphoSupplyCollateral leg's trailing `bytes data` is the
-        // `reenter` callback = raw abi.encode(Call[]) (no selector). Build one with
-        // two inner Call legs and assert the extractor returns them positionally.
+    fn decode_reenter_call_array_decodes_callback_legs() {
+        // The reenter callback is raw abi.encode(Call[]) (the route surfaces it as
+        // `data.reenter_callback` via the manifest's `reenter_callback_arg`). The
+        // decoder is protocol-agnostic — no selector knowledge. Build a 2-leg
+        // callback and assert the positional Call[] decode.
         let a1 = AlloyAddress::from([0x11; 20]);
         let a2 = AlloyAddress::from([0x22; 20]);
         let mk_call = |to: AlloyAddress, sel: u32| {
@@ -3310,9 +3299,8 @@ mod tests {
                 DynSolValue::FixedBytes(alloy_primitives::B256::ZERO, 32),
             ])
         };
-
-        // The on-chain `data` == abi.encode(Call[]) == the ARGS encoding of
-        // `reenter(Call[])` minus its selector (CoreAdapter prepends the selector).
+        // abi.encode(Call[]) == the args encoding of `reenter(Call[])` minus its
+        // 4-byte selector.
         let reenter =
             Function::parse("reenter((address,bytes,uint256,bool,bytes32)[] bundle)").unwrap();
         let reenter_calldata = reenter
@@ -3321,31 +3309,11 @@ mod tests {
                 mk_call(a2, 0x1122_3344),
             ])])
             .unwrap();
-        let callback = reenter_calldata[4..].to_vec();
+        let callback_hex = format!("0x{}", hex::encode(&reenter_calldata[4..]));
 
-        let market = DynSolValue::Tuple(vec![
-            DynSolValue::Address(AlloyAddress::from([0xa0; 20])),
-            DynSolValue::Address(AlloyAddress::from([0xb0; 20])),
-            DynSolValue::Address(AlloyAddress::from([0xc0; 20])),
-            DynSolValue::Address(AlloyAddress::from([0xd0; 20])),
-            DynSolValue::Uint(U256::from(900_000_000_000_000_000_u64), 256),
-        ]);
-        let sc = Function::parse(
-            "morphoSupplyCollateral((address,address,address,address,uint256),uint256,address,bytes)",
-        )
-        .unwrap();
-        let sc_calldata = sc
-            .abi_encode_input(&[
-                market.clone(),
-                DynSolValue::Uint(U256::from(1_000_u64), 256),
-                DynSolValue::Address(AlloyAddress::from([0xee; 20])),
-                DynSolValue::Bytes(callback),
-            ])
-            .unwrap();
-
-        let legs = extract_morpho_reenter_legs("0xca463673", &sc_calldata)
+        let legs = decode_reenter_call_array(&callback_hex)
             .unwrap()
-            .expect("non-empty supplyCollateral callback");
+            .expect("non-empty callback");
         assert_eq!(legs.len(), 2, "callback Call[] should decode 2 legs");
         let leg_to = |i: usize| {
             legs[i].as_array().unwrap()[0]
@@ -3357,29 +3325,9 @@ mod tests {
         assert_eq!(leg_to(0), a1, "leg0 `to`");
         assert_eq!(leg_to(1), a2, "leg1 `to`");
 
-        // Empty callback (plain supplyCollateral) → None.
-        let sc_empty = sc
-            .abi_encode_input(&[
-                market,
-                DynSolValue::Uint(U256::from(1_000_u64), 256),
-                DynSolValue::Address(AlloyAddress::from([0xee; 20])),
-                DynSolValue::Bytes(vec![]),
-            ])
-            .unwrap();
-        assert!(
-            extract_morpho_reenter_legs("0xca463673", &sc_empty)
-                .unwrap()
-                .is_none(),
-            "empty callback should yield None"
-        );
-
-        // A non-callback selector is ignored even with the same calldata.
-        assert!(
-            extract_morpho_reenter_legs("0xdeadbeef", &sc_calldata)
-                .unwrap()
-                .is_none(),
-            "non-callback selector should yield None"
-        );
+        // Empty callback → None (a plain leg with no re-entry).
+        assert!(decode_reenter_call_array("0x").unwrap().is_none());
+        assert!(decode_reenter_call_array("").unwrap().is_none());
     }
 
     #[test]
