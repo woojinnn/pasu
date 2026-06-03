@@ -1,5 +1,11 @@
 import Browser from "webextension-polyfill";
 import init, * as wasmExports from "../wasm/policy_engine_wasm";
+import type {
+  Action as ActionDto,
+  EvalContext as EvalContextDto,
+  StateDelta as StateDeltaDto,
+  WalletState as WalletStateDto,
+} from "../wasm/policy_engine_wasm";
 import {
   parseVerdict,
   type EvaluateActionV2InputDto,
@@ -61,6 +67,10 @@ interface WasmExports {
   // `crates/policy-engine-wasm/src/cedar_exports.rs`.
   policy_text_to_est_json(text: string): string;
   est_json_to_policy_text(est_json: string): string;
+  // Simulation step — one (state, action, ctx) → (delta, next_state). Contract:
+  // `crates/policy-engine-wasm/src/sim_step_exports.rs`. The host owns the
+  // per-tx loop and feeds `next_state` back as `state` on the next call.
+  simulate_step_json(input_json: string): string;
 }
 
 /**
@@ -567,4 +577,42 @@ export interface FieldCatalog {
 export async function fieldCatalog(): Promise<FieldCatalog> {
   const exports = await load();
   return unwrap<FieldCatalog>(exports.field_catalog_json());
+}
+
+// ── simulation step ────────────────────────────────────────────────────────
+
+export interface SimulateStepInput {
+  state: WalletStateDto;
+  action: ActionDto;
+  ctx: EvalContextDto;
+}
+
+export interface SimulateStepOutput {
+  delta: StateDeltaDto;
+  next_state: WalletStateDto;
+}
+
+/**
+ * One simulation step: feed `(state, action, ctx)`, get back `(delta,
+ * next_state)`. Caller owns the loop and substitutes `next_state` as the
+ * `state` of the following call. The WASM keeps no state across calls — the
+ * triple `(state, action, ctx)` fully determines the output, so a buggy step
+ * is reproduced by re-submitting the same input.
+ *
+ * For multicall actions, pass each inner `Action` from
+ * `declarativeRouteRequestV3` in order; this entry does not split a
+ * multicall.
+ *
+ * Throws `EngineError` with kind:
+ *   - `invalid_input` (JSON parse / size)
+ *   - `apply_failed` (reducer rejected the action — bad state / unsupported)
+ *   - `apply_delta_failed` (invariant violation when composing the delta)
+ */
+export async function simulateStep(
+  input: SimulateStepInput,
+): Promise<SimulateStepOutput> {
+  const exports = await load();
+  return unwrap<SimulateStepOutput>(
+    exports.simulate_step_json(JSON.stringify(input)),
+  );
 }

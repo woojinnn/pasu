@@ -484,3 +484,47 @@
 }
 .sw input:checked + .sw-slider { background: var(--pass-500); }
 .sw input:checked + .sw-slider::before { transform: translateX(12px); }
+
+/* ── WASM step probe ───────────────────────────────────────────────────── */
+.sim-wasm-probe {
+  margin: 16px 24px 32px;
+  border: 1px dashed var(--fog-600);
+  border-radius: var(--r-card, 8px);
+  background: var(--surface);
+}
+.sim-wasm-probe .probe-toggle {
+  display: block; width: 100%; padding: 8px 12px;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left;
+  font: 600 12px/1.2 var(--ff-mono); color: var(--slate-500);
+}
+.sim-wasm-probe .probe-toggle:hover { color: var(--slate-900); }
+.sim-wasm-probe .probe-body {
+  padding: 0 12px 12px;
+  border-top: 1px dashed var(--fog-600);
+}
+.sim-wasm-probe .probe-help {
+  margin: 8px 0; font-size: 12px; color: var(--slate-500); line-height: 1.5;
+}
+.sim-wasm-probe .probe-help code {
+  font: 500 11.5px/1 var(--ff-mono);
+  background: var(--fog-100, #f0f0f0);
+  padding: 1px 4px; border-radius: 3px;
+}
+.sim-wasm-probe .probe-controls {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.sim-wasm-probe .probe-meta {
+  font: 500 11.5px/1 var(--ff-mono);
+}
+.sim-wasm-probe .probe-meta.ok  { color: var(--pass-800); }
+.sim-wasm-probe .probe-meta.err { color: var(--fail-800); }
+.sim-wasm-probe .probe-output {
+  max-height: 360px; overflow: auto;
+  background: var(--fog-100, #f7f7f7);
+  border: 1px solid var(--fog-600); border-radius: 4px;
+  padding: 8px 10px;
+  font: 500 11px/1.45 var(--ff-mono);
+  color: var(--slate-900);
+  white-space: pre;
+}
