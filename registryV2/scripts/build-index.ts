@@ -1210,28 +1210,12 @@ async function main(): Promise<void> {
                 bundle_ref: writeBundleRefArtifact(resolved, bundleSha256),
               };
             } else {
-              // N1: serve a PER-CALLKEY VIEW whose `match.chain_to_addresses`
-              // lists ONLY this (chainKey,to). The WASM install iterates the
-              // SERVED bundle's match to populate its routing bridge, so an
-              // un-trimmed map lets installing ONE callkey pin every sibling
-              // address the bundle co-lists — letting a bundle fetched for a
-              // niche callkey poison a canonical address's route (cross-bundle
-              // collision). Every address already has its own callkey file, so
-              // trimming the served view loses no coverage; the sha is recomputed
-              // from the served bytes so it matches what the client receives.
-              const servedBundle: ResolvedBundle = {
-                ...resolved,
-                match: {
-                  ...resolved.match,
-                  chain_to_addresses: { [chainKey]: [to] },
-                },
-              };
               entry = {
                 matched: true,
                 bundle_id: resolved.id,
                 manifest_path: manifestPath,
-                bundle_sha256: computeBundleSha256(servedBundle),
-                bundle: servedBundle,
+                bundle_sha256: bundleSha256,
+                bundle: resolved,
               };
             }
             if (!isSourcedManifest) {
