@@ -353,6 +353,21 @@ fn bundler3_multicall_legs_decode_expected_fields() {
         "0xdac17f958d2ee523a2206206994597c13d831ec7",
         "callback borrow asset (USDT)"
     );
+
+    // ── tx 0x1b7307b0…: Lido deleverage — the GA1 unwrapStEth leg (D-D) decodes
+    //    as liquid_staking/unwrap (venue=lido), no longer a skipped staking leg.
+    let env4 =
+        route_tx("0x1b7307b031762dbbc55af5a4164bd771b5a4d2e923f6f07740a9fddfe1b9e645");
+    let legs4 = env4
+        .pointer("/data/actions/0/body/actions")
+        .and_then(serde_json::Value::as_array)
+        .expect("lido deleverage multicall legs");
+    let unwrap = legs4
+        .iter()
+        .find(|l| l.pointer("/domain").and_then(serde_json::Value::as_str) == Some("liquid_staking"))
+        .expect("D-D: the unwrapStEth leg must surface as liquid_staking");
+    assert_eq!(s(unwrap, "/action"), "unwrap");
+    assert_eq!(s(unwrap, "/venue/name"), "lido", "GA1 unwrapStEth → Lido unwrap");
 }
 
 /// Recursively find the first `"<field>": <bool>` entry in a JSON value.

@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
   "snapshot": "general-adapter1.abi.json",
-  "note": "GeneralAdapter1 — the adapter Bundler3 multicall(Call[]) legs target on Ethereum mainnet. EVERY external-mutating selector triaged (I1). cover = 16 legs: 10 user position legs (erc4626Deposit/Mint/Withdraw/Redeem → metamorpho; morphoSupply/SupplyCollateral/Borrow/Repay/Withdraw/WithdrawCollateral → morpho_blue) + 6 funding/plumbing legs (erc20Transfer/erc20TransferFrom/permit2TransferFrom/nativeTransfer → token/erc20_transfer; wrapNative/unwrapNative → net WETH/native credit), reached per-leg-to from a Bundler3 bundle. exclude = onMorpho* callbacks (reenterHash-guarded), staking (stakeEth/wrapStEth/unwrapStEth), flash-loan, MORPHO wrapper.",
+  "note": "GeneralAdapter1 — the adapter Bundler3 multicall(Call[]) legs target on Ethereum mainnet. EVERY external-mutating selector triaged (I1). cover = 19 legs: 10 user position legs (erc4626Deposit/Mint/Withdraw/Redeem → metamorpho; morphoSupply/SupplyCollateral/Borrow/Repay/Withdraw/WithdrawCollateral → morpho_blue) + 6 funding/plumbing legs (erc20Transfer/erc20TransferFrom/permit2TransferFrom/nativeTransfer → token/erc20_transfer; wrapNative/unwrapNative → net WETH/native credit) + 3 Lido staking legs (stakeEth → liquid_staking/stake; wrapStEth/unwrapStEth → wrap/unwrap), reached per-leg-to from a Bundler3 bundle. exclude = onMorpho* callbacks (reenterHash-guarded; their reenter(Call[]) payload is decoded via D-C, not as a direct leg), morphoFlashLoan (no body — but its reenter callback IS decoded via D-C), MORPHO wrapper (governance migration).",
   "functions": {
     "0x6ef5eeae": {
       "name": "erc4626Deposit(address,uint256,uint256,address)",
@@ -82,18 +82,18 @@
     },
     "0x54f09129": {
       "name": "stakeEth(uint256,uint256,address,address)",
-      "decision": "exclude",
-      "reason": "DEFERRED: Lido ETH staking leg — separate staking-domain follow-up."
+      "decision": "cover",
+      "reason": "GA1 stakeEth: stake `amount` native ETH into Lido (→stETH) for receiver → liquid_staking/stake (venue=lido). Per-leg-to multicall child (Lido-collateral leverage zap)."
     },
     "0x5a18a7d0": {
       "name": "wrapStEth(uint256,address)",
-      "decision": "exclude",
-      "reason": "DEFERRED: stETH→wstETH wrap leg — staking-token follow-up."
+      "decision": "cover",
+      "reason": "GA1 wrapStEth: wrap `amount` stETH → wstETH → liquid_staking/wrap (venue=lido). Per-leg-to multicall child."
     },
     "0xe17aeb46": {
       "name": "unwrapStEth(uint256,address)",
-      "decision": "exclude",
-      "reason": "DEFERRED: wstETH→stETH unwrap leg — staking-token follow-up."
+      "decision": "cover",
+      "reason": "GA1 unwrapStEth: unwrap `amount` wstETH → stETH → liquid_staking/unwrap (venue=lido). Per-leg-to multicall child."
     },
     "0xbff63170": {
       "name": "morphoWrapperDepositFor(address,uint256)",
