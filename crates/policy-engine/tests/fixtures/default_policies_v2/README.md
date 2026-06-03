@@ -4,19 +4,19 @@ scopeball 기본 v2 정책 번들(`<id>/{manifest.json, policy.cedar}`)을 **구
 
 ## 단계 정의
 
-- **phase1 (1차 구현)** — `18-policy-protocol-action.html`의 `functional=true` **81개**. 다시 둘로 나뉜다:
-  - **phase1/A (1차-A)** = `team/state-validation/policy-datasource-IMPLEMENTATION.html` 기준 **"지금 작동"(순수 G0)** 36 + 구현 가능한 `alloc-bucket-overweight-warn` = **37개**. 추가 데이터소스 없이 바로 동작.
-  - **phase1/B (1차-B)** = 같은 기준 **"추가 구현 필요"**(부분작동 2 + 미작동 41) 43 + "열린 주문 목록 조회 불가"인 `ammlp-cancel-target-missing-warn` = **44개**. 로직은 1차 범위지만 State/registry/external/live-input 보강 필요.
-- **phase2 (2차 구현)** — 18-HTML 분류에 아직 없는 **신규** 10개.
+- **phase1 (1차 구현)** — `18-policy-protocol-action.html`의 `functional=true` 정책. 다시 둘로 나뉜다:
+  - **phase1/A (1차-A)** = `team/state-validation/policy-datasource-IMPLEMENTATION.html` 기준 **"지금 작동"(순수 G0)** **36개**. 순수 액션필드 비교거나, 구현된 fact가 이미 sync되는 state(approvals/tokens/HL-position)·액션필드만 읽음 → **추가 데이터소스 없이 현 구현으로 발화/테스트 가능**.
+  - **phase1/B (1차-B)** = 같은 기준 **"추가 구현 필요"** **45개**. 로직(Cedar)은 1차 범위지만 State/registry/external/live-input 보강이 있어야 동작. 포함: `ammlp-cancel-target-missing-warn`(열린 주문 목록 조회 불가), `alloc-bucket-overweight-warn`(portfolio-*와 동일하게 `portfolio.group_pct basis=state2` 의존 → State₂ reducer 필요).
+- **phase2 (2차 구현)** — 18-HTML 분류에 아직 없는 **신규** 10개(anti-scam/phishing 배치). 대부분 external policy-rpc 호스트 또는 sim-server fact 본문 작성 후 동작(전부 optional fail-open이라 미완성 상태로도 무해).
 - **phase3 (3차 구현)** — 18-HTML `functional=false`("미지원") 41개.
 
-합계 132개 = (A 37 + B 44) + 10 + 41.
+합계 132개 = (A 36 + B 45) + 10 + 41.
 
 분류 진실의 원천: `agentBase/team/cedar-manifest/18-policy-protocol-action.html`(1차/3차 = functional 플래그)와 `agentBase/team/state-validation/policy-datasource-IMPLEMENTATION.html`(1차-A/B = "지금 작동" vs "추가 구현 필요").
 
 ## 로더 규약 (중요)
 
-이 디렉터리를 읽는 모든 소비처는 **임의 깊이 재귀**한다: 어떤 디렉터리가 `manifest.json`을 **직접** 가지면 *번들*(더 내려가지 않음), 아니면 *grouping dir*(`phaseN/`, `phase1/A/` 등)로 보고 그 하위를 재귀한다. 따라서 평면 `<id>/`, phased `<phaseN>/<id>/`, 중첩 `<phaseN>/<sub>/<id>/` 레이아웃을 **모두** 지원하며, 새 그룹/하위그룹을 추가해도 자동 포함된다. 번들 dir 이름 == `manifest.id` 불변식 유지.
+이 디렉터리를 읽는 모든 소비처는 **임의 깊이 재귀**한다: 어떤 디렉터리가 `manifest.json`을 **직접** 가지면 *번들*(더 안 내려감), 아니면 *grouping dir*(`phaseN/`, `phase1/A/` 등)로 보고 그 하위를 재귀한다. 평면 `<id>/`, phased `<phaseN>/<id>/`, 중첩 `<phaseN>/<sub>/<id>/` 레이아웃을 **모두** 지원하며, 새 그룹/하위그룹을 추가해도 자동 포함된다. 번들 dir 이름 == `manifest.id` 불변식 유지.
 
 소비처(이 규약을 따르도록 수정됨):
 - `crates/policy-engine/tests/default_policies_v2.rs` (`collect_bundles`, 재귀 walk)
@@ -26,13 +26,12 @@ scopeball 기본 v2 정책 번들(`<id>/{manifest.json, policy.cedar}`)을 **구
 
 `policies-loader-v2.ts`는 빌드 산출물(`policy-set-v2.json`)만 fetch하므로 무수정.
 
-## phase1/A — 1차-A (지금 작동, 추가 구현 불필요) — 37개
+## phase1/A — 1차-A (지금 작동, 추가 구현 불필요) — 36개
 
-순수 G0 + alloc-bucket-overweight-warn. 바로 배포 가능.
+순수 액션필드 또는 구현된 fact가 이미-sync state만 읽음. 현 구현으로 발화/테스트 가능.
 
 - `air-permit-on-held-token-deny`
 - `air-recipient-not-self-deny`
-- `alloc-bucket-overweight-warn`
 - `ammlp-remove-recipient-not-self-deny`
 - `bridge-recipient-not-self-deny`
 - `bridge-refund-not-self-warn`
@@ -68,7 +67,7 @@ scopeball 기본 v2 정책 번들(`<id>/{manifest.json, policy.cedar}`)을 **구
 - `unlimited-approval-deny`
 - `values-recipient-denylist-deny`
 
-## phase1/B — 1차-B (1차 범위, 추가 구현 필요) — 44개
+## phase1/B — 1차-B (1차 범위, 추가 구현 필요) — 45개
 
 로직은 1차이나 데이터소스(State/registry/external/live-input) 보강 필요. 버킷 A~F는 IMPLEMENTATION.html 참고.
 
@@ -86,6 +85,7 @@ scopeball 기본 v2 정책 번들(`<id>/{manifest.json, policy.cedar}`)을 **구
 - `air-merkle-without-proof-warn`
 - `air-source-contract-mismatch-warn`
 - `air-unknown-token-warn`
+- `alloc-bucket-overweight-warn`
 - `ammlp-cancel-target-missing-warn`
 - `ammlp-collect-recipient-not-self-deny`
 - `ammlp-intent-cap-over-balance-warn`
@@ -117,9 +117,9 @@ scopeball 기본 v2 정책 번들(`<id>/{manifest.json, policy.cedar}`)을 **구
 - `transfer-outflow-usd-cap`
 - `values-interest-bearing-exclude-warn`
 
-## phase2 — 2차 (신규 미분류) — 10개
+## phase2 — 2차 (신규 anti-scam/phishing) — 10개
 
-18-HTML DATA에 아직 없는 신규 정책. 추후 18-HTML 갱신 시 functional 판정 후 재배치 가능.
+18-HTML DATA에 아직 없는 신규 정책. external 커넥터/sim-server fact 본문 작성 후 동작.
 
 - `approve-spender-unknown-contract-warn`
 - `nft-seaport-zero-consideration-sign-deny`
