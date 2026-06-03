@@ -97,8 +97,7 @@ impl ServerConfig {
             db_connect_max_retries: env_u32("DB_CONNECT_MAX_RETRIES", 12),
             db_connect_backoff_secs: env_u64("DB_CONNECT_BACKOFF_SECS", 5),
             log_format: env::var("LOG_FORMAT")
-                .map(|v| LogFormat::from_env_value(&v))
-                .unwrap_or(LogFormat::Human),
+                .map_or(LogFormat::Human, |v| LogFormat::from_env_value(&v)),
         }
     }
 

@@ -16,6 +16,7 @@ use axum::Extension;
 use futures::stream::{self, Stream, StreamExt};
 use tokio_stream::wrappers::BroadcastStream;
 
+use crate::app::ShutdownRx;
 use crate::auth::AuthUser;
 use crate::events::bus::EventBus;
 
@@ -27,6 +28,7 @@ use crate::events::bus::EventBus;
 pub async fn stream(
     State(bus): State<EventBus>,
     Extension(user): Extension<AuthUser>,
+    shutdown: Option<Extension<ShutdownRx>>,
 ) -> Sse<impl Stream<Item = Result<SseEvent, Infallible>>> {
     let rx = bus.subscribe();
     let stream = BroadcastStream::new(rx)
@@ -49,5 +51,17 @@ pub async fn stream(
     // Empty prelude so the client sees a 200 immediately, before any
     // event arrives — keeps `EventSource.onopen` firing.
     let prelude = stream::once(async { Ok(SseEvent::default().comment("connected")) });
-    Sse::new(prelude.chain(stream)).keep_alive(KeepAlive::new().interval(Duration::from_secs(30)))
+    // Drain on shutdown: when the `ShutdownRx` extension flips to `true`
+    // (SIGTERM), end the stream so graceful shutdown doesn't wait out the
+    // 30s keepalive. Without the extension (e.g. tests) the stream stays
+    // unbounded, preserving prior behavior.
+    let body = prelude.chain(stream).take_until(async move {
+        match shutdown {
+            Some(Extension(ShutdownRx(mut rx))) => {
+                let _ = rx.wait_for(|v| *v).await;
+            }
+            None => std::future::pending::<()>().await,
+        }
+    });
+    Sse::new(body).keep_alive(KeepAlive::new().interval(Duration::from_secs(30)))
 }

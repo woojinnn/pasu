@@ -22,7 +22,7 @@ use std::time::Duration;
 
 use tracing_subscriber::EnvFilter;
 
-use policy_server::app::{build_router_with_config, AppState};
+use policy_server::app::{build_router_with_config, AppState, ShutdownRx};
 use policy_server::config::ServerConfig;
 use policy_server::coordination::build_coordinator;
 use policy_server::events::{
@@ -113,11 +113,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         coordinator,
         sync_lock_ttl: Duration::from_secs(config.sync_lock_ttl_secs),
     };
-    let router = build_router_with_config(state, &config);
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let router = build_router_with_config(state, &config)
+        .layer(axum::Extension(ShutdownRx(shutdown_rx)));
 
     let listener = tokio::net::TcpListener::bind(&config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "policy-server listening");
 
-    axum::serve(listener, router).await?;
+    axum::serve(listener, router)
+        .with_graceful_shutdown(shutdown_signal(shutdown_tx))
+        .await?;
     Ok(())
+}
+
+/// Resolves when the process receives SIGTERM (k8s) or Ctrl-C (local), then
+/// broadcasts shutdown so SSE streams drain before the server stops accepting.
+async fn shutdown_signal(tx: tokio::sync::watch::Sender<bool>) {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut s) => {
+                s.recv().await;
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "failed to install SIGTERM handler");
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+    tracing::info!("shutdown signal received; draining SSE streams");
+    let _ = tx.send(true);
 }

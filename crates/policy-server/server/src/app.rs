@@ -106,6 +106,12 @@ impl FromRef<AppState> for Arc<Orchestrator> {
     }
 }
 
+/// Cloneable shutdown signal injected as an axum `Extension` in `main`.
+/// Long-lived handlers (SSE) end their streams when this flips to `true`
+/// on SIGTERM, so graceful shutdown doesn't block on the 30s keepalive.
+#[derive(Clone)]
+pub struct ShutdownRx(pub tokio::sync::watch::Receiver<bool>);
+
 /// Builds the service router.
 ///
 /// Public (no auth):
