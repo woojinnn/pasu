@@ -3,6 +3,13 @@
 //! (same 1st-party data as the Q1 vault universe). Re-generate when the listed set changes.
 //! Used by maybe_inject_metamorpho_underlying so a GeneralAdapter1 erc4626* leg
 //! (vault is a runtime arg, underlying NOT in calldata) can fill the required asset.
+//!
+//! Re-gen: query `blue-api.morpho.org/graphql` `vaults(where:{chainId_in:[1]})` for
+//! `{address, asset{address}}`, lowercase, sort by vault, emit the pairs below.
+//! Coverage contract (D-A): a Bundler3 erc4626* leg whose vault is OUTSIDE this set
+//! resolves no underlying, so `build_multicall_call_array_body` REFUSES the whole
+//! bundle (warn-closed) rather than emit a 0x0-asset action. Re-gen to cover a
+//! newly-listed vault.
 
 /// (vault_lc, underlying_lc), SORTED by vault for binary search. 73 mainnet vaults.
 pub const METAMORPHO_UNDERLYING: &[(&str, &str)] = &[

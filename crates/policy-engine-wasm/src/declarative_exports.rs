@@ -2707,6 +2707,24 @@ fn build_multicall_call_array_body(
                         format!("multicall_call_array leg #{index} body deserialize: {error}"),
                     )
                 })?;
+            // D-A: a GeneralAdapter1 `erc4626*` leg whose MetaMorpho vault is
+            // OUTSIDE the committed `metamorpho_underlying` snapshot could not
+            // resolve its underlying, so the required `asset` fell back to the
+            // zero address — a confidently-WRONG decode. Refuse the WHOLE bundle
+            // (fail loud → warn-closed) rather than silently skip the leg: a
+            // malicious batch could otherwise hide a large unknown-vault deposit
+            // behind a benign known-vault one. (Re-gen the snapshot when the
+            // listed set changes; see `crate::metamorpho_underlying`.)
+            if is_unresolved_metamorpho_underlying(&body) {
+                return Err(EngineErrorDto::new(
+                    "build_multicall_failed",
+                    format!(
+                        "multicall_call_array leg #{index}: MetaMorpho vault underlying \
+                         unresolved (vault outside the committed snapshot) — refusing a \
+                         0x0-asset decode"
+                    ),
+                ));
+            }
             actions.push(body);
         }
     }
@@ -2719,6 +2737,31 @@ fn build_multicall_call_array_body(
     }
 
     Ok(v3_action::ActionBody::Multicall { actions })
+}
+
+/// D-A guard for [`build_multicall_call_array_body`]: is `body` a GeneralAdapter1
+/// `erc4626*` leg (MetaMorpho `supply`/`withdraw`) whose required `asset` resolved
+/// to the ZERO address? That happens only when the leg's vault is outside the
+/// committed `metamorpho_underlying` snapshot, so `maybe_inject_metamorpho_underlying`
+/// could not fill the underlying and placeholder substitution fell back to `0x0`.
+/// A real MetaMorpho underlying is never the zero address, so `0x0` is an
+/// unambiguous "unresolved" sentinel. (morpho* legs are unaffected — their asset
+/// derives from `MarketParams`, which is always present in the leg calldata.)
+fn is_unresolved_metamorpho_underlying(body: &v3_action::ActionBody) -> bool {
+    use v3_action::lending::{LendingAction, LendingVenue};
+    let v3_action::ActionBody::Lending(action) = body else {
+        return false;
+    };
+    let (venue, asset) = match action {
+        LendingAction::Supply(a) => (&a.venue, &a.asset),
+        LendingAction::Withdraw(a) => (&a.venue, &a.asset),
+        _ => return false,
+    };
+    matches!(venue, LendingVenue::MetaMorpho { .. })
+        && asset
+            .key
+            .contract()
+            .is_some_and(|addr| *addr == alloy_primitives::Address::ZERO)
 }
 
 #[cfg(test)]
@@ -2988,6 +3031,128 @@ mod tests {
         assert!(
             err.message.contains("no inner leg resolved"),
             "expected resolved==0 rejection, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn multicall_call_array_unknown_vault_metamorpho_fails_whole_bundle() {
+        // D-A: a GeneralAdapter1 `erc4626*` leg whose vault is OUTSIDE the
+        // committed `metamorpho_underlying` snapshot cannot resolve its required
+        // `asset` (the underlying is a runtime arg, not in calldata) → placeholder
+        // substitution falls back to 0x0. We REFUSE the whole bundle rather than
+        // emit a confidently-wrong 0x0-asset Supply. A KNOWN vault still decodes
+        // with its real underlying (proving the guard is value-gated, not a blanket
+        // metamorpho block).
+        let adapter = "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"; // GeneralAdapter1
+        let submitter = "0x000000000000000000000000000000000000aaaa";
+        let zero32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+        let erc4626 = Function::parse(
+            "erc4626Deposit(address vault, uint256 assets, uint256 maxSharePriceE27, address receiver)",
+        )
+        .unwrap();
+        let probe = erc4626
+            .abi_encode_input(&[
+                DynSolValue::Address(AlloyAddress::ZERO),
+                DynSolValue::Uint(U256::ZERO, 256),
+                DynSolValue::Uint(U256::ZERO, 256),
+                DynSolValue::Address(AlloyAddress::ZERO),
+            ])
+            .unwrap();
+        let selector = format!("0x{}", hex::encode(&probe[0..4]));
+
+        // Synthetic copy of the real GA1 erc4626Deposit manifest (body +
+        // live_inputs skeleton); only the `match` is test-local.
+        let manifest = json!({
+            "type": "adapter_action",
+            "id": "test/mca-erc4626@1.0.0",
+            "publisher": "test",
+            "schema_version": "3",
+            "match": { "selector": selector, "chain_to_addresses": { "1": [adapter] } },
+            "abi_fragment": {
+                "function_name": "erc4626Deposit",
+                "abi": {
+                    "name": "erc4626Deposit", "type": "function", "stateMutability": "nonpayable",
+                    "inputs": [
+                        { "name": "vault", "type": "address" },
+                        { "name": "assets", "type": "uint256" },
+                        { "name": "maxSharePriceE27", "type": "uint256" },
+                        { "name": "receiver", "type": "address" }
+                    ],
+                    "outputs": []
+                }
+            },
+            "emit": {
+                "strategy": "single_emit",
+                "body": { "domain": "lending", "lending": { "action": "supply", "supply": {
+                    "venue": { "name": "metamorpho", "chain": "$chain", "vault": "$args.vault" },
+                    "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.metamorpho_underlying" } },
+                    "amount": "$args.assets",
+                    "on_behalf_of": "$args.receiver"
+                } } },
+                "live_inputs": {
+                    "reserve_state": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "metamorpho_reserve_state_skeleton" }, "ttl_s": 30 },
+                    "supply_apy": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "metamorpho_supply_apy_skeleton" }, "ttl_s": 30 },
+                    "a_token_price_usd": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "metamorpho_share_price_skeleton" }, "ttl_s": 60 },
+                    "eligible_as_collat": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "metamorpho_collat_flag_skeleton" }, "ttl_s": 60 },
+                    "user_state_before": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "metamorpho_user_state_skeleton" }, "ttl_s": 12 }
+                }
+            },
+            "requires": { "imperative": [], "adapter_capabilities": [], "host_capabilities": [], "extension": ">=0.1.0" }
+        });
+        let installed: Value =
+            serde_json::from_str(&declarative_install_v3_json(manifest.to_string())).unwrap();
+        assert_eq!(installed["ok"], true, "{installed}");
+
+        let receiver: AlloyAddress = submitter.parse().unwrap();
+        let emit = json!({ "strategy": "multicall_call_array", "recurse_arg": "bundle", "max_depth": 3 });
+        let encode_leg = |vault: &str| -> String {
+            let cd = erc4626
+                .abi_encode_input(&[
+                    DynSolValue::Address(vault.parse().unwrap()),
+                    DynSolValue::Uint(U256::from(1_000_000_u64), 256),
+                    DynSolValue::Uint(U256::ZERO, 256),
+                    DynSolValue::Address(receiver),
+                ])
+                .unwrap();
+            format!("0x{}", hex::encode(cd))
+        };
+
+        // KNOWN vault (snapshot[0]) → underlying resolves to USDC, decodes clean.
+        let known_vault = "0x0b2d98bbf3e38df1d1b7be7343732e32e8b1f818";
+        let known_underlying: AlloyAddress =
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".parse().unwrap();
+        let known_bundle =
+            json!({ "bundle": [[adapter, encode_leg(known_vault), "0", false, zero32]] });
+        let body =
+            build_multicall_call_array_body(1, submitter, 1_700_000_000, &known_bundle, &emit)
+                .expect("known-vault metamorpho leg should decode");
+        let v3_action::ActionBody::Multicall { actions } = body else {
+            panic!("expected a multicall body");
+        };
+        assert_eq!(actions.len(), 1);
+        let v3_action::ActionBody::Lending(v3_action::lending::LendingAction::Supply(supply)) =
+            &actions[0]
+        else {
+            panic!("expected a metamorpho supply leg, got {:?}", actions[0]);
+        };
+        assert_eq!(
+            supply.asset.key.contract(),
+            Some(&known_underlying),
+            "known vault underlying must resolve from the snapshot"
+        );
+
+        // UNKNOWN vault (not in the snapshot) → underlying unresolved → the whole
+        // bundle is REFUSED (no 0x0-asset Supply leaks through).
+        let unknown_vault = "0x000000000000000000000000000000000000dead";
+        let unknown_bundle =
+            json!({ "bundle": [[adapter, encode_leg(unknown_vault), "0", false, zero32]] });
+        let err =
+            build_multicall_call_array_body(1, submitter, 1_700_000_000, &unknown_bundle, &emit)
+                .unwrap_err();
+        assert!(
+            err.message.contains("underlying unresolved"),
+            "expected a metamorpho-underlying rejection, got {err:?}"
         );
     }
 
