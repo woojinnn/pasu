@@ -251,7 +251,7 @@ impl Orchestrator {
         })
     }
 
-    /// Discover and reconcile UniswapX (intent) order status for this wallet.
+    /// Discover and reconcile `UniswapX` (intent) order status for this wallet.
     /// Venue is the source of truth: each configured chain is polled and the
     /// returned orders are upserted into `state.pending` (keyed by `orderHash`).
     pub async fn sync_intent_orders(
@@ -781,7 +781,7 @@ fn upsert_hyperliquid_account(
     Ok(())
 }
 
-/// UniswapX V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
+/// `UniswapX` V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
 /// reactors can be threaded through config later (spec §12).
 fn uniswap_x_reactor() -> policy_state::Address {
     use std::str::FromStr;
@@ -789,7 +789,7 @@ fn uniswap_x_reactor() -> policy_state::Address {
         .unwrap_or(policy_state::Address::ZERO)
 }
 
-/// Upsert discovered UniswapX orders into `state.pending`, keyed by the venue
+/// Upsert discovered `UniswapX` orders into `state.pending`, keyed by the venue
 /// `orderHash` embedded in `PendingTx.id`. Existing entries are replaced in
 /// place (status transitions); new ones are appended.
 pub(crate) fn upsert_intent_orders(

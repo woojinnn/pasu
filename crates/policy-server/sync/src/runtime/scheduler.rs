@@ -16,7 +16,7 @@ pub struct SchedulerConfig {
     pub sync_primitives: bool,
     /// Refresh Hyperliquid account snapshots from the venue API.
     pub sync_hyperliquid_accounts: bool,
-    /// Refresh UniswapX (and other intent-venue) order status.
+    /// Refresh `UniswapX` (and other intent-venue) order status.
     pub sync_intent_orders: bool,
     /// Refresh stale `LiveField` values.
     pub refresh_live_fields: bool,

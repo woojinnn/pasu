@@ -1,4 +1,4 @@
-//! Uniswap Trade API fetcher — UniswapX order lifecycle (`GET /v1/orders`).
+//! Uniswap Trade API fetcher — `UniswapX` order lifecycle (`GET /v1/orders`).
 //! API: <https://trade-api.gateway.uniswap.org/v1/orders> (header `x-api-key`).
 
 use std::str::FromStr;
@@ -14,7 +14,7 @@ use policy_state::{DataSource, StateDelta};
 use crate::config::UniswapConfig;
 use crate::error::SyncError;
 
-/// Fetches UniswapX order status from the Uniswap Trade API (`GET /v1/orders`).
+/// Fetches `UniswapX` order status from the Uniswap Trade API (`GET /v1/orders`).
 pub struct UniswapXFetcher {
     client: reqwest::Client,
     base_url: String,
@@ -120,7 +120,7 @@ pub fn map_uniswapx_status(raw: &str) -> (PendingStatus, Option<String>) {
     (status, Some(raw.to_owned()))
 }
 
-/// One UniswapX order as returned by `GET /v1/orders`. Only the fields we
+/// One `UniswapX` order as returned by `GET /v1/orders`. Only the fields we
 /// project into state are decoded; unknown fields are ignored.
 #[derive(Debug, Clone)]
 pub struct UniswapXOrder {
@@ -221,7 +221,7 @@ fn token_ref(chain: &ChainId, address: Address) -> TokenRef {
 }
 
 impl UniswapXOrder {
-    /// Project this order into a `PendingTx`. `reactor` is the UniswapX reactor
+    /// Project this order into a `PendingTx`. `reactor` is the `UniswapX` reactor
     /// (the permit-cap spender). The venue `orderHash` is embedded in the id so
     /// upserts are idempotent and a future reducer-reconciliation can join on it.
     #[must_use]

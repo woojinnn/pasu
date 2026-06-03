@@ -171,7 +171,7 @@ pub struct VenuesConfig {
     /// Hyperliquid REST API.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hyperliquid: Option<HyperliquidConfig>,
-    /// Uniswap Trade API (UniswapX order status).
+    /// Uniswap Trade API (`UniswapX` order status).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uniswap: Option<UniswapConfig>,
 }

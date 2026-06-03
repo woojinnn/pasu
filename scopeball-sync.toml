@@ -141,11 +141,12 @@ timeout_sec = 10
 [venues.hyperliquid]
 endpoint = "https://api.hyperliquid.xyz"
 
+[venues.uniswap]
+orders_endpoint = "https://trade-api.gateway.uniswap.org/v1"
+api_key = "${UNISWAP_KEY}"
+chains = ["eip155:1"]
+
 # 향후 추가 예시:
-# [venues.uniswap]
-# quote_endpoint = "https://api.uniswap.org/v2/quote"
-# orders_endpoint = "https://api.uniswap.org/v2/orders"
-#
 # [venues.oneinch]
 # quote_endpoint = "https://api.1inch.dev/swap/v6.0"
 # api_key = "${ONEINCH_KEY}"
