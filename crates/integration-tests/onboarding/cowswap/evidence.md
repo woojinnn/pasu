@@ -150,6 +150,26 @@ Per-field disposition (format is a bullet list, not a status table, on purpose):
 
 No code/manifest/corpus change for L3 (disposition is "intentional non-mapping" + appData→hooks routed to the enrichment roadmap).
 
+### L1 — eip1271 interception (extension-level finding, OUT of registry scope)
+
+Investigation of whether ScopeBall actually *intercepts* the SC-wallet (eip1271) CoW
+signing flow — the 12.8% eip1271 bucket from L2. Read-only review of
+`browser-extension/backend/injected/proxy-injected-providers.ts` + `…/service-worker/sig-routing.ts`.
+
+Findings:
+- **Decode is complete**: an eip1271 CoW Order decodes identically to an EOA order — same EIP-712 `Order` struct; corpus entry 2 is a REAL mainnet eip1271 SC-wallet order and passes.
+- **Interception is RPC-method + transport based**: the proxy wraps `window.ethereum` and EIP-6963-announced **injected** providers (`eip6963:announceProvider` listener; no WalletConnect / Safe-Apps-SDK transport). It gates `eth_signTypedData{,_v3,_v4}` (→ Flow 2) and `eth_sign`/`personal_sign` (→ warn). There is NO eip1271/`isValidSignature`-specific handling — interception keys off the signing RPC call, not the signature type.
+- **Consequence**: a SC wallet that requests `eth_signTypedData_v4` on the **injected** provider IS intercepted and its Order decoded (whether the resulting sig is ECDSA or eip1271). But Safe orders signed via **WalletConnect** (relay transport) or the **Safe Apps SDK iframe** (postMessage) — a common Safe path — do NOT pass through the injected provider, so they are not seen. That is a **provider-wrapping (extension-architecture) gap, NOT a CoW registry/decoder gap**.
+
+Disposition: recorded as a finding; the decoder + registry are correct and eip1271-ready. Extending interception to WalletConnect / Safe-Apps-SDK transports is a separate extension-level task (affects ALL protocols' SC-wallet signatures, not just CoW) — out of this onboarding's scope.
+
+### L5b / L5c / L4 / L8 — defer-stays disposition (hardening round closure)
+
+- **L5b `setPreSignature` (4.5%)** — DEFER STAYS. The calldata is `(bytes orderUid, bool signed)`; the orderUid is an OPAQUE 56-byte commitment (digest ‖ owner ‖ validTo) with NO sellToken/buyToken/amount, so static decode yields no swap intent to scope. The order's economic terms are already analyzed at off-chain `Order` signing time (covered). Covering it would add a terms-free "pre-signs some order" action of low analytic value. Rationale strengthened; not promoted.
+- **L5c `ComposableCoW` (≤0.6%)** — DEFER STAYS. Conditional/programmatic orders (TWAP etc.): the user signs a ConditionalOrder/handler `staticInput` once and a watch-tower mints the discrete GPv2 Orders (which settle within the eip1271 bucket). Decoding the conditional intent is a complex new per-handler mapping (TWAP/GoodAfterTime/StopLoss/…) for ≤0.6% share — cost ≫ value. Not promoted.
+- **L4 enrichment (price/appData-hooks sanity)** — OUT OF SCOPE (cross-protocol). The policy-server enrichment path (`/v1/rpc` → `context.custom.*`) is dormant for ALL protocols; it is the natural home for appData-hook decoding (L3) and fill-price sanity. A CoW-only activation is not possible. Separate, framework-level work.
+- **L8 multichain (Gnosis/Arbitrum/Base/…)** — OUT OF SCOPE by framework rule (representative chain = mainnet only). CoW's contracts are multichain (same GPv2Settlement address), so extension is largely a `chain_to_addresses` + Dune-per-chain exercise, but it belongs to a dedicated multichain pass.
+
 ## P4 Land Evidence
 
 | required evidence | status | artifact / exact command / summary |
