@@ -1052,7 +1052,9 @@ priority = 1
 
     #[test]
     fn upsert_hl_merge_creates_updates_and_preserves_across_domains() {
-        use policy_state::{CoreFresh, Decimal, HlAccount, HlPerpDexMargin, LongtailFresh, WalletId};
+        use policy_state::{
+            CoreFresh, Decimal, HlAccount, HlPerpDexMargin, LongtailFresh, WalletId,
+        };
 
         let mut state =
             WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));

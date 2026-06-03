@@ -143,11 +143,17 @@ impl HlAccount {
         self.open_orders
             .extend(core.open_orders.into_iter().filter(|o| is_fresh(&o.dex)));
         self.leverage_settings.retain(|l| !is_fresh(&l.dex));
-        self.leverage_settings
-            .extend(core.leverage_settings.into_iter().filter(|l| is_fresh(&l.dex)));
+        self.leverage_settings.extend(
+            core.leverage_settings
+                .into_iter()
+                .filter(|l| is_fresh(&l.dex)),
+        );
         self.perp_dex_margins.retain(|m| !is_fresh(&m.dex));
-        self.perp_dex_margins
-            .extend(core.perp_dex_margins.into_iter().filter(|m| is_fresh(&m.dex)));
+        self.perp_dex_margins.extend(
+            core.perp_dex_margins
+                .into_iter()
+                .filter(|m| is_fresh(&m.dex)),
+        );
 
         if spot {
             self.spot_balances = core.spot_balances;
@@ -166,9 +172,12 @@ impl HlAccount {
             self.perp_usdc = None;
             return;
         }
-        let sum = self.perp_dex_margins.iter().fold(RustDecimal::ZERO, |acc, m| {
-            acc + RustDecimal::from_str(m.withdrawable.as_str()).unwrap_or(RustDecimal::ZERO)
-        });
+        let sum = self
+            .perp_dex_margins
+            .iter()
+            .fold(RustDecimal::ZERO, |acc, m| {
+                acc + RustDecimal::from_str(m.withdrawable.as_str()).unwrap_or(RustDecimal::ZERO)
+            });
         self.perp_usdc = Some(Decimal::new(sum.normalize().to_string()));
     }
 
@@ -521,7 +530,7 @@ mod merge_tests {
         assert!(symbols.contains(&"ETH".to_string())); // native replaced
         assert!(symbols.contains(&"NVDA".to_string())); // xyz preserved
         assert!(!symbols.contains(&"BTC".to_string())); // old native gone
-        // perp_usdc = Σ withdrawable = 20 (native fresh) + 5 (xyz preserved) = 25
+                                                        // perp_usdc = Σ withdrawable = 20 (native fresh) + 5 (xyz preserved) = 25
         assert_eq!(persisted.perp_usdc, Some(Decimal::new("25")));
     }
 
