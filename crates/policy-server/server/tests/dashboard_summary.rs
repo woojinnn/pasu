@@ -27,9 +27,22 @@ async fn spawn_server() -> (
     MultiUserStore,
     tempfile::TempDir,
     String,
+    String,
 ) {
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
+    // Seed the user so wallet saves satisfy `wallets_user_id_fkey` (enforced by
+    // the Postgres integration backend). Each spawn gets a UNIQUE email so the
+    // derived user_id is distinct per test: these tests run on parallel threads
+    // and a shared email would race to insert the same `users` row (duplicate
+    // pkey). Reuse the returned user_id for the token + wallet seeding so they
+    // all reference one real, isolated user.
+    static USER_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = USER_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let user_id = global_db
+        .upsert_user(&format!("dashboard-test-{n}@example.com"), "test")
+        .await
+        .unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));
     let event_bus = EventBus::new();
     let state = AppState {
@@ -49,8 +62,8 @@ async fn spawn_server() -> (
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    let token = mint_token("u_test_alice");
-    (addr, multi_user, tmp, token)
+    let token = mint_token(&user_id);
+    (addr, multi_user, tmp, token, user_id)
 }
 
 const WALLET_ADDR: &str = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045";
@@ -127,8 +140,8 @@ async fn seed_state_with_holding(multi_user: &MultiUserStore, user_id: &str) {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn dashboard_summary_aggregates_portfolio() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
-    seed_state_with_holding(&mu, "u_test_alice").await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_state_with_holding(&mu, &user_id).await;
 
     let body: serde_json::Value = reqwest::Client::new()
         .get(format!("http://{addr}/dashboard/summary"))
@@ -162,7 +175,7 @@ async fn dashboard_summary_aggregates_portfolio() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn dashboard_summary_empty_when_no_wallets() {
-    let (addr, _mu, _tmp, token) = spawn_server().await;
+    let (addr, _mu, _tmp, token, _user_id) = spawn_server().await;
     let body: serde_json::Value = reqwest::Client::new()
         .get(format!("http://{addr}/dashboard/summary"))
         .bearer_auth(&token)
@@ -180,8 +193,8 @@ async fn dashboard_summary_empty_when_no_wallets() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn approvals_with_risk_returns_classified_shape() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
-    seed_state_with_holding(&mu, "u_test_alice").await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_state_with_holding(&mu, &user_id).await;
 
     let body: serde_json::Value = reqwest::Client::new()
         .get(format!(
@@ -213,8 +226,8 @@ async fn approvals_with_risk_returns_classified_shape() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn approvals_default_returns_raw_shape() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
-    seed_state_with_holding(&mu, "u_test_alice").await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_state_with_holding(&mu, &user_id).await;
 
     let body: serde_json::Value = reqwest::Client::new()
         .get(format!("http://{addr}/wallets/{WALLET_ADDR}/approvals"))
