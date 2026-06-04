@@ -17,7 +17,9 @@ spec:
         {{- include "policy-server.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: migrate
     spec:
-      serviceAccountName: {{ include "policy-server.serviceAccountName" . }}
+      # No serviceAccountName: this is a pre-install hook that runs before the
+      # chart's ServiceAccount (a main-phase resource) exists. The migrate Job
+      # needs only DATABASE_URL, so the namespace default SA is sufficient.
       restartPolicy: Never
       containers:
         - name: migrate
