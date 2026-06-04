@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::io::Error::new(std::io::ErrorKind::InvalidInput, "DATABASE_URL is required")
     })?;
 
-    let pool = connect_pool(database_url).await?;
+    let pool = connect_pool(database_url, 10, std::time::Duration::from_secs(10)).await?;
     tracing::info!("seeding marketplace into {database_url}");
 
     ensure_official_user(&pool).await?;
