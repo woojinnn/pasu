@@ -200,10 +200,10 @@ pub use fetchers::rpc::{
 pub use manifest_v2::{
     parse_live_inputs, resolve_placeholders, LiveInputSpec, LiveInputsSpec, ResolveContext,
 };
-pub use orchestrator::{HyperliquidAccountReport, Orchestrator, RefreshReport};
+pub use orchestrator::{HyperliquidAccountReport, IntentOrdersReport, Orchestrator, RefreshReport};
 pub use primitives_sync::PrimitivesReport;
 pub use resolver::{resolve_field, resolve_inputs, GlobalValues};
-pub use scheduler::{Scheduler, SchedulerConfig, TickReport};
+pub use scheduler::{Scheduler, SchedulerConfig, TickReport, WalletSyncCounts};
 // Re-export from policy-state for callers that previously imported the
 // trait from `policy-sync` (which is where it used to live).
 pub use policy_state::{StoreError, WalletStore};

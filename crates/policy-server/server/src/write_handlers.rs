@@ -127,15 +127,15 @@ pub async fn add_wallet(
     // Best-effort sync. Failures here aren't fatal — the caller can
     // POST /sync later, and stale state is better than no wallet row.
     let (synced, sync_err) = match run_sync(&*store, &id, &state.orchestrator).await {
-        Ok(()) => {
+        Ok(counts) => {
             state
                 .publisher
                 .publish(
                     user.user_id.clone(),
                     Event::WalletSynced(WalletSync {
                         wallet: format!("{:#x}", id.address),
-                        fields_updated: 0, // populated by /sync, not the seed path
-                        fields_failed: 0,
+                        fields_updated: counts.fields_updated,
+                        fields_failed: counts.fields_failed,
                         synced_at: unix_now(),
                     }),
                 )
@@ -642,14 +642,9 @@ async fn sync_wallet_locked(state: AppState, user: AuthUser, addr: Address) -> R
     } else {
         tracing::warn!("sync: approval discovery skipped — orchestrator has no RpcRouter");
     }
-    if let Err(e) = run_sync(&*store, &id, &state.orchestrator).await {
-        return internal(&e);
-    }
-    // Re-load to count what changed — the orchestrator's RefreshReport
-    // would be richer but we don't have it surfaced from `run_sync` yet.
-    let _state = match store.load(&id).await {
-        Ok(s) => s,
-        Err(e) => return internal(&format!("post-sync load: {e}")),
+    let counts = match run_sync(&*store, &id, &state.orchestrator).await {
+        Ok(c) => c,
+        Err(e) => return internal(&e),
     };
     state
         .publisher
@@ -657,8 +652,8 @@ async fn sync_wallet_locked(state: AppState, user: AuthUser, addr: Address) -> R
             user.user_id.clone(),
             Event::WalletSynced(WalletSync {
                 wallet: format!("{:#x}", id.address),
-                fields_updated: 0,
-                fields_failed: 0,
+                fields_updated: counts.fields_updated,
+                fields_failed: counts.fields_failed,
                 synced_at: unix_now(),
             }),
         )
@@ -676,24 +671,29 @@ async fn run_sync(
     store: &dyn WalletStore,
     id: &WalletId,
     orchestrator: &Arc<Orchestrator>,
-) -> Result<(), String> {
+) -> Result<SyncCounts, String> {
     let mut state = store
         .load(id)
         .await
         .map_err(|e| format!("load before sync: {e}"))?;
     let now = Time::from_unix(unix_now_u64());
 
-    orchestrator
+    let prim = orchestrator
         .sync_primitives(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.sync_primitives: {e}"))?;
 
-    orchestrator
+    let hl = orchestrator
         .sync_hyperliquid_account(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.sync_hyperliquid_account: {e}"))?;
 
-    orchestrator
+    let intent = orchestrator
+        .sync_intent_orders(&mut state, now)
+        .await
+        .map_err(|e| format!("orchestrator.sync_intent_orders: {e}"))?;
+
+    let refresh = orchestrator
         .refresh(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.refresh: {e}"))?;
@@ -702,7 +702,27 @@ async fn run_sync(
         .await
         .map_err(|e| format!("save after sync: {e}"))?;
 
-    Ok(())
+    let prim_updated = prim.block_heights_updated
+        + prim.native_balances_updated
+        + prim.erc20_balances_updated
+        + prim.approvals_updated;
+    Ok(SyncCounts {
+        fields_updated: prim_updated
+            + usize::from(hl.account_updated)
+            + intent.orders_updated
+            + refresh.fields_updated,
+        fields_failed: prim.errors.len()
+            + hl.errors.len()
+            + intent.errors.len()
+            + refresh.fields_failed,
+    })
+}
+
+/// Per-wallet refresh counts surfaced from [`run_sync`] so the sync paths can
+/// emit a real `wallet_synced` payload instead of zeros.
+struct SyncCounts {
+    fields_updated: usize,
+    fields_failed: usize,
 }
 
 fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Box<Response>> {

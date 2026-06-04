@@ -6,6 +6,7 @@
 //! - `hl_borrow_lend`      → borrow/lend user state
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use rust_decimal::prelude::ToPrimitive;
@@ -13,10 +14,11 @@ use rust_decimal::Decimal as RustDecimal;
 use serde_json::{json, Value};
 
 use policy_state::position::{
-    HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance, HlBorrowLendTokenState,
-    HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance, HlStakingAccount,
-    HlStakingDelegation, HlVaultEquity,
+    CoreFresh, HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance,
+    HlBorrowLendTokenState, HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance,
+    HlStakingAccount, HlStakingDelegation, HlVaultEquity, LongtailFresh,
 };
+use policy_state::primitives::Time;
 use policy_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
 use policy_transition::action::perp::PerpAccountState;
 
@@ -24,11 +26,16 @@ use crate::config::HyperliquidConfig;
 use crate::error::SyncError;
 use crate::walker::{ActionSlot, FieldLocation};
 
+use super::ttl_cache::TtlCache;
+
 pub const HL_API_BASE: &str = "https://api.hyperliquid.xyz";
 
 pub struct HyperliquidFetcher {
     client: reqwest::Client,
     base_url: String,
+    meta_ttl_secs: u64,
+    meta_cache: Mutex<TtlCache<String, Value>>, // key = dex ("" = native)
+    dexs_cache: Mutex<TtlCache<(), Vec<String>>>, // perpDexs list
 }
 
 impl Default for HyperliquidFetcher {
@@ -51,12 +58,17 @@ impl HyperliquidFetcher {
                 .build()
                 .expect("reqwest client init"),
             base_url,
+            meta_ttl_secs: 600,
+            meta_cache: Mutex::new(TtlCache::new()),
+            dexs_cache: Mutex::new(TtlCache::new()),
         }
     }
 
     #[must_use]
     pub fn from_sync_config(cfg: &HyperliquidConfig) -> Self {
-        Self::with_base_url(cfg.endpoint.clone())
+        let mut fetcher = Self::with_base_url(cfg.endpoint.clone());
+        fetcher.meta_ttl_secs = cfg.meta_ttl_secs;
+        fetcher
     }
 
     #[must_use]
@@ -92,6 +104,82 @@ impl HyperliquidFetcher {
     pub async fn fetch_meta(&self, endpoint: &str) -> Result<Value, SyncError> {
         self.fetch_meta_for_dex(endpoint, endpoint_dex(endpoint).as_deref())
             .await
+    }
+
+    /// `meta` for a dex, cached for `meta_ttl_secs`. `now` is injected by the caller.
+    pub async fn cached_meta(&self, endpoint: &str, now: Time) -> Result<Value, SyncError> {
+        let key = endpoint_dex(endpoint).unwrap_or_default();
+        let cached = self
+            .meta_cache
+            .lock()
+            .unwrap()
+            .get(&key, now, self.meta_ttl_secs);
+        if let Some(v) = cached {
+            return Ok(v);
+        }
+        let v = self.fetch_meta(endpoint).await?;
+        self.meta_cache.lock().unwrap().put(key, v.clone(), now);
+        Ok(v)
+    }
+
+    /// perpDexs list, cached for `meta_ttl_secs`.
+    pub async fn cached_perp_dexs(
+        &self,
+        endpoint: &str,
+        now: Time,
+    ) -> Result<Vec<String>, SyncError> {
+        let cached = self
+            .dexs_cache
+            .lock()
+            .unwrap()
+            .get(&(), now, self.meta_ttl_secs);
+        if let Some(v) = cached {
+            return Ok(v);
+        }
+        let v = self.fetch_perp_dexs(endpoint).await?;
+        self.dexs_cache.lock().unwrap().put((), v.clone(), now);
+        Ok(v)
+    }
+
+    /// Best-effort **core** fetch for the **native** dex (no perp-dex fan-out).
+    /// Returns `(account, fresh, errors)`; `fresh` tells the caller which core
+    /// domains to overwrite vs preserve.
+    pub async fn fetch_hl_core(
+        &self,
+        endpoint: &str,
+        user: &Address,
+        now: Time,
+    ) -> (HlAccount, CoreFresh, Vec<String>) {
+        let meta = match self.cached_meta(endpoint, now).await {
+            Ok(m) => m,
+            Err(e) => {
+                return (
+                    HlAccount::default(),
+                    CoreFresh::default(),
+                    vec![format!("meta: {e}")],
+                );
+            }
+        };
+        let clearinghouse = self.fetch_clearinghouse_state(endpoint, user).await;
+        let spot = self.fetch_spot_clearinghouse_state(endpoint, user).await;
+        let open_orders = self.fetch_open_orders(endpoint, user).await;
+        assemble_core(clearinghouse, spot, open_orders, &meta)
+    }
+
+    /// Best-effort **long-tail** fetch (staking / vaults / borrow-lend / agents).
+    /// Returns `(account, fresh, errors)`; `fresh` tells the caller which long-tail
+    /// domains to overwrite vs preserve.
+    pub async fn fetch_hl_longtail(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> (HlAccount, LongtailFresh, Vec<String>) {
+        let staking = self.fetch_delegator_summary(endpoint, user).await;
+        let delegations = self.fetch_delegations(endpoint, user).await;
+        let vaults = self.fetch_user_vault_equities(endpoint, user).await;
+        let borrow = self.fetch_borrow_lend_user_state(endpoint, user).await;
+        let agents = self.fetch_agents(endpoint, user).await;
+        assemble_longtail(staking, delegations, vaults, borrow, agents)
     }
 
     pub async fn fetch_clearinghouse_state(
@@ -395,6 +483,126 @@ pub(crate) enum HlAssetMetric {
 pub(crate) enum FeeSide {
     Maker,
     Taker,
+}
+
+/// Assemble the **core** `HlAccount` from already-fetched parts, best-effort.
+/// `clearinghouse` is the anchor (no `perp_usdc` / positions / leverage without
+/// it); `spot` and `open_orders` are additive. Returns `(account, fresh, errors)`
+/// where `fresh` marks exactly the domains that fetched **and** parsed OK, so the
+/// caller's `merge_core` overwrites only those and preserves the rest.
+pub(crate) fn assemble_core(
+    clearinghouse: Result<Value, SyncError>,
+    spot: Result<Value, SyncError>,
+    open_orders: Result<Value, SyncError>,
+    meta: &Value,
+) -> (HlAccount, CoreFresh, Vec<String>) {
+    let mut errors = Vec::new();
+    let mut fresh = CoreFresh::default();
+    let empty_agents = Value::Array(Vec::new());
+
+    let clearinghouse = match clearinghouse {
+        Ok(v) => v,
+        Err(e) => {
+            errors.push(format!("clearinghouse: {e}"));
+            // No anchor → all-false mask → caller preserves all core fields.
+            return (HlAccount::default(), fresh, errors);
+        }
+    };
+    let (orders_val, orders_ok) = match open_orders {
+        Ok(v) => (v, true),
+        Err(e) => {
+            errors.push(format!("open_orders: {e}"));
+            (Value::Array(Vec::new()), false)
+        }
+    };
+    let mut account = match parse_account_snapshot(&clearinghouse, &orders_val, &empty_agents, meta)
+    {
+        Ok(a) => {
+            fresh.clearinghouse = true;
+            fresh.open_orders = orders_ok;
+            a
+        }
+        Err(e) => {
+            errors.push(format!("parse core: {e}"));
+            return (HlAccount::default(), CoreFresh::default(), errors);
+        }
+    };
+    match spot {
+        Ok(v) => match parse_hl_spot_balances(&v) {
+            Ok(b) => {
+                account.spot_balances = b;
+                fresh.spot = true;
+            }
+            Err(e) => errors.push(format!("spot parse: {e}")),
+        },
+        Err(e) => errors.push(format!("spot: {e}")),
+    }
+    (account, fresh, errors)
+}
+
+/// Assemble the **long-tail** fields best-effort. Each domain is independent; a
+/// failed/unparseable one is recorded and left unmarked. Returns
+/// `(account, fresh, errors)` where `account` carries only the long-tail fields
+/// and `fresh` marks the ones that succeeded (caller merges via `merge_longtail`).
+pub(crate) fn assemble_longtail(
+    staking_summary: Result<Value, SyncError>,
+    delegations: Result<Value, SyncError>,
+    vault_equities: Result<Value, SyncError>,
+    borrow_lend: Result<Value, SyncError>,
+    agents: Result<Value, SyncError>,
+) -> (HlAccount, LongtailFresh, Vec<String>) {
+    let mut errors = Vec::new();
+    let mut fresh = LongtailFresh::default();
+    let mut acct = HlAccount::default();
+
+    match (staking_summary, delegations) {
+        (Ok(s), Ok(d)) => match parse_hl_staking_account(&s, &d) {
+            Ok(st) => {
+                acct.staking = Some(st);
+                fresh.staking = true;
+            }
+            Err(e) => errors.push(format!("staking parse: {e}")),
+        },
+        (s, d) => {
+            if let Err(e) = s {
+                errors.push(format!("staking: {e}"));
+            }
+            if let Err(e) = d {
+                errors.push(format!("delegations: {e}"));
+            }
+        }
+    }
+    match vault_equities {
+        Ok(v) => match parse_hl_vault_equities(&v) {
+            Ok(ve) => {
+                acct.vault_equities = ve;
+                fresh.vault_equities = true;
+            }
+            Err(e) => errors.push(format!("vault parse: {e}")),
+        },
+        Err(e) => errors.push(format!("vault: {e}")),
+    }
+    match borrow_lend {
+        Ok(v) => match parse_hl_borrow_lend_account(&v) {
+            Ok(bl) => {
+                acct.borrow_lend = Some(bl);
+                fresh.borrow_lend = true;
+            }
+            Err(e) => errors.push(format!("borrow_lend parse: {e}")),
+        },
+        Err(e) => errors.push(format!("borrow_lend: {e}")),
+    }
+    match agents {
+        Ok(v) => match parse_hl_agents(&v) {
+            Ok(ag) => {
+                acct.agents = ag;
+                fresh.agents = true;
+            }
+            Err(e) => errors.push(format!("agents parse: {e}")),
+        },
+        Err(e) => errors.push(format!("agents: {e}")),
+    }
+    (acct, fresh, errors)
 }
 
 pub(crate) fn parse_account_snapshot(
@@ -1340,6 +1548,109 @@ mod tests {
     use super::*;
     use policy_state::DataSource;
     use policy_state::Decimal;
+
+    #[test]
+    fn assemble_core_is_best_effort() {
+        // clearinghouse OK, spot FAILS, openOrders OK, meta OK.
+        let clearinghouse = serde_json::json!({ "withdrawable": "600.5", "assetPositions": [] });
+        let open_orders = serde_json::json!([]);
+        let meta = serde_json::json!({ "universe": [] });
+        let spot_err: Result<Value, SyncError> = Err(SyncError::FetchFailed {
+            source_id: "hyperliquid".into(),
+            reason: "boom".into(),
+        });
+
+        let (acct, fresh, errors) =
+            assemble_core(Ok(clearinghouse), spot_err, Ok(open_orders), &meta);
+        // core present despite spot failure
+        assert_eq!(acct.perp_usdc, Some(Decimal::new("600.5")));
+        assert!(acct.spot_balances.is_empty()); // failed → left empty
+        assert!(fresh.clearinghouse); // clearinghouse domain fresh
+        assert!(fresh.open_orders); // orders domain fresh
+        assert!(!fresh.spot); // spot NOT fresh → caller preserves prior value
+        assert_eq!(errors.len(), 1); // one recorded error (spot)
+        assert!(errors[0].contains("spot"));
+    }
+
+    #[test]
+    fn assemble_longtail_is_best_effort() {
+        // vaults OK (empty), agents FAIL → agents unmarked + one recorded error.
+        let staking = serde_json::json!({
+            "delegated": "0",
+            "undelegated": "0",
+            "totalPendingWithdrawal": "0",
+            "nPendingWithdrawals": 0
+        });
+        let delegations = serde_json::json!([]);
+        let vaults = serde_json::json!([]);
+        let borrow = serde_json::json!({});
+        let agents_err: Result<Value, SyncError> = Err(SyncError::FetchFailed {
+            source_id: "hyperliquid".into(),
+            reason: "boom".into(),
+        });
+
+        let (lt, fresh, errors) = assemble_longtail(
+            Ok(staking),
+            Ok(delegations),
+            Ok(vaults),
+            Ok(borrow),
+            agents_err,
+        );
+        assert!(lt.agents.is_empty()); // failed → left empty
+        assert!(!fresh.agents); // NOT fresh → caller preserves prior agents
+        assert!(fresh.vault_equities); // vaults parsed OK → fresh
+        assert!(errors.iter().any(|e| e.contains("agents")));
+    }
+
+    /// Live HL fetch for a real address. Set `HL_LIVE_ADDR` and run with
+    /// `--ignored --nocapture` to print the parsed core + long-tail snapshot.
+    #[tokio::test]
+    #[ignore = "hits the live Hyperliquid API; set HL_LIVE_ADDR"]
+    async fn fetch_hl_live() {
+        let Ok(addr_str) = std::env::var("HL_LIVE_ADDR") else {
+            eprintln!("HL_LIVE_ADDR not set — skipping");
+            return;
+        };
+        let user = Address::from_str(addr_str.trim()).expect("valid 0x address");
+        let f = HyperliquidFetcher::new();
+        let now = Time::from_unix(0);
+
+        let (core, fresh, errors) = f.fetch_hl_core("", &user, now).await;
+        println!(
+            "=== CORE  fresh{{clearinghouse:{} open_orders:{} spot:{}}} ===",
+            fresh.clearinghouse, fresh.open_orders, fresh.spot
+        );
+        println!("perp_usdc (margin): {:?}", core.perp_usdc);
+        println!("positions ({}):", core.positions.len());
+        for p in &core.positions {
+            println!("  {p:?}");
+        }
+        println!("spot_balances ({}):", core.spot_balances.len());
+        for b in &core.spot_balances {
+            println!("  {b:?}");
+        }
+        println!("open_orders ({}):", core.open_orders.len());
+        for o in &core.open_orders {
+            println!("  {o:?}");
+        }
+        println!("leverage_settings: {}", core.leverage_settings.len());
+        println!("core errors: {errors:?}");
+
+        let (lt, lfresh, lerrors) = f.fetch_hl_longtail("", &user).await;
+        println!(
+            "=== LONG-TAIL  fresh{{staking:{} vault:{} borrow_lend:{} agents:{}}} ===",
+            lfresh.staking, lfresh.vault_equities, lfresh.borrow_lend, lfresh.agents
+        );
+        println!("staking: {:?}", lt.staking);
+        println!(
+            "vault_equities ({}): {:?}",
+            lt.vault_equities.len(),
+            lt.vault_equities
+        );
+        println!("borrow_lend: {:?}", lt.borrow_lend);
+        println!("agents ({}): {:?}", lt.agents.len(), lt.agents);
+        println!("long-tail errors: {lerrors:?}");
+    }
 
     #[test]
     fn rejects_non_venue_source() {

@@ -71,6 +71,77 @@ impl Default for HlAccount {
     }
 }
 
+/// Which **core** domains in a freshly fetched snapshot are authoritative.
+///
+/// A domain is authoritative when its fetch + parse both succeeded this cycle.
+/// Domains left `false` are *preserved* from the existing account by
+/// [`HlAccount::merge_core`] — a failed poll must never wipe good state
+/// (resilience: failed fields keep their prior value).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CoreFresh {
+    /// `perp_usdc` + `positions` + `leverage_settings` (one `clearinghouseState`).
+    pub clearinghouse: bool,
+    /// `open_orders` (separate `openOrders` call).
+    pub open_orders: bool,
+    /// `spot_balances` (separate `spotClearinghouseState` call).
+    pub spot: bool,
+}
+
+/// Which **long-tail** domains are authoritative this cycle. Same
+/// preserve-on-miss semantics as [`CoreFresh`] (see [`HlAccount::merge_longtail`]).
+// Four independent domain flags: a per-domain freshness mask is the natural
+// representation here, so the >3-bools lint does not apply.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LongtailFresh {
+    /// `staking` (`delegatorSummary` + `delegations`, both required).
+    pub staking: bool,
+    /// `vault_equities` (`userVaultEquities`).
+    pub vault_equities: bool,
+    /// `borrow_lend` (`borrowLendUserState`).
+    pub borrow_lend: bool,
+    /// `agents` (delegated agent wallets).
+    pub agents: bool,
+}
+
+impl HlAccount {
+    /// Merge a freshly fetched **core** snapshot, overwriting only the domains
+    /// marked fresh in `which` and **preserving** the rest (a failed/stale domain
+    /// keeps its prior value). Long-tail fields and the reducer-owned
+    /// `pending_outflow` are never touched.
+    pub fn merge_core(&mut self, core: Self, which: CoreFresh) {
+        if which.clearinghouse {
+            self.perp_usdc = core.perp_usdc;
+            self.positions = core.positions;
+            self.leverage_settings = core.leverage_settings;
+        }
+        if which.open_orders {
+            self.open_orders = core.open_orders;
+        }
+        if which.spot {
+            self.spot_balances = core.spot_balances;
+        }
+    }
+
+    /// Merge freshly fetched **long-tail** fields, overwriting only the domains
+    /// marked fresh in `which` and preserving the rest. Core fields and
+    /// `pending_outflow` are never touched.
+    pub fn merge_longtail(&mut self, lt: Self, which: LongtailFresh) {
+        if which.staking {
+            self.staking = lt.staking;
+        }
+        if which.vault_equities {
+            self.vault_equities = lt.vault_equities;
+        }
+        if which.borrow_lend {
+            self.borrow_lend = lt.borrow_lend;
+        }
+        if which.agents {
+            self.agents = lt.agents;
+        }
+    }
+}
+
 /// A filled Hyperliquid perp position.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -262,6 +333,95 @@ pub struct HlAgentApproval {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub agent_name: Option<String>,
+}
+
+#[cfg(test)]
+mod merge_tests {
+    use super::*;
+
+    fn acct(tag: &str) -> HlAccount {
+        HlAccount {
+            perp_usdc: Some(Decimal::new(tag)),
+            pending_outflow: Decimal::new("42"),
+            ..Default::default()
+        }
+    }
+
+    fn spot_balance(coin: &str) -> HlSpotBalance {
+        HlSpotBalance {
+            coin: coin.to_string(),
+            token: 0,
+            total: Decimal::new("1"),
+            hold: Decimal::new("0"),
+            entry_ntl: Decimal::new("0"),
+            available_after_maintenance: None,
+        }
+    }
+
+    fn staking_acct() -> HlStakingAccount {
+        HlStakingAccount {
+            delegated: Decimal::new("5"),
+            undelegated: Decimal::new("0"),
+            total_pending_withdrawal: Decimal::new("0"),
+            n_pending_withdrawals: 0,
+            delegations: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn merge_core_updates_fresh_preserves_stale() {
+        let mut persisted = acct("1");
+        persisted.spot_balances = vec![spot_balance("USDC")];
+        // clearinghouse + open_orders fresh; spot's fetch FAILED → not fresh.
+        let fresh = acct("2"); // perp_usdc = 2, spot_balances empty
+        persisted.merge_core(
+            fresh,
+            CoreFresh {
+                clearinghouse: true,
+                open_orders: true,
+                spot: false,
+            },
+        );
+        assert_eq!(persisted.perp_usdc, Some(Decimal::new("2"))); // fresh → updated
+        assert!(!persisted.spot_balances.is_empty()); // stale → preserved
+        assert_eq!(persisted.pending_outflow, Decimal::new("42")); // reducer field kept
+    }
+
+    #[test]
+    fn merge_core_all_stale_preserves_everything() {
+        // Regression: a clearinghouse/meta blip yields an all-false mask, which
+        // must NOT wipe good persisted state to defaults.
+        let mut persisted = acct("100");
+        persisted.merge_core(HlAccount::default(), CoreFresh::default());
+        assert_eq!(persisted.perp_usdc, Some(Decimal::new("100"))); // not wiped to None
+    }
+
+    #[test]
+    fn merge_longtail_preserves_stale_and_keeps_core() {
+        let mut persisted = acct("1");
+        persisted.staking = Some(staking_acct());
+        // every long-tail fetch failed this cycle → all-false mask.
+        persisted.merge_longtail(HlAccount::default(), LongtailFresh::default());
+        assert!(persisted.staking.is_some()); // stale long-tail preserved
+        assert_eq!(persisted.perp_usdc, Some(Decimal::new("1"))); // core untouched
+    }
+
+    #[test]
+    fn merge_longtail_updates_fresh_domain() {
+        let mut persisted = acct("1"); // staking None
+        let lt = HlAccount {
+            staking: Some(staking_acct()),
+            ..Default::default()
+        };
+        persisted.merge_longtail(
+            lt,
+            LongtailFresh {
+                staking: true,
+                ..Default::default()
+            },
+        );
+        assert!(persisted.staking.is_some()); // fresh staking written in
+    }
 }
 
 #[cfg(test)]

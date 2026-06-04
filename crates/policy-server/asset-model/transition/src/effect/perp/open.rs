@@ -167,6 +167,7 @@ impl Reducer for OpenPerpAction {
                     valid_until: None,
                     nonce: None,
                     on_chain_tx: None,
+                    raw_status: None,
                 },
                 sync: common::pending_user_source(),
                 signed_at: ctx.now,

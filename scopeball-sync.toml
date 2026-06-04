@@ -141,11 +141,14 @@ timeout_sec = 10
 [venues.hyperliquid]
 endpoint = "https://api.hyperliquid.xyz"
 
+[venues.uniswap]
+# Public v2 order service — supports swapper-based listing (the v1 gateway does
+# not; it requires orderId/orderIds). No api-key required for v2.
+orders_endpoint = "https://api.uniswap.org/v2"
+api_key = "${UNISWAP_KEY}"   # optional; only the v1 gateway uses it
+chains = ["eip155:1"]
+
 # 향후 추가 예시:
-# [venues.uniswap]
-# quote_endpoint = "https://api.uniswap.org/v2/quote"
-# orders_endpoint = "https://api.uniswap.org/v2/orders"
-#
 # [venues.oneinch]
 # quote_endpoint = "https://api.1inch.dev/swap/v6.0"
 # api_key = "${ONEINCH_KEY}"

@@ -139,7 +139,11 @@ async fn spawn_server_with_hyperliquid(
 ) -> (std::net::SocketAddr, MultiUserStore, String) {
     let endpoint = spawn_hyperliquid_info_server(withdrawable).await;
     let mut sync_config = SyncConfig::default();
-    sync_config.venues.hyperliquid = Some(HyperliquidConfig { endpoint });
+    sync_config.venues.hyperliquid = Some(HyperliquidConfig {
+        endpoint,
+        meta_ttl_secs: 600,
+        builder_dex_policy: Default::default(),
+    });
     spawn_server_with_orchestrator(Orchestrator::from_sync_config(&sync_config).unwrap()).await
 }
 

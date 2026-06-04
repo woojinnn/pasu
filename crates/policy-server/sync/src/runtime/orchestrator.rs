@@ -22,6 +22,7 @@ use crate::fetchers::onchain::OnchainCall;
 use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
 use crate::fetchers::{
     ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher, UniswapFetcher,
+    UniswapXFetcher, UniswapXOrder,
 };
 use crate::walker::{walk_stale, ActionSlot, FieldLocation, WalkStats};
 
@@ -40,6 +41,12 @@ pub struct HyperliquidAccountReport {
     pub errors: Vec<String>,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct IntentOrdersReport {
+    pub orders_updated: usize,
+    pub errors: Vec<String>,
+}
+
 pub struct Orchestrator {
     onchain: OnchainViewFetcher,
     // Normalized oracle provider key to fetcher.
@@ -47,6 +54,7 @@ pub struct Orchestrator {
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
     uniswap: Option<UniswapFetcher>,
+    uniswap_x: Option<UniswapXFetcher>,
     calc: CalcRegistry,
     // Global values used by derived live-field inputs.
     globals: crate::resolver::GlobalValues,
@@ -63,6 +71,7 @@ impl Orchestrator {
             registry: None,
             hyperliquid: None,
             uniswap: Some(UniswapFetcher::new()),
+            uniswap_x: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: None,
@@ -115,6 +124,12 @@ impl Orchestrator {
     }
 
     #[must_use]
+    pub fn with_uniswap_x(mut self, uni: UniswapXFetcher) -> Self {
+        self.uniswap_x = Some(uni);
+        self
+    }
+
+    #[must_use]
     pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
         self.calc = calc;
         self
@@ -132,6 +147,7 @@ impl Orchestrator {
             registry: Some(RegistryFetcher::new()),
             hyperliquid: Some(HyperliquidFetcher::new()),
             uniswap: Some(UniswapFetcher::new()),
+            uniswap_x: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -159,12 +175,18 @@ impl Orchestrator {
             .hyperliquid
             .as_ref()
             .map(HyperliquidFetcher::from_sync_config);
+        let uniswap_x = cfg
+            .venues
+            .uniswap
+            .as_ref()
+            .map(UniswapXFetcher::from_sync_config);
         Ok(Self {
             onchain,
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid,
             uniswap: Some(UniswapFetcher::new()),
+            uniswap_x,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -236,6 +258,80 @@ impl Orchestrator {
         Ok(HyperliquidAccountReport {
             account_updated: true,
             errors: Vec::new(),
+        })
+    }
+
+    /// Discover and reconcile `UniswapX` (intent) order status for this wallet.
+    /// Venue is the source of truth: each configured chain is polled and the
+    /// returned orders are upserted into `state.pending` (keyed by `orderHash`).
+    pub async fn sync_intent_orders(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<IntentOrdersReport, SyncError> {
+        let Some(uni) = self.uniswap_x.as_ref() else {
+            return Ok(IntentOrdersReport {
+                orders_updated: 0,
+                errors: vec!["uniswap_x fetcher is not configured".into()],
+            });
+        };
+        let swapper = state.wallet_id.address;
+        let mut report = IntentOrdersReport::default();
+        let reactor = uniswap_x_reactor();
+        // v2 lists by swapper across all chains in one call; each order carries
+        // its own chainId, so there is no per-chain loop.
+        match uni.fetch_orders(&swapper).await {
+            Ok(orders) => {
+                report.orders_updated = orders.len();
+                upsert_intent_orders(state, &orders, reactor, &swapper, now);
+            }
+            Err(e) => report.errors.push(format!("uniswap_x: {e}")),
+        }
+        Ok(report)
+    }
+
+    /// Best-effort **core** account sync (every tick): fetch the native-dex core,
+    /// then field-scoped-merge so a partial failure preserves prior values
+    /// instead of clobbering them to defaults.
+    pub async fn sync_hyperliquid_core(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+        let user = state.wallet_id.address;
+        let (core, fresh, errors) = hl.fetch_hl_core("", &user, now).await;
+        upsert_hyperliquid_merge(state, |a| a.merge_core(core, fresh), now);
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors,
+        })
+    }
+
+    /// Best-effort **long-tail** account sync (sub-cadence): staking / vaults /
+    /// borrow-lend / agents, each preserved on failure.
+    pub async fn sync_hyperliquid_longtail(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+        let user = state.wallet_id.address;
+        let (lt, fresh, errors) = hl.fetch_hl_longtail("", &user).await;
+        upsert_hyperliquid_merge(state, |a| a.merge_longtail(lt, fresh), now);
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors,
         })
     }
 
@@ -773,6 +869,79 @@ fn upsert_hyperliquid_account(
     Ok(())
 }
 
+/// `UniswapX` V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
+/// reactors can be threaded through config later (spec §12).
+fn uniswap_x_reactor() -> policy_state::Address {
+    use std::str::FromStr;
+    policy_state::Address::from_str("0x00000011f84b9aa48e5f8aa8b9897600006289be")
+        .unwrap_or(policy_state::Address::ZERO)
+}
+
+/// Upsert discovered `UniswapX` orders into `state.pending`, keyed by the venue
+/// `orderHash` embedded in `PendingTx.id`. Existing entries are replaced in
+/// place (status transitions); new ones are appended.
+pub(crate) fn upsert_intent_orders(
+    state: &mut WalletState,
+    orders: &[UniswapXOrder],
+    reactor: policy_state::Address,
+    swapper: &policy_state::Address,
+    now: Time,
+) {
+    use policy_state::pending::PendingStatus;
+    for order in orders {
+        let pending = order.to_pending_tx(reactor, swapper, now);
+        // Terminal orders are pruned from `pending` — filled / cancelled /
+        // expired / failed no longer need tracking. Active ones are upserted in
+        // place (status transitions) or appended.
+        let terminal = matches!(
+            pending.lifecycle.status,
+            PendingStatus::Filled
+                | PendingStatus::Cancelled
+                | PendingStatus::Expired
+                | PendingStatus::Failed
+        );
+        if terminal {
+            state.pending.retain(|p| p.id != pending.id);
+        } else if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
+            *existing = pending;
+        } else {
+            state.pending.push(pending);
+        }
+    }
+}
+
+/// Load-or-create the HL account position, apply `f` (a field-scoped merge), and
+/// store it back. Preserves whatever fields `f` leaves untouched; only ever
+/// creates/updates the single reserved `HL_ACCOUNT_ID` position. A pre-existing
+/// position of a different kind is left alone (the id is reserved for HL).
+fn upsert_hyperliquid_merge(
+    state: &mut WalletState,
+    f: impl FnOnce(&mut policy_state::HlAccount),
+    now: Time,
+) {
+    if let Some(pos) = state.positions.iter_mut().find(|p| p.id == HL_ACCOUNT_ID) {
+        if let PositionKind::HyperliquidAccount(acct) = &mut pos.kind {
+            f(acct);
+            pos.primitives_synced_at = now;
+        }
+    } else {
+        let mut acct = policy_state::HlAccount::default();
+        f(&mut acct);
+        state.positions.push(Position {
+            id: HL_ACCOUNT_ID.to_owned(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(acct),
+            primitives_synced_at: now,
+            primitives_source: DataSource::VenueApi {
+                endpoint: "https://api.hyperliquid.xyz/info".into(),
+                parser_id: "hl_account".into(),
+                auth: None,
+            },
+        });
+    }
+}
+
 fn is_hyperliquid_endpoint(endpoint: &str) -> bool {
     endpoint.is_empty()
         || endpoint.contains("hyperliquid")
@@ -935,6 +1104,54 @@ mod tests {
     use super::*;
     use policy_state::{Address, ChainId};
 
+    #[test]
+    fn upsert_intent_orders_tracks_active_and_prunes_on_terminal() {
+        use crate::fetchers::UniswapXOrder;
+        use policy_state::pending::PendingStatus;
+        use policy_state::{WalletId, U256};
+
+        let reactor = Address::ZERO;
+        let swapper = Address::ZERO;
+        let now = Time::from_unix(1_738_000_000);
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // Round 1: one open order is discovered → added as Active.
+        let open = UniswapXOrder {
+            order_hash: "0xhash1".into(),
+            order_status: "open".into(),
+            order_type: "Dutch_V2".into(),
+            chain_id: 1,
+            deadline: Some(1_738_003_600),
+            sell_token: Address::ZERO,
+            sell_amount: U256::from(600u64),
+            buy_token: Address::ZERO,
+            buy_min: U256::from(1u64),
+        };
+        super::upsert_intent_orders(
+            &mut state,
+            std::slice::from_ref(&open),
+            reactor,
+            &swapper,
+            now,
+        );
+        assert_eq!(state.pending.len(), 1);
+        assert_eq!(state.pending[0].id, "intent:uniswap_x:0xhash1");
+        assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Active);
+
+        // Round 2: same hash now filled → pruned from pending (terminal cleanup).
+        let filled = UniswapXOrder {
+            order_status: "filled".into(),
+            ..open
+        };
+        super::upsert_intent_orders(&mut state, &[filled], reactor, &swapper, now);
+        assert!(
+            state.pending.is_empty(),
+            "terminal order pruned from pending"
+        );
+    }
+
     #[tokio::test]
     async fn refresh_empty_state_is_noop() {
         let toml = r#"
@@ -958,6 +1175,60 @@ priority = 1
         assert_eq!(report.walked.total_live_fields, 0);
         assert_eq!(report.fields_updated, 0);
         assert_eq!(report.batches_processed, 0);
+    }
+
+    #[test]
+    fn upsert_hl_merge_creates_updates_and_preserves_across_domains() {
+        use policy_state::{CoreFresh, Decimal, HlAccount, LongtailFresh, WalletId};
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // A core snapshot whose clearinghouse domain is fresh (rest stale).
+        let fresh = CoreFresh {
+            clearinghouse: true,
+            ..Default::default()
+        };
+
+        // (1) first core sync creates the HL position.
+        let core = HlAccount {
+            perp_usdc: Some(Decimal::new("5")),
+            ..Default::default()
+        };
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_core(core, fresh),
+            Time::from_unix(0),
+        );
+
+        // (2) a long-tail sync (all-stale here) must NOT wipe the core perp_usdc.
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_longtail(HlAccount::default(), LongtailFresh::default()),
+            Time::from_unix(1),
+        );
+
+        // (3) a second core sync updates the same position in place.
+        let core2 = HlAccount {
+            perp_usdc: Some(Decimal::new("9")),
+            ..Default::default()
+        };
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_core(core2, fresh),
+            Time::from_unix(2),
+        );
+
+        let hits: Vec<_> = state
+            .positions
+            .iter()
+            .filter(|p| p.id == HL_ACCOUNT_ID)
+            .collect();
+        assert_eq!(hits.len(), 1); // upsert, not duplicate
+        let PositionKind::HyperliquidAccount(acct) = &hits[0].kind else {
+            panic!("not an HL account");
+        };
+        assert_eq!(acct.perp_usdc, Some(Decimal::new("9"))); // last core, preserved across long-tail
     }
 
     #[tokio::test]
