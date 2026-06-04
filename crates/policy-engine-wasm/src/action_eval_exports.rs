@@ -997,4 +997,74 @@ mod tests {
             );
         }
     }
+
+    /// The SHIPPED default `high-slippage-warning` bundle (verbatim from
+    /// `browser-extension/public/default-policies/policy-set-v2.json`): an
+    /// Inner-scoped (no `trigger.scope` → default Inner) `forbid` on
+    /// `Amm::Action::"Swap"` when `slippageBp > 100`.
+    fn shipped_high_slippage_bundle() -> Value {
+        json!({
+            "policy": "@id(\"high-slippage-warning\")\n@severity(\"warn\")\nforbid(principal, action == Amm::Action::\"Swap\", resource)\nwhen { context.slippageBp > 100 };\n",
+            "manifest": { "id": "high-slippage-warning", "schema_version": 2,
+                "trigger": { "where": { "action.tag": { "eq": "swap" } } } }
+        })
+    }
+
+    /// `swap_sample` but with a caller-chosen `slippage_bp` so the shipped
+    /// `slippageBp > 100` guard can be made to trip (150) or not (50).
+    fn swap_sample_with_slippage(bp: u32) -> (ActionBody, ActionMeta) {
+        let (body, meta) = swap_sample();
+        let ActionBody::Amm(AmmAction::Swap(mut swap)) = body else {
+            unreachable!("swap_sample yields an amm swap")
+        };
+        swap.params.slippage_bp = bp;
+        (ActionBody::Amm(AmmAction::Swap(swap)), meta)
+    }
+
+    /// END-TO-END (question stage c): the REAL shipped `high-slippage-warning`
+    /// Inner-scoped swap policy FIRES on a UR-style child swap (slippage 150 >
+    /// 100 → warn). This is the per-child position `evaluateBodyTree` re-enters
+    /// with: lower → trigger-match (`action.tag == "swap"`) → Cedar eval → warn.
+    #[test]
+    fn shipped_swap_policy_fires_on_child_swap_position() {
+        let (body, meta) = swap_sample_with_slippage(150);
+        let out = evaluate_action_v2_json(
+            json!({
+                "action": body, "meta": meta, "tx": tx(),
+                "bundles": [ shipped_high_slippage_bundle() ],
+                "results": {}
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            verdict_kind(&out),
+            "warn",
+            "shipped high-slippage policy must WARN on the child swap (slippage 150 > 100): {out}"
+        );
+    }
+
+    /// END-TO-END control: same shipped Inner policy + the SAME swap wrapped in a
+    /// `Multicall` (the batch/Outer position) → SKIPPED by the scope gate (so it
+    /// PASSes here). Proves the Inner policy is routed to the child, NOT the
+    /// batch — `evaluateBodyTree` re-enters with the child where it fires (above).
+    #[test]
+    fn shipped_swap_policy_skipped_on_multicall_batch_position() {
+        let (swap, meta) = swap_sample_with_slippage(150);
+        let batch = ActionBody::Multicall {
+            actions: vec![swap],
+        };
+        let out = evaluate_action_v2_json(
+            json!({
+                "action": batch, "meta": meta, "tx": tx(),
+                "bundles": [ shipped_high_slippage_bundle() ],
+                "results": {}
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            verdict_kind(&out),
+            "pass",
+            "Inner swap policy must be SKIPPED on the multicall batch (fires per-child): {out}"
+        );
+    }
 }
