@@ -1,0 +1,128 @@
+{
+  "contract": "StakedUSDeV2",
+  "chainId": 1,
+  "address": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+  "snapshot": "StakedUSDeV2.abi.json",
+  "functions": {
+    "0x0e18b681": {
+      "name": "acceptAdmin",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xf298f42c": {
+      "name": "addToBlacklist",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerate (tokens:erc20)"
+    },
+    "0xcdac52ed": {
+      "name": "cooldownAssets",
+      "decision": "cover",
+      "reason": "user-facing sUSDe staking lifecycle; covered by ethena registry manifest"
+    },
+    "0x9343d9e1": {
+      "name": "cooldownShares",
+      "decision": "cover",
+      "reason": "user-facing sUSDe staking lifecycle; covered by ethena registry manifest"
+    },
+    "0xa457c2d7": {
+      "name": "decreaseAllowance",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerate (tokens:erc20)"
+    },
+    "0x6e553f65": {
+      "name": "deposit",
+      "decision": "cover",
+      "reason": "user-facing sUSDe staking lifecycle; covered by ethena registry manifest"
+    },
+    "0x2f2ff15d": {
+      "name": "grantRole",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0x39509351": {
+      "name": "increaseAllowance",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerate (tokens:erc20)"
+    },
+    "0x94bf804d": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "user-facing sUSDe staking lifecycle; covered by ethena registry manifest"
+    },
+    "0xd505accf": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerate (tokens:erc20)"
+    },
+    "0xba087652": {
+      "name": "redeem",
+      "decision": "cover",
+      "reason": "user-facing sUSDe staking lifecycle; covered by ethena registry manifest"
+    },
+    "0xa0776b82": {
+      "name": "redistributeLockedAmount",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xc336a084": {
+      "name": "removeFromBlacklist",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0x36568abe": {
+      "name": "renounceRole",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xb37fd190": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xd547741f": {
+      "name": "revokeRole",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xce23eb3c": {
+      "name": "setCooldownDuration",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerate (tokens:erc20)"
+    },
+    "0x75829def": {
+      "name": "transferAdmin",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerate (tokens:erc20)"
+    },
+    "0xc80ef110": {
+      "name": "transferInRewards",
+      "decision": "exclude",
+      "reason": "admin/infrastructure (role grant/revoke, blacklist, rewards-funding, rescue, cooldown-config, admin transfer) \u2014 not user pre-sign"
+    },
+    "0xf2888dbb": {
+      "name": "unstake",
+      "decision": "cover",
+      "reason": "user-facing sUSDe staking lifecycle; covered by ethena registry manifest"
+    },
+    "0xb460af94": {
+      "name": "withdraw",
+      "decision": "exclude",
+      "reason": "ERC4626 withdraw (assets-denominated); reverts while cooldownDuration>0 (live=86400s/1d), 0% measured usage in 10k-tx window; DEFERRED \u2014 no assets-denominated staking withdraw shape (cover redeem covers the shares path)"
+    }
+  }
+}
