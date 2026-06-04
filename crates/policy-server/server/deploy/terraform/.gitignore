@@ -1,0 +1,8 @@
+# Local Terraform working state — real state lives in GCS.
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+# Keep .terraform.lock.hcl committed (provider version lock).
