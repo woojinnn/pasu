@@ -42,6 +42,7 @@ import { runDiagnosisProbes } from "../server-api/diagnosis";
 import { applyCulprits, clearCulprits } from "./diagnosis-highlight";
 import { SAMPLE_ACTIONS } from "./sample-actions";
 import { chainToDottedPath } from "./mapping/attr-path";
+import { getGloss } from "./gloss";
 import "./diagnosis-highlight.css";
 
 Blockly.setLocale(En as unknown as Record<string, string>);
@@ -299,8 +300,9 @@ export function WorkspaceV9({
       const byPath = new Map(enumeratePaths(policy).map((e) => [e.path, e.node]));
       const note = (p: string): string | null => {
         const node = byPath.get(p);
-        if (!node || node.kind !== "binary") return p;
-        const lhs = chainToDottedPath(node.left) ?? "?";
+        if (!node || node.kind !== "binary") return null;
+        const leftPath = chainToDottedPath(node.left);
+        const lhs = (leftPath !== null ? getGloss(leftPath)?.ko : undefined) ?? leftPath ?? "?";
         const rhs =
           node.right.kind === "lit" ? String(node.right.value) : "?";
         return `${lhs} ${node.op} ${rhs}`;
