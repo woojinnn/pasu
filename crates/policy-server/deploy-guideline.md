@@ -360,6 +360,31 @@ gcloud iam workload-identity-pools providers describe github-provider \
 
 ---
 
+## 8.5 무중단 배포 (zero-downtime 롤아웃)
+
+새 버전을 배포해도 서비스가 안 끊기게 하는 설정이 들어가 있습니다 (GKE L7 Ingress 기준).
+
+**적용된 것:**
+- `RollingUpdate` **maxSurge:1 / maxUnavailable:0** — 새 pod가 Ready된 뒤에야 옛 pod를 내림
+- `readinessProbe` + GCE `BackendConfig` 헬스체크 모두 **`/readyz`** — 준비된 pod에만 트래픽
+- **graceful shutdown** — SIGTERM 시 진행 중 요청 + SSE 드레인
+- **`preStop: sleep 15` + `terminationGracePeriodSeconds: 30`** — SIGTERM 직전 15초간 계속 serving → GCLB가 NEG에서 이 pod를 빼는 동안 새 요청이 종료 중 pod로 가지 않게 함(L7의 NEG 디레지스터 갭 = 502 원인 제거). 값은 `values.yaml`의 `api.preStopSleepSeconds` / `api.terminationGracePeriodSeconds`로 조절.
+- **replicas 2 + PDB minAvailable:1**
+
+**검증** (롤아웃 거는 동안 다른 터미널에서):
+```bash
+while true; do curl -s -o /dev/null -w "%{http_code} " https://pasu-policy.duckdns.org/readyz; sleep 1; done
+# 전부 200이면 무중단 OK. 새 pod에 preStop 박혔는지:
+kubectl -n pasu get pod -l app.kubernetes.io/component=api \
+  -o jsonpath='{.items[0].spec.containers[0].lifecycle.preStop}'; echo
+```
+
+**⚠️ 주의 2가지:**
+- preStop을 **처음 넣는** 롤아웃은 옛 pod에 preStop이 아직 없어 그 한 번만 짧게 502 가능(이후부터 무중단). 정상.
+- **파괴적 마이그레이션**(컬럼/테이블 DROP, 타입 변경)은 롤아웃 중 구·신 pod가 같은 DB를 공유하므로 깨짐 → **expand-contract**(① 추가 마이그레이션 → ② 코드 이행 → ③ 제거) 패턴 필요. (`0002_market`처럼 `CREATE TABLE` 추가형은 안전.)
+
+---
+
 ## 9. 💰 비용 / 끄고 켜기 (중요!)
 
 이 스택은 **켜둔 동안 계속 과금**됩니다. 대략(서울 리전, 24시간 기준):
