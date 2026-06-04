@@ -44,7 +44,7 @@ vi.mock('@background/dashboard/storage', () => ({
 }));
 
 const fetchMock = vi.fn(async (url: string) => {
-  if (url.endsWith('policy-set.json')) return new Response(mocks.fetched.defaults);
+  if (url.endsWith('policy-set-v2.json')) return new Response(mocks.fetched.defaults);
   return new Response(mocks.fetched.schema);
 });
 vi.stubGlobal('fetch', fetchMock);
@@ -68,8 +68,8 @@ describe('policy-selection', () => {
     vi.clearAllMocks();
     mocks.localStore.clear();
     mocks.fetched.defaults = JSON.stringify([
-      { id: 'default::dex/a', text: POLICY_A },
-      { id: 'default::dex/b', text: POLICY_B },
+      { id: 'default::dex/a', policy: POLICY_A },
+      { id: 'default::dex/b', policy: POLICY_B },
     ]);
     mocks.listInstalled.mockResolvedValue([]);
   });

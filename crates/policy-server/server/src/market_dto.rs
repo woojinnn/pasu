@@ -65,7 +65,6 @@ pub enum ListingSort {
     Rating,
 }
 
-
 /// Query parameters for `GET /market/listings`. All filters are optional.
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct ListListingsQuery {

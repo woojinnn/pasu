@@ -5,8 +5,8 @@
 //! normalizing aggregate read models before their product contract settles.
 
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use sqlx_core::error::Error as SqlxError;

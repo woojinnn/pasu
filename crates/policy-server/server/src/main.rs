@@ -105,8 +105,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sync_lock_ttl: Duration::from_secs(config.sync_lock_ttl_secs),
     };
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
-    let router = build_router_with_config(state, &config)
-        .layer(axum::Extension(ShutdownRx(shutdown_rx)));
+    let router =
+        build_router_with_config(state, &config).layer(axum::Extension(ShutdownRx(shutdown_rx)));
 
     let listener = tokio::net::TcpListener::bind(&config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "policy-server listening");

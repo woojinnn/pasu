@@ -191,7 +191,7 @@ pub async fn refresh_token(Json(req): Json<RefreshRequest>) -> Response {
 // ---------- redirect allowlist ----------
 
 /// Read the comma-separated redirect allowlist from the environment. Unset →
-/// empty → nothing extra allowed (fail-closed); the default DASHBOARD_URL path
+/// empty → nothing extra allowed (fail-closed); the default `DASHBOARD_URL` path
 /// doesn't pass through the allowlist.
 fn allowed_redirects() -> String {
     env::var("OAUTH_ALLOWED_REDIRECT_URIS").unwrap_or_default()
@@ -353,7 +353,10 @@ mod tests {
     fn redirect_allowlist_is_exact_match() {
         let allow = "https://abc.chromiumapp.org/, http://localhost:5173/auth/callback";
         assert!(redirect_allowed("https://abc.chromiumapp.org/", allow));
-        assert!(redirect_allowed("http://localhost:5173/auth/callback", allow));
+        assert!(redirect_allowed(
+            "http://localhost:5173/auth/callback",
+            allow
+        ));
         // trailing slash / substring / sibling host must NOT match
         assert!(!redirect_allowed("https://abc.chromiumapp.org", allow));
         assert!(!redirect_allowed("https://abc.chromiumapp.org/evil", allow));
@@ -365,8 +368,17 @@ mod tests {
     #[test]
     fn target_defaults_to_dashboard_when_no_redirect() {
         // Empty carried → DASHBOARD_URL/auth/callback, never a 400 / allowlist.
-        let t = build_redirect_target("", "https://abc.chromiumapp.org/", "https://dash.example", "AT", "RT");
-        assert_eq!(t, "https://dash.example/auth/callback#access_token=AT&refresh_token=RT");
+        let t = build_redirect_target(
+            "",
+            "https://abc.chromiumapp.org/",
+            "https://dash.example",
+            "AT",
+            "RT",
+        );
+        assert_eq!(
+            t,
+            "https://dash.example/auth/callback#access_token=AT&refresh_token=RT"
+        );
     }
 
     #[test]
@@ -378,7 +390,10 @@ mod tests {
             "AT",
             "RT",
         );
-        assert_eq!(t, "https://abc.chromiumapp.org/#access_token=AT&refresh_token=RT");
+        assert_eq!(
+            t,
+            "https://abc.chromiumapp.org/#access_token=AT&refresh_token=RT"
+        );
     }
 
     #[test]
@@ -392,6 +407,9 @@ mod tests {
             "AT",
             "RT",
         );
-        assert_eq!(t, "https://dash.example/auth/callback#access_token=AT&refresh_token=RT");
+        assert_eq!(
+            t,
+            "https://dash.example/auth/callback#access_token=AT&refresh_token=RT"
+        );
     }
 }
