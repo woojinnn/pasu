@@ -120,6 +120,14 @@ spec:
             periodSeconds: 5
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
+          # Zero-downtime on GKE L7: keep serving for a few seconds after SIGTERM
+          # so the GCLB drops this pod from the NEG before it stops accepting
+          # connections (avoids 502s during rollouts). Graceful drain runs after.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "{{ .Values.api.preStopSleepSeconds }}"]
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
       volumes:
         - name: sync-config
           configMap:
