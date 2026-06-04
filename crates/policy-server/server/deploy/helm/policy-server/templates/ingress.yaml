@@ -7,6 +7,7 @@ metadata:
     {{- include "policy-server.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.ingress.gce.enabled }}
+    kubernetes.io/ingress.class: "gce"
     kubernetes.io/ingress.global-static-ip-name: {{ .Values.ingress.gce.staticIpName | quote }}
     networking.gke.io/managed-certificates: {{ printf "%s-cert" (include "policy-server.fullname" .) | quote }}
     kubernetes.io/ingress.allow-http: {{ .Values.ingress.gce.allowHttp | quote }}

@@ -20,7 +20,9 @@ service:
 
 ingress:
   enabled: true
-  className: gce
+  # GCE controller is selected via the kubernetes.io/ingress.class annotation
+  # (this cluster has no "gce" IngressClass, so ingressClassName would match nothing).
+  className: ""
   host: pasu-policy.duckdns.org
   tls:
     enabled: false          # ManagedCertificate provides TLS via annotation, not a secret
