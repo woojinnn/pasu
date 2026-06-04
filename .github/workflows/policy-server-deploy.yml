@@ -1,0 +1,91 @@
+# Builds the policy-server container image and deploys it to GKE on every push to
+# main. The cloud infrastructure (VPC / Cloud SQL / Memorystore / GKE cluster) is
+# provisioned separately with Terraform — this workflow only ships the *app*.
+#
+# One-time auth setup (keyless Workload Identity Federation + the two GitHub
+# secrets below) is documented step-by-step in:
+#   crates/policy-server/deploy-guideline.md  →  section "CI/CD".
+#
+# Required repository secrets:
+#   GCP_WIF_PROVIDER  - full Workload Identity *provider* resource name
+#   GCP_DEPLOY_SA     - deploy service-account email
+name: policy-server-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/policy-server/**"
+      - ".github/workflows/policy-server-deploy.yml"
+  workflow_dispatch: {} # lets you trigger it by hand from the Actions tab
+
+# ----------------------------------------------------------------------------
+# CHANGE THESE for your own project (see deploy-guideline.md "customize" list).
+# ----------------------------------------------------------------------------
+env:
+  PROJECT_ID: policy-engine-498313
+  REGION: asia-northeast3
+  AR_REPO: pasu
+  IMAGE_NAME: pasu-policy-server
+  CLUSTER: pasu-autopilot
+  NAMESPACE: pasu
+  HELM_VALUES: crates/policy-server/server/deploy/helm/policy-server/values-m3.yaml
+
+permissions:
+  contents: read
+  id-token: write # required for keyless auth to Google Cloud (do not remove)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (keyless, Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          TAG="${GITHUB_SHA::8}"
+          IMG="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${IMAGE_NAME}:${TAG}"
+          echo "Building and pushing $IMG"
+          # GitHub's ubuntu runners are linux/amd64, which is what GKE Autopilot
+          # runs — so a plain `docker build` is correct here (no buildx needed,
+          # unlike the local Apple-Silicon cross-build).
+          docker build -f crates/policy-server/server/Dockerfile -t "$IMG" .
+          docker push "$IMG"
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER }}
+          location: ${{ env.REGION }}
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install pasu \
+            crates/policy-server/server/deploy/helm/policy-server \
+            --namespace "${NAMESPACE}" \
+            -f "${HELM_VALUES}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --timeout 8m
+          kubectl -n "${NAMESPACE}" rollout status deploy/pasu-policy-server-api --timeout=180s
+
+      - name: Summary
+        run: |
+          echo "Deployed image tag: ${IMAGE_TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Cluster: ${CLUSTER} (${REGION})" >> "$GITHUB_STEP_SUMMARY"
