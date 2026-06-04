@@ -132,7 +132,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scopeball-dashboard-${{ github.sha }}
-          path: browser-extension/dashboard/dist
+          path: |
+            browser-extension/dist/chrome/options.html
+            browser-extension/dist/chrome/assets
           if-no-files-found: error
           retention-days: 14
 
