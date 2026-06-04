@@ -733,7 +733,9 @@ fn t5_array_emit_calldata_two_transfers() {
 fn t5_array_emit_empty_array_empty_multicall() {
     install_ok(T5_ARRAY_EMIT_V3);
 
-    // Empty `transfers` array → empty Multicall (valid, ok:true).
+    // Empty `transfers` array → Unknown leg (5f3872ff: an empty array_emit
+    // surfaces as Unknown so the position stays policy-visible, rather than a
+    // silently-empty Multicall that would aggregate to PASS).
     let calldata = encode_calldata("0x22c5c901", &[DynSolValue::Array(vec![])]);
     let input = route_input(
         1,
@@ -744,12 +746,9 @@ fn t5_array_emit_empty_array_empty_multicall() {
     );
     let parsed = route_ok(input);
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "multicall", "{parsed}");
-    assert!(
-        body["actions"]
-            .as_array()
-            .expect("inner actions")
-            .is_empty(),
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(
+        body["target"], "0x000000000022d473030f116ddee9f6b43ac78ba3",
         "{parsed}"
     );
 }
@@ -5793,7 +5792,9 @@ fn b3_hl_bridge2_batched_deposit_with_permit() {
 fn b3_hl_bridge2_batched_deposit_empty() {
     install_ok(HL_BRIDGE2_DEPOSIT_MANIFEST);
 
-    // Empty deposits array → empty Multicall (valid, ok:true).
+    // Empty deposits array → Unknown leg (5f3872ff: an empty array_emit surfaces
+    // as Unknown so the position stays policy-visible, rather than a
+    // silently-empty Multicall that would aggregate to PASS).
     let calldata = encode_calldata("0xb30b5bce", &[DynSolValue::Array(vec![])]);
     let input = route_input(
         HL_ARBITRUM,
@@ -5804,12 +5805,9 @@ fn b3_hl_bridge2_batched_deposit_empty() {
     );
     let parsed = route_ok(input);
     let body = &parsed["data"]["actions"][0]["body"];
-    assert_eq!(body["domain"], "multicall", "{parsed}");
-    assert!(
-        body["actions"]
-            .as_array()
-            .expect("inner actions")
-            .is_empty(),
+    assert_eq!(body["domain"], "unknown", "{parsed}");
+    assert_eq!(
+        body["target"], "0x2df1c51e09aecf9cacb7bc98cb1742757f163df7",
         "{parsed}"
     );
 }

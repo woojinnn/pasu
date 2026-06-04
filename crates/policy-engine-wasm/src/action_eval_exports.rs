@@ -779,7 +779,8 @@ mod tests {
             "@id(\"block-non-usdt\")\n@severity(\"deny\")\n\
              @reason(\"output token is not USDT\")\n\
              forbid(principal, action == Amm::Action::\"Swap\", resource)\n\
-             when {{ !(context.tokenOut.key has address \
+             when {{ context has tokenOut \
+             && !(context.tokenOut.key has address \
              && context.tokenOut.key.address == \"{USDT}\") }};\n"
         );
         let parsed = eval_dashboard(&policy, "dashboard::block-non-usdt");
@@ -800,7 +801,8 @@ mod tests {
         let policy = format!(
             "@id(\"only-usdt\")\n@severity(\"deny\")\n\
              forbid(principal, action == Amm::Action::\"Swap\", resource)\n\
-             when {{ context.tokenOut.key has address \
+             when {{ context has tokenOut \
+             && context.tokenOut.key has address \
              && context.tokenOut.key.address == \"{USDT}\" }};\n"
         );
         let parsed = eval_dashboard(&policy, "dashboard::only-usdt");
