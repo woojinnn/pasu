@@ -774,7 +774,12 @@
         {
           "path": "$.data.actions[0].body.actions",
           "op": "len",
-          "value": 0
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "multicall"
         }
       ]
     },
@@ -1134,7 +1139,12 @@
         {
           "path": "$.data.actions[0].body.actions",
           "op": "len",
-          "value": 0
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "multicall"
         }
       ]
     },
@@ -1878,7 +1888,7 @@
         {
           "path": "$.data.actions[0].body.actions",
           "op": "len",
-          "value": 1
+          "value": 2
         },
         {
           "path": "$.data.actions[0].body.actions[0].domain",
@@ -1904,6 +1914,11 @@
           "path": "$.data.actions[0].body.actions[0].amount",
           "op": "u256_hex_eq",
           "value": "0x30a715a897d37174cd"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "multicall"
         }
       ]
     },
@@ -2057,32 +2072,12 @@
         {
           "path": "$.data.actions[0].body.actions",
           "op": "len",
-          "value": 2
+          "value": 3
         },
         {
           "path": "$.data.actions[0].body.actions[0].domain",
           "op": "equals",
-          "value": "token"
-        },
-        {
-          "path": "$.data.actions[0].body.actions[0].action",
-          "op": "equals",
-          "value": "erc20_transfer"
-        },
-        {
-          "path": "$.data.actions[0].body.actions[0].token.key.address",
-          "op": "hex_eq",
-          "value": "0x33b49f2264e85bb124d2730dc180182717d436ae"
-        },
-        {
-          "path": "$.data.actions[0].body.actions[0].recipient",
-          "op": "hex_eq",
-          "value": "0x5af3b5bca2b49478f75aa8d3f8320e326337f22f"
-        },
-        {
-          "path": "$.data.actions[0].body.actions[0].amount",
-          "op": "u256_hex_eq",
-          "value": "0x14"
+          "value": "multicall"
         },
         {
           "path": "$.data.actions[0].body.actions[1].domain",
@@ -2102,10 +2097,35 @@
         {
           "path": "$.data.actions[0].body.actions[1].recipient",
           "op": "hex_eq",
-          "value": "0xe8d5deb9b53010ce8f6700f367015cc4dd58659a"
+          "value": "0x5af3b5bca2b49478f75aa8d3f8320e326337f22f"
         },
         {
           "path": "$.data.actions[0].body.actions[1].amount",
+          "op": "u256_hex_eq",
+          "value": "0x14"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].domain",
+          "op": "equals",
+          "value": "token"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].action",
+          "op": "equals",
+          "value": "erc20_transfer"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].token.key.address",
+          "op": "hex_eq",
+          "value": "0x33b49f2264e85bb124d2730dc180182717d436ae"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].recipient",
+          "op": "hex_eq",
+          "value": "0xe8d5deb9b53010ce8f6700f367015cc4dd58659a"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].amount",
           "op": "u256_hex_eq",
           "value": "0x6cceaf7d889150"
         }
@@ -2487,7 +2507,7 @@
         {
           "path": "$.data.actions[0].body.actions",
           "op": "len",
-          "value": 1
+          "value": 2
         },
         {
           "path": "$.data.actions[0].body.actions[0].domain",
@@ -2513,6 +2533,11 @@
           "path": "$.data.actions[0].body.actions[0].amount",
           "op": "u256_hex_eq",
           "value": "0xffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "multicall"
         }
       ]
     },
@@ -2540,7 +2565,12 @@
         {
           "path": "$.data.actions[0].body.actions",
           "op": "len",
-          "value": 0
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "multicall"
         }
       ]
     },

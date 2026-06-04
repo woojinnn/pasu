@@ -101,19 +101,19 @@
       }
     },
     {
-      "intent": "batchedDepositWithPermit",
+      "intent": "batchedDepositWithPermit [re-pinned: a8bce6f9 surfaces the no-adapter batch as Unknown, not an empty Multicall]",
       "expect": "pass",
-      "expect_domain": "multicall",
+      "expect_domain": "unknown",
       "expect_body": [
         {
           "path": "$.data.actions[0].body.domain",
           "op": "equals",
-          "value": "multicall"
+          "value": "unknown"
         },
         {
-          "path": "$.data.actions[0].body.actions",
-          "op": "len",
-          "value": 0
+          "path": "$.data.actions[0].body.target",
+          "op": "hex_eq",
+          "value": "0x2df1c51e09aecf9cacb7bc98cb1742757f163df7"
         }
       ],
       "chain_id": 42161,
