@@ -22,10 +22,10 @@ spec:
         - name: worker
           image: {{ include "policy-server.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["scopeball-sync-worker"]
+          command: ["pasu-sync-worker"]
           env:
-            - name: SCOPEBALL_SYNC_CONFIG
-              value: /app/scopeball-sync.toml
+            - name: PASU_SYNC_CONFIG
+              value: /app/pasu-sync.toml
             - name: REQUIRE_SYNC_CONFIG
               value: {{ .Values.runtime.requireSyncConfig | quote }}
             - name: RUN_MIGRATIONS_ON_STARTUP
@@ -61,8 +61,8 @@ spec:
                   optional: true
           volumeMounts:
             - name: sync-config
-              mountPath: /app/scopeball-sync.toml
-              subPath: scopeball-sync.toml
+              mountPath: /app/pasu-sync.toml
+              subPath: pasu-sync.toml
               readOnly: true
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}

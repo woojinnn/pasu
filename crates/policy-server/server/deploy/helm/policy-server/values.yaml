@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/woojinnn/scopeball-policy-server
+  repository: ghcr.io/woojinnn/pasu-policy-server
   tag: ""
   pullPolicy: IfNotPresent
 
@@ -75,7 +75,7 @@ networkPolicy:
   enabled: false
 
 syncConfig: |-
-  # Override this value with the production scopeball-sync.toml.
+  # Override this value with the production pasu-sync.toml.
   [rpc.failover]
   strategy = "priority"
   retry_attempts = 3
