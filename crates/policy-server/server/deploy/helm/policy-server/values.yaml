@@ -11,6 +11,9 @@ service:
 api:
   replicas: 1
   port: 8788
+  # preStop sleep + grace period → zero-downtime rollouts on GKE L7 (NEG drain race)
+  preStopSleepSeconds: 15
+  terminationGracePeriodSeconds: 30
   publicApiUrl: https://api.scopeball.dev
   dashboardUrl: https://app.scopeball.dev
   corsAllowedOrigins:
