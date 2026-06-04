@@ -2,7 +2,7 @@
 //! These are the counterpart to `read_handlers`. They take an
 //! authenticated user, mutate that user's PostgreSQL-backed wallet state, and (where
 //! applicable) trigger the sync orchestrator to fetch live data over
-//! RPC/oracles defined in `scopeball-sync.toml`.
+//! RPC/oracles defined in `pasu-sync.toml`.
 //! Sync completion fires a `wallet_synced` event on the per-user SSE
 //! stream so a dashboard or extension subscribed to the activity feed
 //! sees the refresh in real time.
@@ -34,7 +34,7 @@ pub struct AddWalletReq {
     pub address: String,
     /// CAIP-2 chain ids (e.g. `["eip155:1", "eip155:42161"]`).
     /// Optional. When omitted or empty the server tracks the wallet
-    /// against **every** chain the sync config (`scopeball-sync.toml`)
+    /// against **every** chain the sync config (`pasu-sync.toml`)
     /// has an RPC provider for. Multicall keeps the per-chain RPC
     /// cost flat (2 calls per chain regardless of token count), so
     /// "all chains" is cheap and matches the typical user mental
@@ -745,7 +745,7 @@ fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Box
     };
     if chains.is_empty() {
         return Err(Box::new(bad_request(
-            "no chains configured on the server — set up scopeball-sync.toml or pass `chains` explicitly",
+            "no chains configured on the server — set up pasu-sync.toml or pass `chains` explicitly",
         )));
     }
     Ok(WalletId::new(address, chains))

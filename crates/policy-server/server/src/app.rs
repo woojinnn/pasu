@@ -43,7 +43,7 @@ pub struct AppState {
     /// into `event_bus`; cloud deployments can replace it with Redis pub/sub.
     pub publisher: Arc<dyn EventPublisher>,
     /// Sync orchestrator — wraps the per-protocol fetchers wired from
-    /// `scopeball-sync.toml`. Shared across handlers so we don't re-open
+    /// `pasu-sync.toml`. Shared across handlers so we don't re-open
     /// HTTP connection pools on every request.
     pub orchestrator: Arc<Orchestrator>,
     /// Optional Etherscan V2 client — `None` when `ETHERSCAN_API_KEY`

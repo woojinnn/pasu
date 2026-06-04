@@ -2,14 +2,14 @@
 //!
 //! Starts the axum HTTP service: initializes tracing, connects to PostgreSQL,
 //! prepares the per-user store router, wires the sync orchestrator
-//! (RPC/oracle/venue fetchers from `scopeball-sync.toml`),
+//! (RPC/oracle/venue fetchers from `pasu-sync.toml`),
 //! and serves on `POLICY_SERVER_ADDR` (default `127.0.0.1:8788`).
 //!
 //! Environment variables:
 //! - `POLICY_SERVER_ADDR` — bind address (default `127.0.0.1:8788`).
 //! - `DATABASE_URL` — PostgreSQL connection URL (required).
-//! - `SCOPEBALL_SYNC_CONFIG` — path to the sync TOML (default
-//!   `./scopeball-sync.toml`). Required for any RPC/price fetching.
+//! - `PASU_SYNC_CONFIG` — path to the sync TOML (default
+//!   `./pasu-sync.toml`). Required for any RPC/price fetching.
 //! - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`,
 //!   `JWT_SECRET`, `DASHBOARD_URL` — auth config (see `.env.example`).
 //!
@@ -31,7 +31,7 @@ use policy_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
 /// Default sync config path. Lives next to the workspace root so the dev
 /// loop is one command (`cargo run -p policy-server`).
-const DEFAULT_SYNC_CONFIG: &str = "./scopeball-sync.toml";
+const DEFAULT_SYNC_CONFIG: &str = "./pasu-sync.toml";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // boot with an empty config (no RPC providers) — endpoints that
     // require sync will return 503-ish errors instead of crashing the
     // whole server at startup, so a dev can run /auth/* alone.
-    let sync_config_path = std::env::var("SCOPEBALL_SYNC_CONFIG")
+    let sync_config_path = std::env::var("PASU_SYNC_CONFIG")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(DEFAULT_SYNC_CONFIG));
     let sync_config = match SyncConfig::load_file(&sync_config_path) {

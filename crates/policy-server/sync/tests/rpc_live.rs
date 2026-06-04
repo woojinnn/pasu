@@ -25,7 +25,7 @@ fn live_sync_config() -> SyncConfig {
         .join("..")
         .join("..")
         .join("..")
-        .join("scopeball-sync.toml");
+        .join("pasu-sync.toml");
     SyncConfig::load_file(&path).unwrap_or_else(|e| panic!("load_file({}): {}", path.display(), e))
 }
 

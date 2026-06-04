@@ -14,8 +14,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     policy_server::logging::init_tracing(config.log_format);
     let storage = StorageBackend::open(&config).await?;
 
-    let sync_config_path = std::env::var("SCOPEBALL_SYNC_CONFIG")
-        .unwrap_or_else(|_| "./scopeball-sync.toml".to_owned());
+    let sync_config_path = std::env::var("PASU_SYNC_CONFIG")
+        .unwrap_or_else(|_| "./pasu-sync.toml".to_owned());
     let sync_config = SyncConfig::load_file(sync_config_path)?;
     let orchestrator = Arc::new(Orchestrator::from_sync_config(&sync_config)?);
     let coordinator = build_coordinator(&config).await?;
