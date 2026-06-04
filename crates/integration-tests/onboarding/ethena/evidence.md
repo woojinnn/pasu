@@ -101,31 +101,31 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| all P2 gaps bucketed | pending | |
-| each fix tied to gap id/selector/tx hash/seed | pending | |
-| manifest/decoder/Tier3/harness change list recorded | pending | |
-| P2 rerun after fixes recorded | pending | |
-| corpus `expect` flips or exclusions justified | pending | |
-| remaining gaps have explicit defer/blocker disposition | pending | |
+| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | done | No hard/soft/misdecoded gaps: corpus 9/9 matched first pass, fuzz 30000/30000, validate 0 structural errors. unknown_protocol_address: none (all to-addresses are the known cover/exclude contracts). excluded gaps: addToBlacklist (admin/compliance), transferInRewards/setCooldownDuration/role/rescue/transferAdmin (infra), EthenaMinting (MM RFQ). |
+| each fix tied to a gap id, selector, tx hash, or synthetic seed | done | No decode fixes required (clean first-pass decode). The only design decision (ActionBody extension) is tied to selectors cooldownShares 0x9343d9e1 / cooldownAssets 0xcdac52ed (amount+denomination) and unstake 0xf2888dbb (Redeem MAX) — committed in P1 (17854568). |
+| manifest/decoder/Tier3/harness change list recorded | done | P1: 6 manifests + ActionBody extension (StakeVenue::EthenaStakedUsde, CooldownAction.amount/denomination, CooldownDenomination, cooldown.cedarschema, lowering). Harness: oracle unchanged (no shape-artifact tolerance needed — no $fn/baked-map). P2: corpus + scope-oracle. |
+| P2 rerun after fixes recorded | done | No fixes needed; P2 gates green on first pass (fuzz 30000/0, corpus 9/9, validate 6/0). |
+| corpus `expect` flips or exclusions justified | done | No flips — all 9 entries `expect: pass` validated against independent cast calldata-decode. No exclusions. |
+| remaining gaps have explicit defer/blocker disposition | done | DEFER: withdraw(ERC4626) — 0% usage (reverts while cooldownDuration>0), assets-denominated (no staking withdraw-by-assets shape). Out-of-scope DEFER (user-scoped): ENA/sENA staking, USDtb, multichain (LayerZero OFT). No blockers. |
 
 ## P4 Land Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| `registryV2 npm run build` output recorded | pending | |
-| registryV2 build-index vitest output recorded | pending | |
-| `npm run check:manifest` output recorded | pending | |
-| `npm run check:surface` output recorded | pending | |
-| `check:universe --require-cover-linkage` recorded, or n/a | pending | |
-| v3-harness coverage/fuzz/corpus outputs recorded | pending | |
-| protocol-filtered strict corpus output recorded | pending | |
-| `cargo test --workspace` output recorded | pending | |
-| wasm build output recorded if runtime/wasm/schema changed | pending | |
-| fmt/clippy/typecheck output for changed crates/packages | pending | |
-| exact staged files and commit hash recorded | pending | |
-| remaining WARNs/deferred selectors/actions listed | pending | |
-| final completion label without overclaiming | pending | |
-| no base/worktree merge unless user explicitly requested | pending | |
+| `registryV2 npm run build` output recorded | done | `npm run build`: 1017 manifests, 3905 tokens across 4 chains, 53809 callkeys + 88 typed-data entries; WARN skipped 239 sourced duplicate callkeys (pre-existing). |
+| registryV2 build-index vitest output recorded | done | not applicable — registryV2 has no `test`/vitest script (scripts: build/check:*/typecheck/serve). build-index correctness validated via `npm run build` (0 errors) + `check:manifest` (2055 OK) + strict-callkeys (clean). |
+| `npm run check:manifest` output recorded | done | build-index 1017 manifests + strict-callkeys OK; `validate (all): 2055 single_emit manifest(s) OK, 0 structural errors`. |
+| `npm run check:surface` output recorded | done | PASS — StakedUSDeV2 [1]: 24 surface · 6 cover · 18 exclude · 6 on-chain manifests · 0 signed-struct; [I0] ethena 4 deployed · 1 cover · 3 exclude. |
+| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | done | not applicable — single singleton vault (no `_address_universe.json` / factory children). |
+| v3-harness coverage/fuzz/corpus outputs recorded | done | fuzz `--iterations 5000 --seed 20260604 --filter ethena`: 30000 pass / 0 fail / 0 panic. corpus `--filter ethena`: 9/9 matched. validate `--filter ethena`: 6 single_emit OK / 0 errors. |
+| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | done | `v3-harness corpus --filter ethena --require-expect-body`: 9/9 matched, 9/9 expect_body pinned. |
+| `cargo test --workspace` output recorded | done | `cargo test --workspace`: all pass EXCEPT 2 PRE-EXISTING failures in policy-engine-wasm (`action_eval_exports::tests::evaluate_action_v2_dashboard_minimal_manifest_{blocks_non_usdt_swap,passes_when_guard_false}`) — Cedar `Amm::Action::"Swap"` optional `tokenOut` validation, unrelated to ethena/staking. VERIFIED pre-existing: reverting my staking changes to base 420639b7 in the working tree → both still FAIL (0 passed/2 failed). My ethena tests all pass (staking conformance 3/3, lowering 37, fuzz 30000, corpus 9/9). 0 regression. |
+| wasm build output recorded if runtime/wasm/schema changed | done | `./scripts/wasm-build.sh`: ✨ Done in 2m00s; pkg built; artifact copied to browser-extension/backend/wasm/ + public/wasm/ (gitignored). Schema (cooldown.cedarschema) + Rust (CooldownDenomination, EthenaStakedUsde) compiled to WASM bindings OK. |
+| fmt/clippy/typecheck output recorded for changed crates/packages | done | `cargo fmt -p policy-action -p policy-engine -- --check`: clean (after 1 single-line import fix in cooldown.rs). `cargo clippy -p policy-action -p policy-engine --all-targets -- -D warnings`: clean (Finished, 0 warnings). registryV2 `npm run typecheck` (tsc --noEmit): PASS. |
+| exact staged files and commit hash recorded | done | P0 `0efce66d` (surface/_deployments+abi+coverage, sUSDe token, evidence). P1 `17854568` (staking mod.rs/cooldown.rs + lowering + cedarschema + 6 manifests). P2 `7f8a4856` (corpus.json + evidence). P3/P4 = HEAD after this commit (cooldown.rs fmt fix + evidence.md P3/P4). |
+| remaining WARNs/deferred selectors/actions listed with reason | done | DEFER: sUSDe withdraw(ERC4626) — 0% usage, cooldown-ON dead path. EXCLUDE: addToBlacklist + admin/infra; EthenaMinting (MM RFQ); USDeSilo (infra). Out-of-scope: ENA/sENA, USDtb, multichain. build-index WARN: 239 pre-existing sourced duplicate callkeys (not ethena). |
+| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | "Ethena sUSDe + USDe **wallet-facing** surface, **mainnet** — ~99.8% of top-level tx covered (H2 volume-weighted, both entries); sUSDe staking lifecycle (deposit/mint/cooldownShares/cooldownAssets/unstake/redeem) + ERC20 via standard adapter. withdraw(ERC4626) deferred (0% usage); EthenaMinting + multichain out of scope." NOT full-surface, NOT multichain. |
+| no base/worktree merge performed unless user explicitly requested it | done | No merge/push performed. Commits stay on feat/ethena-onboarding (worktree scopeball-ethena). |
 
 ## Blockers
 
@@ -135,4 +135,20 @@
 
 ## Final Completion Claim
 
-Pending P1–P4. Gate: `cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- ethena --phase all`.
+**Ethena sUSDe + USDe wallet-facing surface onboarded, Ethereum mainnet (single chain).**
+Covered ~99.8% of top-level tx across both user-facing entries (H2 volume-weighted:
+Σcovered/Σall = 19931/19979 = 99.76%; sUSDe 99.52% + USDe 100%). sUSDe staking
+lifecycle (deposit/mint/cooldownShares/cooldownAssets/unstake/redeem) via 6 ethena
+manifests + an additive `staking` ActionBody extension (EthenaStakedUsde venue,
+CooldownAction amount/denomination for partial cooldown, CooldownDenomination enum);
+USDe + sUSDe ERC20 via the standard adapter. The cooldown-gated withdrawal (1-day
+silo lock) — the dominant pre-sign flow (cooldownShares 28.4% + unstake 26.5%) — is
+decoded legibly with its locked amount + denomination.
+
+NOT claimed: full-surface (withdraw ERC4626 deferred, 0% usage; admin/EthenaMinting
+excluded), multichain (LayerZero OFT deferred), ENA/sENA/USDtb (out of scope).
+
+All land gates green; 2 pre-existing unrelated AMM-dashboard test failures (verified
+against base). No base/worktree merge or push performed (awaiting explicit request).
+
+Gate: `cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- ethena --phase all` → see below.

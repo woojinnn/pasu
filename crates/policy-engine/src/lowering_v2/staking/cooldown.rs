@@ -45,9 +45,7 @@ pub(crate) fn lower(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use policy_state::primitives::U256;
-    use policy_transition::action::staking::{
-        CooldownAction, CooldownDenomination, StakingAction,
-    };
+    use policy_transition::action::staking::{CooldownAction, CooldownDenomination, StakingAction};
     use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
