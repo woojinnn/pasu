@@ -92,6 +92,15 @@ fn is_shape_artifact(kind: &str, msg: &str) -> bool {
         || msg.contains("empty route (no non-zero pool slot)")
         || msg.contains("unknown swap_type")
         || msg.contains("missing swap_params")
+        // A `$fn` that resolves a calldata key against a build-time-baked registry
+        // map (e.g. Balancer V3 `balancer_v3_zip_pool_tokens`, which looks the
+        // `$args.pool` up in the baked `pool_tokens` map): synthetic fuzz emits a
+        // random/zero pool that is not in the map, so the executor fail-closes
+        // (the real fail-safe — an unknown pool must warn, never silently decode).
+        // Real pools are exercised by the corpus expect_body. A STRUCTURAL bug
+        // (wrong arity / non-object map arg) errors with a different message on
+        // every input incl. the golden, so it is NOT masked by this data-only one.
+        || msg.contains("not in baked pool_token_map")
     )
 }
 

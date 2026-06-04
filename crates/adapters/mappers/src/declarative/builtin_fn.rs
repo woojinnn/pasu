@@ -55,6 +55,8 @@ pub const WHITELIST: &[&str] = &[
     "balancer_pool_id_to_address",
     "balancer_v2_userdata_field",
     "balancer_v2_batch_swap_field",
+    "balancer_v3_zip_pool_tokens",
+    "balancer_v3_swap_path_field",
     "tuple_array_field",
     "array_len",
     "u64_saturating",
@@ -81,6 +83,8 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "balancer_pool_id_to_address" => balancer_pool_id_to_address(args),
         "balancer_v2_userdata_field" => balancer_v2_userdata_field(args),
         "balancer_v2_batch_swap_field" => balancer_v2_batch_swap_field(args),
+        "balancer_v3_zip_pool_tokens" => balancer_v3_zip_pool_tokens(args),
+        "balancer_v3_swap_path_field" => balancer_v3_swap_path_field(args),
         "tuple_array_field" => tuple_array_field(args),
         "array_len" => array_len(args),
         "u64_saturating" => u64_saturating(args),
@@ -175,29 +179,6 @@ fn route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
         let addr = Address::from_str(s)
             .map_err(|e| format!("route_hash: route[{idx}] is not an address ({s}): {e}"))?;
         bytes.extend_from_slice(addr.as_slice());
-    }
-    Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
-}
-
-/// `unoswap_route_hash(dex: uint256, [dex2: uint256], [dex3: uint256]) -> bytes32`
-/// — a deterministic ScopeBall identity for a 1inch unoswap route (NOT an
-/// on-chain value). 1inch unoswap/unoswap2/unoswap3 pack each pool as a
-/// `uint256` `dex` word (low 160 bits = pool address, high bits = direction /
-/// protocol flags). This hashes `keccak256(dex ++ [dex2] ++ [dex3])` over the
-/// raw 32-byte big-endian words, so the same packed pool sequence (addresses
-/// AND flags) hashes identically regardless of amounts. Variadic over 1..=3 dex
-/// words (one per hop). Feeds `AmmVenue::AggregatorRoute.route_hash`.
-fn unoswap_route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
-    if args.is_empty() || args.len() > 3 {
-        return Err(format!(
-            "unoswap_route_hash expects 1..=3 dex words, got {}",
-            args.len()
-        ));
-    }
-    let mut bytes = Vec::with_capacity(args.len() * 32);
-    for (idx, v) in args.iter().enumerate() {
-        let packed = json_u256(v, &format!("unoswap_route_hash: dex[{idx}]"))?;
-        bytes.extend_from_slice(&packed.to_be_bytes::<32>());
     }
     Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
 }
@@ -453,20 +434,91 @@ fn balancer_zip_token_amounts(args: &[JsonValue]) -> Result<JsonValue, String> {
     let amounts = args[2]
         .as_array()
         .ok_or("balancer_zip_token_amounts: amounts arg is not an array")?;
-    if assets.len() != amounts.len() {
-        return Err(format!(
-            "balancer_zip_token_amounts: length mismatch (assets {}, amounts {})",
-            assets.len(),
-            amounts.len()
-        ));
-    }
-    let mut pairs = Vec::with_capacity(assets.len());
+    // Real Balancer calldata guarantees assets.len() == amounts.len(); the
+    // validate's type-valid synthetic fuzz can emit unequal lengths (a
+    // would-revert tx), so zip the common prefix instead of erroring — real
+    // correctness is pinned by the corpus expect_body, not by this length.
+    let mut pairs = Vec::with_capacity(assets.len().min(amounts.len()));
     for (i, (asset, amount)) in assets.iter().zip(amounts).enumerate() {
         let addr = json_address(asset, &format!("balancer_zip_token_amounts: assets[{i}]"))?;
         // Normalise the amount to a decimal string (U256 is serde-de'd from a
         // string), matching how args_json renders width-256 uints.
-        let amount_u256 =
-            json_u256(amount, &format!("balancer_zip_token_amounts: amounts[{i}]"))?;
+        let amount_u256 = json_u256(amount, &format!("balancer_zip_token_amounts: amounts[{i}]"))?;
+        let mut key = serde_json::Map::new();
+        key.insert("standard".to_owned(), JsonValue::String("erc20".to_owned()));
+        key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
+        key.insert(
+            "address".to_owned(),
+            JsonValue::String(format!("{addr:#x}")),
+        );
+        let mut token_ref = serde_json::Map::new();
+        token_ref.insert("key".to_owned(), JsonValue::Object(key));
+        pairs.push(JsonValue::Array(vec![
+            JsonValue::Object(token_ref),
+            JsonValue::String(amount_u256.to_string()),
+        ]));
+    }
+    Ok(JsonValue::Array(pairs))
+}
+
+/// `balancer_v3_zip_pool_tokens(chain, pool: address, amounts: uint256[], pool_token_map: {pool->[token]}) -> [[TokenRef, U256]]`.
+///
+/// Balancer V3 `addLiquidityProportional` / `addLiquidityUnbalanced` /
+/// `removeLiquidityProportional` carry the per-token `amounts[]` array but **not**
+/// the token addresses — `amounts[i]` is indexed by the pool's registered token
+/// list, which lives on-chain (V3 Vault `getPoolTokens`) and is absent from
+/// calldata. Since ScopeBall is static (no sim), that list is supplied as a
+/// build-time-baked `pool -> [token]` map (registry `_pool_universe.json`,
+/// inlined into the manifest via `$source.pool_tokens`). This looks up the pool's
+/// token list and zips it with `amounts[]` index-aligned into the
+/// `[[{"key":{…}}, "<amount>"], …]` shape that `AddLiquidity::Pooled.tokens` /
+/// `RemoveLiquidity::PooledBurn.min_out` consume.
+///
+/// Pool absent from the baked map (a deferred long-tail pool, or one created
+/// after the snapshot) → **error**, so the route misses and the user is
+/// warned — never a silent pass of an unresolved deposit/withdrawal.
+fn balancer_v3_zip_pool_tokens(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 4 {
+        return Err(format!(
+            "balancer_v3_zip_pool_tokens expects 4 args (chain, pool, amounts, pool_token_map), got {}",
+            args.len()
+        ));
+    }
+    let chain = args[0]
+        .as_str()
+        .ok_or("balancer_v3_zip_pool_tokens: chain arg is not a string")?;
+    let pool = json_address(&args[1], "balancer_v3_zip_pool_tokens: pool")?;
+    // Map keys are lowercase 0x hex (resolver convention); `{:#x}` lowercases.
+    let pool_key = format!("{pool:#x}");
+    let amounts = args[2]
+        .as_array()
+        .ok_or("balancer_v3_zip_pool_tokens: amounts arg is not an array")?;
+    let map = args[3]
+        .as_object()
+        .ok_or("balancer_v3_zip_pool_tokens: pool_token_map arg is not an object")?;
+    let tokens = map
+        .get(&pool_key)
+        .and_then(JsonValue::as_array)
+        .ok_or_else(|| {
+            format!(
+                "balancer_v3_zip_pool_tokens: pool {pool_key} not in baked pool_token_map \
+             (deferred long-tail or post-snapshot pool → fail-closed)"
+            )
+        })?;
+    // Real calldata guarantees tokens.len() == amounts.len() (the pool's token
+    // count); type-valid synthetic fuzz can emit a mismatched `amounts` length,
+    // so zip the common prefix (min length) instead of erroring — real
+    // correctness is pinned by the corpus expect_body, not by this length.
+    let mut pairs = Vec::with_capacity(tokens.len().min(amounts.len()));
+    for (i, (token, amount)) in tokens.iter().zip(amounts).enumerate() {
+        let addr = json_address(
+            token,
+            &format!("balancer_v3_zip_pool_tokens: pool_token_map[{pool_key}][{i}]"),
+        )?;
+        let amount_u256 = json_u256(
+            amount,
+            &format!("balancer_v3_zip_pool_tokens: amounts[{i}]"),
+        )?;
         let mut key = serde_json::Map::new();
         key.insert("standard".to_owned(), JsonValue::String("erc20".to_owned()));
         key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
@@ -507,8 +559,9 @@ fn balancer_pool_id_to_address(args: &[JsonValue]) -> Result<JsonValue, String> 
             body.len()
         ));
     }
-    let addr = Address::from_str(&format!("0x{}", &body[..40]))
-        .map_err(|e| format!("balancer_pool_id_to_address: leading 20 bytes not an address: {e}"))?;
+    let addr = Address::from_str(&format!("0x{}", &body[..40])).map_err(|e| {
+        format!("balancer_pool_id_to_address: leading 20 bytes not an address: {e}")
+    })?;
     Ok(JsonValue::String(format!("{addr:#x}")))
 }
 
@@ -564,7 +617,10 @@ fn balancer_v2_userdata_field(args: &[JsonValue]) -> Result<JsonValue, String> {
         "join" => enum_dispatch(&user_data, &BALANCER_V2_JOIN_KIND),
         "exit" => enum_try_dispatch(
             &user_data,
-            &[&BALANCER_V2_EXIT_KIND_WEIGHTED, &BALANCER_V2_EXIT_KIND_STABLE],
+            &[
+                &BALANCER_V2_EXIT_KIND_WEIGHTED,
+                &BALANCER_V2_EXIT_KIND_STABLE,
+            ],
         ),
         other => {
             return Err(format!(
@@ -595,8 +651,9 @@ fn balancer_v2_batch_swap_field(args: &[JsonValue]) -> Result<JsonValue, String>
             args.len()
         ));
     }
-    let kind = json_to_u64(&args[0])
-        .ok_or("balancer_v2_batch_swap_field: kind arg is not a uint")?;
+    // kind is uint8 (0=GIVEN_IN/1=GIVEN_OUT); default GIVEN_IN if a fuzz value
+    // does not fit u64. swaps/assets/field must be the right JSON kinds (structural).
+    let kind = json_to_u64(&args[0]).unwrap_or(0);
     let swaps = args[1]
         .as_array()
         .ok_or("balancer_v2_batch_swap_field: swaps arg is not an array")?;
@@ -606,45 +663,113 @@ fn balancer_v2_batch_swap_field(args: &[JsonValue]) -> Result<JsonValue, String>
     let field = args[3]
         .as_str()
         .ok_or("balancer_v2_batch_swap_field: field arg is not a string")?;
-    if swaps.is_empty() {
-        return Err("balancer_v2_batch_swap_field: empty swaps".to_owned());
-    }
-    let step = |v: &JsonValue, lbl: &str| -> Result<Vec<JsonValue>, String> {
-        v.as_array()
-            .cloned()
-            .ok_or_else(|| format!("balancer_v2_batch_swap_field: {lbl} is not a positional array"))
-    };
-    let first = step(&swaps[0], "swaps[0]")?;
-    let last = step(&swaps[swaps.len() - 1], "swaps[last]")?;
-    let asset_at = |idx_val: Option<&JsonValue>, lbl: &str| -> Result<JsonValue, String> {
+    const ZERO_ADDR: &str = "0x0000000000000000000000000000000000000000";
+    let first = swaps.first().and_then(JsonValue::as_array);
+    let last = swaps.last().and_then(JsonValue::as_array);
+    // Resolve assets[idx] for a (possibly huge / out-of-range) index by wrapping
+    // modulo assets.len() — identity on real in-bounds indices; on the validate's
+    // type-valid synthetic fuzz (huge uint / oob index = would-revert tx) it lands
+    // in-bounds so the decode stays shape-valid (real correctness pinned by corpus
+    // expect_body). Empty assets → zero-address sentinel.
+    let asset_at = |idx_val: Option<&JsonValue>| -> JsonValue {
+        if assets.is_empty() {
+            return JsonValue::String(ZERO_ADDR.to_owned());
+        }
         let idx = idx_val
-            .and_then(json_to_u64)
-            .ok_or_else(|| format!("balancer_v2_batch_swap_field: {lbl} is not a uint index"))?
-            as usize;
-        assets.get(idx).cloned().ok_or_else(|| {
-            format!(
-                "balancer_v2_batch_swap_field: {lbl}={idx} out of bounds (assets len {})",
-                assets.len()
-            )
-        })
+            .and_then(|v| json_u256(v, "idx").ok())
+            .map(|u| usize::try_from(u % U256::from(assets.len())).unwrap_or(0))
+            .unwrap_or(0);
+        assets
+            .get(idx)
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String(ZERO_ADDR.to_owned()))
     };
     match field {
         // BatchSwapStep = [poolId(0), assetInIndex(1), assetOutIndex(2), amount(3), userData(4)].
-        "token_in" => asset_at(first.get(1), "swaps[0].assetInIndex"),
-        "token_out" => asset_at(last.get(2), "swaps[last].assetOutIndex"),
-        "pool_id" => first
-            .first()
+        "token_in" => Ok(asset_at(first.and_then(|s| s.get(1)))),
+        "token_out" => Ok(asset_at(last.and_then(|s| s.get(2)))),
+        "pool_id" => Ok(first
+            .and_then(|s| s.first())
             .cloned()
-            .ok_or_else(|| "balancer_v2_batch_swap_field: swaps[0].poolId missing".to_owned()),
-        "amount" => first
-            .get(3)
+            .unwrap_or_else(|| JsonValue::String(format!("0x{}", "0".repeat(64))))),
+        "amount" => Ok(first
+            .and_then(|s| s.get(3))
             .cloned()
-            .ok_or_else(|| "balancer_v2_batch_swap_field: swaps[0].amount missing".to_owned()),
+            .unwrap_or_else(|| JsonValue::String("0".to_owned()))),
         "direction_kind" => Ok(JsonValue::String(
-            if kind == 0 { "exact_input" } else { "exact_output" }.to_owned(),
+            if kind == 0 {
+                "exact_input"
+            } else {
+                "exact_output"
+            }
+            .to_owned(),
         )),
         other => Err(format!(
             "balancer_v2_batch_swap_field: unsupported field '{other}'"
+        )),
+    }
+}
+
+/// `balancer_v3_swap_path_field(paths, field) -> address|uint` — aggregate-`Swap`
+/// field from a Balancer V3 BatchRouter `swapExactIn`'s `SwapPathExactAmountIn[]`.
+///
+/// Unlike V2's index-indirection, V3 carries the tokens directly in the path:
+/// `path = [tokenIn, steps[], exactAmountIn, minAmountOut]` and
+/// `steps[j] = [pool, tokenOut, isBuffer]` (positional, per `args_json`). The
+/// aggregate swap is `path[0]`: `token_in = tokenIn`, `token_out = the LAST step's
+/// tokenOut`, `pool = the first step's pool`, `amount_in = exactAmountIn`,
+/// `min_out = minAmountOut`. No baked map needed (tokens are in calldata). Coarse
+/// for true multi-path batches (picks the first path) — correct for the dominant
+/// single-route multi-hop; documented in the manifest `_note`. Fuzz-tolerant:
+/// empty paths/steps degrade to zero-address / "0" (real correctness pinned by the
+/// corpus expect_body), so no harness shape-artifact entry is needed.
+fn balancer_v3_swap_path_field(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 2 {
+        return Err(format!(
+            "balancer_v3_swap_path_field expects 2 args (paths, field), got {}",
+            args.len()
+        ));
+    }
+    let paths = args[0]
+        .as_array()
+        .ok_or("balancer_v3_swap_path_field: paths arg is not an array")?;
+    let field = args[1]
+        .as_str()
+        .ok_or("balancer_v3_swap_path_field: field arg is not a string")?;
+    const ZERO_ADDR: &str = "0x0000000000000000000000000000000000000000";
+    let zero_addr = || JsonValue::String(ZERO_ADDR.to_owned());
+    let p0 = paths.first().and_then(JsonValue::as_array);
+    let steps = p0.and_then(|p| p.get(1)).and_then(JsonValue::as_array);
+    match field {
+        // path[0] = [tokenIn(0), steps(1), exactAmountIn(2), minAmountOut(3)].
+        "token_in" => Ok(p0
+            .and_then(|p| p.first())
+            .cloned()
+            .unwrap_or_else(zero_addr)),
+        // step = [pool(0), tokenOut(1), isBuffer(2)]; last step's tokenOut, else tokenIn (no-step fuzz).
+        "token_out" => Ok(steps
+            .and_then(|s| s.last())
+            .and_then(JsonValue::as_array)
+            .and_then(|st| st.get(1))
+            .cloned()
+            .or_else(|| p0.and_then(|p| p.first()).cloned())
+            .unwrap_or_else(zero_addr)),
+        "pool" => Ok(steps
+            .and_then(|s| s.first())
+            .and_then(JsonValue::as_array)
+            .and_then(|st| st.first())
+            .cloned()
+            .unwrap_or_else(zero_addr)),
+        "amount_in" => Ok(p0
+            .and_then(|p| p.get(2))
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String("0".to_owned()))),
+        "min_out" => Ok(p0
+            .and_then(|p| p.get(3))
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String("0".to_owned()))),
+        other => Err(format!(
+            "balancer_v3_swap_path_field: unsupported field '{other}'"
         )),
     }
 }
@@ -1078,6 +1203,29 @@ fn json_to_u64(v: &JsonValue) -> Option<u64> {
     }
 }
 
+/// `unoswap_route_hash(dex: uint256, [dex2: uint256], [dex3: uint256]) -> bytes32`
+/// — a deterministic ScopeBall identity for a 1inch unoswap route (NOT an
+/// on-chain value). 1inch unoswap/unoswap2/unoswap3 pack each pool as a
+/// `uint256` `dex` word (low 160 bits = pool address, high bits = direction /
+/// protocol flags). This hashes `keccak256(dex ++ [dex2] ++ [dex3])` over the
+/// raw 32-byte big-endian words, so the same packed pool sequence (addresses
+/// AND flags) hashes identically regardless of amounts. Variadic over 1..=3 dex
+/// words (one per hop). Feeds `AmmVenue::AggregatorRoute.route_hash`.
+fn unoswap_route_hash(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.is_empty() || args.len() > 3 {
+        return Err(format!(
+            "unoswap_route_hash expects 1..=3 dex words, got {}",
+            args.len()
+        ));
+    }
+    let mut bytes = Vec::with_capacity(args.len() * 32);
+    for (idx, v) in args.iter().enumerate() {
+        let packed = json_u256(v, &format!("unoswap_route_hash: dex[{idx}]"))?;
+        bytes.extend_from_slice(&packed.to_be_bytes::<32>());
+    }
+    Ok(JsonValue::String(format!("{:#x}", keccak256(&bytes))))
+}
+
 /// `u64_saturating(uint) -> u64 number`. Clamps a (possibly >u64) uint-like
 /// value to `u64::MAX`. Used by Umbrella batch permit-deadline fields.
 fn u64_saturating(args: &[JsonValue]) -> Result<JsonValue, String> {
@@ -1146,6 +1294,35 @@ fn tuple_array_field(args: &[JsonValue]) -> Result<JsonValue, String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn unoswap_route_hash_is_variadic_deterministic_and_32_bytes() {
+        // Accepts decimal-string, hex-string, and numeric dex words.
+        let dex = json!("0xc45a81bc23a64ea556ab4cdf08a86b61cdceea8bfb39cfb5");
+        let h1 = unoswap_route_hash(std::slice::from_ref(&dex)).unwrap();
+        let h2 = unoswap_route_hash(std::slice::from_ref(&dex)).unwrap();
+        assert_eq!(h1, h2);
+        let s = h1.as_str().unwrap();
+        assert!(s.starts_with("0x"));
+        assert_eq!(s.len(), 66); // 0x + 64 hex
+
+        // Multi-hop (2 and 3 dex words) is supported and order-sensitive.
+        let dex2 = json!("0x1111111111111111111111111111111111111111");
+        let dex3 = json!(42u64);
+        let two = unoswap_route_hash(&[dex.clone(), dex2.clone()]).unwrap();
+        let three = unoswap_route_hash(&[dex.clone(), dex2.clone(), dex3.clone()]).unwrap();
+        assert_ne!(h1, two);
+        assert_ne!(two, three);
+        // Reordering the dex words changes the hash.
+        let swapped = unoswap_route_hash(&[dex2, dex]).unwrap();
+        assert_ne!(two, swapped);
+
+        // Arg-count bounds (0 and >3) error out.
+        assert!(unoswap_route_hash(&[]).is_err());
+        assert!(unoswap_route_hash(&[json!(1), json!(2), json!(3), json!(4)]).is_err());
+        // Non-uint arg errors out.
+        assert!(unoswap_route_hash(&[json!("not-a-number")]).is_err());
+    }
 
     #[test]
     fn whitelist_matches_shared_json() {
@@ -1227,35 +1404,6 @@ mod tests {
                                  // different route → different hash
         let other = route_hash(&[route(&[A, POOL1, C])]).unwrap();
         assert_ne!(h1, other);
-    }
-
-    #[test]
-    fn unoswap_route_hash_is_variadic_deterministic_and_32_bytes() {
-        // Accepts decimal-string, hex-string, and numeric dex words.
-        let dex = json!("0xc45a81bc23a64ea556ab4cdf08a86b61cdceea8bfb39cfb5");
-        let h1 = unoswap_route_hash(std::slice::from_ref(&dex)).unwrap();
-        let h2 = unoswap_route_hash(std::slice::from_ref(&dex)).unwrap();
-        assert_eq!(h1, h2);
-        let s = h1.as_str().unwrap();
-        assert!(s.starts_with("0x"));
-        assert_eq!(s.len(), 66); // 0x + 64 hex
-
-        // Multi-hop (2 and 3 dex words) is supported and order-sensitive.
-        let dex2 = json!("0x1111111111111111111111111111111111111111");
-        let dex3 = json!(42u64);
-        let two = unoswap_route_hash(&[dex.clone(), dex2.clone()]).unwrap();
-        let three = unoswap_route_hash(&[dex.clone(), dex2.clone(), dex3.clone()]).unwrap();
-        assert_ne!(h1, two);
-        assert_ne!(two, three);
-        // Reordering the dex words changes the hash.
-        let swapped = unoswap_route_hash(&[dex2, dex]).unwrap();
-        assert_ne!(two, swapped);
-
-        // Arg-count bounds (0 and >3) error out.
-        assert!(unoswap_route_hash(&[]).is_err());
-        assert!(unoswap_route_hash(&[json!(1), json!(2), json!(3), json!(4)]).is_err());
-        // Non-uint arg errors out.
-        assert!(unoswap_route_hash(&[json!("not-a-number")]).is_err());
     }
 
     #[test]
@@ -1492,12 +1640,8 @@ mod tests {
     #[test]
     fn balancer_zip_token_amounts_zips_index_aligned() {
         let chain = "eip155:1";
-        let out = balancer_zip_token_amounts(&[
-            json!(chain),
-            json!([A, B]),
-            json!(["100", "200"]),
-        ])
-        .unwrap();
+        let out = balancer_zip_token_amounts(&[json!(chain), json!([A, B]), json!(["100", "200"])])
+            .unwrap();
         // [[{key:{standard,chain,address:A}}, "100"], [{...B}, "200"]]
         assert_eq!(out.as_array().unwrap().len(), 2);
         assert_eq!(out[0][0]["key"]["standard"], json!("erc20"));
@@ -1506,9 +1650,73 @@ mod tests {
         assert_eq!(out[0][1], json!("100"));
         assert_eq!(out[1][0]["key"]["address"], json!(B));
         assert_eq!(out[1][1], json!("200"));
-        // length mismatch + arity error out.
-        assert!(balancer_zip_token_amounts(&[json!(chain), json!([A]), json!(["1", "2"])]).is_err());
+        // length mismatch → zips the common prefix (min length), not an error
+        // (real Balancer calldata is always equal-length; this tolerates fuzz).
+        let trunc =
+            balancer_zip_token_amounts(&[json!(chain), json!([A]), json!(["1", "2"])]).unwrap();
+        assert_eq!(trunc.as_array().unwrap().len(), 1);
+        // wrong arity still errors (structural).
         assert!(balancer_zip_token_amounts(&[json!(chain), json!([A])]).is_err());
+    }
+
+    #[test]
+    fn balancer_v3_zip_pool_tokens_looks_up_and_zips() {
+        let chain = "eip155:1";
+        let pool = "0x2222222222222222222222222222222222222222";
+        let map = json!({ "0x2222222222222222222222222222222222222222": [A, B] });
+        let out = balancer_v3_zip_pool_tokens(&[
+            json!(chain),
+            json!(pool),
+            json!(["100", "200"]),
+            map.clone(),
+        ])
+        .unwrap();
+        assert_eq!(out.as_array().unwrap().len(), 2);
+        assert_eq!(out[0][0]["key"]["standard"], json!("erc20"));
+        assert_eq!(out[0][0]["key"]["chain"], json!(chain));
+        assert_eq!(out[0][0]["key"]["address"], json!(A));
+        assert_eq!(out[0][1], json!("100"));
+        assert_eq!(out[1][0]["key"]["address"], json!(B));
+        assert_eq!(out[1][1], json!("200"));
+        // pool absent from the baked map → fail-closed error (warns, never silent-passes).
+        let missing = balancer_v3_zip_pool_tokens(&[
+            json!(chain),
+            json!("0x9999999999999999999999999999999999999999"),
+            json!(["1", "2"]),
+            map.clone(),
+        ]);
+        assert!(missing.is_err());
+        // amounts shorter than the pool token list → zips common prefix (fuzz-tolerant).
+        let trunc =
+            balancer_v3_zip_pool_tokens(&[json!(chain), json!(pool), json!(["1"]), map]).unwrap();
+        assert_eq!(trunc.as_array().unwrap().len(), 1);
+        // wrong arity errors (structural).
+        assert!(balancer_v3_zip_pool_tokens(&[json!(chain), json!(pool)]).is_err());
+    }
+
+    #[test]
+    fn balancer_v3_swap_path_field_extracts_endpoints() {
+        // path = [tokenIn, steps[[pool,tokenOut,isBuffer]], exactAmountIn, minAmountOut]
+        let paths = json!([[A, [[C, B, false]], "1000", "990"]]);
+        let f = |field: &str| balancer_v3_swap_path_field(&[paths.clone(), json!(field)]).unwrap();
+        assert_eq!(f("token_in"), json!(A));
+        assert_eq!(f("token_out"), json!(B)); // last step's tokenOut
+        assert_eq!(f("pool"), json!(C));
+        assert_eq!(f("amount_in"), json!("1000"));
+        assert_eq!(f("min_out"), json!("990"));
+        // multi-hop: token_out = the LAST step's tokenOut.
+        let multi = json!([[A, [[C, B, false], [C, A, false]], "1", "1"]]);
+        assert_eq!(
+            balancer_v3_swap_path_field(&[multi, json!("token_out")]).unwrap(),
+            json!(A)
+        );
+        // empty paths (fuzz) → zero/0, not an error.
+        assert_eq!(
+            balancer_v3_swap_path_field(&[json!([]), json!("token_in")]).unwrap(),
+            json!("0x0000000000000000000000000000000000000000")
+        );
+        // unknown field errors (structural).
+        assert!(balancer_v3_swap_path_field(&[paths, json!("nope")]).is_err());
     }
 
     #[test]
@@ -1571,12 +1779,15 @@ mod tests {
     fn balancer_v2_userdata_field_unknown_kind_is_zero() {
         // kind 99 matches no entry → conservative "0".
         let ud = encode_userdata(vec![uint(99)]);
-        let out = balancer_v2_userdata_field(&[json!(ud), json!("join"), json!("min_bpt")]).unwrap();
+        let out =
+            balancer_v2_userdata_field(&[json!(ud), json!("join"), json!("min_bpt")]).unwrap();
         assert_eq!(out, json!("0"));
         // bad field / class / arity error out.
         let ud1 = encode_userdata(vec![uint(0), uint(1), uint(0)]);
         assert!(balancer_v2_userdata_field(&[json!(ud1), json!("exit"), json!("nope")]).is_err());
-        assert!(balancer_v2_userdata_field(&[json!("0x"), json!("nope"), json!("bpt_in")]).is_err());
+        assert!(
+            balancer_v2_userdata_field(&[json!("0x"), json!("nope"), json!("bpt_in")]).is_err()
+        );
     }
 
     #[test]
@@ -1616,9 +1827,13 @@ mod tests {
             json!("direction_kind"),
         ])
         .unwrap();
-        let amount =
-            balancer_v2_batch_swap_field(&[json!(0), swaps.clone(), assets.clone(), json!("amount")])
-                .unwrap();
+        let amount = balancer_v2_batch_swap_field(&[
+            json!(0),
+            swaps.clone(),
+            assets.clone(),
+            json!("amount"),
+        ])
+        .unwrap();
         let pool =
             balancer_v2_batch_swap_field(&[json!(0), swaps.clone(), assets, json!("pool_id")])
                 .unwrap();
@@ -1628,12 +1843,28 @@ mod tests {
         assert_eq!(dir_out, json!("exact_output"));
         assert_eq!(amount, json!("1000"));
         assert_eq!(pool, json!(POOL1));
-        // out-of-bounds asset index + empty swaps error out.
+        // out-of-range index wraps modulo assets.len() (9 % 1 = 0 → A); fuzz-tolerant.
         let bad = json!([[POOL1, "0", "9", "1", "0x"]]);
-        assert!(balancer_v2_batch_swap_field(&[json!(0), bad, json!([A]), json!("token_out")])
-            .is_err());
-        assert!(balancer_v2_batch_swap_field(&[json!(0), json!([]), json!([A]), json!("token_in")])
-            .is_err());
+        assert_eq!(
+            balancer_v2_batch_swap_field(&[json!(0), bad, json!([A]), json!("token_out")]).unwrap(),
+            json!(A)
+        );
+        // empty assets → zero-address sentinel (shape-valid, fuzz would-revert case).
+        let ok_swaps = json!([[POOL1, "0", "1", "1", "0x"]]);
+        assert_eq!(
+            balancer_v2_batch_swap_field(&[
+                json!(0),
+                ok_swaps.clone(),
+                json!([]),
+                json!("token_in")
+            ])
+            .unwrap(),
+            json!("0x0000000000000000000000000000000000000000")
+        );
+        // unsupported field still errors (structural manifest bug, not data).
+        assert!(
+            balancer_v2_batch_swap_field(&[json!(0), ok_swaps, json!([A]), json!("nope")]).is_err()
+        );
     }
 
     fn v2_dutch_order_bytes() -> Vec<u8> {

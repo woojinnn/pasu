@@ -15,7 +15,34 @@
           }
         ]
       },
-      "expect_domain": "amm"
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x85ad4c74ee891343a9225df6d8805e532f7ca55a"
+        }
+      ]
     },
     {
       "intent": "swap",
@@ -31,7 +58,34 @@
           }
         ]
       },
-      "expect_domain": "amm"
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x85ad4c74ee891343a9225df6d8805e532f7ca55a"
+        }
+      ]
     },
     {
       "intent": "swap",
@@ -47,7 +101,34 @@
           }
         ]
       },
-      "expect_domain": "amm"
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x3082cc23568ea640225c2467653db90e9250aaa0"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x8678f58ac6c4748b5289d0db70e627eef395dead"
+        }
+      ]
     },
     {
       "intent": "swap",
@@ -63,7 +144,34 @@
           }
         ]
       },
-      "expect_domain": "amm"
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x854a4af0044c1952776e05474aa85d4636d75910"
+        }
+      ]
     },
     {
       "intent": "batchSwap",
@@ -79,7 +187,8 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "_note": "mainnet-only manifest; this non-mainnet chain is deferred multichain expansion (same Vault address, trivial follow-up)"
     },
     {
       "intent": "batchSwap",
@@ -95,11 +204,12 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "_note": "mainnet-only manifest; this non-mainnet chain is deferred multichain expansion (same Vault address, trivial follow-up)"
     },
     {
       "intent": "batchSwap",
-      "expect": "error",
+      "expect": "pass",
       "tx_hash": "0x7e988c7d3bc018f3c8ed715dd51d846d1cf49a23c61ee729d1c33add54fd9536",
       "chain_id": 1,
       "rpc": {
@@ -111,7 +221,35 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xba100000625a3754423978a60c9317c58a424e3d"
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x80379e55ba9cba574afc697d14cd1659b02c753d"
+        }
+      ]
     },
     {
       "intent": "exitPool",
@@ -127,7 +265,8 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "_note": "mainnet-only manifest; this non-mainnet chain is deferred multichain expansion (same Vault address, trivial follow-up)"
     },
     {
       "intent": "exitPool",
@@ -143,11 +282,12 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "_note": "mainnet-only manifest; this non-mainnet chain is deferred multichain expansion (same Vault address, trivial follow-up)"
     },
     {
       "intent": "exitPool",
-      "expect": "error",
+      "expect": "pass",
       "tx_hash": "0xa28f62721e53ae24b2a8c9aff4a5e495b141c06c208d08f0e048c5d85476f002",
       "chain_id": 1,
       "rpc": {
@@ -159,11 +299,49 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_token.key.address",
+          "op": "hex_eq",
+          "value": "0xb7262cabc0f14a67d9bf620ce28927da5f09dbea"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x85ad4c74ee891343a9225df6d8805e532f7ca55a"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        }
+      ]
     },
     {
       "intent": "joinPool",
-      "expect": "error",
+      "expect": "pass",
       "tx_hash": "0xa3c3f55e3287cb58c3553fdd799518ad4a0d2fb1f9e07b299c9a71d7ac4bf28a",
       "chain_id": 1,
       "rpc": {
@@ -175,7 +353,50 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens",
+          "op": "len",
+          "value": 2
+        },
+        {
+          "path": "$.data.actions[0].body.params.recipient",
+          "op": "hex_eq",
+          "value": "0x80379e55ba9cba574afc697d14cd1659b02c753d"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][1]",
+          "op": "u256_hex_eq",
+          "value": "4775364"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xba100000625a3754423978a60c9317c58a424e3d"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][1]",
+          "op": "u256_hex_eq",
+          "value": "38045930284869459779"
+        }
+      ]
     },
     {
       "intent": "joinPool",
@@ -191,7 +412,8 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "no_declarative_v3_mapper",
+      "_note": "mainnet-only manifest; this non-mainnet chain is deferred multichain expansion (same Vault address, trivial follow-up)"
     },
     {
       "intent": "setRelayerApproval",
@@ -207,7 +429,34 @@
           }
         ]
       },
-      "expect_domain": "permission"
+      "expect_domain": "permission",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "permission"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "protocol_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x4f7a018583f2ffbbb4d866fed6f5e2cc45cf844e"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x35cea9e57a393ac66aaa7e25c391d52c74b5648f"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        }
+      ]
     },
     {
       "intent": "setRelayerApproval",
@@ -223,7 +472,34 @@
           }
         ]
       },
-      "expect_domain": "permission"
+      "expect_domain": "permission",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "permission"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "protocol_authorization"
+        },
+        {
+          "path": "$.data.actions[0].body.authorizer",
+          "op": "hex_eq",
+          "value": "0x925030586aee5426e5a828c5c1b595727353dada"
+        },
+        {
+          "path": "$.data.actions[0].body.authorized",
+          "op": "hex_eq",
+          "value": "0x9b892e515d2ab8869f17488d64b3b918731cc70d"
+        },
+        {
+          "path": "$.data.actions[0].body.is_authorized",
+          "op": "equals",
+          "value": true
+        }
+      ]
     },
     {
       "intent": "v3_router_swapSingleTokenExactIn",
@@ -240,7 +516,29 @@
           }
         ]
       },
-      "expect_domain": "amm"
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      ]
     },
     {
       "intent": "v3_router_swapSingleTokenExactOut",
@@ -257,14 +555,36 @@
           }
         ]
       },
-      "expect_domain": "amm"
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0x4200000000000000000000000000000000000006"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      ]
     },
     {
-      "intent": "v3_router_permitBatchAndCall_deferred_liquidity_child",
-      "expect": "error",
+      "intent": "v3_router_permitBatchAndCall_liquidity_child_resolved",
+      "expect": "pass",
       "tx_hash": "0x4a9a6c961047086d6cee5cc227385447388619a1f3019ac9efea3600767051f3",
       "chain_id": 1,
-      "source": "etherscan:mainnet:v3-router:txlist-desc-10000",
+      "source": "etherscan:mainnet:v3-router:txlist-desc-10000 | NOW COVERED: multicall_recurse resolves the 0x724dba33 child via balancer_v3:pool_tokens (pool 0x1b66d6e129e38a54e917734e58cbdfa1968a14c3); flipped error->pass 2026-06",
       "rpc": {
         "params": [
           {
@@ -274,7 +594,774 @@
           }
         ]
       },
-      "expect_error": "no_declarative_v3_mapper"
+      "expect_error": "build_multicall_failed",
+      "_note": "permitBatchAndCall whose sole multicallData child is addLiquidityProportional (DEFERRED, no manifest); multicall_recurse resolves no leg \u2192 fail-closed. Demonstrates a permitBatchAndCall that cannot be decoded (all-deferred children).",
+      "expect_domain": "multicall",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[0][1]",
+          "op": "equals",
+          "value": "0xe354ea7d43d3"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xec53bf9167f50cdeb3ae105f56099aaab9061f83"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[1][1]",
+          "op": "equals",
+          "value": "0x6bb7c38906b3f723d24e"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.min_lp_out",
+          "op": "equals",
+          "value": "0x87eeb33f7f40942fa519"
+        }
+      ]
+    },
+    {
+      "intent": "v3_router_permitBatchAndCall_covered_swap_child",
+      "expect": "pass",
+      "tx_hash": "0xf521245ffe97d9fe8c28d9ae2405a28daca5e08327f609f1dba32ae3960a0e7c",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0x19c6989f00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000000000260000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000ae563e3f8219521950555f5962419c8919758ea2ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000007fffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000006a216fa900000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000041b28e6a99f27a03ed1da36803a3bc81a8d51cea31c882139ecd5d3fccb2c0bdb26c872c1ef8e33d5fbefd2082026f898ee65935b42af9b83c5b22dddb581fa0601c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000124750283bc000000000000000000000000111ce2a60c30f6058a57d0dbae1a39a42d998826000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000004ba01f22827018b4772cd326c7627fb4956a7c0000000000000000000000000000000000000000000000000000000001d8c8b7000000000000000000000000000000000000000000000001adea64d6d81d8f046d000000000000000000000000000000000000000000000000001fffffffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "multicall",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x4ba01f22827018b4772cd326c7627fb4956a7c00"
+        }
+      ]
+    },
+    {
+      "intent": "hand_addLiquiditySingleTokenExactOut",
+      "expect": "pass",
+      "chain_id": 1,
+      "_note": "hand-edge: V3 single-token liquidity has near-zero direct tx (appears mainly as permitBatchAndCall child); synthetic valid calldata to pin the semantic decode.",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0x72657d170000000000000000000000005f1f4e50ba51d723f12385a8a9606afc3a0555f5000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000f424000000000000000000000000000000000000000000000000006f05b59d3b20000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][1]",
+          "op": "u256_hex_eq",
+          "value": "1000000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_lp_out",
+          "op": "u256_hex_eq",
+          "value": "500000000000000000"
+        }
+      ]
+    },
+    {
+      "intent": "hand_removeLiquiditySingleTokenExactIn",
+      "expect": "pass",
+      "chain_id": 1,
+      "_note": "hand-edge: V3 single-token liquidity has near-zero direct tx (appears mainly as permitBatchAndCall child); synthetic valid calldata to pin the semantic decode.",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0xecb2182c0000000000000000000000005f1f4e50ba51d723f12385a8a9606afc3a0555f500000000000000000000000000000000000000000000000009b6e64a8ec60000000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000000000000003d090000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_token.key.address",
+          "op": "hex_eq",
+          "value": "0x5f1f4e50ba51d723f12385a8a9606afc3a0555f5"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "u256_hex_eq",
+          "value": "700000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "u256_hex_eq",
+          "value": "250000"
+        }
+      ]
+    },
+    {
+      "intent": "hand_removeLiquiditySingleTokenExactOut",
+      "expect": "pass",
+      "chain_id": 1,
+      "_note": "hand-edge: V3 single-token liquidity has near-zero direct tx (appears mainly as permitBatchAndCall child); synthetic valid calldata to pin the semantic decode.",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0xe7326def0000000000000000000000005f1f4e50ba51d723f12385a8a9606afc3a0555f50000000000000000000000000000000000000000000000000c7d713b49da0000000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000493e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_token.key.address",
+          "op": "hex_eq",
+          "value": "0x5f1f4e50ba51d723f12385a8a9606afc3a0555f5"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "u256_hex_eq",
+          "value": "900000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out",
+          "op": "len",
+          "value": 1
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "u256_hex_eq",
+          "value": "300000"
+        }
+      ]
+    },
+    {
+      "intent": "v3_router_addLiquidityProportional",
+      "expect": "pass",
+      "tx_hash": "0xec0b9c7a970da80c30a5c65ccd707fc2d531aef74ee3aead150c9bee3dbf8efc",
+      "chain_id": 1,
+      "source": "etherscan mainnet permitBatchAndCall child (addLiquidityProportional); direct-call replay; pool 0xc6520eaf44b551d73ee1ee809d244d97a8e98f64 in baked balancer_v3:pool_tokens map",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0x724dba33000000000000000000000000c6520eaf44b551d73ee1ee809d244d97a8e98f6400000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000004366e00933b066e7b5c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000017ac38930895d1edb000000000000000000000000000000000000000000000000206abfd8e6ccdef00000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][1]",
+          "op": "equals",
+          "value": "0x17ac38930895d1edb"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xec53bf9167f50cdeb3ae105f56099aaab9061f83"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][1]",
+          "op": "equals",
+          "value": "0x206abfd8e6ccdef0"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_lp_out",
+          "op": "equals",
+          "value": "0x4366e00933b066e7b5c0"
+        }
+      ]
+    },
+    {
+      "intent": "v3_router_addLiquidityUnbalanced",
+      "expect": "pass",
+      "tx_hash": "0x6ab81380cc55e6d1da9cb0b4c0af013d4fdbf3ef1ebd406ea96fdf69e2a6b88e",
+      "chain_id": 1,
+      "source": "etherscan mainnet permitBatchAndCall child (addLiquidityUnbalanced); direct-call replay; pool 0x9054ae85300c7d3a325714fc2f1454d0b7c73a12 in baked balancer_v3:pool_tokens map",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0xc08bc8510000000000000000000000009054ae85300c7d3a325714fc2f1454d0b7c73a1200000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000004eb1178b28b5432ab0e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000001adf5669dab68cebb14000000000000000000000000000000000000000000000337007c0b9643879af30000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0x4ba01f22827018b4772cd326c7627fb4956a7c00"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][1]",
+          "op": "equals",
+          "value": "0x1adf5669dab68cebb14"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0x890a5122aa1da30fec4286de7904ff808f0bd74a"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][1]",
+          "op": "equals",
+          "value": "0x337007c0b9643879af3"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_lp_out",
+          "op": "equals",
+          "value": "0x4eb1178b28b5432ab0e"
+        }
+      ]
+    },
+    {
+      "intent": "v3_router_removeLiquidityProportional",
+      "expect": "pass",
+      "tx_hash": "0xf64ddf9c8e26ef52f80c74917a6e131714ce004a86fd74698b64f79f06691516",
+      "chain_id": 1,
+      "source": "etherscan mainnet permitBatchAndCall child (removeLiquidityProportional); direct-call replay; pool 0xd383f50b4133c57c4379fa36d540516bcfae9d76 in baked balancer_v3:pool_tokens map",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae563e3f8219521950555f5962419c8919758ea2",
+            "value": "0",
+            "data": "0x51682750000000000000000000000000d383f50b4133c57c4379fa36d540516bcfae9d7600000000000000000000000000000000000000000000434d30ea4e174f8e9a5a00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000178b18fe5bca2fa56000000000000000000000000000000000000000000000000029c0d42ce447e240000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled_burn"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_token.key.address",
+          "op": "hex_eq",
+          "value": "0xd383f50b4133c57c4379fa36d540516bcfae9d76"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "equals",
+          "value": "0x434d30ea4e174f8e9a5a"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "equals",
+          "value": "0x178b18fe5bca2fa56"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xec53bf9167f50cdeb3ae105f56099aaab9061f83"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][1]",
+          "op": "equals",
+          "value": "0x29c0d42ce447e24"
+        }
+      ]
+    },
+    {
+      "intent": "v3_batchrouter_swapExactIn",
+      "expect": "pass",
+      "tx_hash": "0x579cd081a8b3390158f1a6df1ac9e769938694506fda35aa9287309102c15fd2",
+      "chain_id": 1,
+      "source": "etherscan mainnet BatchRouter swapExactIn (multi-hop, tokens in path) \u2014 direct call",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x136f1efcc3f8f88516b9e94110d56fdbfb1778d1",
+            "value": "0",
+            "data": "0x286f580d0000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000001fffffffffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000821e22000000000000000000000000000000000000000000000000791c93e065310ffc0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000d4fa2d31b7968e448877f69a96de69f5de8cd23e000000000000000000000000d4fa2d31b7968e448877f69a96de69f5de8cd23e0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000c32474b049929ed7012605a71e3f72a093192905000000000000000000000000d166337499e176bbc38a1fbd113ab144e5bd2df700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xd166337499e176bbc38a1fbd113ab144e5bd2df7"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.amount_in",
+          "op": "equals",
+          "value": "0x821e22"
+        },
+        {
+          "path": "$.data.actions[0].body.params.direction.min_amount_out",
+          "op": "equals",
+          "value": "0x791c93e065310ffc"
+        }
+      ]
+    },
+    {
+      "intent": "v3_batchrouter_permitBatchAndCall_swap_child",
+      "expect": "pass",
+      "tx_hash": "0x9477f028816ae36baf8f20ea8c9da0770b940b75f9ac5cb69c0b44af302c00f8",
+      "chain_id": 1,
+      "source": "etherscan mainnet BatchRouter permitBatchAndCall wrapping swapExactIn \u2014 multicall_recurse resolves the swap child",
+      "rpc": {
+        "params": [
+          {
+            "to": "0x136f1efcc3f8f88516b9e94110d56fdbfb1778d1",
+            "value": "0",
+            "data": "0x19c6989f00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000000000260000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000136f1efcc3f8f88516b9e94110d56fdbfb1778d1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000b1c2db5d6ca03fce73dbd304d320bf76c55ae1b10000000000000000000000007fffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000006a2186c300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041b646ad4cbb31887f657abf3d04ac57eacd48e642abf5e701c0b6213d7b8c34c24ca53f3c9c18a17dc8ffb4e23ffa431e8c68a083dd0c4adb7291ecd8157ca31e1c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000002a4286f580d0000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000001fffffffffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000028000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000b1c2db5d6ca03fce73dbd304d320bf76c55ae1b100000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000dd885fd22b9ea660000000000000000000000000000000000000000000000000000000000000003000000000000000000000000f17d6f98a5c6eaa99d149079984119e0a4ef6900000000000000000000000000f17d6f98a5c6eaa99d149079984119e0a4ef69000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000e858f8c6e0ba60fed092ac0b21681fd4cde4fa11000000000000000000000000e1753f2e00940cc31213dd92013cf019dfe4ca1d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e1753f2e00940cc31213dd92013cf019dfe4ca1d00000000000000000000000040d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "multicall",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "swap"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xb1c2db5d6ca03fce73dbd304d320bf76c55ae1b1"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.kind",
+          "op": "equals",
+          "value": "exact_input"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.amount_in",
+          "op": "equals",
+          "value": "0xde0b6b3a7640000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.min_amount_out",
+          "op": "equals",
+          "value": "0xdd885fd22b9ea66"
+        }
+      ]
+    },
+    {
+      "intent": "v3_composite_removeLiquidityProportionalFromERC4626Pool",
+      "expect": "pass",
+      "tx_hash": "0x1b0067f87641dd7ed33a4ba243e13b1f86791038df43c16cc6ae5222525210fa",
+      "chain_id": 1,
+      "source": "etherscan mainnet CompositeLiquidityRouter v2 removeLiquidityProportionalFromERC4626Pool (ERC4626 boosted pool); pool 0x6c5972311191097d002e804a9bf97c96c54059ed in baked map",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xb21a277466e7db6934556a1ce12eb3f032815c8a",
+            "value": "0",
+            "data": "0xd8a7f9fe0000000000000000000000006c5972311191097d002e804a9bf97c96c54059ed00000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000164ac01040597ee230000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000453c0f326ec5d8000000000000000000000000000000000000000000000000011cf253e25aefa0000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "remove_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled_burn"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_token.key.address",
+          "op": "hex_eq",
+          "value": "0x6c5972311191097d002e804a9bf97c96c54059ed"
+        },
+        {
+          "path": "$.data.actions[0].body.params.lp_amount",
+          "op": "equals",
+          "value": "0x164ac01040597ee23"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xc71ea051a5f82c67adcf634c36ffe6334793d24c"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[0][1]",
+          "op": "equals",
+          "value": "0x453c0f326ec5d800"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xfa2b947eec368f42195f24f36d2af29f7c24cec2"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_out[1][1]",
+          "op": "equals",
+          "value": "0x11cf253e25aefa000"
+        }
+      ]
+    },
+    {
+      "intent": "v3_composite_addLiquidityUnbalancedToERC4626Pool",
+      "expect": "pass",
+      "tx_hash": "0x4964572a94d43cb26d1a81649d6f797cdc529ad5bb0e96cb10380535b7940321",
+      "chain_id": 1,
+      "source": "etherscan mainnet CompositeLiquidityRouter v2 addLiquidityUnbalancedToERC4626Pool (ERC4626 boosted pool); pool 0x1ea5870f7c037930ce1d5d8d9317c670e89e13e3 in baked map",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xb21a277466e7db6934556a1ce12eb3f032815c8a",
+            "value": "0",
+            "data": "0xc1da024c0000000000000000000000001ea5870f7c037930ce1d5d8d9317c670e89e13e300000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000b8caee6bd258cd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000052ac8c476d4db000000000000000000000000000000000000000000000000009c56ea3a9c27ed0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0x0bfc9d54fc184518a81162f8fb99c2eaca081202"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][1]",
+          "op": "equals",
+          "value": "0x52ac8c476d4db"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xae78736cd615f374d3085123a210448e74fc6393"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][1]",
+          "op": "equals",
+          "value": "0x9c56ea3a9c27ed"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_lp_out",
+          "op": "equals",
+          "value": "0xb8caee6bd258cd"
+        }
+      ]
+    },
+    {
+      "intent": "v3_composite_addLiquidityProportionalToERC4626Pool",
+      "expect": "pass",
+      "tx_hash": "0x84ea222e40386139c561d02af2eabcd755bb3d04456e75a883af76b6d6ddee1e",
+      "chain_id": 1,
+      "source": "etherscan mainnet CompositeLiquidityRouter v2 addLiquidityProportionalToERC4626Pool (ERC4626 boosted pool); pool 0x1ea5870f7c037930ce1d5d8d9317c670e89e13e3 in baked map",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xb21a277466e7db6934556a1ce12eb3f032815c8a",
+            "value": "0",
+            "data": "0xe3c3e64f0000000000000000000000001ea5870f7c037930ce1d5d8d9317c670e89e13e300000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000531f7cf3b2158a2d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000180000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000029a223dab8a5e7ea00000000000000000000000000000000000000000000000024883cc5b02b420d0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "amm",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0x0bfc9d54fc184518a81162f8fb99c2eaca081202"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[0][1]",
+          "op": "equals",
+          "value": "0x29a223dab8a5e7ea"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xae78736cd615f374d3085123a210448e74fc6393"
+        },
+        {
+          "path": "$.data.actions[0].body.params.tokens[1][1]",
+          "op": "equals",
+          "value": "0x24883cc5b02b420d"
+        },
+        {
+          "path": "$.data.actions[0].body.params.min_lp_out",
+          "op": "equals",
+          "value": "0x531f7cf3b2158a2d"
+        }
+      ]
+    },
+    {
+      "intent": "v3_composite_permitBatchAndCall_erc4626_child",
+      "expect": "pass",
+      "tx_hash": "0x3776e466eed6a850ceeed458ed83f3dc3c673236d7e7e8b5a72d3c203c6828f5",
+      "chain_id": 1,
+      "source": "etherscan mainnet CompositeLiquidityRouter v2 permitBatchAndCall wrapping an ERC4626 liquidity child \u2014 multicall_recurse resolves it via balancer_v3:composite_pool_tokens",
+      "rpc": {
+        "params": [
+          {
+            "to": "0xb21a277466e7db6934556a1ce12eb3f032815c8a",
+            "value": "0",
+            "data": "0x19c6989f00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000026000000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000b21a277466e7db6934556a1ce12eb3f032815c8affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000000000000200000000000000000000000040d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f00000000000000000000000080624dd2f1a9fbe76c8b4395810624dd2f1a9fbd000000000000000000000000000000000000000000000000000000006a2187120000000000000000000000000000000000000000000000000000000000000001000000000000000000000000b1c2db5d6ca03fce73dbd304d320bf76c55ae1b100000000000000000000000080624dd2f1a9fbe76c8b4395810624dd2f1a9fbd000000000000000000000000000000000000000000000000000000006a21871200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041a37374f1ea61d5b102c82e8ebd3b4e7a419043f1a5bfb13c6d3e0356ead1be8573f3f46019cba8fa328b8d3591d723bf5cc164f531498025e28f582f4e55d7f91b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000001a4e3c3e64f000000000000000000000000e858f8c6e0ba60fed092ac0b21681fd4cde4fa1100000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000033095a82d72f0928ab000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000019ac4195d7a6ac2928000000000000000000000000000000000000000000000019943e31bdc0c80a83000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_domain": "multicall",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].action",
+          "op": "equals",
+          "value": "add_liquidity"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.kind",
+          "op": "equals",
+          "value": "pooled"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[0][0].key.address",
+          "op": "hex_eq",
+          "value": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[0][1]",
+          "op": "equals",
+          "value": "0x19ac4195d7a6ac2928"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[1][0].key.address",
+          "op": "hex_eq",
+          "value": "0xf17d6f98a5c6eaa99d149079984119e0a4ef6900"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.tokens[1][1]",
+          "op": "equals",
+          "value": "0x19943e31bdc0c80a83"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.min_lp_out",
+          "op": "equals",
+          "value": "0x33095a82d72f0928ab"
+        }
+      ]
     }
   ]
 }

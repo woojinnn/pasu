@@ -1,0 +1,93 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v2/vault-join-pool@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V2 Vault.joinPool(bytes32 poolId, address sender, address recipient, (address[] assets, uint256[] maxAmountsIn, bytes userData, bool fromInternalBalance) request) — selector 0xb95cac28. Source: balancer/balancer-v2-monorepo pkg/interfaces/contracts/vault/IVault.sol. Maps to Amm::AddLiquidity::Pooled. The pooled token set is the two index-aligned calldata arrays request.assets[] (token addrs) and request.maxAmountsIn[] (per-token max spend the user signs); zipped by $fn balancer_zip_token_amounts because the flat $args grammar cannot build a Vec<(TokenRef,U256)> from two arrays. min_lp_out (minBPTAmountOut) lives inside the opaque request.userData enum-tagged blob, extracted by $fn balancer_v2_userdata_field (JoinKind table); undecodable kinds fall back to 0 (conservative floor). pool_id is the bytes32 poolId directly (venue carries it; no slice needed). Vault 0xBA12222222228d8Ba445958a75a0704d566BF2C8 is identical on all chains; mainnet only here (multichain expansion deferred per scope contract).",
+  "match": {
+    "selector": "0xb95cac28",
+    "chain_to_addresses": {
+      "1": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "joinPool",
+    "abi": {
+      "name": "joinPool",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "poolId",    "type": "bytes32" },
+        { "name": "sender",    "type": "address" },
+        { "name": "recipient", "type": "address" },
+        {
+          "name": "request",
+          "type": "tuple",
+          "components": [
+            { "name": "assets",              "type": "address[]" },
+            { "name": "maxAmountsIn",        "type": "uint256[]" },
+            { "name": "userData",            "type": "bytes"     },
+            { "name": "fromInternalBalance", "type": "bool"      }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "add_liquidity",
+        "add_liquidity": {
+          "venue": {
+            "name":      "balancer_v2",
+            "chain":     "$chain",
+            "vault":     "$to",
+            "pool_id":   "$args.poolId",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "kind": "pooled",
+            "tokens": {
+              "$fn": "balancer_zip_token_amounts",
+              "$args": ["$chain", "$args.request[0]", "$args.request[1]"]
+            },
+            "min_lp_out": {
+              "$fn": "balancer_v2_userdata_field",
+              "$args": ["$args.request[2]", "join", "min_bpt"]
+            },
+            "recipient": "$args.recipient"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$to",
+                "function":   "getPoolTokens(bytes32)",
+                "decoder_id": "balancer_v2_pool_tokens"
+              },
+              "ttl_s": 12
+            },
+            "current_price": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [],
+                "calc_id": "balancer_v2_pool_price"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -50,6 +50,22 @@ that supports the router transaction. It does not create callkeys for users who
 send transactions directly to the pool/pair/vault contract. Direct child calls
 need concrete manifests or a source resolver/generator and universe linkage.
 
+Coverage-share behind any of these labels is measured **volume-weighted at the
+protocol level** — Σ covered top-level tx / Σ all top-level tx across *every*
+user-facing entry, not a per-contract selector-share (H2). Covering 99% of a
+low-volume entry while missing the volume-dominant one is not "most of what users
+do". And a **wrapper/router selector** (`multicall_recurse` / `opcode_stream_dispatch`
+/ `tagged_dispatch` / permit-batch-and-call) counts toward coverage by its
+**child resolution-rate** — the fraction of its real on-chain children that
+actually decode — NOT by the presence of a manifest (H3): a `multicall_recurse`
+manifest whose children are all deferred covers ~0%, not 100%. Static gates
+(`check:surface`) see only selector-presence and cannot catch this; the P2 SCOPE
+ORACLE real-tx measurement is the only check that can. (Worked example, Balancer
+2026-06: the `permitBatchAndCall` manifest matched 91.7% of V3 selectors but 95%
+of its children were deferred proportional liquidity → ~4.9% effective, and V2
+Vault was 98.9% covered yet the volume-dominant V3 Router-v2 (6.7× the tx) only
+3.5% → protocol-level ~14.3% with every gate green.)
+
 ---
 
 ## 1. Framework Code Skeleton
@@ -622,6 +638,20 @@ Real-tx floor:
 6. Dune MCP/API is the gap lane for Free-tier Etherscan txlist gaps such as Base/OP, decoded namespaces, selector stats, and cross-chain joins. Before relying on it, run MCP calibration: usage baseline, LIMIT 100/1000/5000 probe, partition WHERE, credit delta log.
 7. If Etherscan or Dune is unavailable, do not mark P2 real-tx complete. Record `blocked_external_data`, completed synthetic/golden scope, and the addresses/selectors to replay once the tool is connected.
 8. Commit only dedup representative corpus/golden entries; keep raw 10k+ dumps out of git.
+9. **SCOPE ORACLE — measure the covered set's real-usage coverage-share on the P0
+   universe** and record it in `Scope Classification`. Two rules. (a) **Volume-weighted,
+   protocol-level**: Σ covered top-level tx / Σ all top-level tx across *every* user-facing
+   entry (top-level = `cardinality(trace_address)=0`), never a single contract's
+   selector-share — 99% of a low-volume entry while the volume-dominant entry is missed is
+   not "most of what users do". (b) **Wrapper/router selectors count by child resolution-rate**:
+   for any `multicall_recurse` / `opcode_stream_dispatch` / `tagged_dispatch` /
+   permit-batch-and-call selector, coverage = the fraction of its real on-chain children that
+   decode, NOT the presence of a manifest. The completion label must not over-claim this.
+   The cross-entry volume distribution and each cover-candidate wrapper's child-resolution-rate
+   must already have been measured *before* the P1 cover/defer decision (H1, §9.11); P2
+   re-measures to verify the built scope, it is not the first look. Static gates
+   (`check:surface`) see only selector-presence and cannot enforce (b) — this measurement is
+   the only check that can.
 
 Typed-data floor:
 
@@ -838,9 +868,9 @@ Existing corpus without `expect_body` is legacy-valid but not semantically compl
 A protocol is onboarded only when all of these are true. **This list is the SSOT for what "onboarded" means**; the spine's §2.1b phase-gate table and `ONBOARDING_EVIDENCE_TEMPLATE.md` are the operational checklist that proves each item (the latter enforced by `check-onboarding-evidence`):
 
 - `_deployments.json` exists or omission is explicitly approved for that protocol.
-- **Scope contract declared (§9.11 SCOPE ORACLE — the scope-level analog of the §9.4 field oracle)**: a SINGLE representative chain (multichain = a separate framework, deferred), and an explicit COVER/DEFER boundary fixed before P1. Gates verify internal consistency, NOT scope correctness — scope intent is the user's decision and must be an explicit contract, not an implicit self-assertion.
+- **Scope contract declared (§9.11 SCOPE ORACLE — the scope-level analog of the §9.4 field oracle)**: a SINGLE representative chain (multichain = a separate framework, deferred), and an explicit COVER/DEFER boundary fixed before P1. Gates verify internal consistency, NOT scope correctness — scope intent is the user's decision and must be an explicit contract, not an implicit self-assertion. **The boundary is fixed from a *pre-decision* measurement — the cross-entry volume distribution plus each cover-candidate wrapper's child resolution-rate, measured *before* P1 (H1) — not from an assumption about which surface is high-volume.**
 - **Every user-facing DEFER carries a 1st-party usage-share** (%/count from Etherscan/Dune), never a prose-only reason ("large effort"). Deferring a surface you *assume* is high-volume is self-contradictory — measure first. (infra/governance/keeper EXCLUDE is exempt.)
-- **Covered-surface real-usage coverage-share is measured** (P2, on the P0 universe) and the final completion label does NOT over-claim it (e.g. "40% subset, uncovered majority = X" — never "full surface" at 40%). `gates-green ≠ correct-scope`.
+- **Covered-surface real-usage coverage-share is measured** (P2, on the P0 universe) and the final completion label does NOT over-claim it (e.g. "40% subset, uncovered majority = X" — never "full surface" at 40%). `gates-green ≠ correct-scope`. The share is **volume-weighted at the protocol level** (Σ covered top-level tx / Σ all top-level tx across *every* user-facing entry, NOT a per-contract selector-share) (H2), and any **wrapper/router selector counts by its child resolution-rate, not manifest-presence** (H3) — a manifest over deferred children covers ~0%, not 100%, and static gates cannot see the difference.
 - Every covered contract has ABI snapshot and coverage.
 - `check:surface` has no failures for the protocol.
 - Every COVER selector has manifest or documented Tier 2/Tier 3 implementation.

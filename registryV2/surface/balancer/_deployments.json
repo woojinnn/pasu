@@ -123,6 +123,76 @@
       "address": "0xa731C23D7c95436Baaae9D52782f966E1ed07cc8",
       "decision": "exclude",
       "reason": "protocol fee infra/admin surface, not a retail wallet pre-sign entry point"
+    },
+    {
+      "name": "Balancer V3 BatchRouter (mainnet)",
+      "chainId": 1,
+      "address": "0x136f1EFcC3f8f88516B9E94110D56FDBfB1778d1",
+      "decision": "cover",
+      "reason": "COVERED (#2, 2026-06-04): V3 BatchRouter user surface = swapExactIn (aggregate Amm::Swap via balancer_v3_swap_path_field) + permitBatchAndCall (multicall_recurse). ~68%/32% of recent direct tx. Surface snapshot + coverage at surface/balancer/v3-batchrouter-mainnet.{abi,coverage}.json. swapExactOut/multicall deferred (0 recent tx)."
+    },
+    {
+      "name": "Balancer V3 CompositeLiquidityRouter v2 (mainnet)",
+      "chainId": 1,
+      "address": "0xb21A277466e7dB6934556a1Ce12eb3F032815c8A",
+      "decision": "cover",
+      "reason": "COVERED (#3, 2026-06-04): ERC4626/boosted pool liquidity (addLiquidityProportional/UnbalancedToERC4626Pool, removeLiquidityProportionalFromERC4626Pool) + permitBatchAndCall, decoded via the baked balancer_v3:composite_pool_tokens map (reuses the #1 V3 pool universe + balancer_v3_zip_pool_tokens $fn). Surface at v3-composite-router-v2-mainnet.{abi,coverage}.json."
+    },
+    {
+      "name": "Balancer V2 BalancerRelayer (BatchRelayer v6, mainnet)",
+      "chainId": 1,
+      "address": "0x35Cea9e57A393ac66Aaa7E25C391D52C74B5648f",
+      "decision": "exclude",
+      "reason": "DEFERRED user-facing relayer (1st-party v2/tasks/20231031-batch-relayer-v6; high usage \u2014 active 2026-06-03, ~150 recent direct tx). This is the address users authorize via Vault.setRelayerApproval (the GRANT itself IS covered by vault-set-relayer-approval). Direct calls are multicall(bytes[]) of BatchRelayerLibrary actions; needs a relayer-library multicall decoder. Follow-up #3."
+    },
+    {
+      "name": "Balancer V3 Router v1 (mainnet, deprecated)",
+      "chainId": 1,
+      "address": "0x5C6fb490BDFD3246EB0bB062c168DeCAF4bD9FDd",
+      "decision": "exclude",
+      "reason": "DEFERRED deprecated router (1st-party v3/deprecated/20241205-v3-router; low/trailing usage \u2014 293 lifetime direct tx, superseded by Router v2). Shares most selectors with Router v2; could be added to the Router-v2 manifests' chain_to_addresses in a follow-up."
+    },
+    {
+      "name": "Balancer V3 BufferRouter (mainnet)",
+      "chainId": 1,
+      "address": "0x9179C06629ef7f17Cb5759F501D89997FE0E7b45",
+      "decision": "exclude",
+      "reason": "DEFERRED niche user-facing router (1st-party v3/tasks/20241205-v3-buffer-router; low usage \u2014 44 lifetime direct tx). ERC-4626 buffer add/remove; no current ActionBody model for buffer liquidity. Follow-up."
+    },
+    {
+      "name": "Balancer V3 UnbalancedAddViaSwapRouter (mainnet)",
+      "chainId": 1,
+      "address": "0xfA80c17EE7E382c9C541bFa4bea0514E46DCCba5",
+      "decision": "exclude",
+      "reason": "DEFERRED new user-facing router (1st-party v3/tasks/20251010-v3-unbalanced-add-via-swap-router; near-zero adoption \u2014 1 direct tx). Add-liquidity-via-swap; defer until adoption warrants. Follow-up."
+    },
+    {
+      "name": "Balancer V3 AggregatorRouter (mainnet)",
+      "chainId": 1,
+      "address": "0x309abcAeFa19CA6d34f0D8ff4a4103317c138657",
+      "decision": "exclude",
+      "reason": "integrator-facing (1st-party v3/tasks/20250218-v3-aggregator-router): DEX aggregators pre-pay the Vault then call this via internal calls; not a retail EOA wallet pre-sign entry (1 direct EOA tx = deploy only)."
+    },
+    {
+      "name": "Balancer V3 AggregatorBatchRouter (mainnet)",
+      "chainId": 1,
+      "address": "0xDADa7bE438bdD89416F4802B679E320b15c92D49",
+      "decision": "exclude",
+      "reason": "integrator-facing (1st-party v3/tasks/20250507-v3-aggregator-batch-router): aggregator multi-hop variant, called via internal calls; not a retail EOA wallet pre-sign entry (1 direct EOA tx = deploy only)."
+    },
+    {
+      "name": "Balancer V2 BalancerQueries (mainnet)",
+      "chainId": 1,
+      "address": "0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5",
+      "decision": "exclude",
+      "reason": "read-only off-chain query simulation (1st-party v2/tasks/20220721-balancer-queries); not a fund-moving wallet pre-sign entry."
+    },
+    {
+      "name": "Balancer V2 ProtocolFeesWithdrawer (mainnet)",
+      "chainId": 1,
+      "address": "0x5ef4c5352882b10893b70DbcaA0C000965bd23c5",
+      "decision": "exclude",
+      "reason": "governance/admin protocol-fee withdrawal (1st-party v2/tasks/20220517-protocol-fee-withdrawer); not a retail wallet pre-sign entry."
     }
   ]
 }

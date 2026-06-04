@@ -3,12 +3,12 @@
   "chainId": 1,
   "address": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
   "snapshot": "v2-vault-mainnet.abi.json",
-  "note": "Balancer V2 Vault user pre-sign surface triage. Current manifests cover single swaps and relayer approval; complex batch/liquidity/internal-balance paths are explicit deferred gaps, not silent omissions.",
+  "note": "Balancer V2 Vault user pre-sign surface triage (deeper-onboarding pass 2026-06-03). Manifests now cover single swaps, relayer approval, AND batchSwap + joinPool + exitPool (the dominant direct traffic — measured 38.2%/6.8%/21.2% of recent direct Vault tx). Admin/asset-manager/query paths excluded; flashLoan + manageUserBalance deferred with measured usage.",
   "functions": {
     "0x945bcec9": {
       "name": "batchSwap",
-      "decision": "exclude",
-      "reason": "deferred user swap path: faithful mapping requires cross-array assets[swaps[i].assetInIndex] / assetOutIndex resolution; current manifest DSL cannot express this without a resolver"
+      "decision": "cover",
+      "reason": "user AMM action: Balancer V2 multi-hop batch swap (aggregate Amm::Swap via $fn balancer_v2_batch_swap_field indirect-index resolution). 38.2% of recent direct Vault tx (mainnet)."
     },
     "0x7d3aeb96": {
       "name": "deregisterTokens",
@@ -17,18 +17,18 @@
     },
     "0x8bdb3913": {
       "name": "exitPool",
-      "decision": "exclude",
-      "reason": "deferred user liquidity path: requires userData enum decode plus dynamic token/amount array zipping before a faithful remove_liquidity ActionBody can be emitted"
+      "decision": "cover",
+      "reason": "user liquidity action: Balancer V2 remove_liquidity (PooledBurn). assets[]/minAmountsOut[] zipped by $fn balancer_zip_token_amounts; lp_token from poolId via $fn balancer_pool_id_to_address; lp_amount from userData ExitKind via $fn balancer_v2_userdata_field. 21.2% of recent direct Vault tx."
     },
     "0x5c38449e": {
       "name": "flashLoan",
       "decision": "exclude",
-      "reason": "integrator flash-loan callback primitive; not represented as a retail wallet safety ActionBody in this onboarding pass"
+      "reason": "DEFERRED: integrator flash-loan callback primitive (requires an IFlashLoanRecipient callback contract; not a retail EOA pre-sign swap/liquidity intent). Measured 3.6% of recent direct Vault tx (predominantly arb/integrator). The callback risk is in the recipient, not statically modelable as a simple ActionBody."
     },
     "0xb95cac28": {
       "name": "joinPool",
-      "decision": "exclude",
-      "reason": "deferred user liquidity path: requires userData enum decode plus dynamic token/amount array zipping before a faithful add_liquidity ActionBody can be emitted"
+      "decision": "cover",
+      "reason": "user liquidity action: Balancer V2 add_liquidity (Pooled). assets[]/maxAmountsIn[] zipped by $fn balancer_zip_token_amounts; min_lp_out from userData JoinKind via $fn balancer_v2_userdata_field. 6.8% of recent direct Vault tx."
     },
     "0xe6c46092": {
       "name": "managePoolBalance",
@@ -38,7 +38,7 @@
     "0x0e8e3e84": {
       "name": "manageUserBalance",
       "decision": "exclude",
-      "reason": "deferred internal-balance bookkeeping path; can deposit/withdraw/internal-transfer assets and needs a dedicated ActionBody instead of pretending it is a simple ERC20 transfer"
+      "reason": "DEFERRED internal-balance bookkeeping path (deposit/withdraw/internal-transfer); needs a dedicated ActionBody rather than mislabeling as a plain ERC20 transfer. Measured <1% of recent direct Vault tx — low-priority follow-up."
     },
     "0xf84d066e": {
       "name": "queryBatchSwap",

@@ -1,0 +1,65 @@
+{
+  "contract": "BalancerV3CompositeLiquidityRouterV2",
+  "chainId": 1,
+  "address": "0xb21a277466e7db6934556a1ce12eb3f032815c8a",
+  "snapshot": "v3-composite-router-v2-mainnet.abi.json",
+  "note": "Balancer V3 CompositeLiquidityRouter v2 user surface. Covered: ERC4626/boosted proportional & unbalanced add + proportional remove (baked pool->tokens map, reuses balancer_v3_zip_pool_tokens) + permitBatchAndCall. Nested-pool variants + multicall deferred (lower/no recent tx). Source: balancer-deployments v3.",
+  "functions": {
+    "0x19aceff3": {
+      "name": "addLiquidityERC4626PoolProportionalHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / nested variant \u2014 not a wallet-facing covered action this pass."
+    },
+    "0x27bfb13a": {
+      "name": "addLiquidityERC4626PoolUnbalancedHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / nested variant \u2014 not a wallet-facing covered action this pass."
+    },
+    "0xe3c3e64f": {
+      "name": "addLiquidityProportionalToERC4626Pool",
+      "decision": "cover",
+      "reason": "user AMM action: V3 boosted/ERC4626 pool liquidity, decoded to Amm::Add/RemoveLiquidity via the baked balancer_v3:composite_pool_tokens map + balancer_v3_zip_pool_tokens $fn (reuses the V3 pool universe)."
+    },
+    "0xc1da024c": {
+      "name": "addLiquidityUnbalancedToERC4626Pool",
+      "decision": "cover",
+      "reason": "user AMM action: V3 boosted/ERC4626 pool liquidity, decoded to Amm::Add/RemoveLiquidity via the baked balancer_v3:composite_pool_tokens map + balancer_v3_zip_pool_tokens $fn (reuses the V3 pool universe)."
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "exclude",
+      "reason": "non-user / nested-pool variant / multicall with 0 recent direct tx / hook \u2014 excluded (decodable follow-up if traffic appears)."
+    },
+    "0x19c6989f": {
+      "name": "permitBatchAndCall",
+      "decision": "cover",
+      "reason": "user wrapper: Permit2 batch + multicall of Composite self-calls (ERC4626 liquidity), decoded via multicall_recurse."
+    },
+    "0x698cc74b": {
+      "name": "queryAddLiquidityProportionalToERC4626Pool",
+      "decision": "exclude",
+      "reason": "non-user / hook / nested variant \u2014 not a wallet-facing covered action this pass."
+    },
+    "0xc9b8ddb2": {
+      "name": "queryAddLiquidityUnbalancedToERC4626Pool",
+      "decision": "exclude",
+      "reason": "non-user / hook / nested variant \u2014 not a wallet-facing covered action this pass."
+    },
+    "0xf921696e": {
+      "name": "queryRemoveLiquidityProportionalFromERC4626Pool",
+      "decision": "exclude",
+      "reason": "non-user / hook / nested variant \u2014 not a wallet-facing covered action this pass."
+    },
+    "0x4c97a878": {
+      "name": "removeLiquidityERC4626PoolProportionalHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / nested variant \u2014 not a wallet-facing covered action this pass."
+    },
+    "0xd8a7f9fe": {
+      "name": "removeLiquidityProportionalFromERC4626Pool",
+      "decision": "cover",
+      "reason": "user AMM action: V3 boosted/ERC4626 pool liquidity, decoded to Amm::Add/RemoveLiquidity via the baked balancer_v3:composite_pool_tokens map + balancer_v3_zip_pool_tokens $fn (reuses the V3 pool universe)."
+    }
+  },
+  "signed_structs": {}
+}

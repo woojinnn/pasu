@@ -1,0 +1,85 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v3/router-remove-liquidity-single-token-exact-out@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V3 Router.removeLiquiditySingleTokenExactOut(address pool, uint256 maxBptAmountIn, address tokenOut, uint256 exactAmountOut, bool wethIsEth, bytes userData) — selector 0xe7326def. Source: balancer/balancer-deployments v3/tasks/20250307-v3-router-v2. Maps to Amm::RemoveLiquidity::PooledBurn. Single-token exact-out withdraw: tokenOut + exactAmountOut (guaranteed received) in calldata. lp_token = pool (BPT) = $args.pool. lp_amount = maxBptAmountIn (max BPT the user authorizes burning). Mainnet only.",
+  "match": {
+    "selector": "0xe7326def",
+    "chain_to_addresses": {
+      "1": ["0xAE563E3f8219521950555F5962419C8919758Ea2"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "removeLiquiditySingleTokenExactOut",
+    "abi": {
+      "name": "removeLiquiditySingleTokenExactOut",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "pool",           "type": "address" },
+        { "name": "maxBptAmountIn", "type": "uint256" },
+        { "name": "tokenOut",       "type": "address" },
+        { "name": "exactAmountOut", "type": "uint256" },
+        { "name": "wethIsEth",      "type": "bool"    },
+        { "name": "userData",       "type": "bytes"   }
+      ],
+      "outputs": [ { "name": "bptAmountIn", "type": "uint256" } ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name":      "balancer_v3",
+            "chain":     "$chain",
+            "pool_id":   "$args.pool",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "kind": "pooled_burn",
+            "lp_token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.pool" } },
+            "lp_amount": "$args.maxBptAmountIn",
+            "min_out": [
+              [
+                { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.tokenOut" } },
+                "$args.exactAmountOut"
+              ]
+            ],
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$args.pool",
+                "function":   "getCurrentLiveBalances()",
+                "decoder_id": "balancer_v3_pool_balances"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [],
+                "calc_id": "balancer_v3_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

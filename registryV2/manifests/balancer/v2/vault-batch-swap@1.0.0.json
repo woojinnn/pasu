@@ -1,0 +1,162 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v2/vault-batch-swap@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V2 Vault.batchSwap(uint8 kind, (bytes32 poolId,uint256 assetInIndex,uint256 assetOutIndex,uint256 amount,bytes userData)[] swaps, address[] assets, (address,bool,address,bool) funds, int256[] limits, uint256 deadline) — selector 0x945bcec9. Source: balancer/balancer-v2-monorepo IVault.sol. Maps to ONE aggregate Amm::Swap. batchSwap references tokens INDIRECTLY (step i's token = assets[swaps[i].assetInIndex/assetOutIndex]); $fn balancer_v2_batch_swap_field resolves that indirection: token_in = assets[swaps[0].assetInIndex], token_out = assets[swaps[last].assetOutIndex], amount = swaps[0].amount, direction from kind (0=GIVEN_IN exact_input, 1=GIVEN_OUT exact_output). COARSE for true multi-PATH batches (picks first-in/last-out + first step amount) — accurate for the dominant single-route multi-hop; min_amount_out/max_amount_in left 0 (per-asset limits[] not aggregated). recipient = funds.recipient (funds[2]). Mainnet only.",
+  "match": {
+    "selector": "0x945bcec9",
+    "chain_to_addresses": {
+      "1": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "batchSwap",
+    "abi": {
+      "name": "batchSwap",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "kind", "type": "uint8" },
+        {
+          "name": "swaps",
+          "type": "tuple[]",
+          "components": [
+            { "name": "poolId",        "type": "bytes32" },
+            { "name": "assetInIndex",  "type": "uint256" },
+            { "name": "assetOutIndex", "type": "uint256" },
+            { "name": "amount",        "type": "uint256" },
+            { "name": "userData",      "type": "bytes"   }
+          ]
+        },
+        { "name": "assets", "type": "address[]" },
+        {
+          "name": "funds",
+          "type": "tuple",
+          "components": [
+            { "name": "sender",              "type": "address" },
+            { "name": "fromInternalBalance", "type": "bool"    },
+            { "name": "recipient",           "type": "address" },
+            { "name": "toInternalBalance",   "type": "bool"    }
+          ]
+        },
+        { "name": "limits",   "type": "int256[]" },
+        { "name": "deadline", "type": "uint256"  }
+      ],
+      "outputs": [ { "name": "", "type": "int256[]" } ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name":      "balancer_v2",
+            "chain":     "$chain",
+            "vault":     "$to",
+            "pool_id": {
+              "$fn": "balancer_v2_batch_swap_field",
+              "$args": ["$args.kind", "$args.swaps", "$args.assets", "pool_id"]
+            },
+            "pool_type": "weighted"
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain":    "$chain",
+                "address": {
+                  "$fn": "balancer_v2_batch_swap_field",
+                  "$args": ["$args.kind", "$args.swaps", "$args.assets", "token_in"]
+                }
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain":    "$chain",
+                "address": {
+                  "$fn": "balancer_v2_batch_swap_field",
+                  "$args": ["$args.kind", "$args.swaps", "$args.assets", "token_out"]
+                }
+              }
+            },
+            "direction": {
+              "$match": "$args.kind",
+              "$cases": {
+                "0": {
+                  "kind": "exact_input",
+                  "amount_in": {
+                    "$fn": "balancer_v2_batch_swap_field",
+                    "$args": ["$args.kind", "$args.swaps", "$args.assets", "amount"]
+                  },
+                  "min_amount_out": "0"
+                },
+                "1": {
+                  "kind": "exact_output",
+                  "max_amount_in": "0",
+                  "amount_out": {
+                    "$fn": "balancer_v2_batch_swap_field",
+                    "$args": ["$args.kind", "$args.swaps", "$args.assets", "amount"]
+                  }
+                }
+              }
+            },
+            "recipient": "$args.funds[2]",
+            "slippage_bp": 50
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind":     "registry_api",
+                "endpoint": "https://registry-api-v2-891268973493.asia-northeast3.run.app",
+                "resource": {
+                  "kind":      "pool_meta",
+                  "chain":     "$chain",
+                  "pool_addr": "0x0000000000000000000000000000000000000000"
+                },
+                "version": "2"
+              },
+              "ttl_s": 86400
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$to",
+                "function":   "queryBatchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool))",
+                "decoder_id": "balancer_v2_query_swap"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [],
+                "calc_id": "balancer_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind":     "oracle_feed",
+                "provider": "pyth",
+                "feed_id":  "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": ["registry:pool_meta"],
+    "extension": ">=0.1.0"
+  }
+}
