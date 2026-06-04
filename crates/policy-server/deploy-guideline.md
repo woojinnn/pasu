@@ -87,6 +87,66 @@ gke-gcloud-auth-plugin --version   # 버전이 나오면 OK
 
 ---
 
+## 2.5 로컬에서 테스트하기 (클라우드 없이)
+
+클라우드에 올리기 전에 **내 컴퓨터에서** policy-server를 돌려보는 가장 빠른 길. (Docker만 있으면 됨)
+
+### 방법 A — `cargo run` (가장 가벼움, 추천)
+**1) Postgres + Redis를 Docker로**
+```bash
+docker run -d --name pasu-pg    -p 5432:5432 \
+  -e POSTGRES_USER=pasu -e POSTGRES_PASSWORD=pasu -e POSTGRES_DB=pasu postgres:16
+docker run -d --name pasu-redis -p 6379:6379 redis:7
+```
+
+**2) `.env.local` 만들기** (예시 복사 후 채우기)
+```bash
+cp .env.local.example .env.local
+```
+`.env.local`에서 최소 이것만 채우면 됨:
+```
+DATABASE_URL=postgres://pasu:pasu@127.0.0.1:5432/pasu
+REDIS_URL=redis://127.0.0.1:6379
+JWT_SECRET=<`openssl rand -hex 32` 결과>
+# 구글 로그인까지 테스트 안 하면 GOOGLE_* 는 placeholder여도 서버는 뜸
+```
+
+**3) 서버 실행**
+```bash
+scripts/start-policy-server.sh local
+```
+- `RUN_MIGRATIONS_ON_STARTUP` 기본 **true** → 뜰 때 **마이그레이션(0001 + 0002_market)을 로컬 DB에 자동 적용**(별도 migrate 불필요).
+- `REQUIRE_SYNC_CONFIG` 기본 **false** → 로컬에선 sync 설정 없어도 OK.
+
+**4) 확인**
+```bash
+curl http://127.0.0.1:8788/health             # ok
+curl http://127.0.0.1:8788/readyz             # 200 (DB+Redis 연결되면)
+curl -i http://127.0.0.1:8788/market/listings # 401 (마켓=OAuth, 무토큰이라 정상)
+```
+
+**5) (선택) 동기화 워커도** — 다른 터미널에서:
+```bash
+set -a; source .env.local; set +a
+cargo run -p policy-server --bin sync_worker
+```
+
+**6) 정리**: `docker rm -f pasu-pg pasu-redis`
+
+### 테스트 스위트 실행
+```bash
+docker run -d --name pasu-pg-test -p 5433:5432 \
+  -e POSTGRES_USER=pasu -e POSTGRES_PASSWORD=pasu -e POSTGRES_DB=pasu_test postgres:16
+TEST_DATABASE_URL=postgres://pasu:pasu@127.0.0.1:5433/pasu_test \
+  cargo test -p policy-server -p policy-db -p policy-sync
+```
+
+### 방법 B — minikube (프로덕션에 가깝게, 선택/고급)
+`deploy-local/`에 minikube용 매니페스트(postgres/redis/secret/values-local)+한국어 README가 있습니다. 흐름: `minikube start` → 이미지 빌드 후 `minikube image load` → postgres/redis 적용 → `create-secret.sh` → `helm install -f deploy-local/values-local.yaml` → `kubectl port-forward`.
+> ⚠️ `deploy-local/`는 `.gitignore`에 등록된 **로컬 학습용 스크래치**라 새로 clone하면 없습니다. 보통 방법 A로 충분하고, minikube 풀셋업이 필요하면 커밋해드릴 수 있어요.
+
+---
+
 ## 3. GCP 1회 셋업
 
 ```bash
