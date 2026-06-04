@@ -30,10 +30,12 @@ import { MonitoringPage } from "./pages/MonitoringPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { MarketPage } from "./pages/MarketPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/auth/callback", element: <AuthCallbackPage /> },
+  { path: "/settings", element: <SettingsPage /> },
   {
     path: "/",
     element: <RequireAuth />,

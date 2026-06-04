@@ -50,6 +50,7 @@ export function NavRail() {
           badge={pendingCount > 0 ? String(pendingCount) : undefined}
           showDot={pendingCount > 0}
         />
+        <RailItem to="/settings" label="Settings" icon={<SettingsIcon />} />
       </div>
 
       <div className="nav-bottom">
@@ -131,5 +132,11 @@ const MarketIcon = () => (
   <svg viewBox="0 0 24 24" {...stroke}>
     <path d="M3 8h18l-2 12H5z" />
     <path d="M8 8V5a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+const SettingsIcon = () => (
+  <svg viewBox="0 0 24 24" {...stroke}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
   </svg>
 );
