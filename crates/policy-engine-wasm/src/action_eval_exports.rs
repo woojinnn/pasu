@@ -59,10 +59,10 @@ use crate::exports::check_input_size;
 /// Transaction-level routing fields. Mirrors the trigger export's `TxInput`,
 /// reused for both phases. `chain_id` is the CAIP-2 string (e.g. `"eip155:1"`).
 #[derive(Debug, Clone, Deserialize)]
-struct TxInput {
-    chain_id: String,
-    from: String,
-    to: String,
+pub(crate) struct TxInput {
+    pub(crate) chain_id: String,
+    pub(crate) from: String,
+    pub(crate) to: String,
 }
 
 /// Input to [`plan_action_rpc_v2_json`].
@@ -82,9 +82,9 @@ struct PlanActionInput {
 /// One installed bundle: the user's Cedar policy text paired with the manifest
 /// that synthesizes its per-policy schema + custom-context.
 #[derive(Debug, Deserialize)]
-struct BundleInput {
-    policy: String,
-    manifest: ManifestV2,
+pub(crate) struct BundleInput {
+    pub(crate) policy: String,
+    pub(crate) manifest: ManifestV2,
 }
 
 /// Input to [`evaluate_action_v2_json`].
@@ -260,6 +260,32 @@ fn plan(
     let tx_view = tx_view(tx);
     plan_policy_rpc_v2(manifests, &view, &lowered.context, &tx_view)
         .map_err(|error| EngineErrorDto::new("plan_failed", error.to_string()))
+}
+
+/// Rebuild the EXACT materialized context the evaluate path feeds Cedar:
+/// lower the action, plan from the bundles' manifests, replay `results` into
+/// `context.custom.*`. Shared by `evaluate_action_v2_json` (indirectly) and the
+/// diagnosis export so a probe sees the identical environment as the verdict.
+pub(crate) fn materialized_context(
+    action: &ActionBody,
+    meta: &ActionMeta,
+    tx: &TxInput,
+    bundles: &[BundleInput],
+    results: &BTreeMap<String, Value>,
+) -> Result<(LoweredAction, Value), EngineErrorDto> {
+    let lowered = lower(action, meta, tx)?;
+    let manifests: Vec<ManifestV2> = bundles.iter().map(|b| b.manifest.clone()).collect();
+    let planned = plan(&manifests, action, &lowered, tx)?;
+    let mut context = lowered.context.clone();
+    if let Err(error) =
+        policy_engine::policy_rpc::materialize_v2(&mut context, &planned, results)
+    {
+        if system_fail_verdict(&error).is_some() {
+            return Err(EngineErrorDto::new("system_fail", error.to_string()));
+        }
+        return Err(EngineErrorDto::new("projection_failed", error.to_string()));
+    }
+    Ok((lowered, context))
 }
 
 /// Evaluate every bundle whose trigger matches the action and aggregate the
