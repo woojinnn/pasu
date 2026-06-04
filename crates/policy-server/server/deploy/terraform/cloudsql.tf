@@ -14,6 +14,7 @@ resource "google_sql_database_instance" "pasu" {
 
   settings {
     tier                        = var.db_tier
+    edition                     = "ENTERPRISE" # db-custom-* tiers require ENTERPRISE (not ENTERPRISE_PLUS)
     availability_type           = "ZONAL"
     deletion_protection_enabled = false # second flag; both must be false to destroy
 
