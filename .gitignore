@@ -40,9 +40,12 @@ target/web-server.pid
 .claude/
 
 # Secret env vars (OAuth, JWT) — NEVER commit. See .env.example for layout.
+# Profile files (.env.local, .env.sim, .env.ext, …) feed
+# scripts/start-policy-server.sh and carry the same secrets as .env.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
 # wasm-pack artifacts (produced by scripts/wasm-build*.sh and copied into consumers).
 crates/*-wasm/pkg/
@@ -89,3 +92,6 @@ AGENTS.md
 
 # Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
 .scopeball-runtime/
+
+# Extension signing key — never commit
+*.pem

@@ -28,11 +28,17 @@ import {
   type WalletId,
 } from "./scopeball-auth";
 import {
+  declarativeRouteRequestV3,
   estToPolicyText,
   policyTextToEst,
   simulatePolicySequence,
+  simulateStep,
   testPolicyText,
   validatePolicyText,
+  type DeclarativeRouteRequestV3Input,
+  type DeclarativeRouteRequestV3Result,
+  type SimulateStepInput,
+  type SimulateStepOutput,
 } from "./wasm-bridge";
 import {
   clearExecutionReports,
@@ -284,6 +290,21 @@ interface CedarEstToTextRequest {
   // Pre-serialized EST JSON (a single policy's EST object).
   est_json: string;
 }
+/** Simulation page: one (state, action, ctx) → (delta, next_state).
+ *  Dashboard owns the per-tx loop; SW just forwards to the wasm bridge.
+ *  Contract: `crates/policy-engine-wasm/src/sim_step_exports.rs`. */
+interface SimStepRequest {
+  type: "sim-step";
+  input: SimulateStepInput;
+}
+/** Simulation page: decode a raw tx (chain_id, to, calldata, …) into the
+ *  typed `Action[]` tree the v3 route engine emits. Same wasm entry the SW
+ *  orchestrator uses for live wallet flows — exposed here so the dashboard
+ *  can drive the same decode → simulate pipeline from user-pasted calldata. */
+interface SimDecodeRequest {
+  type: "sim-decode";
+  input: DeclarativeRouteRequestV3Input;
+}
 interface ExecutionReportsListRequest {
   type: "execution-reports:list";
   opts?: ExecutionReportFilter;
@@ -335,6 +356,8 @@ type PopupRequest =
   | CedarSimulateRequest
   | CedarTextToEstRequest
   | CedarEstToTextRequest
+  | SimStepRequest
+  | SimDecodeRequest
   | ExecutionReportsListRequest
   | ExecutionReportsCountRequest
   | ExecutionReportsClearRequest
@@ -420,6 +443,30 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "cedar_est_to_text_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "sim-step") {
+      void simulateStep((req as SimStepRequest).input)
+        .then((data: SimulateStepOutput) => sendResponse({ ok: true, data }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "sim_step_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "sim-decode") {
+      void declarativeRouteRequestV3((req as SimDecodeRequest).input)
+        .then((data: DeclarativeRouteRequestV3Result) =>
+          sendResponse({ ok: true, data }),
+        )
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "sim_decode_failed", message: String(err) },
           }),
         );
       return true;

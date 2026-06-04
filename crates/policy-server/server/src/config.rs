@@ -41,19 +41,11 @@ impl ServerConfig {
             bind_addr: env::var("POLICY_SERVER_ADDR")
                 .unwrap_or_else(|_| "127.0.0.1:8788".to_owned()),
             dashboard_url: env::var("DASHBOARD_URL")
-                .unwrap_or_else(|_| "http://127.0.0.1:5174".to_owned()),
+                .unwrap_or_else(|_| "http://127.0.0.1:5173".to_owned()),
             public_api_url: env::var("PUBLIC_API_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:8788".to_owned()),
             cors_allowed_origins: env::var("CORS_ALLOWED_ORIGINS")
-                .unwrap_or_else(|_| {
-                    [
-                        "http://127.0.0.1:5174",
-                        "http://localhost:5174",
-                        "http://127.0.0.1:5175",
-                        "http://localhost:5175",
-                    ]
-                    .join(",")
-                })
+                .unwrap_or_else(|_| ["http://127.0.0.1:5173", "http://localhost:5173"].join(","))
                 .split(',')
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
@@ -79,9 +71,9 @@ impl ServerConfig {
     pub fn for_tests() -> Self {
         Self {
             bind_addr: "127.0.0.1:0".to_owned(),
-            dashboard_url: "http://127.0.0.1:5174".to_owned(),
+            dashboard_url: "http://127.0.0.1:5173".to_owned(),
             public_api_url: "http://127.0.0.1:8788".to_owned(),
-            cors_allowed_origins: vec!["http://127.0.0.1:5174".to_owned()],
+            cors_allowed_origins: vec!["http://127.0.0.1:5173".to_owned()],
             allow_private_network: true,
             database_url: env::var("TEST_DATABASE_URL").ok().or_else(|| {
                 Some("postgres://scopeball:scopeball@127.0.0.1:5432/scopeball_test".to_owned())

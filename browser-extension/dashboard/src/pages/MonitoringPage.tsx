@@ -168,6 +168,14 @@ export function MonitoringPage() {
 
       {!isL2 && <ChainBreakdown summary={summaryQ.data} loading={summaryQ.isLoading} />}
 
+      {!isL2 && (
+        <WalletAssetRatio
+          wallets={wallets}
+          loading={summaryQ.isLoading}
+          onWalletClick={(addr) => setSelectionAndUrl(addr)}
+        />
+      )}
+
       {/* Lens + risk suggest banner */}
       <div className="lens-row">
         <LensToggle lens={lens} setLens={setLens} />
@@ -601,6 +609,98 @@ function ChainBreakdown({ summary, loading }: { summary?: DashboardSummary; load
               ${Number(c.usd).toLocaleString("en-US", { maximumFractionDigits: 0 })} · {c.pct.toFixed(2)}%
             </span>
           </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Wallet asset ratio (L1 only) ────────────────────────────────────────
+
+/**
+ * Per-wallet share of the workspace portfolio. Pulled straight from
+ * `summary.wallets[*].total_usd` (the same number the wallet card shows)
+ * so we don't have to fan out a holdings query just for the ratio.
+ *
+ * Wallets with 0 USD are shown as a single grey "기타" segment to avoid
+ * a noisy zero-width row.
+ */
+const WALLET_COLORS = [
+  "#0EA5A6", "#7C9CFF", "#F59E0B", "#EC4899", "#6366F1",
+  "#10B981", "#F97316", "#06B6D4", "#A855F7", "#EF4444",
+];
+function walletColor(i: number): string {
+  return WALLET_COLORS[i % WALLET_COLORS.length];
+}
+
+function WalletAssetRatio({
+  wallets,
+  loading,
+  onWalletClick,
+}: {
+  wallets: DashboardWalletSummary[];
+  loading: boolean;
+  onWalletClick: (addr: string) => void;
+}) {
+  if (loading) {
+    return <div className="chain-card"><div className="skeleton-row" style={{ width: "100%" }} /></div>;
+  }
+  const total = wallets.reduce((s, w) => s + Number(w.total_usd ?? "0"), 0);
+  if (total === 0) {
+    return (
+      <div className="chain-card">
+        <div className="cc-head">
+          <span className="cc-ttl">지갑별 자산 비율</span>
+          <span className="cc-meta">잔고 없음</span>
+        </div>
+      </div>
+    );
+  }
+  const rows = wallets
+    .map((w, i) => {
+      const usd = Number(w.total_usd ?? "0");
+      return {
+        addr: w.address,
+        label: w.label ?? shortAddr(w.address),
+        usd,
+        pct: (usd / total) * 100,
+        color: walletColor(i),
+      };
+    })
+    .sort((a, b) => b.usd - a.usd);
+  const shown = rows.filter((r) => r.usd > 0);
+
+  return (
+    <div className="chain-card">
+      <div className="cc-head">
+        <span className="cc-ttl">지갑별 자산 비율</span>
+        <span className="cc-meta">{wallets.length} wallets</span>
+      </div>
+      <div className="chain-bar">
+        {shown.map((r) => (
+          <div
+            key={r.addr}
+            className="chain-seg"
+            style={{ width: `${r.pct}%`, background: r.color }}
+            title={`${r.label} · ${r.pct.toFixed(2)}%`}
+          />
+        ))}
+      </div>
+      <div className="chain-legend">
+        {rows.map((r) => (
+          <button
+            key={r.addr}
+            type="button"
+            className="chain-leg wallet-leg"
+            onClick={() => onWalletClick(r.addr)}
+            title={`${r.label} 드릴다운`}
+          >
+            <span className="cl-dot" style={{ background: r.color }} />
+            <span className="cl-name">{r.label}</span>
+            <span className="cl-pct">
+              ${r.usd.toLocaleString("en-US", { maximumFractionDigits: 0 })} · {r.pct.toFixed(2)}%
+            </span>
+          </button>
         ))}
       </div>
     </div>

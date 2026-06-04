@@ -9,21 +9,15 @@ import {
 } from "../../server-api";
 import type { PolicySeverity } from "../../server-api";
 
-import { stampAnnotations } from "../../editor-v7/annotations";
-import { initialDoc as makeInitialDoc } from "../../editor-v7/doc";
-import { EditorShell, parseTree } from "../../editor-v7/EditorShell";
-import { serializeDoc } from "../../editor-v7/serialize";
-import { listTemplates, type PolicyTemplate } from "../../editor-v7/templates";
-import type { Doc } from "../../editor-v7/types";
+import { stampAnnotations } from "../../editor-v9/annotations";
+import { WorkspaceV9 } from "../../editor-v9/Workspace";
 
 import { nameFromPolicy, severityFromCedar } from "./policy-meta";
 
 /**
  * Shared editor body for the "new policy" and "edit policy" pages. Owns
- * the meta-row (name / severity / template / save / delete), the
- * `<EditorShell>` (Builder / Code toggle), and the put / delete
- * mutations. Lifted out of the old monolithic `EditorPage` so the
- * list view can live at its own route with its own layout.
+ * the meta-row (name / severity / save / delete) and the v9 Blockly
+ * `<WorkspaceV9>`, plus the put / delete mutations.
  *
  * Routing notes:
  * - `mode="new"`: caller renders this for `/editor/new`. On successful
@@ -32,12 +26,6 @@ import { nameFromPolicy, severityFromCedar } from "./policy-meta";
  * - `mode="edit"`: caller passes the loaded `policy`. On delete we
  *   call `onDeleted()` so the parent can `navigate("/editor")`.
  */
-
-type ShellSeed = {
-  initialCedarText: string;
-  initialDoc: Doc | null;
-  initialMode: "builder" | "code";
-};
 
 export interface EditorPanelProps {
   mode: "new" | "edit";
@@ -57,8 +45,10 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
   const [cedarText, setCedarText] = useState("");
   const [treeJson, setTreeJson] = useState<string | null>(null);
 
-  const [shellSeed, setShellSeed] = useState<ShellSeed | null>(null);
-  const [shellKey, setShellKey] = useState(0);
+  /** Force a Workspace remount when the seeded policy changes. */
+  const [workspaceKey, setWorkspaceKey] = useState(0);
+  const [initialJson, setInitialJson] = useState<object | null>(null);
+  const [ready, setReady] = useState(false);
 
   // Seed from props. Re-seeds whenever the parent swaps policy (e.g.
   // a refetch returns updated cedar text after a sibling tab edit).
@@ -66,31 +56,18 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
     if (mode === "new") {
       setName("");
       setSeverity("deny");
-      const seedDoc = makeInitialDoc({ action: "Amm::Swap" });
-      const seedCedar = serializeDoc(seedDoc);
-      setShellSeed({
-        initialCedarText: seedCedar,
-        initialDoc: seedDoc,
-        initialMode: "builder",
-      });
-      setShellKey((k) => k + 1);
-      setCedarText(seedCedar);
+      setCedarText("");
       setTreeJson(null);
-      return;
-    }
-    if (policy) {
+      setInitialJson(null);
+    } else if (policy) {
       setName(nameFromPolicy(policy));
       setSeverity(severityFromCedar(policy.text));
-      const parsedDoc = parseTree(policy.policyTree ?? null);
-      setShellSeed({
-        initialCedarText: policy.text,
-        initialDoc: parsedDoc,
-        initialMode: parsedDoc ? "builder" : "code",
-      });
-      setShellKey((k) => k + 1);
       setCedarText(policy.text);
       setTreeJson(policy.policyTree ?? null);
+      setInitialJson(tryParseV9Json(policy.policyTree ?? null));
     }
+    setWorkspaceKey((k) => k + 1);
+    setReady(true);
   }, [mode, policy]);
 
   // ── mutations ────────────────────────────────────────────────────
@@ -137,25 +114,12 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
     deleteMut.mutate();
   };
 
-  const onTemplatePick = (t: PolicyTemplate) => {
-    setSeverity(t.severity);
-    if (mode === "new" && !name) setName(t.name.ko || t.name.en);
-    setShellSeed({
-      initialCedarText: t.cedar_text,
-      initialDoc: null,
-      initialMode: "code",
-    });
-    setShellKey((k) => k + 1);
-    setCedarText(t.cedar_text);
-    setTreeJson(null);
-  };
-
   const saveDisabled = useMemo(() => {
     if (saveMut.isPending) return true;
     return !cedarText.trim();
   }, [saveMut.isPending, cedarText]);
 
-  if (!shellSeed) {
+  if (!ready) {
     return <div className="empty-editor"><div>로딩 중…</div></div>;
   }
 
@@ -178,7 +142,6 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
           <option value="info">info (정보)</option>
         </select>
         <span className="grow" />
-        <TemplateMenu onPick={onTemplatePick} />
         {mode === "edit" && policy && (
           <button
             className="btn-danger"
@@ -203,39 +166,31 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
         </div>
       )}
 
-      <EditorShell
-        key={shellKey}
-        initialCedarText={shellSeed.initialCedarText}
-        initialDoc={shellSeed.initialDoc}
-        initialMode={shellSeed.initialMode}
-        onChange={(next) => {
-          setCedarText(next.cedarText);
-          setTreeJson(next.treeJson);
+      <WorkspaceV9
+        key={workspaceKey}
+        policyName={name.trim() || "untitled"}
+        initialJson={initialJson}
+        initialCedarText={mode === "edit" && policy ? policy.text : null}
+        onChange={({ cedarText: c, json }) => {
+          setCedarText(c);
+          setTreeJson(JSON.stringify({ v: 9, ws: json }));
         }}
       />
     </>
   );
 }
 
-function TemplateMenu({ onPick }: { onPick: (t: PolicyTemplate) => void }) {
-  const templates = listTemplates();
-  return (
-    <select
-      onChange={(e) => {
-        const t = templates.find((x) => x.id === e.target.value);
-        if (t) onPick(t);
-        e.target.value = "";
-      }}
-      defaultValue=""
-    >
-      <option value="" disabled>
-        📋 템플릿 불러오기…
-      </option>
-      {templates.map((t) => (
-        <option key={t.id} value={t.id}>
-          {t.name.ko || t.name.en}
-        </option>
-      ))}
-    </select>
-  );
+/** v9 stores its workspace JSON wrapped as `{ v:9, ws: {...} }`. Older
+ *  v7/v8 docs (no `v:9` marker) are ignored so the editor seeds clean. */
+function tryParseV9Json(s: string | null): object | null {
+  if (!s) return null;
+  try {
+    const obj = JSON.parse(s);
+    if (obj && typeof obj === "object" && (obj as { v?: number }).v === 9) {
+      return (obj as { ws: object }).ws;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }

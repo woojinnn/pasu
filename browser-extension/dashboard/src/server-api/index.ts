@@ -122,9 +122,49 @@ export {
   dashboardId,
   stripDashboardId,
   type ManagedPolicy,
+  listPolicySets,
+  putPolicySet,
+  deletePolicySet,
+  dashboardSetId,
+  stripDashboardSetId,
+  type PolicySet,
+  type PutPolicySetOpts,
 } from "./extension-sync";
 
 export { subscribeToBroadcast } from "./extension-bridge";
+
+export {
+  listListings,
+  getListing,
+  getListingVersion,
+  createListing,
+  createVersion,
+  installListing,
+  listReviews,
+  createReview,
+  voteHelpful,
+  watchListing,
+  unwatchListing,
+  listWatches,
+  pickI18n,
+  type ListingKind,
+  type PublisherTier,
+  type ListingStatus,
+  type Severity as MarketSeverity,
+  type ListingSort,
+  type I18nText,
+  type SetMember,
+  type ListingSummary,
+  type ListingVersion,
+  type ListingDetail,
+  type Review,
+  type ListListingsParams,
+  type CreatePolicyListingBody,
+  type CreateSetListingBody,
+  type CreateListingBody,
+  type CreateVersionBody,
+  type CreateReviewBody,
+} from "./market";
 
 // Shared primitive types — kept in one file (./types) to mirror the
 // Rust DTOs. Re-exported here so consumer pages can

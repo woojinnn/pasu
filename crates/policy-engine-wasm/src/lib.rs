@@ -22,6 +22,7 @@ mod exports;
 pub mod field_catalog;
 mod metamorpho_underlying;
 mod policy_request_exports;
+mod sim_step_exports;
 mod trigger_exports;
 
 use wasm_bindgen::prelude::*;
@@ -48,4 +49,5 @@ pub use exports::{
     preview_installed_schema_json, preview_schema_json,
 };
 pub use policy_request_exports::evaluate_policy_request_json;
+pub use sim_step_exports::simulate_step_json;
 pub use trigger_exports::evaluate_triggers_json;

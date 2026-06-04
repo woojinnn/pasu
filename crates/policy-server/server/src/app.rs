@@ -27,6 +27,7 @@ use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
 use crate::handler::{evaluate, HandlerError};
+use crate::market_handlers;
 use crate::read_handlers;
 use crate::write_handlers;
 
@@ -173,6 +174,37 @@ pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Route
         .route("/tokens", get(read_handlers::list_tokens))
         .route("/dashboard/summary", get(dashboard_handlers::get_summary))
         .route("/events/stream", get(crate::events::sse_stream))
+        // ---- Marketplace ---------------------------------------------------
+        .route(
+            "/market/listings",
+            get(market_handlers::list_listings).post(market_handlers::create_listing),
+        )
+        .route("/market/listings/:slug", get(market_handlers::get_listing))
+        .route(
+            "/market/listings/id/:id/versions",
+            post(market_handlers::create_version),
+        )
+        .route(
+            "/market/listings/id/:id/versions/:ver",
+            get(market_handlers::get_version),
+        )
+        .route(
+            "/market/listings/id/:id/install",
+            post(market_handlers::create_install),
+        )
+        .route(
+            "/market/listings/id/:id/reviews",
+            get(market_handlers::list_reviews).post(market_handlers::create_review),
+        )
+        .route(
+            "/market/listings/id/:id/watch",
+            post(market_handlers::watch).delete(market_handlers::unwatch),
+        )
+        .route(
+            "/market/reviews/:id/helpful",
+            post(market_handlers::vote_helpful),
+        )
+        .route("/market/watches", get(market_handlers::list_watches))
         // Selector decode + revoke calldata builder + Cedar sequence sim
         // all moved to the dashboard (apps/web/src/tools/* + cedar/).
         // The server holds only wallet state and sync lifecycle data.

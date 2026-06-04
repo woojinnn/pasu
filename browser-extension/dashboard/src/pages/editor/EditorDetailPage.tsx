@@ -1,18 +1,20 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { listManagedPolicies } from "../../server-api";
+import { listManagedPolicies, stripDashboardId } from "../../server-api";
 import { Topbar } from "../../shell/Topbar";
 
 import { EditorPanel } from "./EditorPanel";
+import { PublishModal, type PublishSource } from "./PublishModal";
 import { nameFromPolicy } from "./policy-meta";
 import "../editor.css";
 
 /**
  * `/editor/:id` — load the matching policy from the cached list and
  * render `<EditorPanel mode="edit">`. On delete, navigate back to the
- * list.
+ * list. The Publish button mounts a modal that POSTs the current cedar
+ * text to `/market/listings`.
  */
 export function EditorDetailPage() {
   const navigate = useNavigate();
@@ -29,15 +31,40 @@ export function EditorDetailPage() {
     [listQ.data, id],
   );
 
+  const [publishOpen, setPublishOpen] = useState(false);
+  const publishSource: PublishSource | null = useMemo(() => {
+    if (!policy) return null;
+    return {
+      kind: "policy",
+      cedarText: policy.text,
+      manifest: policy.manifest,
+      policyTree: policy.policyTree ?? null,
+      suggestedDisplayName: nameFromPolicy(policy),
+      suggestedSlug: stripDashboardId(policy.id),
+    };
+  }, [policy]);
+
   return (
     <>
       <Topbar
         here="Policy Editor"
         subtitle={policy ? nameFromPolicy(policy) : id || "…"}
         right={
-          <Link to="/editor" className="back-link">
-            ← 설치된 정책
-          </Link>
+          <>
+            {policy && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setPublishOpen(true)}
+                style={{ marginRight: 8 }}
+              >
+                ↑ Publish
+              </button>
+            )}
+            <Link to="/editor" className="back-link">
+              ← 설치된 정책
+            </Link>
+          </>
         }
       />
       <div className="editor-main editor-main-solo">
@@ -69,6 +96,11 @@ export function EditorDetailPage() {
           />
         )}
       </div>
+      <PublishModal
+        open={publishOpen}
+        source={publishSource}
+        onClose={() => setPublishOpen(false)}
+      />
     </>
   );
 }
