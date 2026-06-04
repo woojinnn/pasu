@@ -73,3 +73,51 @@ mod spike {
         assert!(error_ids.contains(&"c0_err".to_string()), "errored probe id in errors()");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+
+    // Reuse the swap fixture builder from the evaluate export's tests by
+    // duplicating the minimal swap_sample shape we need: a swap with a chosen
+    // slippage. (Kept local so this test module is self-contained.)
+    fn swap_input(slippage_bp: u32, probes: Value) -> String {
+        // The action/meta come from action_eval_exports' swap_sample via a tiny
+        // JSON mirror is brittle; instead drive through the public builder.
+        let (body, meta) = crate::action_eval_exports::tests::swap_sample_with_slippage(slippage_bp);
+        json!({
+            "action": body,
+            "meta": meta,
+            "tx": { "chain_id": "eip155:42161",
+                    "from": "0x1111111111111111111111111111111111111111",
+                    "to":   "0x2222222222222222222222222222222222222222" },
+            "bundles": [],
+            "results": {},
+            "probes": probes
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn diagnoses_true_and_false_slippage_probes() {
+        // Probe set: c0 = (slippageBp > 100). The fixture's slippage 150 trips it.
+        let probes = json!([
+            { "id": "c0", "est": {
+                "effect": "permit",
+                "principal": { "op": "All" }, "action": { "op": "All" }, "resource": { "op": "All" },
+                "conditions": [{ "kind": "when", "body":
+                    { ">": { "left": { ".": { "left": { "Var": "context" }, "attr": "slippageBp" } },
+                             "right": { "Value": 100 } } } }] } }
+        ]);
+
+        let out = run_diagnosis_probes_v2_json(swap_input(150, probes.clone()));
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["true_ids"], json!(["c0"]), "150 > 100 is true: {parsed}");
+
+        let out2 = run_diagnosis_probes_v2_json(swap_input(50, probes));
+        let parsed2: Value = serde_json::from_str(&out2).unwrap();
+        assert_eq!(parsed2["data"]["true_ids"], json!([]), "50 > 100 is false: {parsed2}");
+    }
+}

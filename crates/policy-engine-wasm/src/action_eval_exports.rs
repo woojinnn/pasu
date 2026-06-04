@@ -434,7 +434,7 @@ fn engine_error_verdict(error: EngineErrorDto) -> VerdictDto {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::too_many_lines)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use serde_json::{json, Value};
     use std::str::FromStr;
@@ -1040,7 +1040,7 @@ mod tests {
 
     /// `swap_sample` but with a caller-chosen `slippage_bp` so the shipped
     /// `slippageBp > 100` guard can be made to trip (150) or not (50).
-    fn swap_sample_with_slippage(bp: u32) -> (ActionBody, ActionMeta) {
+    pub(crate) fn swap_sample_with_slippage(bp: u32) -> (ActionBody, ActionMeta) {
         let (body, meta) = swap_sample();
         let ActionBody::Amm(AmmAction::Swap(mut swap)) = body else {
             unreachable!("swap_sample yields an amm swap")
