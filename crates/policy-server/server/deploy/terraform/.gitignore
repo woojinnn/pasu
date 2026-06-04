@@ -5,4 +5,5 @@
 .terraform.tfstate.lock.info
 crash.log
 crash.*.log
+*.tfplan
 # Keep .terraform.lock.hcl committed (provider version lock).
