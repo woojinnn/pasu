@@ -422,13 +422,23 @@ export async function installDeclarativeBundleV3(
     v3CachedBundleByCallKey.set(k, parsedBundle);
   }
 
-  // Layer 2 persist — mirror the fresh install into chrome.storage.local
-  // so the next SW cold-start can rehydrate without another
-  // registry-api-v3 fetch. We mirror EVERY callkey the bundle covers
-  // (chain_to_addresses cartesian) under the same entry shape; the
-  // serialized payload is small (single shared bundle reference per
-  // record on disk after JSON serialize-deserialize) and the cap of 256
-  // entries gates DoS.
+  // Layer 2 persist — mirror the fresh install into chrome.storage.local so
+  // the next SW cold-start can rehydrate THIS callkey without another
+  // registry-api-v3 fetch. We persist ONLY the requested callkey, NOT the
+  // bundle's full `chain_to_addresses` cartesian. Rationale: every
+  // `declarativeV3Cache.put` re-serializes the ENTIRE growing record and
+  // does a full `storage.local.set` (see declarative-v3-cache.ts), so the
+  // old fan-out — one awaited put per address — was O(N²) writes. A
+  // large-match bundle (e.g. `standard/erc20/approve`, ~3891 token
+  // addresses) spent ~7.7s in this loop on first install, blowing the
+  // `HARD_TIMEOUT_MS = 8000` decision budget (the `__engine::timeout`
+  // 8s overrun). Coverage is unaffected: siblings stay routable for THIS SW
+  // lifetime via the in-memory mirror above + the WASM bridge (one install
+  // bridges every address in the served match); on a cold SW restart an
+  // as-yet-unseen sibling token simply re-fetches its own tiny by-callkey
+  // file on demand — a cache-warmth trade, never a route miss. (The old
+  // `MAX_CALLKEYS = 256` cap already evicted all but the last 256 fanned-out
+  // entries anyway, so almost no durable warmth is lost.)
   const fetchedAtMs = Date.now();
   const sha256 = parsedResponse.bundle_sha256 ?? "";
   const persistEntry: DeclarativeV3CacheEntry = {
@@ -440,11 +450,6 @@ export async function installDeclarativeBundleV3(
   };
   try {
     await declarativeV3Cache.put(cacheKey, persistEntry);
-    for (const [cid, addr] of matchEntriesV3(parsedBundle.match)) {
-      const k = v3CallkeyCacheKey(cid, addr, sel);
-      if (k === cacheKey) continue; // already persisted above
-      await declarativeV3Cache.put(k, persistEntry);
-    }
   } catch (err) {
     // Persisting is best-effort — degrade gracefully so a storage fault
     // (quota exceeded etc.) cannot block the v3 install path itself.
