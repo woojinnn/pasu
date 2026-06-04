@@ -1,0 +1,391 @@
+{
+  "transactions": [
+    {
+      "intent": "sUSDe deposit(assets,receiver) \u2014 stake USDe, mint sUSDe (real tx block 25240556)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x5c0f41d3458cd20afa"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xbac009aeeb30656ea6fb64c685ccf822bbaead36"
+        }
+      ],
+      "tx_hash": "0x0a01ccf4a29e1077bee97eb6874f567989955a26618ba8b07be28f9a63598dcd",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0x6e553f6500000000000000000000000000000000000000000000005c0f41d3458cd20afa000000000000000000000000bac009aeeb30656ea6fb64c685ccf822bbaead36"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe deposit(assets,receiver) \u2014 stake USDe, mint sUSDe (real tx block 25239980)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x37b92c14836b502a"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xbb95d03ed65498d077e24b7b38c54e035d00057b"
+        }
+      ],
+      "tx_hash": "0x91d72878619a1a459b11e662411040eecb0e7d83569c5558c309d29d72ebc991",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0x6e553f6500000000000000000000000000000000000000000000000037b92c14836b502a000000000000000000000000bb95d03ed65498d077e24b7b38c54e035d00057b"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe cooldownShares(shares) \u2014 start 1d cooldown, lock USDe in silo (real tx block 25241198)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cooldown"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x26574d891b5dd10bb4ec"
+        },
+        {
+          "path": "$.data.actions[0].body.denomination",
+          "op": "equals",
+          "value": "shares"
+        }
+      ],
+      "tx_hash": "0x21d7bc9b09a3a634e4ad9920e9dd8e6f2580b2fec0212203c49fa9adea5cad2f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0x9343d9e10000000000000000000000000000000000000000000026574d891b5dd10bb4ec"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe cooldownShares(shares) \u2014 start 1d cooldown, lock USDe in silo (real tx block 25241190)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cooldown"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xcfdf3ea55dfdd040000"
+        },
+        {
+          "path": "$.data.actions[0].body.denomination",
+          "op": "equals",
+          "value": "shares"
+        }
+      ],
+      "tx_hash": "0x601c8cc64dfd1ab7f8f70ee082d62852ffb7ddd15cbc9215cc2145370b8a8218",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0x9343d9e1000000000000000000000000000000000000000000000cfdf3ea55dfdd040000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe cooldownAssets(assets) \u2014 start 1d cooldown by underlying amount (real tx block 24901802)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "cooldown"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x4ba54f895b81f5798000"
+        },
+        {
+          "path": "$.data.actions[0].body.denomination",
+          "op": "equals",
+          "value": "assets"
+        }
+      ],
+      "tx_hash": "0xfb7fd05d3eba6a20390775868729ec9de8f8cfc04843e12f61e7e1e44bffb953",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0xcdac52ed000000000000000000000000000000000000000000004ba54f895b81f5798000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe unstake(receiver) \u2014 claim full cooled USDe from silo post-cooldown (real tx block 25241141)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "redeem"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x3519ee4d387150f230baca90f5c50e9d296164c6"
+        }
+      ],
+      "tx_hash": "0x933f314b8164e43154ea0589a84b6bcd45d6e395cab0de85f9a4ae2fe1e885e6",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0xf2888dbb0000000000000000000000003519ee4d387150f230baca90f5c50e9d296164c6"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe unstake(receiver) \u2014 claim full cooled USDe from silo post-cooldown (real tx block 25241101)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "redeem"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x20bdc0755cdae1c5bc28b275c438db256a808835"
+        }
+      ],
+      "tx_hash": "0xf6589cf730b552cb47535cd992aca4f043895ce6fc0e8d529263bba3aeb1b012",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0xf2888dbb00000000000000000000000020bdc0755cdae1c5bc28b275c438db256a808835"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe mint(shares,receiver) \u2014 stake specifying shares out (SYNTHETIC: 0 real tx in 10k window)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x878678326eac900000"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x00000000000000000000000000000000000000aa"
+        }
+      ],
+      "tx_hash": "",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0x94bf804d0000000000000000000000000000000000000000000000878678326eac90000000000000000000000000000000000000000000000000000000000000000000aa"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "sUSDe redeem(shares,receiver,_owner) \u2014 ERC4626 redeem, cooldown-off path (SYNTHETIC: reverts while cooldownDuration>0)",
+      "expect": "pass",
+      "expect_domain": "staking",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "redeem"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "ethena_staked_usde"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3635c9adc5dea00000"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x00000000000000000000000000000000000000bb"
+        }
+      ],
+      "tx_hash": "",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+            "value": "0",
+            "data": "0xba08765200000000000000000000000000000000000000000000003635c9adc5dea0000000000000000000000000000000000000000000000000000000000000000000bb00000000000000000000000000000000000000000000000000000000000000cc"
+          }
+        ]
+      }
+    }
+  ]
+}

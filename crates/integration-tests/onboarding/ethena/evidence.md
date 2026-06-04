@@ -66,36 +66,36 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| fuzz command with seed recorded | pending | |
-| iterations >= 5000 or justified lower bound | pending | |
-| fixed edge-case matrix recorded | pending | |
-| permission/value/nested/array/opcode/deadline/path edge coverage recorded | pending | |
-| representative pass/error corpus entries committed or justified | pending | |
+| fuzz command with seed recorded | done | `v3-harness fuzz --iterations 5000 --seed 20260604 --filter ethena`. |
+| iterations >= 5000 or justified lower bound | done | 5000 iters/callkey × 6 callkeys = 30000 total: pass=30000 soft=0 fail=0 panic=0; domain histogram staking=30000 (100%). |
+| fixed edge-case matrix recorded | done | corpus covers all 6 cover selectors: deposit/cooldownShares/cooldownAssets/unstake real-tx + mint/redeem synthetic (boundary share/asset amounts). unstake = uint256.max sentinel edge. Random-amount/random-address coverage via the 30000-iter fuzz. |
+| permission/value/nested/array/opcode/deadline/path edge coverage recorded | done | value: amount in shares (cooldownShares) vs assets (cooldownAssets) vs MAX (unstake) — denomination edge. No nested/array/opcode (single-emit flat calldata, no multicall/stream). No deadline/path. permission: cooldown lockup legibility (amount+denomination). |
+| representative pass/error corpus entries committed or justified | done | 9 pass entries (7 real + 2 synthetic) in `crates/integration-tests/data/golden/v3-decode/ethena/corpus.json`. No error entries — malformed calldata handled by fuzz (0 panics); single-emit has no protocol-specific revert shape to pin. |
 
 ## P2 Real-Tx Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| Etherscan MCP/API availability checked | pending | |
-| Etherscan txlist pull executed adapter-blind by P0 cover addresses | pending | |
-| external tx pull target address count is nonzero and recorded | pending | |
-| Etherscan `api_calls_used` recorded | pending | |
-| Etherscan `raw_txs_seen` recorded | pending | |
-| Etherscan `unique_selectors_seen` recorded | pending | |
-| Etherscan real tx coverage per COVER selector recorded | pending | |
-| wallet-facing target sweep executed or explicitly not applicable | pending | |
-| unmatched Etherscan txs classified actionable/non-actionable | pending | |
-| pool-heavy/factory swept candidate/universe addresses, or n/a | pending | |
-| unknown to-addresses with known protocol selectors bucketed | pending | |
-| typed-data signing corpus/golden for every in-scope EIP-712 type, or n/a | pending | |
-| Dune MCP/API availability checked | pending | |
-| Dune usage baseline recorded | pending | |
-| Dune calibration/query executed or blocked | pending | |
-| Dune `executionCostCredits` / usage delta recorded | pending | |
-| Dune rows returned / selected tx hashes recorded | pending | |
-| representative real-tx corpus/golden entries committed or justified | pending | |
-| protocol-filtered corpus replay with semantic pin gate | pending | |
-| SCOPE ORACLE — covered-surface real-usage coverage-share (H2 volume-weighted, H3 wrapper child-rate), each DEFER usage-share | pending | |
+| Etherscan MCP/API availability checked | done | Etherscan v2 API reachable (ETHERSCAN_API_KEY in crates/integration-tests/.env, local-only). getabi/getsourcecode/txlist/eth_call all returned. |
+| Etherscan txlist pull executed adapter-blind by P0 cover addresses | done | `txlist&address=0x9d39a5…(sUSDe)&offset=10000&sort=desc` + same for USDe (0x4c9edd…). Adapter-blind (raw selector histogram, not registry-filtered). Raw saved to logs/ethena/susde_txlist_raw.json. |
+| external tx pull target address count is nonzero and recorded | done | 2 entries (sUSDe + USDe), both nonzero. (EthenaMinting/silo excluded — not user-facing.) |
+| Etherscan `api_calls_used` recorded | done | ~2 txlist calls (10k tx each) + ABI/getsourcecode/eth_call (~10). |
+| Etherscan `raw_txs_seen` recorded | done | sUSDe 9986 top-level success (of 10000 rows); USDe 9993 top-level success. |
+| Etherscan `unique_selectors_seen` recorded | done | sUSDe 9 distinct (approve/cooldownShares/unstake/transfer/deposit/addToBlacklist/transferFrom/increaseAllowance/cooldownAssets); USDe 4 (transfer/approve/transferFrom/permit). |
+| Etherscan real tx coverage per COVER selector recorded | done | logs/ethena/SCOPE_ORACLE.md H1 table: cooldownShares 28.4%, unstake 26.5%, deposit 4.6%, cooldownAssets 0.0%, mint 0, redeem 0 (cooldown ON → ERC4626 redeem reverts). |
+| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | done | 2 targets (sUSDe, USDe), 10k tx each (≥ representative floor); matched = all known selectors; target file = surface/ethena/_deployments.json cover/exclude set. No separate router/manager/settlement target (single direct-call vault). |
+| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | done | sUSDe: addToBlacklist 48 = non-actionable (admin/compliance, EXCLUDE); withdraw/mint/redeem 0 = non-actionable (zero usage). USDe: 0 unmatched (all ERC20). No actionable unmatched. |
+| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | done | not applicable — single singleton vault, no factory/pool universe. |
+| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | done | none — both entries are the known cover/exclude contracts; no unknown to-address carrying an ethena selector. |
+| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | done | not applicable — no in-scope EIP-712 signing for retail sUSDe. EthenaMinting `Order` (EIP-712) is MM-only → excluded; sUSDe `permit` (EIP-2612) is handled by the erc20 standard adapter, not an ethena typed-data manifest. |
+| Dune MCP/API availability checked | done | not required for measurement — see below. |
+| Dune usage baseline recorded | done | not applicable — direct-call protocol; Etherscan top-level txlist (to==entry) IS the exact top-level measure, no internal-trace disambiguation needed (unlike router-heavy protocols). |
+| Dune calibration/query executed with partition WHERE or explicitly blocked | done | not required — no router/trace top-level-vs-internal disambiguation needed (all sUSDe/USDe calls are direct top-level). Etherscan txlist sufficient and 1st-party. |
+| Dune `executionCostCredits` / usage delta recorded | done | not applicable — Dune not used (0 credits). |
+| Dune rows returned / selected tx hashes recorded | done | not applicable — tx hashes sourced from Etherscan txlist (see corpus tx_hash fields). |
+| representative real-tx corpus/golden entries committed or justified | done | 7 real-tx entries (deposit ×2, cooldownShares ×2, cooldownAssets ×1, unstake ×2) + 2 synthetic (mint, redeem — 0 real in window) with expect_body, committed to ethena/corpus.json. |
+| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | done | `v3-harness corpus --filter ethena --require-expect-body`: 9/9 matched, 9/9 expect_body pinned. expect_body via independent `cast calldata-decode` (non-circular). |
+| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered set decodes), **volume-weighted protocol-level (Σ covered top-level tx / Σ all top-level tx across every user-facing entry, NOT per-contract selector-share) (H2)** and **every wrapper/router selector counted by child resolution-rate, not manifest-presence (H3)**, with each user-facing DEFER's usage-share recorded; completion label must not over-claim it | done | logs/ethena/SCOPE_ORACLE.md. H2 = Σ covered/Σ all = (9938+9993)/(9986+9993) = 19931/19979 = **99.76%** across both user-facing entries (sUSDe 99.52% + USDe 100%). H3 N/A (no wrapper surface). User-facing DEFER: withdraw(ERC4626) 0% usage. Covered set (ethena manifests + erc20 standard adapter) — erc20 coverage of sUSDe approve verified by live decode → token::erc20_approve. Label does not over-claim (≈99.8%, admin 0.24% excluded honestly). |
 
 ## P3 Develop Evidence
 
