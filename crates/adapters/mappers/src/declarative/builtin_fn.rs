@@ -2318,6 +2318,7 @@ mod tests {
         assert_eq!(arr[1]["token_id"], json!("2"));
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn basic_params(
         cons_token: &str,
         cons_id: &str,

@@ -70,14 +70,17 @@ fn lower_market_item(item: &MarketItem) -> Value {
     if let Some(token_id) = item.token_id {
         m.insert("tokenId".into(), Value::String(u256_hex(token_id)));
     }
-    let mut any_token = false;
     if let Some(root) = &item.criteria_root {
         m.insert("criteriaRoot".into(), Value::String(root.clone()));
-        any_token = matches!(
+    }
+    // `anyToken` (the load-bearing "any NFT in collection" signal) is derived:
+    // a criteria-kind item whose criteria root is all-zero.
+    let any_token = item.criteria_root.as_deref().is_some_and(|root| {
+        matches!(
             item.kind,
             MarketItemKind::Erc721Criteria | MarketItemKind::Erc1155Criteria
-        ) && is_zero_bytes(root);
-    }
+        ) && is_zero_bytes(root)
+    });
     m.insert("anyToken".into(), Value::Bool(any_token));
     m.insert(
         "startAmount".into(),
