@@ -1,0 +1,37 @@
+{
+  "id": "x402-near-full-usdc-balance-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": {
+        "eq": "erc3009_transfer_with_auth"
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "usdc-outflow-fraction",
+      "method": "portfolio.input_fraction_bps",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "asset": "$.action.token",
+        "amount": "$.action.value"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "usdcOutflowBps",
+          "type": "Long",
+          "from": "$.result.bps"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "usdcOutflowBps": "Long"
+    }
+  }
+}

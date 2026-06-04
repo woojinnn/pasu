@@ -1,0 +1,25 @@
+{
+  "id": "approve-dormant-deprecated-contract-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+  "policy_rpc": [
+    {
+      "id": "spender-dormant-deprecated",
+      "method": "approval.spender_dormant_deprecated",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "spender": "$.action.spender"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "spenderDormantDeprecated",
+          "type": "Bool",
+          "from": "$.result.dormantOrDeprecated"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "spenderDormantDeprecated": "Bool" } }
+}

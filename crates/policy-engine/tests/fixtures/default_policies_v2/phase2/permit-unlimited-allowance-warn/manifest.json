@@ -1,0 +1,12 @@
+{
+  "id": "permit-unlimited-allowance-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "permit2_sign_allowance" } } },
+  "policy_rpc": [
+    { "id": "amount-unlimited", "method": "permit.amount_unlimited",
+      "params": { "amount": "$.action.amount" },
+      "outputs": [ { "kind": "context", "field": "permitIsUnlimited", "type": "Bool", "from": "$.result.isUnlimited" } ],
+      "optional": true }
+  ],
+  "custom_context": { "fields": { "permitIsUnlimited": "Bool" } }
+}

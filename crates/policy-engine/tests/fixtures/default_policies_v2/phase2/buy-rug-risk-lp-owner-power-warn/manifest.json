@@ -1,0 +1,37 @@
+{
+  "id": "buy-rug-risk-lp-owner-power-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "token-rug-risk",
+      "method": "external.token_rug_risk",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "asset": "$.action.tokenOut"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "lpUnlockedOrDevConcentrated",
+          "type": "Bool",
+          "from": "$.result.lp_unlocked_or_dev_concentrated"
+        },
+        {
+          "kind": "context",
+          "field": "ownerHasMintOrBlacklist",
+          "type": "Bool",
+          "from": "$.result.owner_has_mint_or_blacklist"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "lpUnlockedOrDevConcentrated": "Bool",
+      "ownerHasMintOrBlacklist": "Bool"
+    }
+  }
+}

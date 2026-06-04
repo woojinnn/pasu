@@ -1,0 +1,51 @@
+{
+  "id": "honeypot-buy-block-presign",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": { "eq": "swap" }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "honeypot-sell-sim",
+      "method": "honeypot.sim",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "token": "$.action.tokenOut",
+        "router": "$.action.venue"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "honeypot",
+          "type": "Record",
+          "from": "$.result"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "honeypot": {
+        "type": "Record",
+        "fields": {
+          "canBuy": "Bool",
+          "canSell": "Bool",
+          "sellReverts": "Bool",
+          "sellTaxRatio": "decimal",
+          "taxModifiable": "Bool",
+          "ownerCanBlacklist": "Bool"
+        }
+      }
+    }
+  },
+  "infra_needs": {
+    "kind": "needs-external",
+    "summary": "Honeypot simulation oracle (policy-rpc sidecar): forks current chain state and simulates a buy-then-sell round-trip on tokenOut through the swap router to measure sellability, effective sell tax, sell-revert, and owner-modifiable-tax / owner-blacklist flags. Proven & live in GoPlus Token Security and Honeypot.is; ScopeBall's novelty is wiring it to the pre-sign swap gate. Reuses ScopeBall's existing per-chain router registry for the router address.",
+    "new_method": "honeypot.sim(chain_id, owner, token, router) -> { canBuy, canSell, sellReverts, sellTaxRatio, taxModifiable, ownerCanBlacklist }",
+    "supersedes_fixture": "swap-out-token-honeypot-warn (UNI-05) — coarse classification-registry WARN; this upgrades to an active sell-simulation FAIL"
+  }
+}

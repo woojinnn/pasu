@@ -1,0 +1,30 @@
+{
+  "id": "morpho-blue-unrecognized-market-supply-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": { "eq": "supply" },
+      "action.venue": { "eq": "morpho_blue" }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "market-recognized",
+      "method": "external.morpho_market_recognized",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "venue": "$.action.venue"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "marketNotRecognized",
+          "type": "Bool",
+          "from": "$.result.notRecognized"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "marketNotRecognized": "Bool" } }
+}

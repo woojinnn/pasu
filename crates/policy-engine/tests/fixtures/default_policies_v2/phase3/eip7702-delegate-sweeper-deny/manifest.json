@@ -1,0 +1,65 @@
+{
+  "id": "eip7702-delegate-sweeper-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "eip7702_authorize" } } },
+  "policy_rpc": [
+    {
+      "id": "delegate-drainer-screen",
+      "method": "external.address_blocklisted",
+      "params": {
+        "chain_id": "$.action.authChainId",
+        "address": "$.action.delegate"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "delegateIsKnownDrainer",
+          "type": "Bool",
+          "from": "$.result.blocklisted"
+        }
+      ],
+      "optional": true
+    },
+    {
+      "id": "delegate-bytecode-classify",
+      "method": "external.delegate_bytecode_class",
+      "params": {
+        "chain_id": "$.action.authChainId",
+        "address": "$.action.delegate"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "delegateIsSweeperBytecode",
+          "type": "Bool",
+          "from": "$.result.isSweeper"
+        }
+      ],
+      "optional": true
+    },
+    {
+      "id": "delegate-safe-allowlist",
+      "method": "external.delegate_canonical_allowlisted",
+      "params": {
+        "chain_id": "$.action.authChainId",
+        "address": "$.action.delegate"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "delegateIsKnownSafe",
+          "type": "Bool",
+          "from": "$.result.allowlisted"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "delegateIsKnownDrainer": "Bool",
+      "delegateIsSweeperBytecode": "Bool",
+      "delegateIsKnownSafe": "Bool"
+    }
+  }
+}

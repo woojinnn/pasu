@@ -1,0 +1,26 @@
+{
+  "id": "self-exclusion-block-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "venue-self-excluded",
+      "method": "order.venue_self_excluded",
+      "params": {
+        "owner": "$.root.from",
+        "chain_id": "$.root.chain_id",
+        "venue": "$.action.venue"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "venueSelfExcluded",
+          "type": "Bool",
+          "from": "$.result.excluded"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "venueSelfExcluded": "Bool" } }
+}

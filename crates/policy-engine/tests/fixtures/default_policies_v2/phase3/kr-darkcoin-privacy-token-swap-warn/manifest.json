@@ -1,0 +1,36 @@
+{
+  "id": "kr-darkcoin-privacy-token-swap-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "out-token-darkcoin-classification",
+      "method": "external.kr_darkcoin_classification",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.tokenOut"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "outTokenIsDarkcoin",
+          "type": "Bool",
+          "from": "$.result.is_anonymity_coin"
+        },
+        {
+          "kind": "context",
+          "field": "outTokenDelistedKr",
+          "type": "Bool",
+          "from": "$.result.delisted_by_kr_exchanges"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "outTokenIsDarkcoin": "Bool",
+      "outTokenDelistedKr": "Bool"
+    }
+  }
+}

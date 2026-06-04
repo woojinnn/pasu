@@ -1,0 +1,43 @@
+{
+  "id": "perp-revenge-reentry-cooldown-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "open_position" } } },
+  "policy_rpc": [
+    {
+      "id": "last-loss-event",
+      "method": "perp.last_loss_event",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "secondsSinceLastLoss",
+          "type": "Long",
+          "from": "$.result.secondsSinceLastLoss"
+        },
+        {
+          "kind": "context",
+          "field": "lastLossMarketSymbol",
+          "type": "String",
+          "from": "$.result.marketSymbol"
+        },
+        {
+          "kind": "context",
+          "field": "lastLossSide",
+          "type": "String",
+          "from": "$.result.side"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "secondsSinceLastLoss": "Long",
+      "lastLossMarketSymbol": "String",
+      "lastLossSide": "String"
+    }
+  }
+}

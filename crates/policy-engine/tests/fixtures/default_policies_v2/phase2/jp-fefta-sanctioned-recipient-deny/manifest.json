@@ -1,0 +1,26 @@
+{
+  "id": "jp-fefta-sanctioned-recipient-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [
+    {
+      "id": "recipient-sanctioned",
+      "method": "external.address_blocklisted",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "address": "$.action.recipient",
+        "list_source": "jp_mof_fefta+ofac_sdn"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "recipientSanctioned",
+          "type": "Bool",
+          "from": "$.result.blocklisted"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "recipientSanctioned": "Bool" } }
+}

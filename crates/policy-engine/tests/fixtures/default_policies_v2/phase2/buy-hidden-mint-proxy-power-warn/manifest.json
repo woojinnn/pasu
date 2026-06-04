@@ -1,0 +1,63 @@
+{
+  "id": "buy-hidden-mint-proxy-power-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": {
+        "eq": "swap"
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "out-token-contract-powers",
+      "method": "external.token_contract_powers",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.tokenOut"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "outTokenHasMintPower",
+          "type": "Bool",
+          "from": "$.result.has_mint_power"
+        },
+        {
+          "kind": "context",
+          "field": "outTokenHasBlacklistPower",
+          "type": "Bool",
+          "from": "$.result.has_blacklist_power"
+        },
+        {
+          "kind": "context",
+          "field": "outTokenHasPausablePower",
+          "type": "Bool",
+          "from": "$.result.has_pausable_power"
+        },
+        {
+          "kind": "context",
+          "field": "outTokenHasOwnerOnlyTransfer",
+          "type": "Bool",
+          "from": "$.result.has_owner_only_transfer"
+        },
+        {
+          "kind": "context",
+          "field": "outTokenProxyUpgradable",
+          "type": "Bool",
+          "from": "$.result.proxy_upgradable"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "outTokenHasMintPower": "Bool",
+      "outTokenHasBlacklistPower": "Bool",
+      "outTokenHasPausablePower": "Bool",
+      "outTokenHasOwnerOnlyTransfer": "Bool",
+      "outTokenProxyUpgradable": "Bool"
+    }
+  }
+}

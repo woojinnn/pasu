@@ -1,0 +1,44 @@
+{
+  "id": "ap-doppelganger-recipient-guard",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [
+    {
+      "id": "recipient-doppelganger-history",
+      "method": "order.recipient_doppelganger_history",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "recipient": "$.action.recipient"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "recipientLookalike",
+          "type": "Bool",
+          "from": "$.result.lookalike"
+        },
+        {
+          "kind": "context",
+          "field": "recipientNeverConfirmed",
+          "type": "Bool",
+          "from": "$.result.never_confirmed"
+        },
+        {
+          "kind": "context",
+          "field": "recipientDustSeeded",
+          "type": "Bool",
+          "from": "$.result.dust_seeded"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "recipientLookalike": "Bool",
+      "recipientNeverConfirmed": "Bool",
+      "recipientDustSeeded": "Bool"
+    }
+  }
+}

@@ -300,6 +300,86 @@
     }
   },
   "planned": {
+    "external.morpho_market_recognized": {
+      "name": "external.morpho_market_recognized",
+      "status": "planned",
+      "origin": "factory-2026-06-03-morpho",
+      "description": "MORPHO: resolve a Morpho Blue market_id (carried by the venue) to its (loanToken, collateralToken, oracle, irm, lltv) and report whether the oracle + collateral + market are on Morpho's recognized allowlist (the RED-warning list). Permissionless market creation is unique to Morpho Blue. Drives morpho-blue-unrecognized-market-supply-warn. fail-open.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external Morpho market registry / recognized-market allowlist (not state DB)",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "venue": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.venue",
+          "description": "LendingVenue::MorphoBlue carrying the market_id hex; resolved to market params."
+        }
+      },
+      "returns": {
+        "kind": "scalar",
+        "type": "Bool",
+        "from": "$.result.notRecognized"
+      }
+    },
+    "external.morpho_vault_recognized": {
+      "name": "external.morpho_vault_recognized",
+      "status": "planned",
+      "origin": "factory-2026-06-03-morpho",
+      "description": "MORPHO: given a MetaMorpho / Morpho vault (carried by the venue), report whether it is on a recognized-curator allowlist. Curator-routed bad debt (Stream/xUSD, Nov-2025) is unique to Morpho's curated-vault layer. Drives morpho-vault-unrecognized-deposit-warn. fail-open.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external Morpho vault/curator registry (not state DB)",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "venue": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.venue",
+          "description": "LendingVenue carrying the vault address."
+        }
+      },
+      "returns": {
+        "kind": "scalar",
+        "type": "Bool",
+        "from": "$.result.notRecognized"
+      }
+    },
+    "external.morpho_spender_is_bundler_core": {
+      "name": "external.morpho_spender_is_bundler_core",
+      "status": "planned",
+      "origin": "factory-2026-06-03-morpho",
+      "description": "MORPHO: is the ERC20 approve spender the Morpho Bundler3 CORE entrypoint (no access control) rather than a known access-controlled adapter? Registry-pure classification. Drives morpho-approve-to-bundler-core-warn (Apr-2025 Bundler3 approval front-run, ~$2.6M at risk). fail-open.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "Morpho address-book registry (bundler3 core vs adapters)",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "spender": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.spender"
+        }
+      },
+      "returns": {
+        "kind": "scalar",
+        "type": "Bool",
+        "from": "$.result.isBundlerCore"
+      }
+    },
     "approval.unlimited_over_balance": {
       "name": "approval.unlimited_over_balance",
       "status": "planned",
@@ -370,6 +450,21 @@
           "type": "String",
           "required": true,
           "defaultSelector": "$.action.recipient"
+        },
+        "list": {
+          "type": "String",
+          "required": false,
+          "description": "Optional sanctions/blocklist identifier (e.g. ofac_sdn, eu_sanctions, jp_fefta) selecting WHICH list to screen against."
+        },
+        "list_source": {
+          "type": "String",
+          "required": false,
+          "description": "Optional blocklist/sanctions-list selector."
+        },
+        "sanctions_list": {
+          "type": "String",
+          "required": false,
+          "description": "Optional blocklist/sanctions-list selector."
         }
       },
       "returns": {
@@ -3205,6 +3300,344 @@
         "from": "$.result.symbol_spoof"
       },
       "origin": "policy-factory"
+    },
+    "lp.input_rebasing": {
+      "name": "lp.input_rebasing",
+      "status": "planned",
+      "description": "Does ANY token supplied in this add_liquidity carry TokenKind::Wrapped{peg_kind: Rebasing} (e.g. Lido stETH)? Rebasing LSTs supplied to a rebase-unaware AMM stop accruing rewards to the depositor. Drives lido-rebasing-steth-as-lp-warn.",
+      "readKind": "fold",
+      "server": "sim-server",
+      "stateDependency": [
+        "token_holdings.kind"
+      ],
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": "EIP-155 chain id."
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from",
+          "description": "Wallet supplying liquidity; used to read held token kinds."
+        },
+        "action": {
+          "type": "Action",
+          "required": true,
+          "defaultSelector": "$.action",
+          "description": "The add_liquidity action whose pooled tokens are inspected for a rebasing LST."
+        }
+      },
+      "returns": {
+        "kind": "scalar",
+        "type": "Bool",
+        "from": "$.result.rebasing"
+      },
+      "origin": "bundled"
+    },
+    "approval.spender_first_seen": {
+      "name": "approval.spender_first_seen",
+      "status": "planned",
+      "description": "auto-cataloged from approve-first-seen-spender-warn (policy-factory draft promotion).",
+      "readKind": "derived",
+      "server": "sim-server",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from",
+          "description": ""
+        },
+        "token": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.token",
+          "description": ""
+        },
+        "spender": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.spender",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "spenderIsFirstSeen": {
+            "type": "Bool",
+            "from": "$.result.isFirstSeen"
+          }
+        }
+      }
+    },
+    "external.fresh_domain_approval_phishing": {
+      "name": "external.fresh_domain_approval_phishing",
+      "status": "planned",
+      "description": "auto-cataloged from approve-fresh-domain-airdrop-context-deny (policy-factory draft promotion).",
+      "readKind": "external",
+      "server": "policy-rpc",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from",
+          "description": ""
+        },
+        "spender": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.spender",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "freshDomainApprovalPhishing": {
+            "type": "Bool",
+            "from": "$.result.flagged"
+          }
+        }
+      }
+    },
+    "external.token_contract_powers": {
+      "name": "external.token_contract_powers",
+      "status": "planned",
+      "description": "auto-cataloged from buy-hidden-mint-proxy-power-warn (policy-factory draft promotion).",
+      "readKind": "external",
+      "server": "policy-rpc",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "asset": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.tokenOut",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "outTokenHasMintPower": {
+            "type": "Bool",
+            "from": "$.result.has_mint_power"
+          },
+          "outTokenHasBlacklistPower": {
+            "type": "Bool",
+            "from": "$.result.has_blacklist_power"
+          },
+          "outTokenHasPausablePower": {
+            "type": "Bool",
+            "from": "$.result.has_pausable_power"
+          },
+          "outTokenHasOwnerOnlyTransfer": {
+            "type": "Bool",
+            "from": "$.result.has_owner_only_transfer"
+          },
+          "outTokenProxyUpgradable": {
+            "type": "Bool",
+            "from": "$.result.proxy_upgradable"
+          }
+        }
+      }
+    },
+    "external.token_rug_risk": {
+      "name": "external.token_rug_risk",
+      "status": "planned",
+      "description": "auto-cataloged from buy-rug-risk-lp-owner-power-warn (policy-factory draft promotion).",
+      "readKind": "external",
+      "server": "policy-rpc",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from",
+          "description": ""
+        },
+        "asset": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.tokenOut",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "lpUnlockedOrDevConcentrated": {
+            "type": "Bool",
+            "from": "$.result.lp_unlocked_or_dev_concentrated"
+          },
+          "ownerHasMintOrBlacklist": {
+            "type": "Bool",
+            "from": "$.result.owner_has_mint_or_blacklist"
+          }
+        }
+      }
+    },
+    "external.network_mismatch_loss": {
+      "name": "external.network_mismatch_loss",
+      "status": "planned",
+      "description": "auto-cataloged from send-wrong-network-mismatch-deny (policy-factory draft promotion).",
+      "readKind": "external",
+      "server": "policy-rpc",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "address": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.recipient",
+          "description": ""
+        },
+        "token_key": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.token.key",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "networkMismatch": {
+            "type": "Bool",
+            "from": "$.result.mismatch"
+          }
+        }
+      }
+    },
+    "external.recipient_seen_before": {
+      "name": "external.recipient_seen_before",
+      "status": "planned",
+      "description": "auto-cataloged from transfer-unknown-recipient-warn (policy-factory draft promotion).",
+      "readKind": "external",
+      "server": "policy-rpc",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from",
+          "description": ""
+        },
+        "recipient": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.recipient",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "recipientFirstSeen": {
+            "type": "Bool",
+            "from": "$.result.first_seen"
+          }
+        }
+      }
+    },
+    "permit.amount_unlimited": {
+      "name": "permit.amount_unlimited",
+      "status": "planned",
+      "description": "auto-cataloged from permit-unlimited-allowance-warn (policy-factory draft promotion).",
+      "readKind": "derived",
+      "server": "sim-server",
+      "params": {
+        "amount": {
+          "type": "U256",
+          "required": true,
+          "defaultSelector": "$.action.amount",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "permitIsUnlimited": {
+            "type": "Bool",
+            "from": "$.result.isUnlimited"
+          }
+        }
+      }
+    },
+    "honeypot.sim": {
+      "name": "honeypot.sim",
+      "status": "planned",
+      "description": "auto-cataloged from honeypot-buy-block-presign (policy-factory draft promotion).",
+      "readKind": "derived",
+      "server": "sim-server",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id",
+          "description": ""
+        },
+        "owner": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.root.from",
+          "description": ""
+        },
+        "token": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.tokenOut",
+          "description": ""
+        },
+        "router": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.venue",
+          "description": ""
+        }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "honeypot": {
+            "type": "Record",
+            "from": "$.result"
+          }
+        }
+      }
     }
   }
 }

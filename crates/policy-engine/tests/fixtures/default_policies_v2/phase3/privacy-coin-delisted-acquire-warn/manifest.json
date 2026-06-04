@@ -1,0 +1,27 @@
+{
+  "id": "privacy-coin-delisted-acquire-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "out-token-jp-privacy-coin",
+      "method": "token.swap_out_classification",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "asset": "$.action.tokenOut",
+        "registry": "jp_fsa_delisted_privacy_coins"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "outTokenJpDelistedPrivacy",
+          "type": "Bool",
+          "from": "$.result.jp_delisted_privacy_coin"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "outTokenJpDelistedPrivacy": "Bool" } }
+}

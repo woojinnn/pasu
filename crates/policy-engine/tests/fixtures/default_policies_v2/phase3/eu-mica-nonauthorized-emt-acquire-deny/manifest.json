@@ -1,0 +1,36 @@
+{
+  "id": "eu-mica-nonauthorized-emt-acquire-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "out-token-mica-eligibility",
+      "method": "external.mica_token_eligibility",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "asset": "$.action.tokenOut"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "outTokenIsEmt",
+          "type": "Bool",
+          "from": "$.result.is_emt"
+        },
+        {
+          "kind": "context",
+          "field": "outTokenIssuerAuthorized",
+          "type": "Bool",
+          "from": "$.result.issuer_authorized"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "outTokenIsEmt": "Bool",
+      "outTokenIssuerAuthorized": "Bool"
+    }
+  }
+}

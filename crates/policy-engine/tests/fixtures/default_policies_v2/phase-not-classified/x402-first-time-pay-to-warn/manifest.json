@@ -1,0 +1,36 @@
+{
+  "id": "x402-first-time-pay-to-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": {
+        "eq": "erc3009_transfer_with_auth"
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "recipient-first-seen",
+      "method": "external.recipient_first_seen",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "from": "$.root.from",
+        "recipient": "$.action.to"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "firstTimePayTo",
+          "type": "Bool",
+          "from": "$.result.first_time"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "firstTimePayTo": "Bool"
+    }
+  }
+}

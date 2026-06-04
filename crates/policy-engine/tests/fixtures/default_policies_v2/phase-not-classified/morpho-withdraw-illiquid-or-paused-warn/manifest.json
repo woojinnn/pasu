@@ -1,0 +1,10 @@
+{
+  "id": "morpho-withdraw-illiquid-or-paused-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": { "eq": "withdraw" },
+      "action.venue": { "in": ["morpho_blue", "morpho_optimizer"] }
+    }
+  }
+}

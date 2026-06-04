@@ -1,0 +1,34 @@
+{
+  "id": "x402-future-validafter-dormant-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": {
+        "eq": "erc3009_transfer_with_auth"
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "auth-start-horizon",
+      "method": "intent.start_horizon_sec",
+      "params": {
+        "valid_after": "$.action.validAfter"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "authStartHorizonSec",
+          "type": "Long",
+          "from": "$.result.startHorizonSec"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "authStartHorizonSec": "Long"
+    }
+  }
+}

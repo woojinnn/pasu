@@ -1,0 +1,26 @@
+{
+  "id": "approve-fresh-domain-airdrop-context-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+  "policy_rpc": [
+    {
+      "id": "fresh-domain-approval-phishing",
+      "method": "external.fresh_domain_approval_phishing",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "spender": "$.action.spender"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "freshDomainApprovalPhishing",
+          "type": "Bool",
+          "from": "$.result.flagged"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "freshDomainApprovalPhishing": "Bool" } }
+}

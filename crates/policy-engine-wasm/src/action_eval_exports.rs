@@ -279,6 +279,20 @@ fn evaluate_matching_bundles(
     let view = action.view();
     let tx_view = tx_view(tx);
 
+    // The signer (`tx.from`) is the Cedar principal `Wallet::"<from>"`. Policies
+    // such as `context.recipient != principal.address` need that principal
+    // entity to be present with its `address` attribute. In the schema-less
+    // per-policy path an absent `principal.address` makes the condition ERROR
+    // and the engine fails CLOSED, so every "is the recipient/delegatee me?"
+    // check would deny even when it IS self. The address is already known from
+    // the tx; lowercase it to match the lowercased recipient hex emitted by
+    // lowering (common::cedar).
+    let principal_entities = serde_json::json!([{
+        "uid": { "type": "Wallet", "id": tx.from.as_str() },
+        "attrs": { "address": tx.from.to_lowercase() },
+        "parents": [],
+    }]);
+
     let mut verdicts: Vec<Verdict> = Vec::new();
     for bundle in bundles {
         bundle
@@ -298,7 +312,7 @@ fn evaluate_matching_bundles(
                 &lowered.principal,
                 &lowered.action_uid,
                 &lowered.resource,
-                &Value::Array(Vec::new()),
+                &principal_entities,
                 context,
             )
             .map_err(|error| EngineErrorDto::new("policy", error.to_string()))?;
@@ -709,6 +723,71 @@ mod tests {
         assert_eq!(
             parsed["data"]["verdict"]["matched"][0]["policy_id"], "__system__",
             "{parsed}"
+        );
+    }
+
+    /// Regression: the signer (`tx.from`) is exposed as the Cedar principal
+    /// entity carrying its `address`, so `recipient != principal.address`
+    /// policies can tell self from other. Before the principal-entity fix the
+    /// per-policy path passed empty entities; `principal.address` errored and
+    /// the engine failed CLOSED — denying even when the recipient WAS the
+    /// signer. Asserts the asymmetry: other → deny(Fail), self → Pass.
+    #[test]
+    fn evaluate_action_v2_recipient_self_vs_other() {
+        let recipient_policy = "@id(\"recipient-not-self\")\n@severity(\"deny\")\n\
+             @reason(\"recipient is not your wallet\")\n\
+             forbid(principal, action == Amm::Action::\"Swap\", resource)\n\
+             when { context.recipient != principal.address };\n";
+        // Minimal cedar-only manifest: triggers on `swap`, no policy_rpc.
+        let manifest = json!({
+            "id": "recipient-not-self",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "swap" } } }
+        });
+        // `swap_sample`'s recipient is this address.
+        let recipient = "0x000000000000000000000000000000000000a01c";
+
+        // OTHER: signer (FROM) != recipient → the forbid fires → Fail (deny).
+        let (body, meta) = swap_sample();
+        let other_out = evaluate_action_v2_json(
+            json!({
+                "action": body,
+                "meta": meta,
+                "tx": { "chain_id": "eip155:42161", "from": FROM, "to": TO },
+                "bundles": [{ "policy": recipient_policy, "manifest": manifest }],
+                "results": {}
+            })
+            .to_string(),
+        );
+        let other: Value = serde_json::from_str(&other_out).unwrap();
+        assert_eq!(other["ok"], true, "{other}");
+        assert_eq!(
+            other["data"]["verdict"]["kind"], "fail",
+            "recipient != signer must deny: {other}"
+        );
+        assert_eq!(
+            other["data"]["verdict"]["matched"][0]["policy_id"], "recipient-not-self",
+            "{other}"
+        );
+
+        // SELF: signer == recipient → the forbid does NOT fire → Pass. Before
+        // the fix this wrongly Failed (entity-missing → fail-closed).
+        let (body, meta) = swap_sample();
+        let self_out = evaluate_action_v2_json(
+            json!({
+                "action": body,
+                "meta": meta,
+                "tx": { "chain_id": "eip155:42161", "from": recipient, "to": TO },
+                "bundles": [{ "policy": recipient_policy, "manifest": manifest }],
+                "results": {}
+            })
+            .to_string(),
+        );
+        let self_same: Value = serde_json::from_str(&self_out).unwrap();
+        assert_eq!(self_same["ok"], true, "{self_same}");
+        assert_eq!(
+            self_same["data"]["verdict"]["kind"], "pass",
+            "recipient == signer must pass (not fail-closed): {self_same}"
         );
     }
 

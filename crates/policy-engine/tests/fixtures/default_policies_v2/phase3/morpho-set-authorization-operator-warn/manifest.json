@@ -1,0 +1,31 @@
+{
+  "id": "morpho-set-authorization-operator-warn",
+  "schema_version": 2,
+  "_blocked_by": "action-model: requires Lending action variant 'set_authorization' (see proposed_action.md). Target form only — will not pass the gate until the variant exists.",
+  "trigger": {
+    "where": {
+      "action.tag": { "eq": "set_authorization" },
+      "action.venue": { "eq": "morpho_blue" }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "operator-recognized",
+      "method": "external.morpho_operator_recognized",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "operator": "$.action.operator"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "operatorNotRecognized",
+          "type": "Bool",
+          "from": "$.result.notRecognized"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "operatorNotRecognized": "Bool" } }
+}

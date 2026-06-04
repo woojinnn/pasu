@@ -1,0 +1,25 @@
+{
+  "id": "morpho-approve-to-bundler-core-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+  "policy_rpc": [
+    {
+      "id": "spender-bundler-core",
+      "method": "external.morpho_spender_is_bundler_core",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "spender": "$.action.spender"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "spenderIsBundlerCore",
+          "type": "Bool",
+          "from": "$.result.isBundlerCore"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "spenderIsBundlerCore": "Bool" } }
+}

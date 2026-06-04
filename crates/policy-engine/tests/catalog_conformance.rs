@@ -47,12 +47,24 @@ fn default_policies_dir() -> PathBuf {
     crate_root().join("tests/fixtures/default_policies_v2")
 }
 
+/// A bundle is BLOCKED-BY-ACTION iff its `policy.cedar` carries the
+/// `// BLOCKED-BY-ACTION` banner — it targets an action surface not yet in the
+/// schema (e.g. x402 / EIP-3009 `Token::Erc3009TransferWithAuth`), so its
+/// manifest may also reference not-yet-cataloged methods. Such bundles are
+/// staged in-tree (phase-not-classified) but skipped by every consumer until
+/// the banner is removed. See default_policies_v2/README.md.
+fn is_blocked_by_action(bundle: &Path) -> bool {
+    fs::read_to_string(bundle.join("policy.cedar"))
+        .map(|s| s.contains("// BLOCKED-BY-ACTION"))
+        .unwrap_or(false)
+}
+
 /// Collect every policy bundle dir under `root`, at ANY nesting depth. A
 /// directory is a bundle iff it directly contains a `manifest.json`; any other
 /// directory (`phaseN/`, `phase1/A/`, …) is a grouping dir and is recursed
 /// into. Supports the flat `<root>/<id>/`, phased `<root>/<phaseN>/<id>/`, and
 /// nested `<root>/<phaseN>/<sub>/<id>/` layouts alike. Non-dir entries
-/// (e.g. `.DS_Store`) are skipped.
+/// (e.g. `.DS_Store`) are skipped. BLOCKED-BY-ACTION bundles are skipped.
 fn collect_bundles(root: &Path) -> Vec<PathBuf> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         for entry in fs::read_dir(dir).expect("read default_policies_v2 fixture dir") {
@@ -62,7 +74,11 @@ fn collect_bundles(root: &Path) -> Vec<PathBuf> {
             }
             let path = entry.path();
             if path.join("manifest.json").is_file() {
-                out.push(path); // a bundle dir — do not descend into it
+                // a bundle dir — do not descend into it. Skip BLOCKED-BY-ACTION
+                // bundles (action surface not yet in schema; staged but inert).
+                if !is_blocked_by_action(&path) {
+                    out.push(path);
+                }
             } else {
                 walk(&path, out); // a grouping dir (phaseN, A/B, …) — recurse
             }

@@ -83,7 +83,14 @@ function copyDefaultPoliciesV2() {
         if (!entry.isDirectory()) continue;
         const full = path.join(dir, entry.name);
         if (fs.existsSync(path.join(full, "manifest.json"))) {
-          out.push({ id: entry.name, dir: full });
+          // A bundle dir. Skip BLOCKED-BY-ACTION bundles (target an action
+          // surface not yet in the schema, e.g. x402 Erc3009TransferWithAuth) —
+          // they must not ship to the extension until that surface lands.
+          const cedar = path.join(full, "policy.cedar");
+          const blocked =
+            fs.existsSync(cedar) &&
+            fs.readFileSync(cedar, "utf8").includes("// BLOCKED-BY-ACTION");
+          if (!blocked) out.push({ id: entry.name, dir: full });
         } else {
           walk(full);
         }

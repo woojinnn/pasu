@@ -1,0 +1,34 @@
+{
+  "id": "x402-auth-far-future-expiry-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": {
+        "eq": "erc3009_transfer_with_auth"
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "auth-validity-horizon",
+      "method": "auth.validity_horizon_sec",
+      "params": {
+        "valid_before": "$.action.validBefore"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "authHorizonSec",
+          "type": "Long",
+          "from": "$.result.horizonSec"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "authHorizonSec": "Long"
+    }
+  }
+}

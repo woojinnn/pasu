@@ -1,0 +1,30 @@
+{
+  "id": "morpho-vault-unrecognized-deposit-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": { "eq": "supply" },
+      "action.venue": { "eq": "morpho_optimizer" }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "vault-recognized",
+      "method": "external.morpho_vault_recognized",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "venue": "$.action.venue"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "vaultNotRecognized",
+          "type": "Bool",
+          "from": "$.result.notRecognized"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "vaultNotRecognized": "Bool" } }
+}

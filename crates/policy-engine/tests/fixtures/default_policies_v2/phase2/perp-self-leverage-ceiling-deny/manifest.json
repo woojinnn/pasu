@@ -1,0 +1,12 @@
+{
+  "id": "perp-self-leverage-ceiling-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "open_position" } } },
+  "policy_rpc": [
+    { "id": "order-leverage", "method": "perp.order_leverage",
+      "params": { "chain_id": "$.root.chain_id", "owner": "$.root.from", "action": "$.action" },
+      "outputs": [ { "kind": "context", "field": "orderLeverage", "type": "Decimal", "from": "$.result.leverage" } ],
+      "optional": true }
+  ],
+  "custom_context": { "fields": { "orderLeverage": "decimal" } }
+}

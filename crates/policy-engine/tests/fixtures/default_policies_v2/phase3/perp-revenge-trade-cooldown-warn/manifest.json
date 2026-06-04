@@ -1,0 +1,25 @@
+{
+  "id": "perp-revenge-trade-cooldown-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "open_position" } } },
+  "policy_rpc": [
+    {
+      "id": "seconds-since-last-loss",
+      "method": "perp.seconds_since_last_loss",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "secondsSinceLastLoss",
+          "type": "Long",
+          "from": "$.result.secondsSinceLastLoss"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "secondsSinceLastLoss": "Long" } }
+}

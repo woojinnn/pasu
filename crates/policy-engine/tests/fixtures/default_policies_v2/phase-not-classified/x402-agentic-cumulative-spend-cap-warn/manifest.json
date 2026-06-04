@@ -1,0 +1,46 @@
+{
+  "id": "x402-agentic-cumulative-spend-cap-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": {
+        "eq": "erc3009_transfer_with_auth"
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "x402-window-spend-state",
+      "method": "x402_budget.window_spend_state",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "token": "$.action.token",
+        "value": "$.action.value",
+        "to": "$.action.to",
+        "nonce": "$.action.nonce"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "budgetExceeded",
+          "type": "Bool",
+          "from": "$.result.budgetExceeded"
+        },
+        {
+          "kind": "context",
+          "field": "duplicateRecent",
+          "type": "Bool",
+          "from": "$.result.duplicateRecent"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "budgetExceeded": "Bool",
+      "duplicateRecent": "Bool"
+    }
+  }
+}

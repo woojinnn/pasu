@@ -1,0 +1,45 @@
+{
+  "id": "lido-rebasing-steth-as-lp-warn",
+  "schema_version": 2,
+  "trigger": {
+    "where": {
+      "action.tag": { "eq": "add_liquidity" },
+      "action.venue": {
+        "in": [
+          "uniswap_v2",
+          "uniswap_v3",
+          "uniswap_v4",
+          "balancer_v2",
+          "balancer_v3",
+          "maverick_v2",
+          "trader_joe_l_b"
+        ]
+      }
+    }
+  },
+  "policy_rpc": [
+    {
+      "id": "lp-rebasing",
+      "method": "lp.input_rebasing",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "action": "$.action"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "lpInputRebasing",
+          "type": "Bool",
+          "from": "$.result.rebasing"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "lpInputRebasing": "Bool"
+    }
+  }
+}

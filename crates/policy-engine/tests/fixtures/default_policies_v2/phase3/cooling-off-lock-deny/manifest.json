@@ -1,0 +1,25 @@
+{
+  "id": "cooling-off-lock-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [
+    {
+      "id": "cooling-off-active",
+      "method": "selfcontrol.cooling_off_active",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "coolingOffActive",
+          "type": "Bool",
+          "from": "$.result.lockActive"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "coolingOffActive": "Bool" } }
+}
