@@ -201,6 +201,17 @@ pub enum StakeVenue {
         #[tsify(type = "string")]
         vault: Address,
     },
+    /// Ethena Staked USDe (sUSDe, `StakedUSDeV2`) — an ERC4626 staking vault for
+    /// USDe whose withdrawal is gated behind a user-initiated cooldown
+    /// (`cooldownShares`/`cooldownAssets` → silo → `unstake`). A user
+    /// stakes/cooldowns/unstakes/redeems against it directly.
+    EthenaStakedUsde {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `StakedUSDeV2` (sUSDe) ERC4626 vault contract address.
+        #[tsify(type = "string")]
+        vault: Address,
+    },
 }
 
 impl StakeVenue {
@@ -220,6 +231,7 @@ impl StakeVenue {
             Self::AaveUmbrellaStakeToken { .. } => "aave_umbrella_stake_token",
             Self::AaveUmbrellaRewardsController { .. } => "aave_umbrella_rewards_controller",
             Self::AaveSavingsGho { .. } => "aave_savings_gho",
+            Self::EthenaStakedUsde { .. } => "ethena_staked_usde",
         }
     }
 }

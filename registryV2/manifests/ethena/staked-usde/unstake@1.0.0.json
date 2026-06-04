@@ -1,0 +1,54 @@
+{
+  "type": "adapter_action",
+  "id": "ethena/staked-usde/unstake@1.0.0",
+  "publisher": "ethena",
+  "note": "Ethena sUSDe unstake(address receiver) \u2014 claim the full cooled-down USDe from the silo to receiver after cooldownDuration elapsed. Maps to staking::Redeem (amount=uint256.max sentinel = full cooled balance; the share burn happened at cooldown time). selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xf2888dbb",
+    "chain_to_addresses": {
+      "1": [
+        "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "unstake",
+    "abi": {
+      "name": "unstake",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "redeem",
+        "redeem": {
+          "venue": {
+            "name": "ethena_staked_usde",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "amount": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

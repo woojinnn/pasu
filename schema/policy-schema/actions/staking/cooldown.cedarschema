@@ -1,6 +1,8 @@
-// Staking::Cooldown — start the safety-module unstake cooldown window (Aave
-// StakedTokenV3 `cooldown()`). No arguments; marks the caller's whole staked
-// balance as cooling down. `{ meta, venue }` only.
+// Staking::Cooldown — start the unstake cooldown window. Whole-balance (Aave
+// StakedTokenV3 `cooldown()`): no `amount`, marks the caller's entire staked
+// balance. Partial (Ethena StakedUSDeV2 `cooldownShares(shares)` /
+// `cooldownAssets(assets)`): `amount` + `denomination` say how much is moved into
+// the cooldown silo and in which unit.
 //
 // Rust source: crates/policy-server/asset-model/action/src/staking/cooldown.rs
 // (`CooldownAction`). No LiveInputs. `StakeVenue` is in core.cedarschema (Staking).
@@ -9,10 +11,15 @@ namespace Staking {
   type CooldownContext = {
     // Common envelope (submitter, submittedAt, nature).
     meta: Core::ActionMeta,
-    // Staking venue (safety module or Umbrella stake token).
+    // Staking venue (safety module, Umbrella stake token, or Ethena sUSDe).
     venue: StakeVenue,
     // Account whose stake is cooling down (Umbrella). Absent ⇒ submitter.
     account?: String,
+    // Quantity moved into cooldown (Ethena cooldownShares/cooldownAssets),
+    // U256 hex. Absent ⇒ whole staked balance (Aave cooldown()).
+    amount?: String,
+    // Unit of `amount`: "shares" | "assets". Present iff `amount` is present.
+    denomination?: String,
     // Manifest-extensible slot.
     custom?: CooldownCustomContext,
   };

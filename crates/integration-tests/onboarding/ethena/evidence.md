@@ -53,14 +53,14 @@
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| every COVER selector mapped to existing ActionBody or Tier3 requirement | pending | |
-| permission/fund-movement/red-flag selector review recorded | pending | |
-| manifest files added/changed listed | pending | |
-| enrichment/live_field decision recorded for every COVER action | pending | |
-| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | pending | |
-| Tier3 not needed or full Tier3 downstream contract completed | pending | |
-| Tier3 files listed if applicable | pending | |
-| `npm run check:manifest` or protocol-filtered validate output recorded | pending | |
+| every COVER selector mapped to existing ActionBody or Tier3 requirement | done | deposit(0x6e553f65)→staking::Stake; mint(0x94bf804d)→Stake(amount=shares); cooldownShares(0x9343d9e1)→Cooldown(amount=shares,denom=shares); cooldownAssets(0xcdac52ed)→Cooldown(amount=assets,denom=assets); unstake(0xf2888dbb)→Redeem(amount=uint256.max=full silo,recipient); redeem(0xba087652)→Redeem(amount=shares). All `staking` domain, venue=ethena_staked_usde. |
+| permission/fund-movement/red-flag selector review recorded | done | All 6 are fund-movement (stake-in / cooldown-lock / withdraw-out); no approve/permit/delegate primitive in cover set (those = ERC20 standard adapter on sUSDe/USDe). The permission-relevant primitive = the **cooldown lockup** (funds locked in silo for cooldownDuration=1d) — made legible via Cooldown.amount + denomination so a policy can bound the cooled quantity. unstake amount=uint256.max = "full cooled balance" (no calldata amount) → policies treating MAX as unbounded behave conservatively. No reentrancy/arbitrary-call surface (single vault). |
+| manifest files added/changed listed | done | NEW: registryV2/manifests/ethena/staked-usde/{deposit,mint,cooldown-shares,cooldown-assets,unstake,redeem}@1.0.0.json (6). |
+| enrichment/live_field decision recorded for every COVER action | done | NO enrichment / live_field for any action — all fields are pure static decode from calldata (amount/recipient/venue) + literal (denomination, unstake MAX). cooldownDuration is static token_kind metadata (sUSDe stake_receipt.unlock.cooldown 86400s), not a live field. |
+| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | done | none required — no enrichment / policy-RPC for any ethena action (static decode only). |
+| Tier3 not needed or full Tier3 downstream contract completed | done | Not a new domain/sub-action (staking::{Stake,Cooldown,Redeem} pre-exist). ActionBody extension (additive): StakeVenue::EthenaStakedUsde {chain,vault} + CooldownAction.{amount,denomination} + new CooldownDenomination{shares,assets} enum. cedarschema cooldown updated; lowering + venue lowering updated; 3 conformance tests (aave whole-balance + ethena shares + ethena assets) pass. No new effect/view/sync (Cooldown Reducer is no-op; no live inputs); no new Cedar action/registration (Cooldown already shipped/registered). |
+| Tier3 files listed if applicable: ActionBody/effect/view/sync/lowering_v2/cedarschema/schema registration/conformance test | done | Edited: crates/policy-server/asset-model/action/src/staking/{mod.rs (venue variant+name),cooldown.rs (amount/denomination/CooldownDenomination)}; crates/policy-engine/src/lowering_v2/staking/{mod.rs (lower_stake_venue arm + test_support venue helper),cooldown.rs (lower amount/denomination + 2 ethena tests)}; schema/policy-schema/actions/staking/cooldown.cedarschema (amount?/denomination?). |
+| `npm run check:manifest` or protocol-filtered validate output recorded | done | `npm run check:manifest`: build-index 1017 manifests, strict-callkeys OK; `validate (all): 2055 single_emit manifest(s) OK, 0 structural errors`. `v3-harness validate --filter ethena`: 6 single_emit OK, 0 structural errors (iters/manifest=24). |
 
 ## P2 Synthetic Evidence
 
