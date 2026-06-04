@@ -1,0 +1,38 @@
+// Marketplace::FulfillOrder — on-chain fulfillment (Seaport fulfill*/match*).
+// The taker RECEIVES `offer` and PAYS `consideration` (incl. fees/royalties).
+// For batch fulfill/match the items are a COARSE concat across orders
+// (Seaport `fulfillments` netting NOT applied — gross legs, conservative).
+//
+// Rust source: crates/policy-server/asset-model/action/src/marketplace/fulfill_order.rs
+// (`FulfillOrderAction`). No LiveInputs.
+
+namespace Marketplace {
+  type FulfillOrderContext = {
+    meta: Core::ActionMeta,
+    // Settlement venue (Seaport).
+    venue: MarketplaceVenue,
+    // Items the taker RECEIVES (aggregated across fulfilled orders).
+    offer: Set<MarketItem>,
+    // Items the taker PAYS, each to its recipient (aggregated).
+    consideration: Set<MarketItem>,
+    // Recipient of the offered items (explicit recipient arg, or the submitter).
+    recipient: String,
+    // Taker's conduit key (bytes32 hex), when present in calldata.
+    fulfillerConduitKey?: String,
+    // Derived: fulfillerConduitKey present && != 0.
+    usesConduit: Bool,
+    // Number of orders fulfilled in this call (1 for single fulfill).
+    orderCount: Long,
+    // Whether this is a batch fulfill/match (coarse aggregation applied).
+    isBatch: Bool,
+    custom?: FulfillOrderCustomContext,
+  };
+
+  type FulfillOrderCustomContext = {};
+
+  action "FulfillOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: FulfillOrderContext,
+  };
+}

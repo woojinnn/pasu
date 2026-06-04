@@ -1,0 +1,46 @@
+// Marketplace::SignOrder — off-chain EIP-712 marketplace order signature
+// (Seaport OrderComponents). The maker commits to give `offer` in exchange for
+// `consideration`. THE drainer surface: policies typically guard offer items
+// (refuse `anyToken` criteria offers), consideration floor (refuse ~0 proceeds),
+// `endTime` (refuse far-future expiry), `orderType` ("contract"/restricted),
+// and `usesConduit` / venue allowlist.
+//
+// Rust source: crates/policy-server/asset-model/action/src/marketplace/sign_order.rs
+// (`SignOrderAction`). No LiveInputs.
+
+namespace Marketplace {
+  type SignOrderContext = {
+    meta: Core::ActionMeta,
+    // Settlement venue (Seaport).
+    venue: MarketplaceVenue,
+    // Order maker (the signer).
+    offerer: String,
+    // Optional restricted-order zone (validator). Absent for open orders.
+    zone?: String,
+    // Items the maker GIVES.
+    offer: Set<MarketItem>,
+    // Items the maker RECEIVES (proceeds + fees + royalties, each w/ recipient).
+    consideration: Set<MarketItem>,
+    // "full_open" | "partial_open" | "full_restricted" | "partial_restricted" | "contract".
+    orderType: String,
+    // Order validity start (unix seconds).
+    startTime: Long,
+    // Order validity end / expiry (unix seconds).
+    endTime: Long,
+    // Conduit key (bytes32 hex). 0x0…0 = direct Seaport conduit.
+    conduitKey: String,
+    // Derived: conduitKey != 0 (transfers routed through a separate operator).
+    usesConduit: Bool,
+    // Offerer's on-chain order nonce (Seaport counter), U256 hex.
+    counter: String,
+    custom?: SignOrderCustomContext,
+  };
+
+  type SignOrderCustomContext = {};
+
+  action "SignOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: SignOrderContext,
+  };
+}

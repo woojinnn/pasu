@@ -18,6 +18,7 @@ pub mod hyperliquid_core;
 pub mod launchpad;
 pub mod lending;
 pub mod liquid_staking;
+pub mod marketplace;
 pub mod permission;
 pub mod perp;
 pub mod restaking;

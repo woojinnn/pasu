@@ -48,7 +48,8 @@ use super::{
     LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA,
     LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA, LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
     LIQUID_STAKING_STAKE_SCHEMA, LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
-    LIQUID_STAKING_UNWRAP_SCHEMA, LIQUID_STAKING_WRAP_SCHEMA,
+    LIQUID_STAKING_UNWRAP_SCHEMA, LIQUID_STAKING_WRAP_SCHEMA, MARKETPLACE_CANCEL_ORDER_SCHEMA,
+    MARKETPLACE_FULFILL_ORDER_SCHEMA, MARKETPLACE_SIGN_ORDER_SCHEMA,
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
     PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
     PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
@@ -644,6 +645,26 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("redeem"),
         schema_text: STAKING_REDEEM_SCHEMA,
         pascal_stub: "Redeem",
+    },
+    // marketplace (Seaport NFT orders) — the `cancel_order` tag also exists
+    // under perp; the (domain, action_tag) key disambiguates.
+    ActionEntry {
+        domain: "marketplace",
+        action_tag: Some("sign_order"),
+        schema_text: MARKETPLACE_SIGN_ORDER_SCHEMA,
+        pascal_stub: "SignOrder",
+    },
+    ActionEntry {
+        domain: "marketplace",
+        action_tag: Some("fulfill_order"),
+        schema_text: MARKETPLACE_FULFILL_ORDER_SCHEMA,
+        pascal_stub: "FulfillOrder",
+    },
+    ActionEntry {
+        domain: "marketplace",
+        action_tag: Some("cancel_order"),
+        schema_text: MARKETPLACE_CANCEL_ORDER_SCHEMA,
+        pascal_stub: "CancelOrder",
     },
     // token
     ActionEntry {
@@ -1293,11 +1314,13 @@ mod tests {
         // rows = 101, plus the two Token native wrap/unwrap rows
         // (`wrap_native` / `unwrap_native`) = 103, plus the CoW Swap
         // `pre_sign_intent_order` on-chain SC-wallet pre-signature row = 104.
-        // Guards against a row being dropped or duplicated.
+        // Guards against a row being dropped or duplicated. (+3 Marketplace
+        // rows — sign_order / fulfill_order / cancel_order — keyed by
+        // (domain, action_tag), so cancel_order is a distinct row from perp's.)
         assert_eq!(
             RESOLVER_TABLE.len(),
-            120,
-            "resolver table must have 120 rows"
+            123,
+            "resolver table must have 123 rows"
         );
     }
 

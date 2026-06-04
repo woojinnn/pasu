@@ -59,6 +59,7 @@ impl Reducer for ActionBody {
             // off-chain Hl account (see effect::hyperliquid_core). No fetch: the
             // reducer reads only state + ctx; Sync populates the base balance.
             Self::HyperliquidCore(a) => a.apply(state, ctx),
+            Self::Marketplace(a) => a.apply(state, ctx),
             Self::Multicall { actions } => apply_multicall(state, ctx, actions),
             Self::Unknown { target, .. } => Err(ReducerError::UnknownAction(format!(
                 "unidentified call to {target:?}"

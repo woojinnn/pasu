@@ -454,3 +454,36 @@ namespace Governance {
     token?: Core::TokenRef,
   };
 }
+
+namespace Marketplace {
+  // -------------------------------------------------------------------------
+  // MarketplaceVenue — NFT-marketplace settlement venue, discriminated by name.
+  //   - "seaport" → settlement (Seaport core address)
+  // -------------------------------------------------------------------------
+  type MarketplaceVenue = {
+    name: String,                // discriminated by name (currently "seaport")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+    settlement: String,          // Seaport core settlement contract address
+  };
+
+  // -------------------------------------------------------------------------
+  // MarketItem — one offer or consideration leg (Seaport Offer/ConsiderationItem).
+  //
+  // `*_criteria` kinds carry `criteriaRoot` (a Merkle root; `0x0…0` = ANY token
+  // in the collection), NOT a concrete `tokenId` — `anyToken` flags the
+  // "signing away any NFT in collection" case, the load-bearing drainer signal.
+  // `idx` preserves order + distinctness: this projects into a `Set`, which
+  // would otherwise dedup identical legs (e.g. two equal royalty splits).
+  // -------------------------------------------------------------------------
+  type MarketItem = {
+    idx: Long,                   // position within offer/consideration array
+    kind: String,                // "native"|"erc20"|"erc721"|"erc1155"|"erc721_criteria"|"erc1155_criteria"
+    token?: String,              // token/NFT contract; absent for native
+    tokenId?: String,            // U256 hex; concrete erc721/erc1155 only
+    criteriaRoot?: String,       // bytes32 hex Merkle root; *_criteria only
+    anyToken: Bool,              // derived: criteria kind && criteriaRoot == 0
+    startAmount: String,         // U256 hex
+    endAmount: String,           // U256 hex (!= startAmount ⇒ Dutch auction)
+    recipient?: String,          // consideration legs only (who is paid)
+  };
+}

@@ -1,0 +1,28 @@
+// Marketplace::CancelOrder — on-chain order revocation. scope="orders" cancels
+// the specific orders in calldata (orderCount of them); scope="all" is
+// incrementCounter (bulk-invalidate every outstanding signed order). No funds
+// move — a pure permission/revocation action by the maker.
+//
+// Rust source: crates/policy-server/asset-model/action/src/marketplace/cancel_order.rs
+// (`CancelOrderAction`). No LiveInputs.
+
+namespace Marketplace {
+  type CancelOrderContext = {
+    meta: Core::ActionMeta,
+    // Settlement venue (Seaport).
+    venue: MarketplaceVenue,
+    // "orders" (cancel specific) | "all" (incrementCounter).
+    scope: String,
+    // Number of specific orders cancelled. Absent when scope = "all".
+    orderCount?: Long,
+    custom?: CancelOrderCustomContext,
+  };
+
+  type CancelOrderCustomContext = {};
+
+  action "CancelOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: CancelOrderContext,
+  };
+}

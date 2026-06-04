@@ -176,6 +176,14 @@ const STAKING_UNLOCK_SCHEMA: &str =
 const STAKING_VOTE_FOR_GAUGE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/staking/vote_for_gauge.cedarschema");
 
+// marketplace (Seaport NFT orders)
+const MARKETPLACE_SIGN_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/marketplace/sign_order.cedarschema");
+const MARKETPLACE_FULFILL_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/marketplace/fulfill_order.cedarschema");
+const MARKETPLACE_CANCEL_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/marketplace/cancel_order.cedarschema");
+
 // launchpad (alphabetical)
 const LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/launchpad/claim_allocation.cedarschema");
@@ -410,6 +418,9 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     STAKING_STAKE_SCHEMA,
     STAKING_UNLOCK_SCHEMA,
     STAKING_VOTE_FOR_GAUGE_SCHEMA,
+    MARKETPLACE_SIGN_ORDER_SCHEMA,
+    MARKETPLACE_FULFILL_ORDER_SCHEMA,
+    MARKETPLACE_CANCEL_ORDER_SCHEMA,
     TOKEN_ERC20_APPROVE_SCHEMA,
     TOKEN_ERC20_PERMIT_SCHEMA,
     TOKEN_ERC20_TRANSFER_SCHEMA,
