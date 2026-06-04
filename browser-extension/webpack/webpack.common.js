@@ -6,6 +6,17 @@ const WextManifestWebpackPlugin = require("wext-manifest-webpack-plugin");
 
 const targetBrowser = process.env.TARGET_BROWSER || "chrome";
 const extRoot = path.resolve(__dirname, "..");
+
+// Load `.env` into Node's `process.env` BEFORE any config-time env reads
+// (`serverUrl` below, the DefinePlugin, and — critically — the prod
+// `REGISTRY_BASE_URL` https guard in webpack.prod.js, which `require()`s this
+// file first). `dotenv-webpack` only injects `.env` into the *bundle*; it does
+// not populate `process.env`, so without this the guard / DefinePlugin would
+// read a different source than the bundle ships. `.config()` does not override
+// an already-exported var, so exports still win — matching the `systemvars`
+// precedence used for the bundle below. One source of truth: merged process.env.
+require("dotenv").config({ path: path.join(extRoot, ".env") });
+
 const backendDir = path.join(extRoot, "backend");
 const frontendDir = path.join(extRoot, "frontend");
 const distDir = path.join(extRoot, "dist", targetBrowser);
@@ -57,6 +68,11 @@ const sharedPlugins = () => [
     path: path.join(extRoot, ".env"),
     safe: false,
     silent: true,
+    // Resolve `process.env.*` references in the bundle from the merged
+    // environment (exported vars + the `.env` loaded above) — not just the
+    // `.env` file. Without this, an exported REGISTRY_BASE_URL passes the prod
+    // guard but the bundle still bakes the `http://localhost:8000` fallback.
+    systemvars: true,
   }),
   new webpack.DefinePlugin({
     SCOPEBALL_SERVER_URL: JSON.stringify(serverUrl),
