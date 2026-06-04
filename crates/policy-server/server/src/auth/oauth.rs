@@ -29,18 +29,43 @@ use policy_db::GlobalDb;
 
 use crate::auth::jwt::{self, TokenType};
 
+/// Optional query for [`start_google_login`]. `redirect_uri`, when present,
+/// names where the callback delivers the token fragment instead of the
+/// default `DASHBOARD_URL` — used by the browser extension, which logs in via
+/// `chrome.identity.launchWebAuthFlow` and needs the token bounced to its
+/// `https://<id>.chromiumapp.org/` virtual redirect. It MUST exactly match an
+/// entry in `OAUTH_ALLOWED_REDIRECT_URIS`; without that allowlist this would
+/// be an open redirect leaking the freshly-minted JWT to any host.
+#[derive(Debug, Deserialize)]
+pub struct StartQuery {
+    pub redirect_uri: Option<String>,
+}
+
 /// `GET /auth/google` — bounce the user to Google's consent screen.
 /// All config (`GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`) read at request
 /// time so a missing env var surfaces as a clear 500 rather than a
 /// startup-time panic.
-pub async fn start_google_login() -> Response {
+pub async fn start_google_login(Query(q): Query<StartQuery>) -> Response {
     let Ok(client_id) = env::var("GOOGLE_CLIENT_ID") else {
         return env_missing("GOOGLE_CLIENT_ID");
     };
     let Ok(redirect_uri) = env::var("GOOGLE_REDIRECT_URI") else {
         return env_missing("GOOGLE_REDIRECT_URI");
     };
-    let state = match jwt::issue("oauth-state", "oauth-state", TokenType::Access, Some(300)) {
+
+    // Where the callback should finally deliver the token. Empty == "use the
+    // default DASHBOARD_URL flow". A non-empty value MUST be allowlisted
+    // (exact match) — reject early with a diagnostic so a slash/ID mismatch
+    // is obvious instead of a generic failure.
+    let final_redirect = q.redirect_uri.unwrap_or_default();
+    if !final_redirect.is_empty() && !redirect_allowed(&final_redirect, &allowed_redirects()) {
+        return user_error(&format!("redirect_uri not allowed: {final_redirect}"));
+    }
+
+    // Carry the (validated) redirect tamper-proof inside the signed CSRF state
+    // JWT — Google echoes `state` back verbatim. We park it in the `email`
+    // claim (the state token has no real user); `sub` stays a sentinel.
+    let state = match jwt::issue("oauth-state", &final_redirect, TokenType::Access, Some(300)) {
         Ok(s) => s,
         Err(e) => return server_error(&format!("state token: {e}")),
     };
@@ -89,11 +114,11 @@ pub async fn google_callback(
     let Some(state) = q.state else {
         return user_error("missing `state` parameter");
     };
-    // Verify CSRF state. Don't care about the claims, only that it's
-    // ours and recent.
-    if jwt::verify(&state).is_err() {
-        return user_error("invalid or expired `state`");
-    }
+    // Verify CSRF state; recover the (signed) final redirect parked in it.
+    let carried_redirect = match jwt::verify(&state) {
+        Ok(claims) => claims.email,
+        Err(_) => return user_error("invalid or expired `state`"),
+    };
 
     let id_token = match exchange_code_for_id_token(&code).await {
         Ok(t) => t,
@@ -118,13 +143,16 @@ pub async fn google_callback(
         Err(e) => return server_error(&format!("issue refresh: {e}")),
     };
 
-    // Dashboard URL is configurable so the same server can serve a dev
-    // dashboard (`127.0.0.1:5173`) or prod (`app.scopeball.com`).
+    // Deliver the token: to the signed+allowlisted redirect the client asked
+    // for (the extension's chromiumapp.org virtual URL), else the default
+    // dashboard flow. DASHBOARD_URL stays configurable for dev/prod.
     let dashboard = env::var("DASHBOARD_URL").unwrap_or_else(|_| "http://127.0.0.1:5173".into());
-    let target = format!(
-        "{dashboard}/auth/callback#access_token={access}&refresh_token={refresh}",
-        access = urlencoding::encode(&access),
-        refresh = urlencoding::encode(&refresh),
+    let target = build_redirect_target(
+        &carried_redirect,
+        &allowed_redirects(),
+        &dashboard,
+        &access,
+        &refresh,
     );
     Redirect::to(&target).into_response()
 }
@@ -158,6 +186,48 @@ pub async fn refresh_token(Json(req): Json<RefreshRequest>) -> Response {
         "refresh_token": refresh,
     }))
     .into_response()
+}
+
+// ---------- redirect allowlist ----------
+
+/// Read the comma-separated redirect allowlist from the environment. Unset →
+/// empty → nothing extra allowed (fail-closed); the default DASHBOARD_URL path
+/// doesn't pass through the allowlist.
+fn allowed_redirects() -> String {
+    env::var("OAUTH_ALLOWED_REDIRECT_URIS").unwrap_or_default()
+}
+
+/// Exact-match `uri` against a comma-separated `allowlist`. Exact (not prefix)
+/// on purpose: a prefix match on `https://evil.com` would accept
+/// `https://evil.com.attacker.net`.
+fn redirect_allowed(uri: &str, allowlist: &str) -> bool {
+    allowlist
+        .split(',')
+        .map(str::trim)
+        .any(|a| !a.is_empty() && a == uri)
+}
+
+/// Build the final 302 target carrying the token fragment. A non-empty,
+/// allowlisted `carried` redirect wins; anything else (empty, or — defensively
+/// — not allowlisted) falls back to the trusted `DASHBOARD_URL` flow so the
+/// default login never errors.
+fn build_redirect_target(
+    carried: &str,
+    allowlist: &str,
+    dashboard_url: &str,
+    access: &str,
+    refresh: &str,
+) -> String {
+    let frag = format!(
+        "#access_token={a}&refresh_token={r}",
+        a = urlencoding::encode(access),
+        r = urlencoding::encode(refresh),
+    );
+    if !carried.is_empty() && redirect_allowed(carried, allowlist) {
+        format!("{carried}{frag}")
+    } else {
+        format!("{dashboard_url}/auth/callback{frag}")
+    }
 }
 
 // ---------- internals ----------
@@ -277,5 +347,51 @@ mod tests {
     fn decode_email_malformed_token_errors() {
         let err = decode_email_from_id_token("not.a.jwt.token").unwrap_err();
         assert!(err.contains("not 3 segments"), "got: {err}");
+    }
+
+    #[test]
+    fn redirect_allowlist_is_exact_match() {
+        let allow = "https://abc.chromiumapp.org/, http://localhost:5173/auth/callback";
+        assert!(redirect_allowed("https://abc.chromiumapp.org/", allow));
+        assert!(redirect_allowed("http://localhost:5173/auth/callback", allow));
+        // trailing slash / substring / sibling host must NOT match
+        assert!(!redirect_allowed("https://abc.chromiumapp.org", allow));
+        assert!(!redirect_allowed("https://abc.chromiumapp.org/evil", allow));
+        assert!(!redirect_allowed("https://evil.com/", allow));
+        // empty allowlist allows nothing (fail-closed)
+        assert!(!redirect_allowed("https://abc.chromiumapp.org/", ""));
+    }
+
+    #[test]
+    fn target_defaults_to_dashboard_when_no_redirect() {
+        // Empty carried → DASHBOARD_URL/auth/callback, never a 400 / allowlist.
+        let t = build_redirect_target("", "https://abc.chromiumapp.org/", "https://dash.example", "AT", "RT");
+        assert_eq!(t, "https://dash.example/auth/callback#access_token=AT&refresh_token=RT");
+    }
+
+    #[test]
+    fn target_uses_allowlisted_redirect() {
+        let t = build_redirect_target(
+            "https://abc.chromiumapp.org/",
+            "https://abc.chromiumapp.org/",
+            "https://dash.example",
+            "AT",
+            "RT",
+        );
+        assert_eq!(t, "https://abc.chromiumapp.org/#access_token=AT&refresh_token=RT");
+    }
+
+    #[test]
+    fn target_falls_back_when_carried_not_allowlisted() {
+        // Defensive: a carried value that isn't allowlisted falls back to the
+        // trusted DASHBOARD_URL rather than honoring it.
+        let t = build_redirect_target(
+            "https://evil.com/",
+            "https://abc.chromiumapp.org/",
+            "https://dash.example",
+            "AT",
+            "RT",
+        );
+        assert_eq!(t, "https://dash.example/auth/callback#access_token=AT&refresh_token=RT");
     }
 }

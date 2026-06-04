@@ -21,7 +21,7 @@
 import Browser from "webextension-polyfill";
 
 import { setTokens } from "./tokenStore";
-import { SERVER_BASE_URL } from "./client";
+import { getServerBaseUrl } from "./client";
 
 /**
  * Kick off the OAuth flow. Resolves with the user's email on success,
@@ -33,12 +33,24 @@ import { SERVER_BASE_URL } from "./client";
  * over the difference.
  */
 export async function startGoogleLogin(): Promise<{ access: string; refresh: string | null }> {
-  const url = `${SERVER_BASE_URL}/auth/google`;
-  const redirectUrl: string = await (Browser as unknown as {
-    identity: {
-      launchWebAuthFlow(opts: { url: string; interactive: boolean }): Promise<string>;
-    };
-  }).identity.launchWebAuthFlow({
+  const identity = (
+    Browser as unknown as {
+      identity: {
+        getRedirectURL(): string;
+        launchWebAuthFlow(opts: { url: string; interactive: boolean }): Promise<string>;
+      };
+    }
+  ).identity;
+
+  // The server must bounce the token back to THIS exact URL — launchWebAuthFlow
+  // only resolves on a redirect to `https://<ext-id>.chromiumapp.org/`. That
+  // string must be byte-for-byte in the server's OAUTH_ALLOWED_REDIRECT_URIS
+  // (trailing slash included); log it so it can be copied into the allowlist.
+  const redirectUri = identity.getRedirectURL();
+  console.log("[scopeball] OAuth redirect_uri (allowlist this exactly):", redirectUri);
+
+  const url = `${getServerBaseUrl()}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const redirectUrl: string = await identity.launchWebAuthFlow({
     url,
     interactive: true,
   });

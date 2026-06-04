@@ -38,6 +38,8 @@ spec:
               value: {{ .Values.api.publicApiUrl | quote }}
             - name: DASHBOARD_URL
               value: {{ .Values.api.dashboardUrl | quote }}
+            - name: OAUTH_ALLOWED_REDIRECT_URIS
+              value: {{ .Values.api.oauthAllowedRedirectUris | quote }}
             - name: CORS_ALLOWED_ORIGINS
               value: {{ join "," .Values.api.corsAllowedOrigins | quote }}
             - name: CORS_ALLOW_PRIVATE_NETWORK

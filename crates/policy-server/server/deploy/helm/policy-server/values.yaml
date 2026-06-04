@@ -16,6 +16,10 @@ api:
   terminationGracePeriodSeconds: 30
   publicApiUrl: https://api.scopeball.dev
   dashboardUrl: https://app.scopeball.dev
+  # Exact-match allowlist (comma-separated) of non-default OAuth redirect
+  # targets — e.g. a browser extension's https://<id>.chromiumapp.org/.
+  # Empty = only the default DASHBOARD_URL flow is allowed (fail-closed).
+  oauthAllowedRedirectUris: ""
   corsAllowedOrigins:
     - https://app.scopeball.dev
     - chrome-extension://<published-extension-id>

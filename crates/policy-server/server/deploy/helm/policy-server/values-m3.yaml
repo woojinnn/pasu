@@ -11,6 +11,10 @@ api:
   replicas: 2
   publicApiUrl: https://pasu-policy.duckdns.org
   dashboardUrl: https://pasu-policy.duckdns.org
+  # Local-unpacked browser extension (stable id via manifest key) logging in
+  # through chrome.identity.launchWebAuthFlow. Must EQUAL getRedirectURL()
+  # byte-for-byte (trailing slash included).
+  oauthAllowedRedirectUris: "https://fbadoakiikjmgdpdhpcohaddifhaggki.chromiumapp.org/"
   corsAllowedOrigins:
     - https://pasu-policy.duckdns.org
 
