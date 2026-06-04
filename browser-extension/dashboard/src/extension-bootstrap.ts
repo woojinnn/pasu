@@ -35,21 +35,33 @@ function extStorage(): ChromeStorage | undefined {
     ?.storage;
 }
 
-export async function bootstrapExtensionEnv(): Promise<void> {
+/** Copy the SW-owned JWT (chrome.storage.local) into this page's localStorage
+ * so the localStorage-based server-api client + useAuth pick it up. No-op
+ * outside the extension; never throws. Called at boot AND right after an
+ * in-extension SW sign-in so the dashboard authenticates without a reload. */
+export async function syncTokensFromExtensionStorage(): Promise<void> {
   if (!isExtensionContext()) return;
   try {
     const storage = extStorage();
     if (!storage?.local) return;
-
     const got = await storage.local.get([...TOKEN_KEYS]);
     for (const k of TOKEN_KEYS) {
       const v = got[k];
       if (typeof v === "string" && v) localStorage.setItem(k, v);
     }
+  } catch {
+    // Degrade to "no token synced → /login"; never block the render.
+  }
+}
 
+export async function bootstrapExtensionEnv(): Promise<void> {
+  if (!isExtensionContext()) return;
+  await syncTokensFromExtensionStorage();
+  try {
+    const storage = extStorage();
     // Keep localStorage in sync if the SW refreshes / clears the token, and
     // nudge useAuth's `storage` listener (same-tab setItem doesn't fire it).
-    storage.onChanged?.addListener((changes, area) => {
+    storage?.onChanged?.addListener((changes, area) => {
       if (area !== "local") return;
       for (const k of TOKEN_KEYS) {
         if (!(k in changes)) continue;
@@ -60,6 +72,6 @@ export async function bootstrapExtensionEnv(): Promise<void> {
       }
     });
   } catch {
-    // Degrade to "no token synced → /login"; never block the render.
+    // Listener setup best-effort.
   }
 }

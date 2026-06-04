@@ -27,6 +27,9 @@ import {
   startGoogleLogin,
   type Me,
 } from "../server-api";
+import { isExtensionContext } from "../env";
+import { sendToSw } from "../server-api/sw-bridge";
+import { syncTokensFromExtensionStorage } from "../extension-bootstrap";
 
 export interface AuthContextValue {
   /** The logged-in user, or `null` when logged out / not yet resolved. */
@@ -83,6 +86,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, [refresh]);
 
+  const login = useCallback(() => {
+    if (!isExtensionContext()) {
+      startGoogleLogin();
+      return;
+    }
+    // In the extension a full-page nav to /auth/google can't round-trip — the
+    // token comes back to the SW's chromiumapp.org redirect, not this page.
+    // Drive the SW's launchWebAuthFlow (it stores the token in chrome.storage),
+    // then mirror it into localStorage and re-resolve /auth/me. The dashboard
+    // page itself never navigates away.
+    setLoading(true);
+    void sendToSw("scopeball-auth-sign-in")
+      .then(() => syncTokensFromExtensionStorage())
+      .then(() => refresh())
+      .catch((e) => {
+        setError(e instanceof Error ? e : new Error(String(e)));
+        setLoading(false);
+      });
+  }, [refresh]);
+
   const logoutCb = useCallback(() => {
     serverLogout();
     setUser(null);
@@ -95,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         error,
-        login: startGoogleLogin,
+        login,
         logout: logoutCb,
         refresh,
       },
