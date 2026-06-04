@@ -10,7 +10,9 @@ use serde_json::{json, Value};
 
 use policy_state::primitives::{ChainId, U256};
 
-use super::params::{over_balance_4dp, param_addr, param_str, param_token_contract, param_u256};
+use super::params::{
+    over_balance_4dp, param_addr, param_asset_contract, param_str, param_token_contract, param_u256,
+};
 use super::FactCtx;
 use super::FactError;
 
@@ -24,6 +26,14 @@ pub(super) fn dispatch(method: &str, params: &Value, ctx: &FactCtx) -> Result<Va
         "approval.set_for_all_state" => set_for_all_state(params, ctx),
         "approval.resulting_allowance_state" => resulting_allowance_state(params, ctx),
         "approval.already_granted" => already_granted(params, ctx),
+        // CONVERGENCE (option-2 tracer): main's semantic vocab method. Same
+        // state computation as `already_granted`, but in main's CONTRACT —
+        // flat params `{chain_id, owner, asset, spender}` (asset = lowered
+        // TokenRef), result key `hasExisting` (manifest projects it to
+        // `context.custom.hasExistingAllowance`). Pins the convergence convention
+        // for the surface batches; the old `already_granted` is removed once the
+        // approval surface is fully migrated.
+        "approval.allowance" => allowance(params, ctx),
         _ => Err(FactError::UnknownMethod(method.into())),
     }
 }
@@ -194,6 +204,35 @@ fn already_granted(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
     Ok(json!({ "alreadyGranted": already_granted }))
 }
 
+/// CONVERGENCE tracer — main vocab `approval.allowance`.
+///
+/// Same state computation as [`already_granted`] (is there a non-zero ERC20
+/// allowance for `(asset, spender)`?), expressed in main's enrichment CONTRACT:
+/// flat params `{chain_id, owner, asset, spender}` where `asset` is the lowered
+/// `TokenRef` (`{ key: { standard, chain, address } }`), and the result key is
+/// `hasExisting` — main manifests project `$.result.hasExisting` onto
+/// `context.custom.hasExistingAllowance`.
+///
+/// `owner` is accepted (main passes `$.root.from`) but not needed: approvals are
+/// already keyed by the wallet in [`policy_state::WalletState`].
+///
+/// Freshness/fail-open: when the wallet's approval state is absent/unsynced the
+/// allowance lookup is `None` → `hasExisting=false` (permissive), preserving the
+/// `context.custom has hasExistingAllowance` guard semantics on the policy side.
+fn allowance(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
+    let chain = ChainId::new(param_str(params, "chain_id")?);
+    let token_contract = param_asset_contract(params, "asset")?;
+    let spender = param_addr(params, "spender")?;
+
+    let has_existing = ctx
+        .state
+        .approvals
+        .allowance(&(chain, token_contract), &spender)
+        .is_some_and(|a| !a.amount.is_zero());
+
+    Ok(json!({ "hasExisting": has_existing }))
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -301,6 +340,53 @@ mod tests {
             "spender": SPENDER,
             "amount": amount_hex
         })
+    }
+
+    /// main-vocab `approval.allowance` params: flat `{chain_id, owner, asset,
+    /// spender}` with `asset` (not `token`) carrying the lowered TokenRef.
+    fn allowance_params() -> Value {
+        json!({
+            "chain_id": chain().to_string(),
+            "owner": "0x000000000000000000000000000000000000a01c",
+            "asset": token_param(),
+            "spender": SPENDER,
+        })
+    }
+
+    #[test]
+    fn allowance_reports_existing_nonzero_grant() {
+        // Non-zero allowance present → hasExisting true (main field hasExistingAllowance).
+        let with_allowance = state_with(1_000, false, 100);
+        let out = dispatch(
+            "approval.allowance",
+            &allowance_params(),
+            &FactCtx { state: &with_allowance },
+        )
+        .unwrap();
+        assert_eq!(out["hasExisting"], json!(true));
+    }
+
+    #[test]
+    fn allowance_reports_no_grant_when_zero_or_absent() {
+        // Zero allowance → hasExisting false.
+        let zero = state_with(1_000, false, 0);
+        let out = dispatch(
+            "approval.allowance",
+            &allowance_params(),
+            &FactCtx { state: &zero },
+        )
+        .unwrap();
+        assert_eq!(out["hasExisting"], json!(false));
+
+        // No approval state at all (unsynced) → fail-open false, no panic.
+        let empty = WalletState::new(wallet_id());
+        let out = dispatch(
+            "approval.allowance",
+            &allowance_params(),
+            &FactCtx { state: &empty },
+        )
+        .unwrap();
+        assert_eq!(out["hasExisting"], json!(false));
     }
 
     #[test]
