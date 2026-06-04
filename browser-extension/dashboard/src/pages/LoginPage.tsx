@@ -5,10 +5,25 @@
  * intended page.
  */
 
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
 import { useAuth } from "../hooks/useAuth";
 
 export function LoginPage() {
   const { user, isLoading, login, error } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Once authenticated, leave /login. The web flow returns via /auth/callback
+  // which navigates for us, but the in-extension SW login resolves in place —
+  // so the page must react to `user` being set and route to the original
+  // destination (or home).
+  useEffect(() => {
+    if (!user) return;
+    const from = (location.state as { from?: string } | null)?.from;
+    navigate(from && from !== "/login" ? from : "/", { replace: true });
+  }, [user, location.state, navigate]);
 
   if (isLoading) {
     return (
@@ -19,12 +34,11 @@ export function LoginPage() {
   }
 
   if (user) {
-    // Shouldn't happen in normal flow — the router guard sends logged-in
-    // users to "/". Render a soft fallback just in case.
+    // Authenticated — the effect above is routing away; brief note meanwhile.
     return (
       <div style={pageStyle}>
         <p>
-          Already signed in as <strong>{user.email}</strong>.
+          Signed in as <strong>{user.email}</strong> — redirecting…
         </p>
       </div>
     );
