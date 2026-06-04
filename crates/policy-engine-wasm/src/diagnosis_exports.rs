@@ -235,4 +235,64 @@ mod tests {
         let parsed2: Value = serde_json::from_str(&out2).unwrap();
         assert_eq!(parsed2["data"]["true_ids"], json!([]), "50 > 100 is false: {parsed2}");
     }
+
+    #[test]
+    fn errored_probe_is_reported_not_fatal() {
+        // Probe references a missing context attr → errors(), not a panic, not true.
+        let probes = json!([
+            { "id": "c0", "est": {
+                "effect": "permit",
+                "principal": { "op": "All" }, "action": { "op": "All" }, "resource": { "op": "All" },
+                "conditions": [{ "kind": "when", "body":
+                    { ">": { "left": { ".": { "left": { "Var": "context" }, "attr": "nope" } },
+                             "right": { "Value": 1 } } } }] } }
+        ]);
+        let out = run_diagnosis_probes_v2_json(swap_input(150, probes));
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "{parsed}");
+        assert_eq!(parsed["data"]["true_ids"], json!([]), "{parsed}");
+        assert_eq!(parsed["data"]["error_ids"], json!(["c0"]), "{parsed}");
+    }
+
+    #[test]
+    fn reconciliation_matches_real_verdict() {
+        // The shipped high-slippage forbid fires at 150. Its single `when` body,
+        // probed, must be TRUE — i.e. the diagnosis agrees the forbid fired.
+        let when_body = json!({ ">": {
+            "left": { ".": { "left": { "Var": "context" }, "attr": "slippageBp" } },
+            "right": { "Value": 100 } } });
+        let probes = json!([
+            { "id": "c0.body", "est": {
+                "effect": "permit",
+                "principal": { "op": "All" }, "action": { "op": "All" }, "resource": { "op": "All" },
+                "conditions": [{ "kind": "when", "body": when_body }] } }
+        ]);
+        let out = run_diagnosis_probes_v2_json(swap_input(150, probes));
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["data"]["true_ids"], json!(["c0.body"]),
+            "the when-body the forbid fired on must probe TRUE: {parsed}");
+    }
+
+    #[test]
+    fn accepts_real_blockstoest_shaped_probe_est() {
+        // This EST is byte-shaped exactly as the TS `blocksToEst(probePolicy(...))`
+        // emits: unconstrained permit (`{op:"All"}` scopes) + an `annotations` OBJECT
+        // carrying @id. The seam Task 16's manual click would otherwise be first to
+        // hit — verified here against Policy::from_json (cedar 4.10).
+        let probes = json!([
+            { "id": "c0.body", "est": {
+                "effect": "permit",
+                "principal": { "op": "All" },
+                "action": { "op": "All" },
+                "resource": { "op": "All" },
+                "annotations": { "id": "c0.body" },
+                "conditions": [{ "kind": "when", "body":
+                    { ">": { "left": { ".": { "left": { "Var": "context" }, "attr": "slippageBp" } },
+                             "right": { "Value": 100 } } } }] } }
+        ]);
+        let out = run_diagnosis_probes_v2_json(swap_input(150, probes));
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed["ok"], true, "annotated unconstrained-permit EST must parse: {parsed}");
+        assert_eq!(parsed["data"]["true_ids"], json!(["c0.body"]), "{parsed}");
+    }
 }
