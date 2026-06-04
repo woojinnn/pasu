@@ -78,6 +78,27 @@ describe("registry-api HTTP server", () => {
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
   });
 
+  it("proxies a by-selector object (address-agnostic adapter, 200)", async () => {
+    const url = await start(
+      fakeReader({
+        "index/by-selector/1__0xa22cb465.json": '{"matched":true}',
+      }),
+    );
+    const res = await fetch(`${url}/index/by-selector/1__0xa22cb465.json`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("public, max-age=300");
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+  });
+
+  it("rejects a callkey-shaped by-selector key with 404 (no address segment)", async () => {
+    const url = await start(fakeReader({}));
+    // 3-part <chain>__<addr>__<selector> must NOT validate as a 2-part selector key
+    const res = await fetch(
+      `${url}/index/by-selector/1__0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2__0xa22cb465.json`,
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("materializes a ref callkey entry into the legacy full bundle response", async () => {
     const bundleRef =
       "bundles/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json";

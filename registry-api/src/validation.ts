@@ -21,6 +21,10 @@ const SHA256_LC = "0x[0-9a-f]{64}";
 const SAFE_SEGMENT = "[a-z0-9._-]+";
 
 const CALL_KEY_RE = new RegExp(`^${CHAIN_ID}__${ADDRESS_LC}__${SELECTOR_LC}$`);
+// selector-only key = <chainId>__<selector.lower> (address-agnostic adapters,
+// e.g. standard NFT setApprovalForAll). No address segment; both fragments are
+// tightly bounded so it stays path-traversal-safe.
+const SELECTOR_KEY_RE = new RegExp(`^${CHAIN_ID}__${SELECTOR_LC}$`);
 const CHAIN_RE = new RegExp(`^${CHAIN_ID}$`);
 const ADDRESS_RE = new RegExp(`^${ADDRESS_LC}$`);
 const BUNDLE_FILE_RE = new RegExp(`^${SHA256_LC}\\.json$`);
@@ -40,6 +44,9 @@ export function isValidCallKeySegment(s: string): boolean {
 export function isTypedDataKey(s: string): boolean {
   return TYPED_DATA_KEY_RE.test(s);
 }
+export function isValidSelectorKey(s: string): boolean {
+  return SELECTOR_KEY_RE.test(s);
+}
 export function isValidChainSegment(s: string): boolean {
   return CHAIN_RE.test(s);
 }
@@ -58,6 +65,7 @@ export type ProxyTarget = ProxyTargetOk | ProxyTargetErr;
 
 const INDEX_PREFIX = "/index/by-callkey/";
 const INDEX_TYPED_DATA_PREFIX = "/index/by-typed-data/";
+const INDEX_BY_SELECTOR_PREFIX = "/index/by-selector/";
 const TOKENS_PREFIX = "/tokens/";
 const BUNDLES_PREFIX = "/bundles/";
 const CONTEXTS_PREFIX = "/contexts/";
@@ -90,6 +98,19 @@ export function parseProxyTarget(pathname: string): ProxyTarget {
     );
     return isTypedDataKey(seg)
       ? { ok: true, objectName: `index/by-typed-data/${seg}.json` }
+      : { ok: false };
+  }
+
+  if (
+    pathname.startsWith(INDEX_BY_SELECTOR_PREFIX) &&
+    pathname.endsWith(JSON_SUFFIX)
+  ) {
+    const seg = pathname.slice(
+      INDEX_BY_SELECTOR_PREFIX.length,
+      pathname.length - JSON_SUFFIX.length,
+    );
+    return isValidSelectorKey(seg)
+      ? { ok: true, objectName: `index/by-selector/${seg}.json` }
       : { ok: false };
   }
 

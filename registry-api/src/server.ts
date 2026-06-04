@@ -150,6 +150,7 @@ async function routeRequest(input: RouteInput): Promise<void> {
     method === "GET" &&
     (proxyPath.startsWith("/index/by-callkey/") ||
       proxyPath.startsWith("/index/by-typed-data/") ||
+      proxyPath.startsWith("/index/by-selector/") ||
       proxyPath.startsWith("/tokens/") ||
       proxyPath.startsWith("/bundles/") ||
       proxyPath.startsWith("/contexts/"))
