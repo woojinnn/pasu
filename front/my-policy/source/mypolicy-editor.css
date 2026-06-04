@@ -1,0 +1,405 @@
+/* mypolicy-editor.css — 에디터 화면 (뷰 전환: Cedar / 폼 / 블록) + 자동 NLG + 내 메모 + 우측 Cedar */
+
+/* ════════════ EDITOR SHELL ════════════ */
+.mpe-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px 16px; gap: 12px; max-width: 1240px; width: 100%; margin: 0 auto; }
+
+/* ════════════ 에디터 헤더 (제목 인라인 편집 + 저장 + 뷰 전환 탭) ════════════ */
+.mpe-head { flex-shrink: 0; display: flex; align-items: flex-start; gap: 14px; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); box-shadow: 0 1px 2px rgba(15,23,42,0.04); padding: 13px 16px; }
+.mpe-head-spc { flex: 1; }
+.mpe-head-save { appearance: none; align-self: center; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--slate-800); background: var(--slate-900); color: var(--fog-50); font-size: 12.5px; font-weight: 600; padding: 8px 15px; border-radius: 9px; flex-shrink: 0; }
+.mpe-head-save:hover { background: var(--slate-800); }
+.mpe-head-save svg { width: 14px; height: 14px; }
+
+/* 제목 인라인 편집 */
+.mpe-titlewrap { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mpe-titlerow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mpe-title-btn { appearance: none; border: 1px solid transparent; background: transparent; display: inline-flex; align-items: center; gap: 8px; padding: 3px 8px 3px 4px; border-radius: 8px; min-width: 0; max-width: 520px; }
+.mpe-title-btn:hover { background: var(--fog-200); border-color: var(--hairline-soft); }
+.mpe-title-btn .t { font-size: 18px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.01em; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpe-title-btn .pen { display: inline-flex; opacity: 0; transition: opacity 120ms ease; flex-shrink: 0; }
+.mpe-title-btn:hover .pen { opacity: 1; }
+.mpe-title-btn .pen svg { width: 14px; height: 14px; color: var(--slate-400); }
+.mpe-title-input { font-family: var(--ff-sans); font-size: 18px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.01em; border: 1.5px solid var(--sage-400); background: var(--surface); border-radius: 8px; padding: 3px 9px; outline: none; min-width: 280px; box-shadow: 0 0 0 3px var(--sage-100); }
+.mpe-title-sev { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--r-pill); flex-shrink: 0; }
+.mpe-title-sev .d { width: 7px; height: 7px; border-radius: 50%; }
+.mpe-title-sev.fail { color: var(--fail-700); background: var(--fail-50); border: 1px solid var(--fail-200); }
+.mpe-title-sev.fail .d { background: var(--fail-500); }
+.mpe-title-sev.warn { color: var(--warn-800); background: var(--warn-50); border: 1px solid var(--warn-200); }
+.mpe-title-sev.warn .d { background: var(--warn-400); }
+.mpe-title-slug { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400); padding-left: 5px; }
+
+/* 뷰 전환 탭 (Cedar / 폼 / 블록) */
+.mpe-vtabs { display: inline-flex; gap: 3px; padding: 3px; background: var(--fog-300); border: 1px solid var(--hairline-soft); border-radius: 11px; flex-shrink: 0; align-self: center; }
+.mpe-vtab { appearance: none; display: inline-flex; align-items: center; gap: 7px; border: 0; background: transparent; font-size: 12.5px; font-weight: 600; color: var(--slate-500); padding: 7px 14px; border-radius: 8px; white-space: nowrap; }
+.mpe-vtab svg { width: 14px; height: 14px; }
+.mpe-vtab:hover:not(.disabled):not(.on) { color: var(--slate-900); }
+.mpe-vtab.on { background: var(--surface); color: var(--slate-900); box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
+.mpe-vtab.disabled { color: var(--slate-300); cursor: not-allowed; }
+.mpe-vtab .lk { display: inline-flex; }
+.mpe-vtab .lk svg { width: 11px; height: 11px; }
+
+/* ── 상단 NLG 배너 (모든 뷰 공통 · 자동 생성 · 편집 불가) ── */
+.mpe-nlg { flex-shrink: 0; display: flex; align-items: flex-start; gap: 13px; background: linear-gradient(180deg, var(--sage-50), var(--surface)); border: 1px solid var(--sage-300); border-radius: var(--r-md); padding: 14px 17px; box-shadow: 0 1px 2px rgba(99,126,89,0.08); }
+.mpe-nlg-ic { width: 32px; height: 32px; border-radius: 9px; background: var(--sage-100); color: var(--sage-700); display: grid; place-items: center; flex-shrink: 0; }
+.mpe-nlg-ic svg { width: 18px; height: 18px; }
+.mpe-nlg-main { flex: 1; min-width: 0; }
+.mpe-nlg-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sage-700); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.mpe-nlg-eyebrow .mut { color: var(--slate-400); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.mpe-nlg-auto { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--pass-700); background: var(--pass-50); border: 1px solid var(--pass-200); border-radius: var(--r-pill); padding: 1px 8px 1px 6px; }
+.mpe-nlg-auto svg { width: 11px; height: 11px; }
+
+/* ── "내 메모" 칸 (자유 편집 · 정책 동작과 무관) ── */
+.mpe-memo-add { appearance: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; border: 1.5px dashed var(--hairline); background: transparent; color: var(--slate-400); font-size: 12px; font-weight: 600; padding: 8px 13px; border-radius: 10px; flex-shrink: 0; }
+.mpe-memo-add:hover { border-color: var(--slate-300); color: var(--slate-700); background: var(--fog-200); }
+.mpe-memo-add svg { width: 13px; height: 13px; }
+.mpe-memo { flex-shrink: 0; background: var(--fog-100); border: 1px solid var(--hairline-soft); border-radius: var(--r-md); padding: 11px 14px; }
+.mpe-memo-h { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; color: var(--slate-600); margin-bottom: 7px; }
+.mpe-memo-h svg { width: 13px; height: 13px; color: var(--slate-400); }
+.mpe-memo-h .mut { font-weight: 500; color: var(--slate-400); }
+.mpe-memo-ta { width: 100%; border: 1px solid var(--hairline); background: var(--surface); border-radius: 9px; padding: 9px 12px; font-family: var(--ff-sans); font-size: 13px; line-height: 1.5; color: var(--slate-800); resize: vertical; outline: none; box-sizing: border-box; }
+.mpe-memo-ta:focus { border-color: var(--slate-300); box-shadow: 0 0 0 3px var(--fog-300); }
+.mpe-memo-ta::placeholder { color: var(--slate-300); }
+.mpe-nlg-text { font-size: 14.5px; line-height: 1.55; color: var(--slate-800); text-wrap: pretty; }
+.mpe-nlg-text b { color: var(--slate-900); font-weight: 700; }
+.mpe-nlg-text .or-head { color: var(--cyan-800); font-weight: 700; }
+/* OR 묶음: "다음 중 하나라도 해당하면:" 머리말 + 들여쓴 묶음 */
+.mpe-nlg-or { margin: 7px 0 2px; padding: 9px 12px; background: var(--cyan-50); border-left: 3px solid var(--cyan-500); border-radius: 0 8px 8px 0; }
+.mpe-nlg-or .oh { font-size: 12px; font-weight: 700; color: var(--cyan-800); margin-bottom: 5px; }
+.mpe-nlg-or ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mpe-nlg-or li { font-size: 13px; color: var(--slate-700); padding-left: 16px; position: relative; }
+.mpe-nlg-or li::before { content: "·"; position: absolute; left: 5px; color: var(--cyan-600); font-weight: 700; }
+
+/* ── 2-pane: 좌 편집 / splitter / 우 패널 ── */
+.mpe-panes { flex: 1; min-height: 0; display: flex; }
+.mpe-left { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); overflow: hidden; }
+.mpe-left-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.mpe-mirror { flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; }
+
+/* drag splitter */
+.mpe-splitter { flex-shrink: 0; width: 12px; cursor: col-resize; display: grid; place-items: center; position: relative; }
+.mpe-splitter .grip { width: 4px; height: 42px; border-radius: var(--r-pill); background: var(--hairline); transition: background 120ms ease, height 120ms ease; }
+.mpe-splitter:hover .grip { background: var(--slate-400); height: 60px; }
+.mpe-splitter:active .grip { background: var(--sage-600); }
+
+/* left pane header */
+.mpe-lh { flex-shrink: 0; display: flex; align-items: center; gap: 11px; padding: 12px 15px; border-bottom: 1px solid var(--hairline-soft); }
+.mpe-lh-mode { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--slate-700); background: var(--fog-300); border: 1px solid var(--hairline-soft); padding: 5px 11px; border-radius: 8px; }
+.mpe-lh-mode svg { width: 14px; height: 14px; }
+.mpe-lh-mode.block { color: var(--sage-800); background: var(--sage-50); border-color: var(--sage-200); }
+.mpe-lh-mode.form { color: var(--cyan-800); background: var(--cyan-50); border-color: var(--cyan-200); }
+.mpe-lh-spc { flex: 1; }
+.mpe-lh-note { font-size: 11px; color: var(--slate-400); }
+.mpe-lh-save { appearance: none; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--slate-800); background: var(--slate-900); color: var(--fog-50); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 9px; }
+.mpe-lh-save:hover { background: var(--slate-800); }
+.mpe-lh-save:disabled { opacity: 0.45; cursor: not-allowed; background: var(--slate-400); border-color: var(--slate-400); }
+.mpe-lh-save svg { width: 13px; height: 13px; }
+
+/* ════════════ FORM EDITOR ════════════ */
+.mpe-form { padding: 18px 20px 22px; }
+.mpe-fstep { margin-bottom: 22px; }
+.mpe-fstep-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.mpe-fstep-no { width: 24px; height: 24px; border-radius: 50%; background: var(--slate-900); color: var(--fog-50); display: grid; place-items: center; font-family: var(--ff-mono); font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.mpe-fstep-t { font-size: 14px; font-weight: 700; color: var(--slate-900); }
+.mpe-fstep-t .mut { font-size: 12px; font-weight: 500; color: var(--slate-400); margin-left: 7px; }
+.mpe-fstep-line { flex: 1; height: 1px; background: var(--hairline-soft); }
+
+/* action select row */
+.mpe-field { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--fog-200); border: 1px solid var(--hairline-soft); border-radius: 11px; }
+.mpe-field .lab { font-size: 12px; font-weight: 600; color: var(--slate-500); min-width: 96px; }
+.mpe-select { flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--slate-900); cursor: pointer; }
+.mpe-select:hover { border-color: var(--slate-300); }
+.mpe-select .canon { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); font-weight: 500; margin-left: auto; }
+.mpe-select svg { width: 14px; height: 14px; color: var(--slate-400); }
+
+/* condition card (AND list) */
+.mpe-conds { display: flex; flex-direction: column; gap: 10px; }
+.mpe-and-tag { align-self: flex-start; font-family: var(--ff-mono); font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; color: var(--slate-400); background: var(--fog-300); border: 1px solid var(--hairline-soft); padding: 2px 9px; border-radius: var(--r-pill); margin: -2px 0 0 8px; }
+.mpe-cond { background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 12px; padding: 12px 13px; position: relative; }
+.mpe-cond.err { border-color: var(--fail-400); box-shadow: 0 0 0 1px var(--fail-200); }
+.mpe-cond-row { display: flex; align-items: center; gap: 9px; }
+.mpe-pred { display: inline-flex; align-items: stretch; border: 1.5px solid var(--r-bd, var(--slate-300)); border-radius: 10px; overflow: hidden; background: var(--surface); min-height: 38px; flex: 1; min-width: 0; }
+.mpe-pred-cap { width: 30px; flex-shrink: 0; background: var(--r-fill, var(--slate-50)); border-right: 1.5px solid var(--r-bd, var(--slate-300)); display: grid; place-items: center; color: var(--r-ink, var(--slate-600)); }
+.mpe-pred-cap svg { width: 15px; height: 15px; }
+.mpe-pred-field { display: flex; flex-direction: column; justify-content: center; padding: 4px 12px; gap: 1px; background: var(--r-fill, var(--slate-50)); min-width: 0; }
+.mpe-pred-field .nm { font-size: 13px; font-weight: 650; color: var(--slate-900); line-height: 1.2; white-space: nowrap; }
+.mpe-pred-field .canon { font-family: var(--ff-mono); font-size: 9px; color: var(--slate-400); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mpe-pred-op { display: inline-flex; align-items: center; padding: 0 12px; font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--slate-700); background: var(--surface); border-left: 1px solid var(--hairline-soft); border-right: 1px solid var(--hairline-soft); white-space: nowrap; cursor: pointer; }
+.mpe-pred-op:hover { background: var(--fog-300); }
+.mpe-pred-val { display: inline-flex; align-items: center; gap: 5px; padding: 0 13px; font-family: var(--ff-mono); font-size: 13px; font-weight: 600; color: var(--slate-900); background: var(--surface); white-space: nowrap; cursor: pointer; flex: 1; }
+.mpe-pred-val:hover { background: var(--fog-300); }
+.mpe-pred-val .u { font-size: 10px; color: var(--slate-400); }
+.mpe-pred-val.ref { color: var(--cyan-800); }
+
+.mpe-cond-del { appearance: none; width: 26px; height: 26px; border-radius: 7px; border: 1px solid transparent; background: transparent; color: var(--slate-300); display: grid; place-items: center; flex-shrink: 0; }
+.mpe-cond-del:hover { background: var(--fail-50); color: var(--fail-600); border-color: var(--fail-200); }
+.mpe-cond-del svg { width: 14px; height: 14px; }
+
+/* + 또는(OR) button */
+.mpe-or-btn { appearance: none; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; border: 1.5px dashed var(--cyan-400); background: var(--cyan-50); color: var(--cyan-800); font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 8px; }
+.mpe-or-btn:hover { background: var(--cyan-100); border-color: var(--cyan-500); }
+.mpe-or-btn svg { width: 12px; height: 12px; }
+
+/* OR group (single-level) inside a condition */
+.mpe-orgrp { margin-top: 11px; padding: 11px 12px 12px; background: var(--cyan-50); border: 1.5px solid var(--cyan-300); border-radius: 11px; position: relative; }
+.mpe-orgrp-h { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.mpe-orgrp-kw { font-family: var(--ff-mono); font-size: 11px; font-weight: 800; letter-spacing: 0.04em; color: var(--cyan-800); background: var(--surface); border: 1.5px solid var(--cyan-500); border-radius: 7px; padding: 3px 10px; }
+.mpe-orgrp-note { font-size: 11px; color: var(--cyan-800); }
+.mpe-orgrp-list { display: flex; flex-direction: column; gap: 8px; }
+.mpe-orgrp-item { display: flex; align-items: center; gap: 8px; }
+.mpe-orgrp-or { font-family: var(--ff-mono); font-size: 10px; font-weight: 800; color: var(--cyan-700); text-align: center; padding: 1px 0; }
+.mpe-add-or { appearance: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; border: 1px dashed var(--cyan-400); background: transparent; color: var(--cyan-700); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 7px; }
+.mpe-add-or:hover { background: var(--cyan-100); }
+.mpe-add-or svg { width: 11px; height: 11px; }
+.mpe-nest-lock { font-size: 10px; color: var(--cyan-700); margin-top: 8px; display: flex; align-items: center; gap: 6px; opacity: 0.8; }
+.mpe-nest-lock svg { width: 11px; height: 11px; }
+
+/* add condition */
+.mpe-add-cond { appearance: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; border: 1.5px dashed var(--slate-200); background: transparent; color: var(--slate-400); font-size: 12px; font-weight: 600; padding: 9px 14px; border-radius: 10px; margin-top: 2px; }
+.mpe-add-cond:hover { border-color: var(--slate-400); color: var(--slate-700); background: var(--fog-200); }
+.mpe-add-cond svg { width: 13px; height: 13px; }
+
+/* meta (id/severity/reason) */
+.mpe-meta { display: flex; flex-direction: column; gap: 10px; }
+.mpe-meta-row { display: flex; align-items: center; gap: 12px; }
+.mpe-meta-row .lab { font-size: 12px; font-weight: 600; color: var(--slate-500); min-width: 96px; }
+.mpe-meta-val { flex: 1; font-family: var(--ff-mono); font-size: 12.5px; color: var(--slate-800); padding: 8px 12px; background: var(--fog-200); border: 1px solid var(--hairline-soft); border-radius: 9px; }
+.mpe-sev-pick { display: inline-flex; gap: 5px; }
+.mpe-sev-opt { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--hairline); background: var(--surface); color: var(--slate-500); cursor: pointer; }
+.mpe-sev-opt .d { width: 8px; height: 8px; border-radius: 50%; }
+.mpe-sev-opt.warn.on { border-color: var(--warn-300); background: var(--warn-50); color: var(--warn-800); }
+.mpe-sev-opt.fail.on { border-color: var(--fail-300); background: var(--fail-50); color: var(--fail-700); }
+.mpe-sev-opt.warn .d { background: var(--warn-400); }
+.mpe-sev-opt.fail .d { background: var(--fail-500); }
+
+/* ── round-trip 실패(강등) 상태 ── */
+.mpe-degrade { margin: 0 20px 18px; background: var(--fail-50); border: 1.5px solid var(--fail-300); border-radius: 12px; padding: 15px 16px; }
+.mpe-degrade-h { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 700; color: var(--fail-700); margin-bottom: 7px; }
+.mpe-degrade-h svg { width: 17px; height: 17px; flex-shrink: 0; }
+.mpe-degrade-b { font-size: 12.5px; color: var(--fail-800); line-height: 1.55; }
+.mpe-degrade-b .mono { font-family: var(--ff-mono); font-size: 11.5px; background: var(--fail-100); padding: 1px 5px; border-radius: 4px; }
+.mpe-degrade-acts { display: flex; gap: 8px; margin-top: 12px; }
+.mpe-degrade-go { appearance: none; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--sage-600); background: var(--sage-500); color: var(--sage-900); font-size: 12.5px; font-weight: 700; padding: 8px 15px; border-radius: 9px; }
+.mpe-degrade-go:hover { background: var(--sage-400); }
+.mpe-degrade-go svg { width: 14px; height: 14px; }
+.mpe-degrade-dismiss { appearance: none; border: 1px solid var(--fail-200); background: transparent; color: var(--fail-700); font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 9px; }
+.mpe-degrade-dismiss:hover { background: var(--fail-100); }
+
+/* roundtrip status chip in left header */
+.mpe-rt { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--r-pill); }
+.mpe-rt svg { width: 12px; height: 12px; }
+.mpe-rt.ok { background: var(--pass-50); color: var(--pass-700); border: 1px solid var(--pass-200); }
+.mpe-rt.bad { background: var(--fail-50); color: var(--fail-700); border: 1px solid var(--fail-300); }
+
+/* ════════════ MIRROR (read-only) ════════════ */
+.mpe-mirror-cedar { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--slate-900); border: 1px solid var(--hairline); border-radius: var(--r-md); overflow: hidden; }
+.mpe-mirror-h { display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-bottom: 1px solid var(--slate-700); flex-shrink: 0; }
+.mpe-mirror-lang { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--sage-400); letter-spacing: 0.05em; }
+.mpe-mirror-ro { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; color: var(--slate-400); font-family: var(--ff-mono); }
+.mpe-mirror-ro svg { width: 12px; height: 12px; }
+.mpe-code { flex: 1; overflow: auto; padding: 13px 0; font-family: var(--ff-mono); font-size: 12.5px; line-height: 1.7; }
+.mpe-cl { display: flex; padding: 0 15px; }
+.mpe-cl.flash { animation: mpe-flash 900ms ease; }
+@keyframes mpe-flash { 0% { background: rgba(124,176,105,0.28); } 100% { background: transparent; } }
+.mpe-cl-gut { width: 26px; color: var(--slate-600); text-align: right; padding-right: 13px; flex-shrink: 0; user-select: none; }
+.mpe-cl-tx { color: var(--fog-200); white-space: pre; }
+.mpe-cl .cmt { color: var(--slate-500); font-style: italic; }
+.mpe-cl .kw { color: var(--cyan-400); }
+.mpe-cl .str { color: var(--sage-300); }
+.mpe-cl.guard { background: rgba(124,176,105,0.07); }
+
+/* mirror NLG paragraph card */
+.mpe-mirror-nlg { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 14px 16px; flex-shrink: 0; }
+.mpe-mirror-nlg .h { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--slate-400); margin-bottom: 9px; display: flex; align-items: center; gap: 7px; }
+.mpe-mirror-nlg .h svg { width: 13px; height: 13px; color: var(--sage-600); }
+.mpe-mirror-nlg .p { font-size: 13px; line-height: 1.55; color: var(--slate-700); text-wrap: pretty; }
+.mpe-mirror-nlg .p b { color: var(--slate-900); font-weight: 700; }
+
+/* ════════════ BLOCK EDITOR (경량, v7 계승) ════════════ */
+.mpe-block-canvas { flex: 1; min-height: 460px; overflow: auto; position: relative; background:
+    radial-gradient(circle at 1px 1px, var(--fog-600) 1px, transparent 0) 0 0 / 26px 26px,
+    var(--fog-100); padding: 30px 28px; }
+.mpe-block-stage { min-width: min-content; }
+.mpe-block-hint { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: var(--slate-400); background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-pill); padding: 5px 12px; display: flex; align-items: center; gap: 7px; }
+.mpe-block-hint svg { width: 13px; height: 13px; color: var(--slate-300); }
+
+/* hat */
+.mpe-hat { min-width: 520px; max-width: 720px; }
+.mpe-hat-head { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; background: linear-gradient(180deg, var(--fail-100), var(--fail-50)); border: 1.5px solid var(--fail-300); border-bottom: 0; border-radius: var(--r-md) var(--r-md) 0 0; padding: 13px 16px; }
+.mpe-hat-eff { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; color: var(--fail-800); background: var(--fail-200); border-radius: var(--r-pill); padding: 4px 12px; }
+.mpe-hat-eff svg { width: 13px; height: 13px; }
+.mpe-hat-sentence { font-size: 13.5px; color: var(--slate-800); line-height: 1.45; }
+.mpe-hat-sentence b { color: var(--slate-900); font-weight: 700; }
+.mpe-hat-act { font-family: var(--ff-mono); font-size: 12px; font-weight: 700; color: var(--slate-700); background: var(--surface); border: 1px solid var(--hairline); padding: 1px 8px; border-radius: 6px; }
+.mpe-hat-body { border: 1.5px solid var(--fail-300); border-top: 0; border-radius: 0 0 var(--r-md) var(--r-md); background: var(--surface); padding: 15px; }
+
+/* logic container */
+.mpe-logic { position: relative; border-radius: 11px; padding: 9px 9px 9px 0; background: var(--fog-200); border: 1.5px solid var(--slate-200); }
+.mpe-logic.op-OR { background: var(--cyan-50); border-color: var(--cyan-300); }
+.mpe-logic-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 11px 0 0 11px; background: var(--slate-300); }
+.mpe-logic.op-OR > .mpe-logic-spine { background: var(--cyan-500); }
+.mpe-logic-head { display: flex; align-items: center; gap: 8px; padding: 0 8px 9px 15px; }
+.mpe-logic-kw { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ff-mono); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; color: var(--slate-700); background: var(--surface); border: 1.5px solid var(--slate-300); border-radius: 8px; padding: 4px 11px; }
+.mpe-logic.op-OR > .mpe-logic-head .mpe-logic-kw { color: var(--cyan-800); border-color: var(--cyan-500); background: var(--surface); }
+.mpe-logic-note { font-size: 11px; color: var(--slate-400); }
+.mpe-logic.op-OR > .mpe-logic-head .mpe-logic-note { color: var(--cyan-700); }
+.mpe-logic-slot { display: flex; flex-direction: column; gap: 8px; padding-left: 15px; align-items: flex-start; }
+
+/* predicate piece (block) */
+.mpe-bpred { position: relative; display: inline-flex; align-items: stretch; background: var(--surface); border: 1.5px solid var(--r-bd, var(--slate-300)); border-radius: 10px; overflow: hidden; min-height: 38px; box-shadow: 0 1px 2px rgba(15,23,42,0.05); }
+.mpe-bpred.is-live { border-style: dashed; }
+.mpe-bpred-cap { width: 30px; flex-shrink: 0; background: var(--r-fill, var(--slate-50)); border-right: 1.5px solid var(--r-bd, var(--slate-300)); display: grid; place-items: center; color: var(--r-ink, var(--slate-600)); }
+.mpe-bpred.is-live .mpe-bpred-cap { border-right-style: dashed; }
+.mpe-bpred-cap svg { width: 15px; height: 15px; }
+.mpe-bpred-field { display: flex; flex-direction: column; justify-content: center; padding: 4px 12px; gap: 1px; background: var(--r-fill, var(--slate-50)); }
+.mpe-bpred-field .nm { font-size: 13px; font-weight: 650; color: var(--slate-900); line-height: 1.2; white-space: nowrap; }
+.mpe-bpred-field .canon { font-family: var(--ff-mono); font-size: 9px; color: var(--slate-400); line-height: 1.2; white-space: nowrap; }
+.mpe-bpred-op { display: inline-flex; align-items: center; padding: 0 11px; font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--slate-700); background: var(--surface); border-left: 1px solid var(--hairline-soft); border-right: 1px solid var(--hairline-soft); white-space: nowrap; }
+.mpe-bpred-val { display: inline-flex; align-items: center; gap: 5px; padding: 0 13px; font-family: var(--ff-mono); font-size: 13px; font-weight: 600; color: var(--slate-900); white-space: nowrap; }
+.mpe-bpred-val .u { font-size: 10px; color: var(--slate-400); }
+.mpe-bpred-val.ref { color: var(--cyan-800); }
+.mpe-blive { position: absolute; top: -8px; right: 8px; font-family: var(--ff-mono); font-size: 8.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cyan-800); background: var(--cyan-100); border: 1px solid var(--cyan-300); border-radius: var(--r-pill); padding: 1px 7px; }
+.mpe-and-stack { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; }
+.mpe-and-conn { font-family: var(--ff-mono); font-size: 10px; font-weight: 800; letter-spacing: 0.04em; color: var(--slate-400); padding-left: 2px; }
+
+/* ════════════ INLINE VALUE EDIT (네이티브 팝업 금지) ════════════ */
+.mpe-pred-val .mpe-val-pen { display: inline-flex; opacity: 0; transition: opacity 120ms ease; margin-left: 2px; }
+.mpe-pred-val .mpe-val-pen svg { width: 11px; height: 11px; color: var(--slate-300); }
+.mpe-pred-val:hover .mpe-val-pen { opacity: 1; }
+.mpe-pred-val:focus { outline: none; box-shadow: inset 0 0 0 2px var(--slate-300); }
+.mpe-pred-val.editing { background: var(--surface); padding: 0 8px; }
+.mpe-val-input { width: 56px; border: 0; outline: none; background: transparent; font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--slate-900); padding: 6px 0; }
+.mpe-pred-val.ref { cursor: default; }
+.mpe-pred-val.ref:hover { background: var(--surface); }
+
+/* 인라인 Cedar 미리보기 chip */
+.mpe-cond-chip { display: inline-flex; align-items: center; gap: 8px; margin-top: 9px; }
+.mpe-cond-chip .lbl { font-family: var(--ff-mono); font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sage-700); background: var(--sage-100); border: 1px solid var(--sage-300); border-radius: 5px; padding: 2px 6px; }
+.mpe-cond-chip code { font-family: var(--ff-mono); font-size: 11.5px; color: var(--slate-600); background: var(--fog-200); border: 1px solid var(--hairline-soft); border-radius: 6px; padding: 3px 9px; }
+
+/* 추천값 chips */
+.mpe-rec { display: flex; align-items: center; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+.mpe-rec-lbl { font-size: 11px; font-weight: 700; color: var(--slate-400); }
+.mpe-rec-chip { appearance: none; font-family: var(--ff-mono); font-size: 12px; font-weight: 700; color: var(--slate-600); background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 8px; padding: 4px 11px; display: inline-flex; align-items: center; gap: 3px; }
+.mpe-rec-chip .u { font-size: 9.5px; color: var(--slate-400); }
+.mpe-rec-chip:hover { border-color: var(--slate-400); color: var(--slate-900); }
+.mpe-rec-chip.on { background: var(--slate-900); color: var(--fog-50); border-color: var(--slate-900); }
+.mpe-rec-chip.on .u { color: var(--sage-300); }
+
+/* 유효성 배지 + trigger 요약 */
+.mpe-valid { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 4px; padding: 12px 14px; background: var(--pass-50); border: 1px solid var(--pass-200); border-radius: 11px; }
+.mpe-valid-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: var(--pass-700); }
+.mpe-valid-badge svg { width: 14px; height: 14px; }
+.mpe-valid-meta { font-size: 11.5px; color: var(--slate-500); }
+.mpe-valid-meta code { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-700); background: var(--surface); border: 1px solid var(--hairline-soft); border-radius: 5px; padding: 1px 6px; }
+
+/* round-trip chip (cedar 모드용 soft) */
+.mpe-rt.warn-soft { background: var(--warn-50); color: var(--warn-800); border: 1px solid var(--warn-200); }
+
+/* ════════════ 자연어 워크벤치 (승격된 상시 바) ════════════ */
+.mpe-nlw { flex-shrink: 0; border-top: 1px solid var(--hairline-soft); background: linear-gradient(180deg, var(--fog-100), var(--surface)); }
+.mpe-nlw-tabs { display: flex; gap: 4px; padding: 9px 12px 0; }
+.mpe-nlw-tabs button { appearance: none; display: inline-flex; align-items: center; gap: 7px; border: 1px solid transparent; border-bottom: 0; background: transparent; font-size: 12.5px; font-weight: 700; color: var(--slate-400); padding: 8px 13px; border-radius: 9px 9px 0 0; }
+.mpe-nlw-tabs button svg { width: 14px; height: 14px; }
+.mpe-nlw-tabs button:hover { color: var(--slate-700); }
+.mpe-nlw-tabs button.on { color: var(--sage-800); background: var(--sage-50); border-color: var(--sage-300); }
+.mpe-nlw-tabs button .soon { font-family: var(--ff-mono); font-size: 8.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--slate-400); background: var(--fog-300); border: 1px solid var(--hairline-soft); border-radius: var(--r-pill); padding: 1px 6px; }
+.mpe-nlw-read { padding: 12px 16px 15px; border-top: 1px solid var(--sage-300); margin-top: -1px; }
+.mpe-nlw-trust { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; color: var(--pass-700); margin-bottom: 8px; }
+.mpe-nlw-trust svg { width: 13px; height: 13px; }
+.mpe-nlw-read .p { font-size: 14px; line-height: 1.55; color: var(--slate-800); text-wrap: pretty; }
+.mpe-nlw-read .p b { color: var(--slate-900); font-weight: 700; }
+.mpe-nlw-read .p i { color: var(--cyan-800); font-style: normal; font-weight: 600; }
+.mpe-nlw-cmd { padding: 12px 16px 15px; border-top: 1px solid var(--sage-300); margin-top: -1px; }
+.mpe-nlw-input { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 10px; padding: 10px 14px; }
+.mpe-nlw-input svg { width: 15px; height: 15px; color: var(--slate-300); flex-shrink: 0; }
+.mpe-nlw-input input { flex: 1; border: 0; outline: none; background: transparent; font-family: var(--ff-sans); font-size: 13px; color: var(--slate-700); }
+.mpe-nlw-input input::placeholder { color: var(--slate-400); }
+.mpe-nlw-note { font-size: 11px; color: var(--slate-400); margin-top: 9px; line-height: 1.45; }
+
+/* ════════════ CEDAR EDITOR (신규) ════════════ */
+.mpe-cedar-edit { display: flex; flex-direction: column; min-height: 460px; height: 100%; }
+.mpe-cedar-warn { display: flex; align-items: flex-start; gap: 10px; margin: 14px 16px 0; padding: 11px 13px; background: var(--warn-50); border: 1px solid var(--warn-200); border-radius: 11px; font-size: 12px; color: var(--warn-900); line-height: 1.5; }
+.mpe-cedar-warn svg { width: 15px; height: 15px; color: var(--warn-600); flex-shrink: 0; margin-top: 1px; }
+.mpe-cedar-warn b { color: var(--warn-800); font-weight: 700; }
+.mpe-cedar-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 13px 16px 16px; background: var(--slate-900); border: 1px solid var(--slate-700); border-radius: var(--r-md); overflow: hidden; }
+.mpe-cedar-h { display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-bottom: 1px solid var(--slate-700); }
+.mpe-cedar-h .lang { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--cyan-400); letter-spacing: 0.04em; }
+.mpe-cedar-valid { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-family: var(--ff-mono); font-size: 10px; font-weight: 700; color: var(--pass-400); }
+.mpe-cedar-valid svg { width: 12px; height: 12px; }
+.mpe-code.editable { flex: 1; outline: none; caret-color: var(--sage-400); }
+.mpe-code.editable:focus-within { background: rgba(124,176,105,0.03); }
+
+/* manifest.json 뷰 토큰 */
+.mpe-cl-tx .key { color: var(--cyan-400); }
+.mpe-cl-tx .hole { color: var(--warn-300); font-weight: 700; }
+
+/* ════════════════════════════════════════════════════════════
+   v4 — Cedar 라이브 코드 에디터 / 동기화 / 폼범위초과 / Cedar-solo
+   ════════════════════════════════════════════════════════════ */
+
+/* sync 상태 배지 */
+.mpe-sync { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ff-mono); font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: var(--r-pill); }
+.mpe-sync svg { width: 12px; height: 12px; }
+.mpe-sync.ok { background: rgba(124,176,105,0.16); color: var(--pass-400); }
+.mpe-sync.warn { background: rgba(214,146,56,0.18); color: var(--warn-300); }
+.mpe-sync.neutral { background: rgba(164,201,209,0.16); color: var(--cyan-300); }
+
+/* 코드 패널 (편집 가능) */
+.mpe-codepane { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--slate-900); border: 1px solid var(--slate-700); border-radius: var(--r-md); overflow: hidden; }
+.mpe-codepane-h { display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-bottom: 1px solid var(--slate-700); flex-shrink: 0; }
+.mpe-codepane-h .lang { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--cyan-400); letter-spacing: 0.04em; }
+.mpe-codepane-h .mpe-sync { margin-left: auto; }
+.mpe-codepane-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+.mpe-gutter { flex-shrink: 0; width: 40px; padding: 13px 0; overflow: hidden; text-align: right; font-family: var(--ff-mono); font-size: 12.5px; line-height: 1.7; color: var(--slate-600); user-select: none; }
+.mpe-gutter div { padding: 0 11px 0 0; }
+.mpe-codestack { position: relative; flex: 1; min-width: 0; }
+.mpe-hl, .mpe-ta { position: absolute; inset: 0; margin: 0; border: 0; font-family: var(--ff-mono); font-size: 12.5px; line-height: 1.7; padding: 13px 15px; white-space: pre; overflow: auto; tab-size: 2; }
+.mpe-hl { pointer-events: none; color: var(--fog-200); }
+.mpe-hl code { font: inherit; white-space: pre; }
+.mpe-hl .cmt { color: var(--slate-500); font-style: italic; }
+.mpe-hl .kw { color: var(--cyan-400); }
+.mpe-hl .str { color: var(--sage-300); }
+.mpe-hl .hole { color: var(--warn-300); font-weight: 700; }
+.mpe-ta { background: transparent; color: transparent; caret-color: var(--sage-300); resize: none; outline: none; }
+.mpe-ta::selection { background: rgba(164,201,209,0.32); }
+.mpe-ta:focus + none { }
+
+/* 폼 범위 초과 알림 (코드가 진실) */
+.mpe-exceeded { margin: 0 16px; background: var(--warn-50); border: 1.5px solid var(--warn-300); border-radius: 12px; padding: 14px 15px; }
+.mpe-exceeded-h { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 700; color: var(--warn-800); margin-bottom: 7px; }
+.mpe-exceeded-h svg { width: 16px; height: 16px; color: var(--warn-600); flex-shrink: 0; }
+.mpe-exceeded-b { font-size: 12.5px; color: var(--warn-900); line-height: 1.55; }
+.mpe-exceeded-b .mono { font-family: var(--ff-mono); font-size: 11.5px; background: var(--warn-100); padding: 1px 5px; border-radius: 4px; }
+.mpe-exceeded-b b { color: var(--warn-800); font-weight: 700; }
+.mpe-exceeded-acts { display: flex; gap: 8px; margin-top: 12px; }
+.mpe-exceeded-go { appearance: none; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--slate-800); background: var(--slate-900); color: var(--fog-50); font-size: 12.5px; font-weight: 700; padding: 8px 14px; border-radius: 9px; }
+.mpe-exceeded-go:hover { background: var(--slate-800); }
+.mpe-exceeded-go svg { width: 14px; height: 14px; }
+.mpe-exceeded-go.alt { background: var(--surface); color: var(--slate-700); border-color: var(--hairline); }
+.mpe-exceeded-go.alt:hover { background: var(--fog-300); color: var(--slate-900); }
+
+/* 폼 동결 (코드 진실 유지 중) */
+.mpe-form.is-frozen { opacity: 0.5; pointer-events: none; filter: grayscale(0.3); }
+
+/* ── Cedar 모드: 코드 주인공 + manifest 보조 ── */
+.mpe-cedar-solo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 11px; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 12px; width: 100%; }
+.mpe-cedar-solo .mpe-lh { border-bottom: 0; padding: 4px 4px 0; }
+.mpe-cedar-note { display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px; background: var(--warn-50); border: 1px solid var(--warn-200); border-radius: 11px; font-size: 12px; color: var(--warn-900); line-height: 1.5; }
+.mpe-cedar-note svg { width: 15px; height: 15px; color: var(--warn-600); flex-shrink: 0; margin-top: 1px; }
+.mpe-cedar-note b { color: var(--warn-800); font-weight: 700; }
+.mpe-cedar-solo .mpe-codepane { flex: 1; }
+
+/* manifest 보조 패널 (접기) */
+.mpe-maux { flex-shrink: 0; border: 1px solid var(--hairline); border-radius: var(--r-md); overflow: hidden; background: var(--fog-100); }
+.mpe-maux-h { appearance: none; width: 100%; display: flex; align-items: center; gap: 9px; padding: 10px 13px; background: var(--fog-200); border: 0; cursor: pointer; }
+.mpe-maux-h .car { color: var(--slate-300); display: grid; place-items: center; transition: transform 140ms ease; }
+.mpe-maux-h .car svg { width: 14px; height: 14px; }
+.mpe-maux.open .mpe-maux-h .car { transform: rotate(90deg); }
+.mpe-maux-h .lang { font-family: var(--ff-mono); font-size: 11.5px; font-weight: 700; color: var(--slate-700); }
+.mpe-maux-h .tag { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--slate-400); font-family: var(--ff-mono); }
+.mpe-maux-body { padding: 11px 0; font-family: var(--ff-mono); font-size: 12px; line-height: 1.65; background: var(--surface); border-top: 1px solid var(--hairline-soft); max-height: 200px; overflow: auto; }
+.mpe-maux-ln { display: flex; padding: 0 14px; }
+.mpe-maux-ln .g { width: 24px; flex-shrink: 0; text-align: right; padding-right: 12px; color: var(--slate-300); user-select: none; }
+.mpe-maux-ln .t { color: var(--slate-700); white-space: pre; }
+.mpe-maux-ln .t .key { color: var(--cyan-800); }
+.mpe-maux-ln .t .str { color: var(--sage-700); }
