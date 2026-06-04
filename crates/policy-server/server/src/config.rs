@@ -141,7 +141,10 @@ fn env_u64(name: &str, default: u64) -> u64 {
 }
 
 fn env_u32(name: &str, default: u32) -> u32 {
-    env::var(name).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    env::var(name)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 
 #[cfg(test)]

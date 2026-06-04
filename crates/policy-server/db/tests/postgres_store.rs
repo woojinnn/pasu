@@ -67,9 +67,9 @@ async fn upsert_user_is_idempotent_under_concurrent_first_login() {
         for _ in 0..CONCURRENCY {
             let global = global.clone();
             let email = email.clone();
-            handles.push(tokio::spawn(
-                async move { global.upsert_user(&email, "google").await },
-            ));
+            handles.push(tokio::spawn(async move {
+                global.upsert_user(&email, "google").await
+            }));
         }
 
         for handle in handles {
