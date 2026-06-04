@@ -49,43 +49,17 @@ function listSchemaFiles() {
 // policy text + manifest verbatim (no JS-side transform — validity is the
 // Rust fixture gate's job).
 function copyDefaultPoliciesV2() {
-  const v2Dir = path.join(
-    REPO_ROOT,
-    "crates",
-    "policy-engine",
-    "tests",
-    "fixtures",
-    "default_policies_v2",
-  );
   const destPath = path.join(DEST, "policy-set-v2.json");
 
-  if (!fs.existsSync(v2Dir)) {
-    // Mirror the v1 `[]` fallback so a release build with the fixture
-    // pruned still produces a parseable (empty) asset and never bricks
-    // `prepare:defaults`.
-    fs.writeFileSync(destPath, "[]");
-    console.log(
-      `Wrote empty policy-set-v2.json (no default_policies_v2/ dir found)`,
-    );
-    return;
-  }
-
-  const ids = fs
-    .readdirSync(v2Dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort(); // deterministic order so the asset hashes stably across builds
-
-  const set = ids.map((id) => ({
-    id,
-    policy: fs.readFileSync(path.join(v2Dir, id, "policy.cedar"), "utf8"),
-    manifest: JSON.parse(
-      fs.readFileSync(path.join(v2Dir, id, "manifest.json"), "utf8"),
-    ),
-  }));
-
-  fs.writeFileSync(destPath, JSON.stringify(set, null, 2));
-  console.log(`Copied ${set.length} v2 policy bundles → ${DEST}`);
+  // Default v2 policies are intentionally NOT shipped to the extension — it
+  // starts with NO baked policies; users add their own via the dashboard.
+  // The Rust fixtures under
+  // `crates/policy-engine/tests/fixtures/default_policies_v2/` and their
+  // `default_policies_v2.rs` gate stay the engine's source of truth and are
+  // untouched. To restore shipping the baked set, restore this function's
+  // fixture-enumeration body from git history.
+  fs.writeFileSync(destPath, "[]");
+  console.log("Wrote empty policy-set-v2.json (default v2 policies not shipped to the extension)");
 }
 
 function main() {
