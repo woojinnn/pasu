@@ -1,14 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 
 import {
   ENABLED_IDS_STORAGE_KEY,
+  dashboardId,
   getEnabledPolicyIds,
   listManagedPolicies,
+  listPolicySets,
+  putPolicy,
   setEnabledPolicyIds,
+  stripDashboardSetId,
   subscribeToBroadcast,
   type ManagedPolicy,
+  type PolicySet,
 } from "../../server-api";
 import { Topbar } from "../../shell/Topbar";
 
@@ -16,11 +21,10 @@ import { nameFromPolicy, severityFromCedar } from "./policy-meta";
 import "../editor.css";
 
 /**
- * Card-grid landing for `/editor`. Each card is a full-area button
- * into `/editor/:id` plus an "enabled" checkbox that mirrors the
- * extension popup's checkbox column — flipping it here flips it there
- * (and vice versa) because both UIs read/write the same SW storage
- * key (`policy-selection:enabled-ids`).
+ * Card-grid landing for `/editor`. Policies belonging to a user-defined
+ * set are grouped together with a bulk-toggle checkbox; policies not in
+ * any set fall into the "ungrouped" section. The enabled-ids contract is
+ * unchanged — set toggles fan out into individual member toggles.
  */
 export function EditorListPage() {
   const navigate = useNavigate();
@@ -31,15 +35,16 @@ export function EditorListPage() {
     queryFn: listManagedPolicies,
   });
 
+  const setsQ = useQuery({
+    queryKey: ["policy-sets"],
+    queryFn: listPolicySets,
+  });
+
   const enabledQ = useQuery({
     queryKey: ["enabled-policy-ids"],
     queryFn: getEnabledPolicyIds,
   });
 
-  // Bidirectional sync: when the popup (or another tab) toggles a
-  // checkbox, the SW writes `policy-selection:enabled-ids`, the
-  // dashboard-bridge content script broadcasts the change to this
-  // page, and we refetch our cached set so the UI re-renders.
   useEffect(() => {
     const unsubscribe = subscribeToBroadcast((keys) => {
       if (keys.includes(ENABLED_IDS_STORAGE_KEY)) {
@@ -54,9 +59,6 @@ export function EditorListPage() {
       await setEnabledPolicyIds(next);
       return next;
     },
-    // Optimistic update so the checkbox flips immediately while the SW
-    // round-trip (+ engine reinstall) is in flight. The broadcast above
-    // will reconcile if the SW rejects.
     onMutate: async (next) => {
       await qc.cancelQueries({ queryKey: ["enabled-policy-ids"] });
       const previous = qc.getQueryData<string[]>(["enabled-policy-ids"]) ?? [];
@@ -72,33 +74,84 @@ export function EditorListPage() {
   });
 
   const enabledSet = new Set(enabledQ.data ?? []);
-  const toggle = (id: string, checked: boolean) => {
+  const togglePolicy = (id: string, checked: boolean) => {
     const next = new Set(enabledSet);
     if (checked) next.add(id);
     else next.delete(id);
     toggleMut.mutate([...next]);
   };
 
+  /** Bulk toggle for a set: enable all members if the set is not fully
+   *  on, otherwise disable all members. Stale member ids (set references a
+   *  policy that no longer exists) are still added/removed so the
+   *  enabled-ids state stays in sync with the set's stated intent. */
+  const toggleSet = (memberIds: readonly string[], desiredOn: boolean) => {
+    const next = new Set(enabledSet);
+    if (desiredOn) {
+      for (const id of memberIds) next.add(id);
+    } else {
+      for (const id of memberIds) next.delete(id);
+    }
+    toggleMut.mutate([...next]);
+  };
+
+  const { groupedSets, ungrouped } = useMemo(() => {
+    const policies = listQ.data ?? [];
+    const sets = setsQ.data ?? [];
+    const byId = new Map(policies.map((p) => [p.id, p]));
+
+    // A policy is "grouped" if any set references it. Many-to-many: it may
+    // render under several sets, but only once in the ungrouped list.
+    const claimedIds = new Set<string>();
+    const groupedSets: Array<{ set: PolicySet; members: ManagedPolicy[] }> = [];
+    for (const set of sets) {
+      const members: ManagedPolicy[] = [];
+      for (const mid of set.memberIds) {
+        const p = byId.get(mid);
+        if (p) {
+          members.push(p);
+          claimedIds.add(mid);
+        }
+      }
+      groupedSets.push({ set, members });
+    }
+    const ungrouped = policies.filter((p) => !claimedIds.has(p.id));
+    return { groupedSets, ungrouped };
+  }, [listQ.data, setsQ.data]);
+
+  const totalPolicies = listQ.data?.length ?? 0;
+  const totalSets = setsQ.data?.length ?? 0;
+
   return (
     <>
       <Topbar
         here="Policy Editor"
-        subtitle={listQ.data ? `${listQ.data.length} policies` : "…"}
+        subtitle={
+          listQ.data
+            ? `${totalPolicies} policies · ${totalSets} sets`
+            : "…"
+        }
         right={
-          <Link to="/editor/new" className="btn-primary new-policy-btn">
-            + 새 정책
-          </Link>
+          <>
+            {import.meta.env.DEV && <SeedPhase1ADefaultsButton />}
+            <Link to="/editor/sets/new" className="btn-secondary new-set-btn">
+              + 새 셋
+            </Link>
+            <Link to="/editor/new" className="btn-primary new-policy-btn">
+              + 새 정책
+            </Link>
+          </>
         }
       />
 
       <div className="policy-grid-wrap">
         <header className="policy-grid-head">
           <h2>
-            설치된 정책 <span className="cnt">{listQ.data?.length ?? 0}</span>
+            설치된 정책 <span className="cnt">{totalPolicies}</span>
           </h2>
           <p className="hint">
-            체크박스로 활성/비활성 토글, 카드 클릭으로 편집기로 이동. 익스텐션
-            팝업과 실시간 동기화됩니다.
+            정책 셋으로 묶어 한 번에 켜고 끌 수 있습니다. 익스텐션 팝업과 실시간
+            동기화됩니다.
           </p>
         </header>
 
@@ -106,7 +159,7 @@ export function EditorListPage() {
           <div className="policy-grid-status">불러오는 중…</div>
         )}
 
-        {listQ.data && listQ.data.length === 0 && (
+        {listQ.data && totalPolicies === 0 && totalSets === 0 && (
           <div className="policy-grid-empty">
             <p>아직 설치된 정책이 없습니다.</p>
             <Link to="/editor/new" className="btn-primary">
@@ -115,21 +168,141 @@ export function EditorListPage() {
           </div>
         )}
 
-        {listQ.data && listQ.data.length > 0 && (
-          <div className="policy-grid">
-            {listQ.data.map((p) => (
-              <PolicyCard
-                key={p.id}
-                policy={p}
-                enabled={enabledSet.has(p.id)}
-                onToggle={(checked) => toggle(p.id, checked)}
-                onOpen={() => navigate(`/editor/${encodeURIComponent(p.id)}`)}
-              />
-            ))}
-          </div>
+        {groupedSets.map(({ set, members }) => {
+          const enabledCount = members.filter((m) => enabledSet.has(m.id)).length;
+          const fullyOn = members.length > 0 && enabledCount === members.length;
+          const partiallyOn = enabledCount > 0 && enabledCount < members.length;
+          const slug = stripDashboardSetId(set.id);
+          return (
+            <section className="set-group" key={set.id}>
+              <header className="set-group-head">
+                <label
+                  className="sg-check"
+                  title={fullyOn ? "셋 전체 비활성화" : "셋 전체 활성화"}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={fullyOn}
+                    ref={(el) => {
+                      if (el) el.indeterminate = partiallyOn;
+                    }}
+                    onChange={() => toggleSet(set.memberIds, !fullyOn)}
+                    aria-label={`${set.displayName} 일괄 토글`}
+                  />
+                </label>
+                <span className="sg-name">{set.displayName}</span>
+                {set.description && (
+                  <span className="sg-meta">{set.description}</span>
+                )}
+                <span className="sg-counter">
+                  {enabledCount}/{members.length}
+                </span>
+                <Link
+                  to={`/editor/sets/${encodeURIComponent(slug)}`}
+                  className="sg-edit"
+                >
+                  편집
+                </Link>
+              </header>
+              {members.length > 0 && (
+                <div className="set-group-body">
+                  <div className="policy-grid">
+                    {members.map((p) => (
+                      <PolicyCard
+                        key={`${set.id}::${p.id}`}
+                        policy={p}
+                        enabled={enabledSet.has(p.id)}
+                        onToggle={(checked) => togglePolicy(p.id, checked)}
+                        onOpen={() =>
+                          navigate(`/editor/${encodeURIComponent(p.id)}`)
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })}
+
+        {ungrouped.length > 0 && (
+          <>
+            {totalSets > 0 && (
+              <div className="ungrouped-head">미분류 ({ungrouped.length})</div>
+            )}
+            <div className="policy-grid">
+              {ungrouped.map((p) => (
+                <PolicyCard
+                  key={p.id}
+                  policy={p}
+                  enabled={enabledSet.has(p.id)}
+                  onToggle={(checked) => togglePolicy(p.id, checked)}
+                  onOpen={() => navigate(`/editor/${encodeURIComponent(p.id)}`)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </>
+  );
+}
+
+function SeedPhase1ADefaultsButton() {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "running"; done: number; total: number }
+    | { kind: "done"; ok: number; failed: number }
+  >({ kind: "idle" });
+
+  async function runSeed() {
+    const { default: bundles } = (await import("./phase1A-seed.json")) as {
+      default: ReadonlyArray<{ id: string; cedar: string; manifest: unknown }>;
+    };
+    setStatus({ kind: "running", done: 0, total: bundles.length });
+    let ok = 0;
+    let failed = 0;
+    for (let i = 0; i < bundles.length; i++) {
+      const b = bundles[i];
+      try {
+        await putPolicy({
+          id: dashboardId(b.id),
+          cedarText: b.cedar,
+          manifest: b.manifest,
+          displayName: b.id,
+        });
+        ok += 1;
+      } catch (err) {
+        console.warn(`[seed phase1/A] ${b.id} failed:`, err);
+        failed += 1;
+      }
+      setStatus({ kind: "running", done: i + 1, total: bundles.length });
+    }
+    setStatus({ kind: "done", ok, failed });
+    await qc.invalidateQueries({ queryKey: ["managed-policies"] });
+    await qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+  }
+
+  const label =
+    status.kind === "idle"
+      ? "+ Seed phase1/A (dev)"
+      : status.kind === "running"
+        ? `Seeding ${status.done}/${status.total}…`
+        : `Seeded ${status.ok}${status.failed ? ` (${status.failed} failed)` : ""}`;
+
+  return (
+    <button
+      type="button"
+      className="btn-secondary"
+      disabled={status.kind === "running"}
+      onClick={runSeed}
+      title="phase1/A 36개 기본 정책을 chrome.storage.local에 시드 (DEV 전용)"
+      style={{ marginRight: 8 }}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -148,8 +321,6 @@ function PolicyCard({
   const name = nameFromPolicy(policy);
   return (
     <div className={`policy-card ${sev}${enabled ? " is-enabled" : ""}`}>
-      {/* Checkbox lives outside the navigation button so clicking it
-          doesn't propagate up and open the detail page. */}
       <label
         className="pc-check"
         onClick={(e) => e.stopPropagation()}

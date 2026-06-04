@@ -73,6 +73,7 @@ async function forward(
 // fan out to the page.
 const WATCHED_KEYS = new Set([
   "dashboard:policies",
+  "dashboard:sets",
   "adapter-loader:bundles",
   "policy-selection:enabled-ids",
   "policy-selection:applied-ids",

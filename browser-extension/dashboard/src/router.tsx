@@ -23,10 +23,13 @@ import { HomePage } from "./pages/HomePage";
 import { EditorListPage } from "./pages/editor/EditorListPage";
 import { EditorNewPage } from "./pages/editor/EditorNewPage";
 import { EditorDetailPage } from "./pages/editor/EditorDetailPage";
+import { EditorSetNewPage } from "./pages/editor/EditorSetNewPage";
+import { EditorSetDetailPage } from "./pages/editor/EditorSetDetailPage";
 import { SimulationPage } from "./pages/SimulationPage";
 import { MonitoringPage } from "./pages/MonitoringPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { MarketPage } from "./pages/MarketPage";
+import { MarketDetailPage } from "./pages/MarketDetailPage";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -42,11 +45,14 @@ const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: "editor", element: <EditorListPage /> },
           { path: "editor/new", element: <EditorNewPage /> },
+          { path: "editor/sets/new", element: <EditorSetNewPage /> },
+          { path: "editor/sets/:setId", element: <EditorSetDetailPage /> },
           { path: "editor/:id", element: <EditorDetailPage /> },
           { path: "simulation", element: <SimulationPage /> },
           { path: "monitoring", element: <MonitoringPage /> },
           { path: "history", element: <HistoryPage /> },
           { path: "market", element: <MarketPage /> },
+          { path: "market/:slug", element: <MarketDetailPage /> },
           { path: "*", element: <Navigate to="/" replace /> },
         ],
       },

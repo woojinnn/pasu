@@ -51,6 +51,11 @@ export interface PutPolicyOpts {
   cedarText: string;
   policyTree?: string | null;
   displayName?: string;
+  /** Manifest JSON to persist alongside the policy. Seeded bundles need this
+   *  so the v2 loader can compose their `policy_rpc` + `custom_context`
+   *  schema; user-authored policies omit it and the loader falls back to a
+   *  synthesized minimal manifest. */
+  manifest?: unknown;
 }
 
 /** Install/update a policy in the extension's local store + wasm engine. */
@@ -62,6 +67,7 @@ export async function putPolicy(opts: PutPolicyOpts): Promise<void> {
       text: opts.cedarText,
       ...(opts.policyTree != null ? { policyTree: opts.policyTree } : {}),
       ...(opts.displayName ? { displayName: opts.displayName } : {}),
+      ...(opts.manifest !== undefined ? { manifest: opts.manifest } : {}),
     });
   } catch (err) {
     if (err instanceof ExtensionBridgeTimeout) return; // extension not installed
@@ -113,6 +119,70 @@ export async function getEnabledPolicyIds(): Promise<string[]> {
 export async function setEnabledPolicyIds(ids: string[]): Promise<void> {
   try {
     await sendToExtension({ type: "set-enabled-ids", ids });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+/** Prefix the SW expects on dashboard-managed set ids. Distinct from
+ *  the policy prefix so a single id space can't conflate the two. */
+const SET_ID_PREFIX = "dashboard-set::";
+
+/** A user-defined policy set: a named group of policy ids that can be
+ *  toggled on/off together. Many-to-many — a single policy id can appear
+ *  in multiple sets' memberIds. */
+export interface PolicySet {
+  id: string;
+  displayName: string;
+  description?: string;
+  memberIds: readonly string[];
+  updatedAtMs: number;
+  schemaVersion: 1;
+}
+
+export function dashboardSetId(idOrName: string | number): string {
+  return `${SET_ID_PREFIX}${idOrName}`;
+}
+
+export function stripDashboardSetId(id: string): string {
+  return id.startsWith(SET_ID_PREFIX) ? id.slice(SET_ID_PREFIX.length) : id;
+}
+
+export async function listPolicySets(): Promise<PolicySet[]> {
+  try {
+    return await sendToExtension<PolicySet[]>({ type: "dashboard:list-sets" });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return [];
+    throw err;
+  }
+}
+
+export interface PutPolicySetOpts {
+  id: string;
+  displayName: string;
+  description?: string;
+  memberIds: readonly string[];
+}
+
+export async function putPolicySet(opts: PutPolicySetOpts): Promise<void> {
+  try {
+    await sendToExtension({
+      type: "dashboard:put-set",
+      id: opts.id,
+      displayName: opts.displayName,
+      memberIds: opts.memberIds,
+      ...(opts.description != null ? { description: opts.description } : {}),
+    });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+export async function deletePolicySet(id: string): Promise<void> {
+  try {
+    await sendToExtension({ type: "dashboard:delete-set", id });
   } catch (err) {
     if (err instanceof ExtensionBridgeTimeout) return;
     throw err;

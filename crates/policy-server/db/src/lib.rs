@@ -24,5 +24,6 @@ pub mod stores;
 
 pub use error::{DbError, DbResult};
 pub use stores::{
-    derive_user_id, GlobalDb, MultiUserStore, PostgresWalletMetadata, PostgresWalletStore, User,
+    derive_user_id, market, GlobalDb, MultiUserStore, PostgresWalletMetadata, PostgresWalletStore,
+    User,
 };

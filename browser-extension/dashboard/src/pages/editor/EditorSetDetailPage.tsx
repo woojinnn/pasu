@@ -2,56 +2,53 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { listManagedPolicies, stripDashboardId } from "../../server-api";
+import {
+  dashboardSetId,
+  listPolicySets,
+  stripDashboardSetId,
+} from "../../server-api";
 import { Topbar } from "../../shell/Topbar";
 
-import { EditorPanel } from "./EditorPanel";
+import { EditorSetPanel } from "./EditorSetPanel";
 import { PublishModal, type PublishSource } from "./PublishModal";
-import { nameFromPolicy } from "./policy-meta";
 import "../editor.css";
 
-/**
- * `/editor/:id` — load the matching policy from the cached list and
- * render `<EditorPanel mode="edit">`. On delete, navigate back to the
- * list. The Publish button mounts a modal that POSTs the current cedar
- * text to `/market/listings`.
- */
-export function EditorDetailPage() {
+export function EditorSetDetailPage() {
   const navigate = useNavigate();
-  const params = useParams<{ id: string }>();
-  const id = params.id ? decodeURIComponent(params.id) : "";
+  const params = useParams<{ setId: string }>();
+  const slug = params.setId ? decodeURIComponent(params.setId) : "";
+  const fullId = slug ? dashboardSetId(slug) : "";
 
-  const listQ = useQuery({
-    queryKey: ["managed-policies"],
-    queryFn: listManagedPolicies,
+  const setsQ = useQuery({
+    queryKey: ["policy-sets"],
+    queryFn: listPolicySets,
   });
 
-  const policy = useMemo(
-    () => listQ.data?.find((p) => p.id === id) ?? null,
-    [listQ.data, id],
+  const set = useMemo(
+    () => setsQ.data?.find((s) => s.id === fullId) ?? null,
+    [setsQ.data, fullId],
   );
 
   const [publishOpen, setPublishOpen] = useState(false);
   const publishSource: PublishSource | null = useMemo(() => {
-    if (!policy) return null;
+    if (!set) return null;
     return {
-      kind: "policy",
-      cedarText: policy.text,
-      manifest: policy.manifest,
-      policyTree: policy.policyTree ?? null,
-      suggestedDisplayName: nameFromPolicy(policy),
-      suggestedSlug: stripDashboardId(policy.id),
+      kind: "set",
+      suggestedDisplayName: set.displayName,
+      suggestedSlug: stripDashboardSetId(set.id),
+      description: set.description,
+      memberIds: set.memberIds,
     };
-  }, [policy]);
+  }, [set]);
 
   return (
     <>
       <Topbar
         here="Policy Editor"
-        subtitle={policy ? nameFromPolicy(policy) : id || "…"}
+        subtitle={set ? set.displayName : slug || "…"}
         right={
           <>
-            {policy && (
+            {set && (
               <button
                 type="button"
                 className="btn-secondary"
@@ -62,32 +59,33 @@ export function EditorDetailPage() {
               </button>
             )}
             <Link to="/editor" className="back-link">
-              ← 설치된 정책
+              ← 정책 목록
             </Link>
           </>
         }
       />
       <div className="editor-main editor-main-solo">
-        {listQ.isLoading && (
+        {setsQ.isLoading && (
           <div className="empty-editor"><div>불러오는 중…</div></div>
         )}
-        {!listQ.isLoading && !policy && (
+        {!setsQ.isLoading && !set && (
           <div className="empty-editor">
             <div>
-              <strong>정책을 찾을 수 없습니다</strong>
-              ID: <code>{id}</code>
+              <strong>셋을 찾을 수 없습니다</strong>
+              ID: <code>{slug}</code>
               <br />
               <Link to="/editor">← 목록으로 돌아가기</Link>
             </div>
           </div>
         )}
-        {policy && (
-          <EditorPanel
+        {set && (
+          <EditorSetPanel
             mode="edit"
-            policy={policy}
+            set={set}
             onSaved={(savedId) => {
-              if (savedId !== id) {
-                navigate(`/editor/${encodeURIComponent(savedId)}`, {
+              const savedSlug = stripDashboardSetId(savedId);
+              if (savedSlug !== slug) {
+                navigate(`/editor/sets/${encodeURIComponent(savedSlug)}`, {
                   replace: true,
                 });
               }

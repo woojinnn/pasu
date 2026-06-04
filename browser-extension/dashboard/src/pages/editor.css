@@ -375,3 +375,127 @@
   color: var(--slate-400);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ── Set panel (new/edit set form) ────────────────────────────────────── */
+.set-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.set-panel-head { margin-bottom: 20px; }
+.set-panel-head h2 { margin: 0 0 6px; font-size: 18px; color: var(--slate-800); }
+.set-panel-head .hint { margin: 0; font-size: 13px; color: var(--slate-500); line-height: 1.5; }
+.set-panel-form { display: flex; flex-direction: column; gap: 18px; }
+.set-field { display: flex; flex-direction: column; gap: 6px; }
+.set-field-label {
+  font-size: 12.5px; font-weight: 600; color: var(--slate-700);
+  display: flex; align-items: center; gap: 8px;
+}
+.set-field-counter {
+  font-size: 11px; font-weight: 500; color: var(--slate-500);
+  background: var(--slate-100); padding: 2px 8px; border-radius: 10px;
+}
+.set-field-hint { font-size: 11.5px; color: var(--slate-500); }
+.set-field input[type="text"],
+.set-field textarea {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-base);
+  color: var(--slate-800);
+}
+.set-field input[type="text"]:focus,
+.set-field textarea:focus {
+  outline: none;
+  border-color: var(--cyan-500);
+  box-shadow: 0 0 0 2px var(--cyan-100);
+}
+.set-member-list {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+.set-member-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline-soft);
+  cursor: pointer;
+  font-size: 13px;
+}
+.set-member-row:last-child { border-bottom: none; }
+.set-member-row:hover { background: var(--slate-50); }
+.set-member-row.is-checked { background: var(--cyan-50); }
+.set-member-name { flex: 1; color: var(--slate-800); }
+.set-member-id {
+  font-family: var(--ff-mono);
+  font-size: 10.5px;
+  color: var(--slate-400);
+}
+.set-panel-foot {
+  margin-top: 24px;
+  display: flex; align-items: center; gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline-soft);
+}
+.btn-danger {
+  background: var(--fail-100);
+  color: var(--fail-800);
+  border: 1px solid var(--fail-200, transparent);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger:hover { background: var(--fail-200, var(--fail-100)); }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.set-error { font-size: 12px; color: var(--fail-700); }
+
+/* ── Set-grouped list view (EditorListPage) ──────────────────────────── */
+.set-group {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--bg-base);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.set-group-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--slate-50);
+}
+.set-group-head .sg-check {
+  display: flex; align-items: center; justify-content: center;
+}
+.set-group-head .sg-name {
+  font-weight: 600; font-size: 14px; color: var(--slate-800);
+}
+.set-group-head .sg-meta {
+  font-size: 11.5px; color: var(--slate-500);
+  margin-left: 4px;
+}
+.set-group-head .sg-counter {
+  margin-left: auto;
+  font-size: 11.5px; color: var(--slate-600);
+  background: var(--slate-100); padding: 3px 10px; border-radius: 10px;
+}
+.set-group-head .sg-edit {
+  font-size: 11.5px; color: var(--slate-500);
+  text-decoration: none;
+  padding: 3px 8px; border-radius: 4px;
+}
+.set-group-head .sg-edit:hover { background: var(--slate-100); color: var(--slate-700); }
+.set-group-body { padding: 8px; display: grid; gap: 8px; }
+.ungrouped-head {
+  margin: 20px 0 8px;
+  font-size: 12.5px; font-weight: 600; color: var(--slate-600);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.new-set-btn {
+  margin-right: 8px;
+}

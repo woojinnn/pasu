@@ -92,3 +92,6 @@ AGENTS.md
 
 # Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
 .scopeball-runtime/
+
+# Extension signing key — never commit
+*.pem
