@@ -18,8 +18,11 @@ use serde_json::{json, Value};
 use policy_state::primitives::U256;
 use policy_state::token::holding::TokenHolding;
 use policy_state::token::kind::{BaseCategory, FiatCurrency, PegTarget, TokenKind};
+use policy_state::token::TokenKey;
 
-use super::params::{over_balance_4dp, param_chain_id, param_str};
+use super::params::{
+    over_balance_4dp, param_asset_contract, param_chain_id, param_str, param_u256,
+};
 use super::FactCtx;
 use super::FactError;
 
@@ -37,9 +40,62 @@ use super::FactError;
 /// missing a required field or has the wrong shape.
 pub(super) fn dispatch(method: &str, params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
     match method {
+        // CONVERGENCE (option-2): main semantic-vocab portfolio methods.
+        "portfolio.balance" => balance(params, ctx),
         "portfolio.group_pct" => group_pct(params, ctx),
+        "portfolio.input_fraction_bps" => input_fraction_bps(params, ctx),
         _ => Err(FactError::UnknownMethod(method.into())),
     }
+}
+
+/// main vocab `portfolio.balance` — the wallet's spendable balance of `asset`.
+///
+/// Params `{chain_id, owner, asset}` (asset = lowered `TokenRef`); result key
+/// `balance` (manifest projects `$.result.balance` → `context.custom.balance`).
+/// `owner` is accepted (main passes `$.root.from`) but unused — `WalletState`
+/// IS the wallet. Fail-open: unheld/unsynced → `"0"`.
+fn balance(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
+    let chain = param_chain_id(params, "chain_id")?;
+    let contract = param_asset_contract(params, "asset")?;
+    let held = ctx
+        .state
+        .available_balance(&TokenKey::Erc20 {
+            chain,
+            address: contract,
+        })
+        .unwrap_or(U256::ZERO);
+    Ok(json!({ "balance": held.to_string() }))
+}
+
+/// main vocab `portfolio.input_fraction_bps` — `amount` as basis points of the
+/// wallet's holding of `asset` (how much of the holding the tx spends).
+///
+/// Params `{chain_id, owner, asset, amount}`; result key `bps` (manifest projects
+/// `$.result.bps` → `context.custom.holdingsBp`). Fail-open: unheld/zero balance
+/// with a positive amount → large sentinel (spends more than any holding).
+fn input_fraction_bps(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
+    let chain = param_chain_id(params, "chain_id")?;
+    let contract = param_asset_contract(params, "asset")?;
+    let amount = param_u256(params, "amount")?;
+    let held = ctx
+        .state
+        .available_balance(&TokenKey::Erc20 {
+            chain,
+            address: contract,
+        })
+        .unwrap_or(U256::ZERO);
+    Ok(json!({ "bps": fraction_bps(amount, held) }))
+}
+
+/// `amount / held` in basis points, clamped to `i64`. `held == 0` → `0` when
+/// `amount == 0`, else a large sentinel (`1_000_000` bp = 10000%) so a
+/// "fraction-of-holdings" cap policy trips when spending an unheld/empty asset.
+fn fraction_bps(amount: U256, held: U256) -> i64 {
+    if held.is_zero() {
+        return if amount.is_zero() { 0 } else { 1_000_000 };
+    }
+    let scaled = amount.saturating_mul(U256::from(10_000u64)) / held;
+    i64::try_from(scaled).unwrap_or(i64::MAX)
 }
 
 /// Fixed-point scale applied to a price [`Decimal`] string so USD valuation can
@@ -350,6 +406,58 @@ mod tests {
             volatile(),
         );
         state
+    }
+
+    /// main-vocab `asset` param: lowered `TokenRef` `{ key: { standard, chain,
+    /// address } }` (what `param_asset_contract` reads), vs group_pct's plain
+    /// string `asset`.
+    fn asset_param(addr: &str) -> Value {
+        json!({ "key": { "standard": "erc20", "chain": "eip155:1", "address": addr } })
+    }
+    const OWNER: &str = "0x000000000000000000000000000000000000a01c";
+
+    #[test]
+    fn portfolio_balance_reads_held_spendable() {
+        let state = two_token_state(); // 1000 USDC raw 1_000_000_000
+        let out = dispatch(
+            "portfolio.balance",
+            &json!({ "chain_id": "eip155:1", "owner": OWNER, "asset": asset_param(USDC) }),
+            &FactCtx { state: &state },
+        )
+        .unwrap();
+        assert_eq!(out["balance"], json!("1000000000"));
+    }
+
+    #[test]
+    fn portfolio_balance_unheld_is_zero_fail_open() {
+        let state = WalletState::new(wallet_id());
+        let out = dispatch(
+            "portfolio.balance",
+            &json!({ "chain_id": "eip155:1", "owner": OWNER, "asset": asset_param(USDC) }),
+            &FactCtx { state: &state },
+        )
+        .unwrap();
+        assert_eq!(out["balance"], json!("0"));
+    }
+
+    #[test]
+    fn portfolio_input_fraction_bps_half_full_and_sentinel() {
+        let state = two_token_state(); // 1_000_000_000 USDC held
+        let call = |amt: &str, st: &WalletState| {
+            dispatch(
+                "portfolio.input_fraction_bps",
+                &json!({ "chain_id": "eip155:1", "owner": OWNER, "asset": asset_param(USDC), "amount": amt }),
+                &FactCtx { state: st },
+            )
+            .unwrap()
+        };
+        // 500M / 1000M = 50% = 5000 bp.
+        assert_eq!(call(&format!("{:#x}", 500_000_000u64), &state)["bps"], json!(5000));
+        // full holding = 10000 bp.
+        assert_eq!(call(&format!("{:#x}", 1_000_000_000u64), &state)["bps"], json!(10000));
+        // unheld asset, positive amount → large sentinel (fail-open trips caps).
+        let empty = WalletState::new(wallet_id());
+        assert_eq!(call("0x1", &empty)["bps"], json!(1_000_000));
     }
 
     #[test]
