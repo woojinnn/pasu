@@ -1,0 +1,51 @@
+{
+  "protocol": "seaport",
+  "source": "Etherscan getsourcecode (chainid=1, all verified non-proxy) + ProjectOpenSea/seaport-deployments",
+  "url": "https://github.com/ProjectOpenSea/seaport/blob/main/README.md#deployments",
+  "fetchedAt": "2026-06-04",
+  "note": "NFT-marketplace settlement engine. Onboarding scope = Seaport 1.6 core (cover); older versions + SeaDrop deferred with measured usage. Conduit/ConduitController excluded (approval operator / admin \u2014 setApprovalForAll already covered by standard/erc721). See crates/integration-tests/logs/seaport/P0_RESEARCH.md.",
+  "contracts": [
+    {
+      "name": "Seaport 1.6 (core settlement)",
+      "chainId": 1,
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "decision": "cover",
+      "reason": "primary; fulfill*/match*/cancel/incrementCounter calldata (Flow 1) + EIP-712 verifyingContract for signed OrderComponents (Flow 2). 95.9% of Seaport calls are top-level direct."
+    },
+    {
+      "name": "Seaport 1.5 (core settlement, prior version)",
+      "chainId": 1,
+      "address": "0x00000000000000adc04c56bf30ac9d3c0aaf14dc",
+      "decision": "exclude",
+      "reason": "DEFER (measured, user-facing but low/no usage \u2014 tracked in evidence Scope Classification): distinct verifyingContract; measured ~73 tx/14d (negligible). Same surface as 1.6 at a different address; orders bind to a specific version. Fail-closed to Unknown (not misrouted). Promote only if usage rises."
+    },
+    {
+      "name": "Seaport 1.4 (core settlement, prior version)",
+      "chainId": 1,
+      "address": "0x00000000000001ad428e4906ae43d8f9852d0dd6",
+      "decision": "exclude",
+      "reason": "DEFER (measured, user-facing but low/no usage \u2014 tracked in evidence Scope Classification): measured 0 tx/14d. Superseded by 1.5/1.6."
+    },
+    {
+      "name": "Conduit (OpenSea canonical, approval operator)",
+      "chainId": 1,
+      "address": "0x1e0049783f008a0085193e00003d00cd54003c71",
+      "decision": "exclude",
+      "reason": "approval operator, not a fulfill/order target. setApprovalForAll(operator=Conduit) is already covered by standard/erc721 (token::nft_set_approval_for_all). Recognized as the known-good operator inside order/approval legibility, not a separate covered surface."
+    },
+    {
+      "name": "ConduitController (conduit factory / channel admin)",
+      "chainId": 1,
+      "address": "0x00000000f9490004c11cef243f5400493c00ad63",
+      "decision": "exclude",
+      "reason": "infra/admin: createConduit + channel management (deployer/operator-only). No normal-user signing path."
+    },
+    {
+      "name": "SeaDrop (primary NFT mint)",
+      "chainId": 1,
+      "address": "0x00005ea00ac477b1030ce78506496e8c2de24bf5",
+      "decision": "exclude",
+      "reason": "DEFER (measured, user-facing but low/no usage \u2014 tracked in evidence Scope Classification): separate primary-mint product (mintPublic etc.), distinct decode target from Seaport order settlement, lower permission-risk (pays for new tokens, no order-signing of existing assets). Own surface to scope/measure separately."
+    }
+  ]
+}

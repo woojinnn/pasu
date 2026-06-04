@@ -1,0 +1,74 @@
+{
+  "contract": "Seaport16",
+  "chainId": 1,
+  "address": "0x0000000000000068f116a894984e2db1123eb395",
+  "snapshot": "Seaport16.abi.json",
+  "functions": {
+    "0x7423eb3c": {
+      "name": "__activateTstore",
+      "decision": "exclude",
+      "reason": "one-time infra: activate transient-storage opcode path; not a user action"
+    },
+    "0xfd9f1e10": {
+      "name": "cancel",
+      "decision": "cover",
+      "reason": "maker cancels their own specific orders on-chain (45.8k tx/14d)"
+    },
+    "0xe7acab24": {
+      "name": "fulfillAdvancedOrder",
+      "decision": "cover",
+      "reason": "taker fulfills one advanced order (partial/criteria/restricted) \u2014 dominant on-chain fill (82.6k tx/14d)"
+    },
+    "0x87201b41": {
+      "name": "fulfillAvailableAdvancedOrders",
+      "decision": "cover",
+      "reason": "taker batch-fills available advanced orders, skipping unavailable (59.5k tx/14d)"
+    },
+    "0xed98a574": {
+      "name": "fulfillAvailableOrders",
+      "decision": "cover",
+      "reason": "taker batch-fills available standard orders"
+    },
+    "0xfb0f3ee1": {
+      "name": "fulfillBasicOrder",
+      "decision": "cover",
+      "reason": "taker fills a basic single-item order (flattened BasicOrderParameters)"
+    },
+    "0x00000000": {
+      "name": "fulfillBasicOrder_efficient_6GL6yc",
+      "decision": "cover",
+      "reason": "gas-optimized basic fill (mined selector 0x00000000); modern default SDK path (34.3k tx/14d)"
+    },
+    "0xb3a34c4c": {
+      "name": "fulfillOrder",
+      "decision": "cover",
+      "reason": "taker fully fills one standard order"
+    },
+    "0x5b34b966": {
+      "name": "incrementCounter",
+      "decision": "cover",
+      "reason": "maker bulk-revokes ALL their signed orders (cancel-all)"
+    },
+    "0xf2d12b12": {
+      "name": "matchAdvancedOrders",
+      "decision": "cover",
+      "reason": "matcher settles advanced orders against each other (15.5k tx/14d)"
+    },
+    "0xa8174404": {
+      "name": "matchOrders",
+      "decision": "cover",
+      "reason": "matcher settles standard orders against each other"
+    },
+    "0x88147732": {
+      "name": "validate",
+      "decision": "exclude",
+      "reason": "benign on-chain pre-validation no-op (gas-opt); no fund/permission movement; measured 49 tx/14d (negligible)"
+    }
+  },
+  "signed_structs": {
+    "OrderComponents": {
+      "decision": "cover",
+      "reason": "off-chain EIP-712 order signature (maker lists/offers NFTs); domain name 'Seaport' v1.6, primaryType OrderComponents \u2014 the key drainer surface. marketplace sign_order manifest."
+    }
+  }
+}
