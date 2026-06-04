@@ -880,10 +880,20 @@ pub fn compose_per_policy(manifest: &ManifestV2) -> Result<String, PolicyRpcErro
     }
     let mut text = merge_namespace_blocks(&inputs);
 
-    // Inject custom context fields into each matched action's stub.
+    // Inject custom context fields into each matched action's stub. Dedup by
+    // `pascal_stub`: when one trigger matches two actions that share a stub
+    // (e.g. tag-only `delegate` → `airdrop::delegate` + `governance::delegate`,
+    // or `stake` → `liquid_staking::stake` + `staking::stake`), the bare
+    // `type <Stub>CustomContext = {};` line appears in BOTH namespace blocks.
+    // `inject_custom_context`'s `text.replace` is GLOBAL, so one call already
+    // rewrites every namespace's copy — calling it again for the second
+    // same-stub action would find no stub left and fail. Inject once per stub.
     if !manifest.custom_context.fields.is_empty() {
+        let mut injected: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
         for entry in &matched {
-            inject_custom_context(&mut text, entry, &manifest.custom_context.fields)?;
+            if injected.insert(entry.pascal_stub) {
+                inject_custom_context(&mut text, entry, &manifest.custom_context.fields)?;
+            }
         }
     }
 
@@ -1312,6 +1322,33 @@ mod tests {
                 assert!(msg.contains("swap"), "error must name the action: {msg}");
             }
             other => panic!("expected PolicyRpcError::Schema, got {other:?}"),
+        }
+    }
+
+    /// A tag-only trigger that matches TWO actions sharing a `pascal_stub`
+    /// (`delegate` → `airdrop::delegate` + `governance::delegate`; `stake` →
+    /// `liquid_staking::stake` + `staking::stake`) must still compose when the
+    /// manifest declares `custom_context`: the inject loop dedups by stub so the
+    /// global `text.replace` runs once per stub instead of erroring on the
+    /// second same-stub action. Regression for the collision that
+    /// `feat/morpho-onboarding` (governance + staking domains) surfaced in the
+    /// policy catalog.
+    #[test]
+    fn same_stub_actions_compose_with_custom_context() {
+        for tag in ["delegate", "stake"] {
+            let trigger = trigger_of(&[(
+                TriggerField::ActionTag,
+                TriggerConstraint::Eq(tag.into()),
+            )]);
+            let m = manifest(trigger, &[("flagged", "Bool")]);
+            let text = compose_per_policy(&m)
+                .unwrap_or_else(|e| panic!("same-stub `{tag}` must compose, got {e:?}"));
+            let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+            assert!(
+                parsed.is_ok(),
+                "`{tag}` per-policy schema must parse: {:?}",
+                parsed.err()
+            );
         }
     }
 
