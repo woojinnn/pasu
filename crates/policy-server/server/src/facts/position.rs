@@ -220,6 +220,17 @@ fn liquidation_threshold_bp(action: &Value) -> Result<u64, FactError> {
 /// to State₁'s `userStateBefore.healthFactor` (a conservative no-worse-than view)
 /// rather than fabricating a post-borrow number.
 fn health_factor_after(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
+    Ok(json!({ "healthFactor": post_action_hf(params, ctx)? }))
+}
+
+/// Shared snapshot-based post-action health-factor computation (returns the
+/// 4-dp decimal string). Reused by the main-vocab convergence fact
+/// `lending.health_factor`, which projects it as the `postActionHf` result key.
+///
+/// Reads only the already-lowered `action.live_inputs` snapshot
+/// (`userStateBefore` aggregates + `reserveState.liquidationThresholdBp`) — NO
+/// synced-state / per-asset-LT substrate needed (ADR-010 snapshot-first).
+pub(super) fn post_action_hf(params: &Value, ctx: &FactCtx) -> Result<String, FactError> {
     let action = param_action(params, "action")?;
     let usb = user_state_before(action)?;
 
@@ -248,7 +259,7 @@ fn health_factor_after(params: &Value, ctx: &FactCtx) -> Result<Value, FactError
             .map_or_else(|| "1000000000.0000".to_owned(), normalize_decimal_4dp)
     };
 
-    Ok(json!({ "healthFactor": hf }))
+    Ok(hf)
 }
 
 /// AAVE-02: post-trade health factor (same State₂ recompute as

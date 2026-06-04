@@ -32,6 +32,7 @@ mod deposit;
 mod governance;
 mod intent;
 mod launchpad;
+mod lending;
 mod lp;
 mod params;
 mod permit;
@@ -115,6 +116,8 @@ pub fn dispatch(method: &str, params: &Value, ctx: &FactCtx) -> Result<Value, Fa
         "governance" => governance::dispatch(method, params, ctx),
         "intent" => intent::dispatch(method, params, ctx),
         "launchpad" => launchpad::dispatch(method, params, ctx),
+        // main semantic-vocab namespace (option-2 convergence, ADR-010).
+        "lending" => lending::dispatch(method, params, ctx),
         "lp" => lp::dispatch(method, params, ctx),
         "permit" => permit::dispatch(method, params, ctx),
         "perp" => perp::dispatch(method, params, ctx),
