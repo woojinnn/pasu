@@ -9,6 +9,7 @@ import {
   type ListingSort,
   type ListingSummary,
 } from "../server-api";
+import { formatYmd, publisherDisplay } from "../server-api/market";
 import { Topbar } from "../shell/Topbar";
 
 import { DomainGlyph, colorOf, domainNameOf } from "./market-domain";
@@ -17,7 +18,7 @@ import { useMarketLocale } from "./market-locale";
 import "./market.css";
 
 /**
- * `/market` — browse marketplace listings. Kind toggle (전체 / 정책 / 셋),
+ * `/market` — browse marketplace listings. Kind toggle (전체 / 정책 / 패키지),
  * sort dropdown (인기순 / 신규순 / 별점순), search box, ko/en locale
  * switcher. Selecting a card navigates to `/market/:slug`.
  */
@@ -74,7 +75,7 @@ export function MarketPage() {
               {locale === "ko" ? "정책" : "Policy"}
             </KindTab>
             <KindTab active={kind === "set"} onClick={() => setKind("set")}>
-              {locale === "ko" ? "셋" : "Set"}
+              {locale === "ko" ? "패키지" : "Package"}
             </KindTab>
           </div>
           <form
@@ -200,7 +201,7 @@ function ListingCard({
         </div>
         <span className={`mc-kind kind-${listing.kind}`}>
           {listing.kind === "set"
-            ? locale === "ko" ? "셋" : "Set"
+            ? locale === "ko" ? "패키지" : "Package"
             : locale === "ko" ? "정책" : "Policy"}
         </span>
         {listing.severity && (
@@ -220,6 +221,13 @@ function ListingCard({
       </div>
       <h3 className="mc-name">{name || listing.slug}</h3>
       {desc && <p className="mc-desc">{desc}</p>}
+      <div className="mc-publisher">
+        <span className="mc-publisher-name">
+          {publisherDisplay(listing.publisher_tier, listing.publisher_email, locale)}
+        </span>
+        <span className="mc-publisher-dot">·</span>
+        <span className="mc-publisher-date">{formatYmd(listing.created_at)}</span>
+      </div>
       {domainLabel && <div className="mc-domain">{domainLabel}</div>}
       <div className="mc-foot">
         <span className="mc-stat">
@@ -232,9 +240,13 @@ function ListingCard({
             <span className="mc-stat-mute"> ({listing.rating_count})</span>
           </span>
         )}
-        {listing.current_version && (
-          <span className="mc-stat mc-ver">v{listing.current_version}</span>
-        )}
+        <span
+          className={`mc-install-badge${listing.is_installed ? " is-installed" : ""}`}
+        >
+          {listing.is_installed
+            ? locale === "ko" ? "설치됨" : "Installed"
+            : locale === "ko" ? "설치" : "Install"}
+        </span>
       </div>
     </Link>
   );

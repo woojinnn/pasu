@@ -47,6 +47,12 @@ export interface ListingSummary {
   install_count: number;
   rating_avg: number | null;
   rating_count: number;
+  /** True when the currently-authenticated user has installed this listing
+   *  at least once (event log row, not state). Drives the 설치/설치됨 badge. */
+  is_installed: boolean;
+  /** Publisher's email, joined from `users` on read. Use `publisherDisplay`
+   *  to derive a human-friendly label (handles the official tier fallback). */
+  publisher_email?: string;
 }
 
 export interface ListingVersion {
@@ -244,4 +250,31 @@ export function pickI18n(t: I18nText | undefined, locale: "en" | "ko" = "ko"): s
   if (!t) return "";
   if (locale === "ko" && t.ko) return t.ko;
   return t.en;
+}
+
+/**
+ * Human-friendly publisher label. Official listings get a fixed brand name
+ * (the seed user's email is `official@scopeball.seed`, ugly to render);
+ * everyone else gets the email's local part (`alice@example.com` → `alice`).
+ */
+export function publisherDisplay(
+  tier: PublisherTier,
+  email: string | undefined,
+  locale: "ko" | "en" = "ko",
+): string {
+  if (tier === "official") {
+    return locale === "ko" ? "지갑방위대 공식" : "Wallet Defense Force";
+  }
+  if (!email) return locale === "ko" ? "익명" : "anonymous";
+  const at = email.indexOf("@");
+  return at > 0 ? email.slice(0, at) : email;
+}
+
+/** Format a Unix-seconds timestamp as YYYY-MM-DD in the user's local TZ. */
+export function formatYmd(unixSeconds: number): string {
+  const d = new Date(unixSeconds * 1000);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }

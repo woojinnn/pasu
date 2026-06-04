@@ -14,6 +14,7 @@ import {
   type ListingDetail,
   type SetMember,
 } from "../server-api";
+import { formatYmd, publisherDisplay } from "../server-api/market";
 import { Topbar } from "../shell/Topbar";
 
 import { DomainGlyph, colorOf, domainNameOf } from "./market-domain";
@@ -111,8 +112,8 @@ export function MarketDetailPage() {
             ? "정책을 받았습니다. 에디터로 이동합니다."
             : "Policy installed. Heading to editor."
           : locale === "ko"
-            ? "셋과 멤버 정책을 받았습니다. 에디터로 이동합니다."
-            : "Set + members installed. Heading to editor.",
+            ? "패키지와 멤버 정책을 받았습니다. 에디터로 이동합니다."
+            : "Package + members installed. Heading to editor.",
       );
       window.setTimeout(() => navigate("/editor"), 800);
     },
@@ -201,9 +202,35 @@ function DetailBody({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1>{name}</h1>
+          <div className="md-publisher-line">
+            <span className={`mc-tier tier-${detail.publisher_tier}`}>
+              {detail.publisher_tier === "official"
+                ? locale === "ko" ? "공식" : "Official"
+                : detail.publisher_tier === "verified"
+                  ? locale === "ko" ? "검증" : "Verified"
+                  : locale === "ko" ? "커뮤니티" : "Community"}
+            </span>
+            <span className="md-publisher-name">
+              {publisherDisplay(detail.publisher_tier, detail.publisher_email, locale)}
+            </span>
+            <span className="md-publisher-dot">·</span>
+            <span className="md-publisher-date">
+              {locale === "ko" ? `${formatYmd(detail.created_at)} 발행` : `Published ${formatYmd(detail.created_at)}`}
+            </span>
+            {detail.updated_at > detail.created_at && (
+              <>
+                <span className="md-publisher-dot">·</span>
+                <span className="md-publisher-date">
+                  {locale === "ko"
+                    ? `${formatYmd(detail.updated_at)} 갱신`
+                    : `Updated ${formatYmd(detail.updated_at)}`}
+                </span>
+              </>
+            )}
+          </div>
           <div className="md-meta">
             <span>{isSet
-              ? locale === "ko" ? "셋" : "Set"
+              ? locale === "ko" ? "패키지" : "Package"
               : locale === "ko" ? "정책" : "Policy"}</span>
             {detail.domain && <span>{domainNameOf(detail.domain, locale)}</span>}
             {detail.severity && (
@@ -225,13 +252,22 @@ function DetailBody({
         <div className="md-actions">
           <button
             type="button"
-            className="btn-primary"
+            className={detail.is_installed ? "btn-secondary" : "btn-primary"}
             onClick={onInstall}
             disabled={installing || !detail.current_version}
+            title={
+              detail.is_installed
+                ? locale === "ko"
+                  ? "이미 받은 listing입니다. 다시 받으면 새 로컬 복사본이 추가됩니다."
+                  : "Already installed. Receiving again adds a fresh local copy."
+                : undefined
+            }
           >
             {installing
               ? locale === "ko" ? "받는 중…" : "Installing…"
-              : locale === "ko" ? "받기" : "Install"}
+              : detail.is_installed
+                ? locale === "ko" ? "설치됨" : "Installed"
+                : locale === "ko" ? "받기" : "Install"}
           </button>
         </div>
       </div>
@@ -264,7 +300,7 @@ function DetailBody({
       {isSet && detail.latest_version?.members && (
         <div className="md-section">
           <h2>
-            {locale === "ko" ? "포함 정책" : "Policies in this set"} ({detail.latest_version.members.length})
+            {locale === "ko" ? "포함 정책" : "Policies in this package"} ({detail.latest_version.members.length})
           </h2>
           <div className="md-members">
             {detail.latest_version.members.map((m, i) => (
@@ -301,11 +337,22 @@ function DetailBody({
 }
 
 function MemberRow({ member }: { member: SetMember }) {
+  // Members are snapshots in the set version, but if a listing with the
+  // same slug exists as a standalone policy on the market, clicking
+  // navigates to its detail page. When the slug isn't a standalone
+  // listing the link 404s — the seed always publishes each policy as
+  // its own listing so this is the common case.
   return (
-    <div className="md-member">
-      <div className="md-member-name">{member.display_name || member.slug}</div>
-      <div className="md-member-slug">{member.slug}</div>
-    </div>
+    <Link
+      to={`/market/${encodeURIComponent(member.slug)}`}
+      className="md-member md-member-link"
+    >
+      <div>
+        <div className="md-member-name">{member.display_name || member.slug}</div>
+        <div className="md-member-slug">{member.slug}</div>
+      </div>
+      <span className="md-member-arrow" aria-hidden="true">→</span>
+    </Link>
   );
 }
 

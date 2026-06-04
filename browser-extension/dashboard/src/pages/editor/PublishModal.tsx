@@ -175,7 +175,7 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
     >
       <div className="publish-modal">
         <header className="publish-modal-head">
-          <h2>{source.kind === "set" ? "셋 발행" : "정책 발행"}</h2>
+          <h2>{source.kind === "set" ? "패키지 발행" : "정책 발행"}</h2>
         </header>
         <div className="publish-modal-body">
           <Field label="슬러그 (URL용)" hint="영문/숫자/_.-()/ 만, 한 번 발행하면 변경 불가">

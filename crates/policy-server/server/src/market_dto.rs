@@ -110,6 +110,14 @@ pub struct ListingSummary {
     pub install_count: i64,
     pub rating_avg: Option<f64>,
     pub rating_count: i64,
+    /// True when the currently-authenticated user has at least one row in
+    /// `market_installs` for this listing.
+    pub is_installed: bool,
+    /// Publisher's email, joined from `users` on read. The frontend renders
+    /// the local part (before `@`) as a display name for non-official
+    /// publishers; official listings keep their tier badge.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publisher_email: Option<String>,
 }
 
 /// One member policy snapshot inside a set version. The publish-time copy

@@ -85,10 +85,10 @@ export function EditorSetPanel({ mode, set, onSaved, onDeleted }: EditorSetPanel
   return (
     <div className="set-panel">
       <header className="set-panel-head">
-        <h2>{mode === "new" ? "새 정책 셋" : "셋 편집"}</h2>
+        <h2>{mode === "new" ? "새 정책 패키지" : "패키지 편집"}</h2>
         <p className="hint">
-          정책 셋은 여러 정책을 묶어 한 번에 켜고 끌 수 있는 컨테이너입니다. 한
-          정책은 여러 셋에 동시에 속할 수 있습니다.
+          정책 패키지는 여러 정책을 묶어 한 번에 켜고 끌 수 있는 컨테이너입니다. 한
+          정책은 여러 패키지에 동시에 속할 수 있습니다.
         </p>
       </header>
 
@@ -99,7 +99,7 @@ export function EditorSetPanel({ mode, set, onSaved, onDeleted }: EditorSetPanel
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="예: 컴플라이언스 셋"
+            placeholder="예: 컴플라이언스 패키지"
             maxLength={120}
           />
         </label>
@@ -125,7 +125,7 @@ export function EditorSetPanel({ mode, set, onSaved, onDeleted }: EditorSetPanel
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="이 셋이 어떤 목적인지 짧게 설명하세요."
+            placeholder="이 패키지가 어떤 목적인지 짧게 설명하세요."
             rows={3}
             maxLength={500}
           />
@@ -173,7 +173,7 @@ export function EditorSetPanel({ mode, set, onSaved, onDeleted }: EditorSetPanel
           disabled={!canSave}
           onClick={() => saveMut.mutate()}
         >
-          {saveMut.isPending ? "저장 중…" : mode === "new" ? "셋 만들기" : "변경 저장"}
+          {saveMut.isPending ? "저장 중…" : mode === "new" ? "패키지 만들기" : "변경 저장"}
         </button>
         {mode === "edit" && set && (
           <button
@@ -181,12 +181,12 @@ export function EditorSetPanel({ mode, set, onSaved, onDeleted }: EditorSetPanel
             className="btn-danger"
             disabled={deleteMut.isPending}
             onClick={() => {
-              if (window.confirm(`셋 "${set.displayName}" 을(를) 삭제할까요?`)) {
+              if (window.confirm(`패키지 "${set.displayName}" 을(를) 삭제할까요?`)) {
                 deleteMut.mutate();
               }
             }}
           >
-            {deleteMut.isPending ? "삭제 중…" : "셋 삭제"}
+            {deleteMut.isPending ? "삭제 중…" : "패키지 삭제"}
           </button>
         )}
         {saveMut.isError && (

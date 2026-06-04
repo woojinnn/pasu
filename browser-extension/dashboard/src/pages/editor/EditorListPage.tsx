@@ -47,8 +47,24 @@ export function EditorListPage() {
 
   useEffect(() => {
     const unsubscribe = subscribeToBroadcast((keys) => {
-      if (keys.includes(ENABLED_IDS_STORAGE_KEY)) {
+      // Post-namespacing the SW emits keys like
+      // `policy-selection:enabled-ids:user_abc`, so we prefix-match instead
+      // of equality-check. Also fires on the legacy flat key in case any
+      // unmigrated path still writes it.
+      const enabledTouched = keys.some(
+        (k) =>
+          k === ENABLED_IDS_STORAGE_KEY ||
+          k.startsWith(`${ENABLED_IDS_STORAGE_KEY}:`),
+      );
+      // The active-user discriminator flipping (login / logout / account
+      // switch) invalidates EVERY per-user cache simultaneously.
+      const userSwitched = keys.includes("dashboard:current-user-id");
+      if (enabledTouched || userSwitched) {
         void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+      }
+      if (userSwitched) {
+        void qc.invalidateQueries({ queryKey: ["managed-policies"] });
+        void qc.invalidateQueries({ queryKey: ["policy-sets"] });
       }
     });
     return unsubscribe;
@@ -128,14 +144,14 @@ export function EditorListPage() {
         here="Policy Editor"
         subtitle={
           listQ.data
-            ? `${totalPolicies} policies · ${totalSets} sets`
+            ? `${totalPolicies} policies · ${totalSets} packages`
             : "…"
         }
         right={
           <>
             {import.meta.env.DEV && <SeedPhase1ADefaultsButton />}
             <Link to="/editor/sets/new" className="btn-secondary new-set-btn">
-              + 새 셋
+              + 새 패키지
             </Link>
             <Link to="/editor/new" className="btn-primary new-policy-btn">
               + 새 정책
@@ -150,7 +166,7 @@ export function EditorListPage() {
             설치된 정책 <span className="cnt">{totalPolicies}</span>
           </h2>
           <p className="hint">
-            정책 셋으로 묶어 한 번에 켜고 끌 수 있습니다. 익스텐션 팝업과 실시간
+            정책 패키지로 묶어 한 번에 켜고 끌 수 있습니다. 익스텐션 팝업과 실시간
             동기화됩니다.
           </p>
         </header>
@@ -178,7 +194,7 @@ export function EditorListPage() {
               <header className="set-group-head">
                 <label
                   className="sg-check"
-                  title={fullyOn ? "셋 전체 비활성화" : "셋 전체 활성화"}
+                  title={fullyOn ? "패키지 전체 비활성화" : "패키지 전체 활성화"}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <input

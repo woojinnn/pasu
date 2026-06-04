@@ -209,6 +209,42 @@
   font-family: var(--ff-mono, monospace);
   margin-bottom: 10px;
 }
+.mc-publisher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--slate-500);
+  margin-bottom: 8px;
+}
+.mc-publisher-name {
+  font-weight: 500;
+  color: var(--slate-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+.mc-publisher-dot { color: var(--slate-300); }
+.mc-publisher-date { color: var(--slate-500); font-variant-numeric: tabular-nums; }
+
+.md-publisher-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--slate-500);
+  margin: 4px 0 10px;
+  flex-wrap: wrap;
+}
+.md-publisher-line .md-publisher-name {
+  font-weight: 600;
+  color: var(--slate-700);
+}
+.md-publisher-line .md-publisher-dot { color: var(--slate-300); }
+.md-publisher-line .md-publisher-date {
+  font-variant-numeric: tabular-nums;
+}
 .mc-foot {
   display: flex;
   align-items: center;
@@ -222,6 +258,21 @@
 .mc-stat-num { font-weight: 600; color: var(--slate-700); }
 .mc-stat-mute { color: var(--slate-400); }
 .mc-ver { margin-left: auto; font-family: var(--ff-mono, monospace); }
+.mc-install-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--cyan-100, #dceaed);
+  color: var(--cyan-800, #2b3639);
+  border: 1px solid var(--cyan-200, transparent);
+}
+.mc-install-badge.is-installed {
+  background: var(--sage-100, #ebf3e8);
+  color: var(--sage-800, #283523);
+  border-color: var(--sage-200, transparent);
+}
 
 /* Detail page */
 .market-detail-wrap {
@@ -310,6 +361,27 @@
   font-family: var(--ff-mono, monospace);
   font-size: 11px;
   color: var(--slate-500);
+}
+.md-member-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+.md-member-link:hover {
+  border-color: var(--cyan-500, #688186);
+  background: var(--slate-50);
+}
+.md-member-arrow {
+  color: var(--slate-400);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.md-member-link:hover .md-member-arrow {
+  color: var(--cyan-500, #688186);
 }
 
 .md-reviews { display: flex; flex-direction: column; gap: 12px; }

@@ -71,7 +71,7 @@ export function EditorSetDetailPage() {
         {!setsQ.isLoading && !set && (
           <div className="empty-editor">
             <div>
-              <strong>셋을 찾을 수 없습니다</strong>
+              <strong>패키지를 찾을 수 없습니다</strong>
               ID: <code>{slug}</code>
               <br />
               <Link to="/editor">← 목록으로 돌아가기</Link>

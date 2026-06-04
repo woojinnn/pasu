@@ -52,7 +52,7 @@ use crate::market_dto::{
 /// `GET /market/listings` — browse + filter + sort.
 pub async fn list_listings(
     State(state): State<AppState>,
-    Extension(_user): Extension<AuthUser>,
+    Extension(user): Extension<AuthUser>,
     Query(q): Query<ListListingsQuery>,
 ) -> Response {
     let pool = state.global_db.pool();
@@ -71,7 +71,7 @@ pub async fn list_listings(
     let limit = q.limit.unwrap_or(LIST_LIMIT_DEFAULT);
     let offset = q.offset.unwrap_or(0);
 
-    match db_list_listings(pool, &filter, sort, limit, offset).await {
+    match db_list_listings(pool, &filter, sort, limit, offset, Some(&user.user_id)).await {
         Ok(rows) => {
             let summaries: Vec<ListingSummary> = rows.iter().map(listing_row_to_summary).collect();
             Json(summaries).into_response()
@@ -83,11 +83,11 @@ pub async fn list_listings(
 /// `GET /market/listings/:slug` — listing detail + latest version + recent reviews.
 pub async fn get_listing(
     State(state): State<AppState>,
-    Extension(_user): Extension<AuthUser>,
+    Extension(user): Extension<AuthUser>,
     Path(slug): Path<String>,
 ) -> Response {
     let pool = state.global_db.pool();
-    let listing = match db_get_listing_by_slug(pool, &slug).await {
+    let listing = match db_get_listing_by_slug(pool, &slug, Some(&user.user_id)).await {
         Ok(Some(row)) => row,
         Ok(None) => return (StatusCode::NOT_FOUND, "listing not found").into_response(),
         Err(e) => return server_error(&e.to_string()),
@@ -238,7 +238,7 @@ pub async fn create_version(
     Json(req): Json<CreateVersionReq>,
 ) -> Response {
     let pool = state.global_db.pool();
-    let listing = match db_get_listing_by_id(pool, listing_id).await {
+    let listing = match db_get_listing_by_id(pool, listing_id, Some(&user.user_id)).await {
         Ok(Some(l)) => l,
         Ok(None) => return (StatusCode::NOT_FOUND, "listing not found").into_response(),
         Err(e) => return server_error(&e.to_string()),
@@ -455,6 +455,8 @@ fn listing_row_to_summary(r: &ListingRow) -> ListingSummary {
         install_count: r.install_count,
         rating_avg: r.rating_avg,
         rating_count: r.rating_count,
+        is_installed: r.is_installed,
+        publisher_email: r.publisher_email.clone(),
     }
 }
 

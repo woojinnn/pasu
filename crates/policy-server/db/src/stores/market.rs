@@ -37,6 +37,10 @@ pub struct ListingRow {
     pub install_count: i64,
     pub rating_avg: Option<f64>,
     pub rating_count: i64,
+    pub is_installed: bool,
+    /// Publisher's email, joined from `users`. NULL only if the row was
+    /// orphaned (FK should prevent this; LEFT JOIN keeps reads resilient).
+    pub publisher_email: Option<String>,
 }
 
 /// Immutable per-version body. `cedar_text` and `members` are mutually
@@ -141,12 +145,15 @@ pub fn validate_semver(v: &str) -> DbResult<(i32, i32, i32)> {
 
 /// Browse: filter + sort + paginate. Joins `LATERAL` subqueries for install
 /// count and rating so the per-row stats hit the DB in one round-trip.
+/// `viewer_id` keys `is_installed` per-caller — pass `None` for unauthenticated
+/// reads (the flag comes back `false` for every row).
 pub async fn list_listings(
     pool: &PgPool,
     filter: &ListingFilter,
     sort: ListingSort,
     limit: i64,
     offset: i64,
+    viewer_id: Option<&str>,
 ) -> DbResult<Vec<ListingRow>> {
     let limit = limit.clamp(1, LIST_LIMIT_MAX);
     let offset = offset.max(0);
@@ -165,13 +172,20 @@ pub async fn list_listings(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
                 l.display_name, l.description, l.domain, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
-                stats.install_count, stats.rating_avg, stats.rating_count
+                stats.install_count, stats.rating_avg, stats.rating_count,
+                stats.is_installed,
+                u.email AS publisher_email
          FROM market_listings l
+         LEFT JOIN users u ON u.user_id = l.publisher_id
          CROSS JOIN LATERAL (
            SELECT
              (SELECT COUNT(*) FROM market_installs i WHERE i.listing_id = l.id) AS install_count,
              (SELECT AVG(rating)::float8 FROM market_reviews r WHERE r.listing_id = l.id) AS rating_avg,
-             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count
+             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count,
+             ($8::text IS NOT NULL AND EXISTS (
+                SELECT 1 FROM market_installs i
+                WHERE i.listing_id = l.id AND i.user_id = $8
+             )) AS is_installed
          ) stats
          WHERE l.status = 'published'
            AND ($1::text IS NULL OR l.kind = $1)
@@ -193,6 +207,7 @@ pub async fn list_listings(
         .bind(filter.q.as_deref())
         .bind(limit)
         .bind(offset)
+        .bind(viewer_id)
         .fetch_all(pool)
         .await
         .map_err(|e| DbError::Invariant(e.to_string()))?;
@@ -200,44 +215,68 @@ pub async fn list_listings(
     Ok(rows.iter().map(row_to_listing).collect())
 }
 
-pub async fn get_listing_by_slug(pool: &PgPool, slug: &str) -> DbResult<Option<ListingRow>> {
+pub async fn get_listing_by_slug(
+    pool: &PgPool,
+    slug: &str,
+    viewer_id: Option<&str>,
+) -> DbResult<Option<ListingRow>> {
     let row = query(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
                 l.display_name, l.description, l.domain, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
-                stats.install_count, stats.rating_avg, stats.rating_count
+                stats.install_count, stats.rating_avg, stats.rating_count,
+                stats.is_installed,
+                u.email AS publisher_email
          FROM market_listings l
+         LEFT JOIN users u ON u.user_id = l.publisher_id
          CROSS JOIN LATERAL (
            SELECT
              (SELECT COUNT(*) FROM market_installs i WHERE i.listing_id = l.id) AS install_count,
              (SELECT AVG(rating)::float8 FROM market_reviews r WHERE r.listing_id = l.id) AS rating_avg,
-             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count
+             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count,
+             ($2::text IS NOT NULL AND EXISTS (
+                SELECT 1 FROM market_installs i
+                WHERE i.listing_id = l.id AND i.user_id = $2
+             )) AS is_installed
          ) stats
          WHERE l.slug = $1",
     )
     .bind(slug)
+    .bind(viewer_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| DbError::Invariant(e.to_string()))?;
     Ok(row.as_ref().map(row_to_listing))
 }
 
-pub async fn get_listing_by_id(pool: &PgPool, id: Uuid) -> DbResult<Option<ListingRow>> {
+pub async fn get_listing_by_id(
+    pool: &PgPool,
+    id: Uuid,
+    viewer_id: Option<&str>,
+) -> DbResult<Option<ListingRow>> {
     let row = query(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
                 l.display_name, l.description, l.domain, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
-                stats.install_count, stats.rating_avg, stats.rating_count
+                stats.install_count, stats.rating_avg, stats.rating_count,
+                stats.is_installed,
+                u.email AS publisher_email
          FROM market_listings l
+         LEFT JOIN users u ON u.user_id = l.publisher_id
          CROSS JOIN LATERAL (
            SELECT
              (SELECT COUNT(*) FROM market_installs i WHERE i.listing_id = l.id) AS install_count,
              (SELECT AVG(rating)::float8 FROM market_reviews r WHERE r.listing_id = l.id) AS rating_avg,
-             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count
+             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count,
+             ($2::text IS NOT NULL AND EXISTS (
+                SELECT 1 FROM market_installs i
+                WHERE i.listing_id = l.id AND i.user_id = $2
+             )) AS is_installed
          ) stats
          WHERE l.id = $1",
     )
     .bind(id)
+    .bind(viewer_id)
     .fetch_optional(pool)
     .await
     .map_err(|e| DbError::Invariant(e.to_string()))?;
@@ -324,7 +363,7 @@ pub async fn create_listing(pool: &PgPool, n: NewListing, now: i64) -> DbResult<
         .await
         .map_err(|e| DbError::Invariant(e.to_string()))?;
 
-    get_listing_by_id(pool, id)
+    get_listing_by_id(pool, id, None)
         .await?
         .ok_or_else(|| DbError::Invariant("listing not found after insert".into()))
 }
@@ -565,14 +604,21 @@ pub async fn list_watches(pool: &PgPool, user_id: &str) -> DbResult<Vec<ListingR
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
                 l.display_name, l.description, l.domain, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
-                stats.install_count, stats.rating_avg, stats.rating_count
+                stats.install_count, stats.rating_avg, stats.rating_count,
+                stats.is_installed,
+                u.email AS publisher_email
          FROM market_watches w
          JOIN market_listings l ON l.id = w.listing_id
+         LEFT JOIN users u ON u.user_id = l.publisher_id
          CROSS JOIN LATERAL (
            SELECT
              (SELECT COUNT(*) FROM market_installs i WHERE i.listing_id = l.id) AS install_count,
              (SELECT AVG(rating)::float8 FROM market_reviews r WHERE r.listing_id = l.id) AS rating_avg,
-             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count
+             (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count,
+             EXISTS (
+                SELECT 1 FROM market_installs i
+                WHERE i.listing_id = l.id AND i.user_id = $1
+             ) AS is_installed
          ) stats
          WHERE w.user_id = $1
          ORDER BY w.subscribed_at DESC",
@@ -604,6 +650,8 @@ fn row_to_listing(row: &PgRow) -> ListingRow {
         install_count: row.get("install_count"),
         rating_avg: row.get("rating_avg"),
         rating_count: row.get("rating_count"),
+        is_installed: row.get("is_installed"),
+        publisher_email: row.get("publisher_email"),
     }
 }
 
