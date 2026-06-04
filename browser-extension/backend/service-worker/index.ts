@@ -31,6 +31,7 @@ import {
   declarativeRouteRequestV3,
   estToPolicyText,
   policyTextToEst,
+  runDiagnosisProbesV2,
   simulatePolicySequence,
   simulateStep,
   testPolicyText,
@@ -281,6 +282,10 @@ interface CedarSimulateRequest {
   steps_json: string;
   policies_json: string;
 }
+interface RunDiagnosisProbesRequest {
+  type: "run-diagnosis-probes";
+  input_json: string;
+}
 interface CedarTextToEstRequest {
   type: "cedar-text-to-est";
   text: string;
@@ -354,6 +359,7 @@ type PopupRequest =
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
+  | RunDiagnosisProbesRequest
   | CedarTextToEstRequest
   | CedarEstToTextRequest
   | SimStepRequest
@@ -421,6 +427,17 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "cedar_simulate_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "run-diagnosis-probes") {
+      void runDiagnosisProbesV2((req as RunDiagnosisProbesRequest).input_json)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "run_diagnosis_probes_failed", message: String(err) },
           }),
         );
       return true;
