@@ -11,6 +11,8 @@
     "dev:firefox": "yarn prepare:defaults && yarn prepare:wasm && cross-env TARGET_BROWSER=firefox webpack --config webpack/webpack.dev.js --watch",
     "build:chrome": "yarn prepare:defaults && yarn prepare:wasm && cross-env TARGET_BROWSER=chrome webpack --config webpack/webpack.prod.js",
     "build:firefox": "yarn prepare:defaults && yarn prepare:wasm && cross-env TARGET_BROWSER=firefox webpack --config webpack/webpack.prod.js",
+    "build:options": "yarn workspace scopeball-dashboard build",
+    "build:ext": "run-s build:chrome build:options",
     "prepare:defaults": "node scripts/copy-default-policies.js && node scripts/copy-default-manifests.js && node scripts/copy-method-catalog.js",
     "prepare:wasm": "../scripts/wasm-build.sh",
     "build": "run-s build:chrome build:firefox",
