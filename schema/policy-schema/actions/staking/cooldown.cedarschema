@@ -18,6 +18,9 @@ namespace Staking {
     // Quantity moved into cooldown (Ethena cooldownShares/cooldownAssets),
     // U256 hex. Absent ⇒ whole staked balance (Aave cooldown()).
     amount?: String,
+    // Token-native nano sibling of `amount` (Long = raw × 10^(9−18)); present
+    // iff `amount` is. Ethena sUSDe shares + USDe assets are both 18-decimal.
+    amountNano?: Long,
     // Unit of `amount`: "shares" | "assets". Present iff `amount` is present.
     denomination?: String,
     // Manifest-extensible slot.

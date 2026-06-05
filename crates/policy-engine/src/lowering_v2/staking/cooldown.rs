@@ -29,6 +29,14 @@ pub(crate) fn lower(
     }
     if let Some(amount) = action.amount {
         m.insert("amount".into(), Value::String(u256_hex(amount)));
+        // The only venue that sets `amount` is Ethena sUSDe (`cooldownShares` /
+        // `cooldownAssets`); shares (18-dec ERC4626) and assets (18-dec USDe) are
+        // both 18-decimal, so the nano sibling uses native-18 scaling (mirrors the
+        // liquid_staking treatment). Aave `cooldown()` omits `amount` ⇒ no nano.
+        m.insert(
+            "amountNano".into(),
+            Value::from(ctx.amount_nano_native18(amount)),
+        );
     }
     if let Some(denom) = action.denomination {
         let s = match denom {
@@ -83,5 +91,52 @@ mod tests {
             denomination: Some(CooldownDenomination::Assets),
         }));
         assert_conforms("cooldown", &body, &onchain_meta());
+    }
+
+    /// An Ethena partial cooldown emits `amountNano` via native-18 scaling
+    /// (sUSDe shares / USDe assets are both 18-decimal): 1e18 raw → 1e9 nano,
+    /// so a `context.amountNano >= N` cooldown-size cap is expressible. Aave
+    /// whole-balance `cooldown()` (amount None) emits no nano.
+    #[test]
+    fn ethena_cooldown_emits_native18_amount_nano() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        let body = ActionBody::Staking(StakingAction::Cooldown(CooldownAction {
+            venue: ethena_staked_usde_venue(),
+            account: None,
+            amount: Some(U256::from(1_000_000_000_000_000_000u64)), // 1 sUSDe (18dp)
+            denomination: Some(CooldownDenomination::Shares),
+        }));
+        let lowered = lower_action(
+            &body,
+            &onchain_meta(),
+            &TxMeta {
+                from: "0x1111111111111111111111111111111111111111",
+                to: "0x2222222222222222222222222222222222222222",
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            lowered.context["amountNano"],
+            serde_json::json!(1_000_000_000i64)
+        );
+
+        // Aave whole-balance cooldown (amount None) → no nano field.
+        let whole = ActionBody::Staking(StakingAction::Cooldown(CooldownAction {
+            venue: aave_safety_module_venue(),
+            account: None,
+            amount: None,
+            denomination: None,
+        }));
+        let lowered_whole = lower_action(
+            &whole,
+            &onchain_meta(),
+            &TxMeta {
+                from: "0x1111111111111111111111111111111111111111",
+                to: "0x2222222222222222222222222222222222222222",
+            },
+        )
+        .unwrap();
+        assert!(lowered_whole.context.get("amountNano").is_none());
     }
 }
