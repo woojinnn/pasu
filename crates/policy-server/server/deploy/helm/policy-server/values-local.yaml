@@ -1,0 +1,74 @@
+# Local Kubernetes overrides for a developer Kubernetes cluster.
+# Layer this on top of values.yaml:
+#   helm upgrade --install scopeball <chart> -n scopeball -f values-local.yaml
+
+image:
+  repository: pasu-policy-server
+  tag: dev
+  # Local clusters use an image built on the developer machine. minikube users
+  # must load it into the cluster; Docker Desktop Kubernetes can see it directly.
+  pullPolicy: Never
+
+existingSecret: policy-server-secrets
+
+api:
+  replicas: 1
+  publicApiUrl: http://127.0.0.1:8788
+  dashboardUrl: http://127.0.0.1:5173
+  # Browser-extension dev id pinned by browser-extension/backend/manifest.json.
+  # chrome.identity.getRedirectURL() returns this exact URL with a trailing slash.
+  oauthAllowedRedirectUris: https://fbadoakiikjmgdpdhpcohaddifhaggki.chromiumapp.org/
+  corsAllowPrivateNetwork: true
+  corsAllowedOrigins:
+    - chrome-extension://fbadoakiikjmgdpdhpcohaddifhaggki
+    - http://127.0.0.1:5173
+    - http://localhost:5173
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  replicas: 1
+  tickSeconds: 30
+  lockTtlSeconds: 120
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+runtime:
+  rustLog: info,policy_server=debug,policy_sync=info
+  requireSyncConfig: true
+  runMigrationsOnStartup: false
+  redisEventsChannel: policy-server:events
+
+ingress:
+  enabled: false
+
+migrationJob:
+  enabled: true
+
+hpa:
+  enabled: false
+
+pdb:
+  api:
+    enabled: false
+  worker:
+    enabled: false
+
+networkPolicy:
+  enabled: false
+
+managedCertificate:
+  enabled: false
+
+backendConfig:
+  enabled: false

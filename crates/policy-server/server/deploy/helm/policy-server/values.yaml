@@ -20,6 +20,7 @@ api:
   # targets — e.g. a browser extension's https://<id>.chromiumapp.org/.
   # Empty = only the default DASHBOARD_URL flow is allowed (fail-closed).
   oauthAllowedRedirectUris: ""
+  corsAllowPrivateNetwork: false
   corsAllowedOrigins:
     - https://app.scopeball.dev
     - chrome-extension://<published-extension-id>

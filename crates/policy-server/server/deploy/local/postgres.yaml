@@ -1,0 +1,60 @@
+# Throwaway in-cluster PostgreSQL for local Kubernetes testing only.
+# The Service name `postgres` is used by the local DATABASE_URL:
+# postgres://scopeball:scopeball@postgres:5432/scopeball
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: policy-server-local-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: policy-server-local-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: policy-server-local-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: scopeball
+            - name: POSTGRES_PASSWORD
+              value: scopeball
+            - name: POSTGRES_DB
+              value: scopeball
+            - name: POSTGRES_INITDB_ARGS
+              value: "--no-sync"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "scopeball", "-d", "scopeball"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: policy-server-local-postgres
+spec:
+  selector:
+    app.kubernetes.io/name: policy-server-local-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
