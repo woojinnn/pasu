@@ -1023,6 +1023,22 @@
   overflow-y: auto;
 }
 
+/* 다이어그램 tab: read-only policy structure diagram. */
+.ev2-diagram-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hairline-soft, #e6e9ed);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.ev2-diagram-pane .pdiagram {
+  flex: 1;
+  min-height: 0;
+}
+
 .ev2-cedar-pane {
   flex: 1;
   display: flex;

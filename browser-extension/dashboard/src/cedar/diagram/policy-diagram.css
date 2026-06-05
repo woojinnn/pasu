@@ -1,0 +1,93 @@
+/* PolicyDiagram — UML-feel policy structure tree. */
+
+.pdiagram {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: 10px;
+}
+.pdiagram.is-compact {
+  overflow: visible;
+}
+.pdiagram-svg {
+  display: block;
+  min-width: 100%;
+}
+.pdiagram-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  color: var(--slate-500);
+  font-size: 13px;
+}
+
+/* Edges */
+.pd-edge {
+  fill: none;
+  stroke: var(--hairline, #d7dbe0);
+  stroke-width: 1.5;
+}
+
+/* Node boxes */
+.pd-node .pd-box {
+  fill: var(--surface-raised, #fff);
+  stroke: var(--hairline, #d7dbe0);
+  stroke-width: 1.4;
+}
+.pd-title {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--slate-900);
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.pd-detail {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 10.5px;
+  fill: var(--slate-500);
+}
+
+/* Root / clause / gate accents */
+.pd-root .pd-box {
+  fill: var(--slate-900);
+  stroke: var(--slate-900);
+}
+.pd-root .pd-title { fill: #fff; font-weight: 700; }
+.pd-root .pd-detail { fill: rgba(255, 255, 255, 0.72); }
+
+.pd-when .pd-box,
+.pd-unless .pd-box {
+  fill: var(--surface);
+  stroke-dasharray: 4 3;
+}
+.pd-when .pd-title { fill: var(--slate-600); }
+.pd-unless .pd-title { fill: var(--warn-700, #8a6d3b); }
+
+.pd-and .pd-box { fill: var(--info-50, #eef2f7); stroke: var(--info-300, #aab8c8); }
+.pd-or .pd-box { fill: var(--warn-50, #f7f2e8); stroke: var(--warn-300, #d8c08a); }
+.pd-not .pd-box,
+.pd-if .pd-box { fill: var(--surface); stroke: var(--slate-400, #9aa3ad); }
+.pd-and .pd-title,
+.pd-or .pd-title,
+.pd-not .pd-title,
+.pd-if .pd-title { font-weight: 700; letter-spacing: 0.04em; }
+
+.pd-leaf .pd-title {
+  font-weight: 500;
+  font-size: 11.5px;
+}
+
+/* Diagnosis: the blamed leaf/path → red; off-trace branches → dimmed. */
+.pd-node.pd-culprit .pd-box {
+  fill: var(--fail-50, #faeae6);
+  stroke: var(--fail-700, #7f4740);
+  stroke-width: 2.2;
+}
+.pd-node.pd-culprit .pd-title { fill: var(--fail-700, #7f4740); font-weight: 700; }
+.pd-edge.pd-dim,
+.pd-node.pd-dim { opacity: 0.32; }
