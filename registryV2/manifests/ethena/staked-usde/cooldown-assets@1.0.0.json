@@ -1,0 +1,61 @@
+{
+  "type": "adapter_action",
+  "id": "ethena/staked-usde/cooldown-assets@1.0.0",
+  "publisher": "ethena",
+  "note": "Ethena sUSDe cooldownAssets(uint256 assets) \u2014 move `assets` USDe-worth into the cooldown silo (burns previewWithdraw(assets) sUSDe); redeemable via unstake after cooldownDuration. Maps to staking::Cooldown (amount=assets, denomination=assets). selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xcdac52ed",
+    "chain_to_addresses": {
+      "1": [
+        "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cooldownAssets",
+    "abi": {
+      "name": "cooldownAssets",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "assets",
+          "type": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "shares",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "cooldown",
+        "cooldown": {
+          "venue": {
+            "name": "ethena_staked_usde",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "amount": "$args.assets",
+          "denomination": "assets"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

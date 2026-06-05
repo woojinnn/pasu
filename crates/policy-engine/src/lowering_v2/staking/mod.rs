@@ -81,7 +81,8 @@ pub(crate) fn lower_stake_venue(venue: &StakeVenue) -> Value {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("stakeToken".into(), Value::String(addr(stake_token)));
         }
-        StakeVenue::AaveSavingsGho { chain, vault } => {
+        StakeVenue::AaveSavingsGho { chain, vault }
+        | StakeVenue::EthenaStakedUsde { chain, vault } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("vault".into(), Value::String(addr(vault)));
         }
@@ -164,6 +165,14 @@ pub(crate) mod test_support {
         StakeVenue::AaveSafetyModule {
             chain: ChainId::ethereum_mainnet(),
             module: Address::from_str("0x4da27a545c0c5b758a6ba100e3a049001de870f5").unwrap(),
+        }
+    }
+
+    /// Ethena Staked USDe (sUSDe, `StakedUSDeV2`) venue on Ethereum mainnet.
+    pub(crate) fn ethena_staked_usde_venue() -> StakeVenue {
+        StakeVenue::EthenaStakedUsde {
+            chain: ChainId::ethereum_mainnet(),
+            vault: Address::from_str("0x9d39a5de30e57443bff2a8307a4256c8797a3497").unwrap(),
         }
     }
 

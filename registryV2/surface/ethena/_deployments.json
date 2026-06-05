@@ -1,0 +1,37 @@
+{
+  "protocol": "ethena",
+  "source": "Etherscan-verified contracts (getsourcecode ContractName) + on-chain reads (sUSDe.asset()/silo()) — 1st-party. Ethena docs (docs.ethena.fi) do not publish a machine-readable address page; addresses verified directly on-chain.",
+  "url": "https://etherscan.io/token/0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+  "fetchedAt": "2026-06-04",
+  "note": "Ethena on Ethereum mainnet (chainId 1) — representative-chain onboarding. SCOPE: sUSDe (StakedUSDeV2) ERC4626 staking vault — the user stake/cooldown/unstake lifecycle (the cooldown-gated withdrawal is the permission-relevant pre-sign flow). USDe = base stablecoin, user surface = standard ERC-20/2612 (covered by erc20 standard adapter); no protocol-specific user action → exclude here. EXCLUDE: EthenaMinting (whitelisted market-maker RFQ, EIP-712 Order — not retail), USDeSilo (infra holding cooled funds), admin/role/blacklist/rewards-funding. DEFER (out of this scope, separate onboarding): ENA / sENA staking, USDtb, LayerZero OFT multichain (= multichain expansion, separate framework).",
+  "contracts": [
+    {
+      "name": "StakedUSDeV2 (sUSDe)",
+      "chainId": 1,
+      "address": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+      "decision": "cover",
+      "reason": "primary user surface: ERC4626 stake (deposit/mint) + user-initiated cooldown (cooldownShares/cooldownAssets) + post-cooldown unstake + ERC4626 redeem. Cooldown-gated withdrawal is the pre-sign permission flow."
+    },
+    {
+      "name": "USDe (synthetic dollar)",
+      "chainId": 1,
+      "address": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+      "decision": "exclude",
+      "reason": "base stablecoin; user surface = standard ERC-20 + EIP-2612 permit (erc20 standard adapter auto-enumerate, out of this gate). mint/burn = EthenaMinting MINTER-role infra. No protocol-specific user action."
+    },
+    {
+      "name": "EthenaMinting",
+      "chainId": 1,
+      "address": "0xe3490297a08d6fc8da46edb7b6142e4f461b62d3",
+      "decision": "exclude",
+      "reason": "USDe mint/redeem via whitelisted market-maker RFQ (EIP-712 Order, BENEFACTOR/MINTER roles). Not a retail pre-sign surface — permissioned infra."
+    },
+    {
+      "name": "USDeSilo (sUSDe cooldown silo)",
+      "chainId": 1,
+      "address": "0x7fc7c91d556b400afa565013e3f32055a0713425",
+      "decision": "exclude",
+      "reason": "infra: holds USDe in cooldown on behalf of StakedUSDeV2; only sUSDe (the vault) calls it. No direct user surface."
+    }
+  ]
+}
