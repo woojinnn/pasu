@@ -30,7 +30,7 @@ release with `values-local.yaml`, starts a background port-forward, and checks
 
 The default local Helm values are also ready for the checked-in Chrome
 extension dev id. The API is exposed at `http://127.0.0.1:8788`, matching the
-extension's default `SCOPEBALL_SERVER_URL`; CORS allows
+extension's default `PASU_SERVER_URL`; CORS allows
 `chrome-extension://fbadoakiikjmgdpdhpcohaddifhaggki`; and OAuth allowlists
 `https://fbadoakiikjmgdpdhpcohaddifhaggki.chromiumapp.org/`.
 
@@ -45,8 +45,8 @@ scripts/policy-server-local-k8s.sh down
 Configuration knobs:
 
 ```bash
-POLICY_SERVER_LOCAL_NAMESPACE=scopeball
-POLICY_SERVER_LOCAL_RELEASE=scopeball
+POLICY_SERVER_LOCAL_NAMESPACE=pasu
+POLICY_SERVER_LOCAL_RELEASE=pasu
 POLICY_SERVER_LOCAL_IMAGE_REPOSITORY=pasu-policy-server
 POLICY_SERVER_LOCAL_IMAGE_TAG=dev
 POLICY_SERVER_LOCAL_PORT=8788

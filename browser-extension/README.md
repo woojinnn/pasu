@@ -1,4 +1,4 @@
-# Scopeball extension
+# Pasu extension
 
 Chrome MV3 / Firefox extension that intercepts wallet transactions and
 signatures, evaluates them against the policy engine (in-SW WASM Cedar + the
@@ -34,21 +34,21 @@ Passed on the command line (or via a gitignored `browser-extension/.env`):
 
 | var                                  | what                                                                                                | default                  |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------ |
-| `SCOPEBALL_SERVER_URL`               | policy-server the SW + dashboard call (eval / auth / wallets)                                        | `http://127.0.0.1:8788`  |
+| `PASU_SERVER_URL`                    | policy-server the SW + dashboard call (eval / auth / wallets)                                        | `http://127.0.0.1:8788`  |
 | `REGISTRY_BASE_URL`                  | policy / token / adapter registry. **Required (https) for a prod build** — the guard fails otherwise | `http://localhost:8000`  |
-| `SCOPEBALL_ALLOW_INSECURE_REGISTRY=1`| bypass the prod registry guard (local smoke test only)                                              | —                        |
+| `PASU_ALLOW_INSECURE_REGISTRY=1`     | bypass the prod registry guard (local smoke test only)                                              | —                        |
 
 The server URL can also be switched at **runtime** from the dashboard's
 **Settings** page (writes `localStorage` + `chrome.storage`) — no rebuild.
 
 > The SW (webpack) reads `.env`, but the dashboard (Vite) is a *separate*
 > process, so to point the **whole** extension at one server, `export`
-> `SCOPEBALL_SERVER_URL` on the command line — don't rely on `.env` alone.
+> `PASU_SERVER_URL` on the command line — don't rely on `.env` alone.
 
 ### Production build (full, loadable)
 
 ```bash
-SCOPEBALL_SERVER_URL=https://<your-server-host> \
+PASU_SERVER_URL=https://<your-server-host> \
 REGISTRY_BASE_URL=https://<your-registry-host>/ \
 yarn build:ext            # = build:chrome (webpack) → build:options (dashboard)
 ```
@@ -60,12 +60,12 @@ firefox webpack only, no dashboard; `build:ext` is the chrome loadable one.)
 ### Dev build (full, loadable, unminified)
 
 ```bash
-export SCOPEBALL_SERVER_URL=https://<your-server-host>
+export PASU_SERVER_URL=https://<your-server-host>
 yarn prepare:defaults && yarn prepare:wasm
 # webpack.dev.js sets `watch: true`, so --no-watch forces a one-shot build
 # (otherwise webpack never exits and the dashboard step below never runs).
 TARGET_BROWSER=chrome yarn webpack --config webpack/webpack.dev.js --no-watch
-yarn workspace scopeball-dashboard exec vite build --mode development
+yarn workspace pasu-dashboard exec vite build --mode development
 ```
 
 Or, for live iteration, run the two halves separately: `yarn dev:chrome`
@@ -77,7 +77,7 @@ via the `dashboard-bridge` content script).
 When you're changing **server** code too, run the policy-server locally and
 point the extension at it. Both paths below expose it on
 `http://127.0.0.1:8788` — which is already the extension's default, so a plain
-dev build targets it with no `SCOPEBALL_SERVER_URL` at all.
+dev build targets it with no `PASU_SERVER_URL` at all.
 
 - **Quick — `cargo run`:** copy the server's `.env.local.example` → `.env.local`
   (set `DATABASE_URL`, `REDIS_URL`), then `scripts/start-policy-server.sh local`.
@@ -95,7 +95,7 @@ Sanity check: `curl http://127.0.0.1:8788/readyz` → `200`.
 Then connect the extension, either way:
 
 - **Build-time** — default already targets local, so `yarn dev:chrome` (no env)
-  hits `127.0.0.1:8788`. To be explicit: `SCOPEBALL_SERVER_URL=http://127.0.0.1:8788`.
+  hits `127.0.0.1:8788`. To be explicit: `PASU_SERVER_URL=http://127.0.0.1:8788`.
 - **Runtime (no rebuild)** — dashboard → **Settings** → **로컬 (테스트)** preset
   (`http://127.0.0.1:8788`) → Save. The SW applies it immediately; the dashboard
   on next reload. Handy for flipping a prod build to your local server.
@@ -103,15 +103,14 @@ Then connect the extension, either way:
 #### Minimal local stack (quickstart)
 
 ```bash
-# 1. infra — Postgres (:5544, user/pass scopeball) + Redis (:6379)
-docker run -d --name pasu-pg -e POSTGRES_USER=scopeball -e POSTGRES_PASSWORD=scopeball \
-  -e POSTGRES_DB=scopeball_test -p 5544:5432 postgres:16
+# 1. infra — Postgres (:5544, user/pass pasu) + Redis (:6379)
+docker run -d --name pasu-pg -e POSTGRES_USER=pasu -e POSTGRES_PASSWORD=pasu \
+  -e POSTGRES_DB=pasu -p 5544:5432 postgres:16
 docker run -d --name pasu-redis -p 6379:6379 redis:7
-docker exec pasu-pg psql -U scopeball -d scopeball_test -c "CREATE DATABASE pasu"
 
 # 2. server env (repo root, gitignored). Copy the example, then set at least:
 cp .env.local.example .env.local
-#   DATABASE_URL=postgres://scopeball:scopeball@127.0.0.1:5544/pasu
+#   DATABASE_URL=postgres://pasu:pasu@127.0.0.1:5544/pasu
 #   REDIS_URL=redis://127.0.0.1:6379
 #   JWT_SECRET=$(openssl rand -hex 32)
 #   RUN_MIGRATIONS_ON_STARTUP=true     # migrate the fresh DB on boot
@@ -129,7 +128,7 @@ user and mint a dev token signed with the local secret, then inject it:
 
 ```bash
 set -a; source .env.local; set +a       # exposes JWT_SECRET to the shell
-docker exec pasu-pg psql -U scopeball -d pasu -c \
+docker exec pasu-pg psql -U pasu -d pasu -c \
   "INSERT INTO users (user_id,email,provider,created_at,last_login_at) VALUES \
    ('u_localdev01','dev@local.test','local',extract(epoch from now())::int,extract(epoch from now())::int) \
    ON CONFLICT DO NOTHING"
@@ -140,7 +139,7 @@ Inject the printed token in the SW console (`chrome://extensions` → the
 extension's *service worker* → inspect):
 
 ```js
-chrome.storage.local.set({ scopeball_jwt: "<token>", scopeball_jwt_refresh: "<token>" })
+chrome.storage.local.set({ pasu_jwt: "<token>", pasu_jwt_refresh: "<token>" })
 ```
 
 **Real OAuth locally (optional).** To use *Sign in with Google* against the
@@ -173,8 +172,8 @@ relies on the `https://<ext-id>.chromiumapp.org/` entry already in
 1. `yarn build:chrome`
 2. Load `dist/chrome/` as an unpacked extension.
 3. Visit any dApp, trigger a swap or signature, and observe the service-worker console:
-   - `[Scopeball] tx { hostname, chainId, to, data, bypassed }`
-   - `[Scopeball] typed-sig { hostname, chainId, primaryType, bypassed }`
-   - `[Scopeball] personal-sign { hostname, messageLen, bypassed }`
+   - `[Pasu] tx { hostname, chainId, to, data, bypassed }`
+   - `[Pasu] typed-sig { hostname, chainId, primaryType, bypassed }`
+   - `[Pasu] personal-sign { hostname, messageLen, bypassed }`
 
 `bypassed: true` indicates the request was caught by the bypass-check observer, not by the inpage proxy.
