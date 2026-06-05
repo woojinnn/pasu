@@ -9,10 +9,8 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 
-import { textToBlocks } from "../../cedar";
-import { PolicyDiagnosis } from "../../cedar/diagram/PolicyDiagnosis";
+import { PolicyDiagnosisByText } from "../../cedar/diagram/PolicyDiagnosisByText";
 
 import type { EvaluateActionVerdict, MatchedPolicy } from "./sim-bridge";
 
@@ -84,15 +82,9 @@ export function VerdictPanel(props: VerdictPanelProps) {
 }
 
 /** Collapsible structure diagram + on-demand diagnosis for one matched deny.
- *  Parses the policy's Cedar to IR lazily (only when expanded). */
+ *  Parses the policy's Cedar to IR lazily (mounted only when expanded). */
 function MatchedDiagnosis({ cedarText }: { cedarText: string }) {
   const [open, setOpen] = useState(false);
-  const q = useQuery({
-    queryKey: ["verdict-diagram-ir", cedarText],
-    queryFn: async () => (await textToBlocks(cedarText))[0] ?? null,
-    enabled: open,
-    retry: false,
-  });
   return (
     <div className="vline-diagram">
       <button
@@ -105,7 +97,7 @@ function MatchedDiagnosis({ cedarText }: { cedarText: string }) {
       </button>
       {open && (
         <div className="vline-diag-body">
-          <PolicyDiagnosis ir={q.data ?? null} compact />
+          <PolicyDiagnosisByText cedarText={cedarText} compact />
         </div>
       )}
     </div>

@@ -5,11 +5,13 @@ import { Link } from "react-router-dom";
 import {
   getStateDeltaRow,
   listHistoryVerdicts,
+  listManagedPolicies,
   type StateDeltaRow,
   type VerdictDto,
   type VerdictListOpts,
   type VerdictRangeAlias,
 } from "../server-api";
+import { PolicyDiagnosisByText } from "../cedar/diagram/PolicyDiagnosisByText";
 import { Topbar } from "../shell/Topbar";
 import {
   formatBalance,
@@ -173,6 +175,22 @@ export function HistoryPage() {
     });
   }, [allRows, q, verdictFilter]);
 
+  // Managed policies → Cedar `@id` → text, so a deny row can resolve its
+  // policy back to source for the structure diagram + diagnosis.
+  const managedQ = useQuery({
+    queryKey: ["history-managed-policies"],
+    queryFn: listManagedPolicies,
+    staleTime: 60_000,
+  });
+  const policyTextById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const p of managedQ.data ?? []) {
+      const id = p.text.match(/@id\("([^"]+)"\)/)?.[1];
+      if (id) m[id] = p.text;
+    }
+    return m;
+  }, [managedQ.data]);
+
   const counts = useMemo(() => {
     let pass = 0;
     let warn = 0;
@@ -282,6 +300,7 @@ export function HistoryPage() {
                         v={v}
                         open={openId === v.id}
                         onToggle={() => setOpenId(openId === v.id ? null : v.id)}
+                        policyTextById={policyTextById}
                       />
                     ))}
                 </Fragment>
@@ -581,10 +600,12 @@ function HistoryRow({
   v,
   open,
   onToggle,
+  policyTextById,
 }: {
   v: VerdictDto;
   open: boolean;
   onToggle: () => void;
+  policyTextById: Record<string, string>;
 }) {
   const fn = v.decoded_fn ?? v.method ?? "—";
   const origin = v.dapp_origin ?? "—";
@@ -649,7 +670,7 @@ function HistoryRow({
       {open && (
         <tr className="v-detail-row">
           <td colSpan={9}>
-            <HistoryDetail v={v} />
+            <HistoryDetail v={v} policyTextById={policyTextById} />
           </td>
         </tr>
       )}
@@ -657,7 +678,13 @@ function HistoryRow({
   );
 }
 
-function HistoryDetail({ v }: { v: VerdictDto }) {
+function HistoryDetail({
+  v,
+  policyTextById,
+}: {
+  v: VerdictDto;
+  policyTextById: Record<string, string>;
+}) {
   const reason = v.reason?.ko ?? v.reason?.en ?? null;
   const contractAddr = v.contract?.addr ?? null;
   const contractSymbol = v.contract?.symbol ?? null;
@@ -751,6 +778,37 @@ function HistoryDetail({ v }: { v: VerdictDto }) {
           `delta_id` and renders the reducer-side delta + a re-simulate
           link. The fetch is lazy (only fires when the row is expanded). */}
       <StateDeltaSection v={v} />
+
+      {/* Policy structure + denial diagnosis: only for a deny whose policy we
+          can resolve back to its Cedar source (by @id). On-demand. */}
+      {v.verdict === "fail" &&
+        v.policy?.name &&
+        policyTextById[v.policy.name] && (
+          <PolicyStructureSection cedarText={policyTextById[v.policy.name]} />
+        )}
+    </div>
+  );
+}
+
+/** Collapsible policy structure diagram + on-demand "where it's blocked"
+ *  diagnosis for a history deny row. Mirrors the simulation verdict panel. */
+function PolicyStructureSection({ cedarText }: { cedarText: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="v-struct-section">
+      <button
+        type="button"
+        className="v-struct-toggle"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        {open ? "정책 구조 숨기기 ▲" : "정책 구조 보기 ▼"}
+      </button>
+      {open && (
+        <div className="v-struct-body">
+          <PolicyDiagnosisByText cedarText={cedarText} compact />
+        </div>
+      )}
     </div>
   );
 }

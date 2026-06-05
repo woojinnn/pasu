@@ -173,6 +173,24 @@
 .v-group-head.gh-warn .gh-title { color: var(--warn-700); }
 .v-group-head.gh-pass .gh-title { color: var(--pass-700); }
 
+/* Policy structure + diagnosis section in a deny row's detail. */
+.v-struct-section { margin-top: 10px; }
+.v-struct-toggle {
+  font: 600 12px/1.2 var(--ff-sans, inherit);
+  color: var(--slate-600);
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+}
+.v-struct-toggle:hover { color: var(--slate-900); }
+.v-struct-body {
+  margin-top: 8px;
+  height: 420px;
+  display: flex;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
 /* Collapsible group headers: clickable, with a disclosure caret. */
 .v-table .v-group-head { cursor: pointer; user-select: none; }
 .v-table .v-group-head:hover td { background: var(--surface-hover, var(--surface)); }
