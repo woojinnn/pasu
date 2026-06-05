@@ -1,5 +1,5 @@
 /**
- * Thin fetch wrapper for the Scopeball (Rust) policy-rpc server,
+ * Thin fetch wrapper for the Pasu (Rust) policy-rpc server,
  * service-worker edition.
  *
  * Mirrors `browser-extension/dashboard/src/server-api/client.ts` but:
@@ -8,26 +8,26 @@
  * - Doesn't carry the dashboard's `urlWithTokenQuery` SSE helper —
  *   the extension never opens SSE.
  *
- * The server URL comes from `SCOPEBALL_SERVER_URL` at build time
+ * The server URL comes from `PASU_SERVER_URL` at build time
  * (webpack DefinePlugin) and can be swapped at runtime via
- * `chrome.storage.local["scopeball_server_url"]` — the service-worker
- * mirror of the dashboard's `localStorage["scopeball_server_url"]`
+ * `chrome.storage.local["pasu_server_url"]` — the service-worker
+ * mirror of the dashboard's `localStorage["pasu_server_url"]`
  * override. Falls back to the local-dev default.
  */
 
 import { getAccessToken, getRefreshToken, setTokens } from "./tokenStore";
 
-declare const SCOPEBALL_SERVER_URL: string | undefined;
+declare const PASU_SERVER_URL: string | undefined;
 
-/** Build-time default (webpack DefinePlugin → `SCOPEBALL_SERVER_URL`). */
+/** Build-time default (webpack DefinePlugin → `PASU_SERVER_URL`). */
 const BUILD_BASE_URL =
-  (typeof SCOPEBALL_SERVER_URL !== "undefined" && SCOPEBALL_SERVER_URL) ||
+  (typeof PASU_SERVER_URL !== "undefined" && PASU_SERVER_URL) ||
   "http://127.0.0.1:8788";
 
 /** Runtime override key — mirrors the dashboard's
- * `localStorage["scopeball_server_url"]`, in `chrome.storage.local`
+ * `localStorage["pasu_server_url"]`, in `chrome.storage.local`
  * (service workers have no `localStorage`). */
-const SERVER_URL_KEY = "scopeball_server_url";
+const SERVER_URL_KEY = "pasu_server_url";
 
 let runtimeBaseUrl: string | null = null;
 
