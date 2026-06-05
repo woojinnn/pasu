@@ -23,6 +23,18 @@ export interface PolicySet {
    *  policy. Stale references are tolerated; the dashboard filters them
    *  when rendering. */
   memberIds: readonly string[];
+  /** Provenance. Absent = `mine` (legacy). `market` sets are installed
+   *  from the marketplace and treated as read-only in the list view. */
+  source?: "mine" | "market";
+  /** True when this set was installed from the marketplace. The list
+   *  view shows a lock + disables in-place edits. */
+  readOnly?: boolean;
+  /** Domain category slug for the marketplace landing tiles. */
+  cat?: string;
+  /** When `source === 'market'`, the source listing id. */
+  sourceListingId?: string;
+  /** When `source === 'market'`, the installed version. */
+  sourceVersion?: string;
   updatedAtMs: number;
   schemaVersion: 1;
 }

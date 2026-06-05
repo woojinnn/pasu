@@ -33,6 +33,22 @@ export interface ManagedPolicyTemplateMeta {
   paramValues: ParamValues;
 }
 
+/** Lifecycle stage. `draft` = author still working, hidden from
+ *  enforced set when the draft-gate flag is on. `publish` = finalised
+ *  and eligible for enforcement. Absent on legacy entries — treated
+ *  as `publish` so behaviour is unchanged when the flag is off. */
+export type PolicyLife = "draft" | "publish";
+
+/** Provenance. `mine` = authored locally. `market` = installed from
+ *  the marketplace; `sourceListingId` + `sourceVersion` carry the
+ *  outbound link so the list view can detect upstream updates. */
+export type PolicySource = "mine" | "market";
+
+/** Authoring surface chosen at create time. `cedar` = raw text only,
+ *  `block` = Blockly canvas (still produces Cedar), `form` = guided
+ *  wizard (reserved; stub-disabled until the form mode ships). */
+export type PolicyMethod = "form" | "block" | "cedar";
+
 export interface ManagedPolicy {
   id: string;
   kind: "raw" | "template";
@@ -49,6 +65,28 @@ export interface ManagedPolicy {
   /** Human-readable display name. Falls back to the `@id` annotation
    *  parsed from `text` when absent. */
   displayName?: string;
+  /** Draft/publish lifecycle. Absent = `publish` (legacy compatible). */
+  life?: PolicyLife;
+  /** Provenance. Absent = `mine` (legacy compatible). */
+  source?: PolicySource;
+  /** Domain category slug (e.g. `defi`, `nft`). Free-form; the dashboard
+   *  uses it for the category chip row and download leaderboard buckets. */
+  cat?: string;
+  /** Authoring surface chosen at create time. Drives the default view
+   *  tab when the new editor opens. */
+  method?: PolicyMethod;
+  /** Dedup hint surfaced by the list view when two policies in the same
+   *  package collide. Currently advisory; future work parses it from the
+   *  manifest's action selector. */
+  dupKey?: string;
+  /** Free-form author note. Shown above the editor tabs. */
+  memo?: string;
+  /** When `source === 'market'`, the listing id this copy came from. */
+  sourceListingId?: string;
+  /** When `source === 'market'`, the listing version installed. The list
+   *  view compares this to the current upstream version to badge stale
+   *  installs. */
+  sourceVersion?: string;
   updatedAtMs: number;
   schemaVersion: 1;
 }

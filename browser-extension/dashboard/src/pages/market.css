@@ -741,7 +741,7 @@
   padding: 20px;
 }
 .publish-modal {
-  background: var(--bg-base);
+  background: var(--surface);
   border-radius: 12px;
   max-width: 520px;
   width: 100%;

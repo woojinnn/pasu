@@ -72,6 +72,11 @@ export function MarketDetailPage() {
           cedarText: body.cedar_text,
           manifest: body.manifest,
           displayName: pickI18n(detail.display_name, locale) || detail.slug,
+          source: "market",
+          sourceListingId: detail.id,
+          sourceVersion: detail.current_version,
+          cat: detail.domain ?? undefined,
+          life: "publish",
         });
         return { kind: "policy" as const, id };
       }
@@ -89,6 +94,11 @@ export function MarketDetailPage() {
           cedarText: m.cedar_text,
           manifest: m.manifest,
           displayName: m.display_name || m.slug,
+          source: "market",
+          sourceListingId: detail.id,
+          sourceVersion: detail.current_version,
+          cat: detail.domain ?? undefined,
+          life: "publish",
         });
         existingIds.add(id);
         memberIds.push(id);
@@ -99,6 +109,11 @@ export function MarketDetailPage() {
         displayName: pickI18n(detail.display_name, locale) || detail.slug,
         description: pickI18n(detail.description, locale) || undefined,
         memberIds,
+        source: "market",
+        readOnly: true,
+        sourceListingId: detail.id,
+        sourceVersion: detail.current_version,
+        cat: detail.domain ?? undefined,
       });
       return { kind: "set" as const, id: setId };
     },

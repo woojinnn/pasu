@@ -16,17 +16,29 @@ import {
   type PolicySet,
 } from "../../server-api";
 import { Topbar } from "../../shell/Topbar";
+import { FEATURES } from "../../features";
+import { EditorListPageV2 } from "./v2/EditorListPageV2";
 
 import { nameFromPolicy, severityFromCedar } from "./policy-meta";
 import "../editor.css";
 
 /**
- * Card-grid landing for `/editor`. Policies belonging to a user-defined
- * set are grouped together with a bulk-toggle checkbox; policies not in
- * any set fall into the "ungrouped" section. The enabled-ids contract is
- * unchanged — set toggles fan out into individual member toggles.
+ * Router-exposed entry. Delegates to the v2 list when the
+ * `newListView` flag is on; otherwise renders the legacy card grid.
  */
 export function EditorListPage() {
+  if (FEATURES.newListView) return <EditorListPageV2 />;
+  return <EditorListPageLegacy />;
+}
+
+/**
+ * Card-grid landing for `/editor` — legacy implementation kept until
+ * the v2 flag bakes. Policies belonging to a user-defined set are
+ * grouped together with a bulk-toggle checkbox; policies not in any
+ * set fall into the "ungrouped" section. The enabled-ids contract is
+ * unchanged — set toggles fan out into individual member toggles.
+ */
+function EditorListPageLegacy() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 

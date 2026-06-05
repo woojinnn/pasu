@@ -54,6 +54,16 @@ export type DashboardRequest =
       policyTree?: string;
       /** Human-readable label; shown in popup + dashboard. */
       displayName?: string;
+      /** Lifecycle stage. Defaults to `publish` when omitted. */
+      life?: "draft" | "publish";
+      /** Provenance. Defaults to `mine` when omitted. */
+      source?: "mine" | "market";
+      cat?: string;
+      method?: "form" | "block" | "cedar";
+      dupKey?: string;
+      memo?: string;
+      sourceListingId?: string;
+      sourceVersion?: string;
     }
   | {
       type: "dashboard:put-template";
@@ -80,6 +90,11 @@ export type DashboardRequest =
       displayName: string;
       description?: string;
       memberIds: readonly string[];
+      source?: "mine" | "market";
+      readOnly?: boolean;
+      cat?: string;
+      sourceListingId?: string;
+      sourceVersion?: string;
     }
   | { type: "dashboard:delete-set"; id: string }
   | { type: "dashboard:get-current-user" }
@@ -216,6 +231,20 @@ export async function handleDashboardRequest(
           ...(req.manifests !== undefined ? { manifests: req.manifests } : {}),
           ...(typeof req.policyTree === "string" ? { policyTree: req.policyTree } : {}),
           ...(typeof req.displayName === "string" ? { displayName: req.displayName } : {}),
+          ...(req.life === "draft" || req.life === "publish" ? { life: req.life } : {}),
+          ...(req.source === "mine" || req.source === "market" ? { source: req.source } : {}),
+          ...(typeof req.cat === "string" ? { cat: req.cat } : {}),
+          ...(req.method === "form" || req.method === "block" || req.method === "cedar"
+            ? { method: req.method }
+            : {}),
+          ...(typeof req.dupKey === "string" ? { dupKey: req.dupKey } : {}),
+          ...(typeof req.memo === "string" ? { memo: req.memo } : {}),
+          ...(typeof req.sourceListingId === "string"
+            ? { sourceListingId: req.sourceListingId }
+            : {}),
+          ...(typeof req.sourceVersion === "string"
+            ? { sourceVersion: req.sourceVersion }
+            : {}),
           updatedAtMs: Date.now(),
           schemaVersion: 1,
         };
@@ -327,6 +356,17 @@ export async function handleDashboardRequest(
             ? { description: req.description }
             : {}),
           memberIds: req.memberIds.slice(),
+          ...(req.source === "mine" || req.source === "market"
+            ? { source: req.source }
+            : {}),
+          ...(typeof req.readOnly === "boolean" ? { readOnly: req.readOnly } : {}),
+          ...(typeof req.cat === "string" ? { cat: req.cat } : {}),
+          ...(typeof req.sourceListingId === "string"
+            ? { sourceListingId: req.sourceListingId }
+            : {}),
+          ...(typeof req.sourceVersion === "string"
+            ? { sourceVersion: req.sourceVersion }
+            : {}),
           updatedAtMs: Date.now(),
           schemaVersion: 1,
         };
