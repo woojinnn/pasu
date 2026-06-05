@@ -98,11 +98,20 @@ export const ACTION_SCOPE_BLOCK_JSON = {
 
 export const ACTION_SCOPE_EQ_BLOCK_JSON = {
   type: "action_scope_eq",
-  message0: '== Action :: "%1"',
-  args0: [{ type: "field_input", name: "ID", text: "Swap" }],
+  message0: '== %1 :: "%2"',
+  args0: [
+    // Namespace + entity type. Default "Action"; many shipped schemas use
+    // namespaced forms like "Token::Action" / "Amm::Action" — the user
+    // must type the qualifier matching the schema, or schema validation
+    // rejects the policy.
+    { type: "field_input", name: "TYPE", text: "Action" },
+    { type: "field_input", name: "ID", text: "Swap" },
+  ],
   output: "ActionScope",
   colour: 200,
-  tooltip: "특정 액션과 일치 (== Action::\"id\")",
+  tooltip:
+    '특정 액션과 일치 (예: Action::"Swap" 또는 Token::Action::"Erc20Permit"). ' +
+    "스키마에 등록된 namespace 그대로 입력하세요.",
 } as const;
 
 export const ACTION_SCOPE_IN_BLOCK_JSON = {

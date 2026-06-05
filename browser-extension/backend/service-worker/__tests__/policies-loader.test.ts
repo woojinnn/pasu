@@ -61,6 +61,8 @@ describe("policies-loader (filtered install)", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mocks.localStore.clear();
+    // Enabled-ids are namespaced per signed-in user; sign one in.
+    mocks.localStore.set("dashboard:current-user-id", "test-user");
     mocks.fetchedDefaults = JSON.stringify([
       { id: "default::dex/a", text: A },
       { id: "default::dex/b", text: B },
@@ -72,7 +74,7 @@ describe("policies-loader (filtered install)", () => {
   });
 
   it("on SW boot, ensureDefaultPoliciesInstalled installs only the storage-enabled subset", async () => {
-    mocks.localStore.set("policy-selection:enabled-ids", [
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", [
       "default::dex/a",
       "default::dex/c",
     ]);
@@ -97,7 +99,7 @@ describe("policies-loader (filtered install)", () => {
     const manifestA = { id: "manifest-a", schema_version: 1 };
     const manifestB = { id: "manifest-b", schema_version: 1 };
     const swapManifest = { id: "user-swap", schema_version: 1 };
-    mocks.localStore.set("policy-selection:enabled-ids", ["default::dex/a"]);
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", ["default::dex/a"]);
     mocks.localStore.set("rpc:manifests", { swap: swapManifest });
     mocks.fetchedDefaults = JSON.stringify([
       { id: "default::dex/a", text: A, manifest: manifestA },
@@ -118,7 +120,7 @@ describe("policies-loader (filtered install)", () => {
     const manifestA = { id: "manifest-a", schema_version: 1 };
     const manifestB = { id: "manifest-b", schema_version: 1 };
     const manifestC = { id: "manifest-c", schema_version: 1 };
-    mocks.localStore.set("policy-selection:enabled-ids", ["default::dex/a"]);
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", ["default::dex/a"]);
     mocks.fetchedDefaults = JSON.stringify([
       {
         id: "default::dex/a",
@@ -150,7 +152,7 @@ describe("policies-loader (filtered install)", () => {
   it("reinstallAllPolicies(ids) installs exactly the passed ids — does NOT re-read storage", async () => {
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
     // Set storage to simulate a stale or different value than the ids we pass.
-    mocks.localStore.set("policy-selection:enabled-ids", ["default::dex/a"]);
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", ["default::dex/a"]);
     const { reinstallAllPolicies } = await import("../policies-loader");
     await reinstallAllPolicies(["default::dex/b", "default::dex/c"]);
     expect(mocks.installPolicies).toHaveBeenCalledTimes(1);
@@ -204,7 +206,7 @@ describe("policies-loader (filtered install)", () => {
   });
 
   it("ensureDefaultPoliciesInstalled also filters adapter-loader contributions", async () => {
-    mocks.localStore.set("policy-selection:enabled-ids", ["acme::v1/guard"]);
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", ["acme::v1/guard"]);
     mocks.aggregatedPolicySet.mockResolvedValue([
       {
         id: "acme::v1/guard",
@@ -224,7 +226,7 @@ describe("policies-loader (filtered install)", () => {
   });
 
   it("reinstallAllPolicies during a still-resolving ensureDefaultPoliciesInstalled does not let the older IIFE stomp the newer one", async () => {
-    mocks.localStore.set("policy-selection:enabled-ids", ["default::dex/a"]);
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", ["default::dex/a"]);
 
     // Hold the first installPolicies until we say so.
     let releaseFirst!: () => void;

@@ -77,6 +77,7 @@ describe("Fix R: detector strips v0 ids before install", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.localStore.clear();
+    mocks.localStore.set("dashboard:current-user-id", "test-user");
     vi.resetModules();
   });
 
@@ -101,7 +102,7 @@ describe("Fix R: detector strips v0 ids before install", () => {
     });
     // Both ids enabled — this is the exact pre-Fix-R production state
     // that broke the engine.
-    mocks.localStore.set("policy-selection:enabled-ids", [
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", [
       "dashboard::v0",
       "dashboard::v1",
     ]);
@@ -116,7 +117,7 @@ describe("Fix R: detector strips v0 ids before install", () => {
     expect(mocks.localStore.get("migration:pending")).toEqual([
       "dashboard::v0",
     ]);
-    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+    expect(mocks.localStore.get("policy-selection:enabled-ids:test-user")).toEqual([
       "dashboard::v1",
     ]);
     expect(mocks.localStore.get("migration:original-enabled")).toEqual({

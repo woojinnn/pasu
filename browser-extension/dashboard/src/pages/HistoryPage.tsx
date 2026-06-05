@@ -1,13 +1,22 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import {
+  getStateDeltaRow,
   listHistoryVerdicts,
+  type StateDeltaRow,
   type VerdictDto,
   type VerdictListOpts,
   type VerdictRangeAlias,
 } from "../server-api";
 import { Topbar } from "../shell/Topbar";
+import {
+  formatBalance,
+  formatSignedDelta,
+  isStateDeltaEmpty,
+  parseStateDelta,
+} from "./simulation/state-view";
 
 import "./verdicts.css";
 
@@ -639,7 +648,170 @@ function HistoryDetail({ v }: { v: VerdictDto }) {
           )}
         </dd>
       </dl>
+
+      {/* State-delta section: fetches the SW's `state-deltas:log` row by
+          `delta_id` and renders the reducer-side delta + a re-simulate
+          link. The fetch is lazy (only fires when the row is expanded). */}
+      <StateDeltaSection v={v} />
     </div>
+  );
+}
+
+function StateDeltaSection({ v }: { v: VerdictDto }) {
+  // Skip the whole section for legacy rows (delta_id stamped before the
+  // schema migration carried a numeric placeholder we lost; new rows
+  // either have a UUID or null).
+  const deltaId =
+    typeof v.delta_id === "string" && v.delta_id.length > 0
+      ? v.delta_id
+      : null;
+
+  const q = useQuery({
+    queryKey: ["state-delta", deltaId],
+    queryFn: () => (deltaId ? getStateDeltaRow(deltaId) : Promise.resolve(null)),
+    enabled: deltaId !== null,
+  });
+
+  if (!deltaId) {
+    return (
+      <div className="v-delta-section">
+        <header className="v-delta-head">
+          <strong>State-diff</strong>
+          <span className="v-empty-inline">
+            기록 없음 (마이그레이션 이전 verdict)
+          </span>
+        </header>
+      </div>
+    );
+  }
+
+  if (q.isLoading) {
+    return (
+      <div className="v-delta-section">
+        <header className="v-delta-head">
+          <strong>State-diff</strong>
+          <span className="v-empty-inline">불러오는 중…</span>
+        </header>
+      </div>
+    );
+  }
+
+  const row = q.data;
+  if (!row) {
+    return (
+      <div className="v-delta-section">
+        <header className="v-delta-head">
+          <strong>State-diff</strong>
+          <span className="v-empty-inline">
+            서버 기록 없음 (로그아웃 상태이거나 서버 통신 실패)
+          </span>
+        </header>
+      </div>
+    );
+  }
+
+  return (
+    <div className="v-delta-section">
+      <header className="v-delta-head">
+        <strong>State-diff</strong>
+        <ReSimLink row={row} />
+      </header>
+      <DeltaRows row={row} />
+    </div>
+  );
+}
+
+/** Render the typed projection of `row.delta` — token / position / pending
+ *  changes + gas. Mirrors the per-step rendering the simulator uses so
+ *  history and live sim look consistent. */
+function DeltaRows({ row }: { row: StateDeltaRow }) {
+  const view = useMemo(() => parseStateDelta(row.delta as Record<string, unknown>), [
+    row.delta,
+  ]);
+
+  if (isStateDeltaEmpty(view)) {
+    return <div className="v-delta-empty">no state change</div>;
+  }
+
+  return (
+    <ul className="v-delta-rows">
+      {view.tokenChanges.map((t, i) => {
+        if (t.kind === "balance_delta") {
+          return (
+            <li key={`tc-${i}`} className="v-delta-row">
+              <span className="v-delta-tag">balance</span>
+              <code>{shortAddr(t.key.address)}</code>
+              <span className="v-delta-chain">{t.key.chain}</span>
+              <span className="v-delta-amt">
+                {/* The delta string is signed decimal at raw precision —
+                    we don't know the token's decimals here without a
+                    catalog lookup, so render the raw signed value. */}
+                {formatSignedDelta(t.delta, 0)}
+              </span>
+            </li>
+          );
+        }
+        if (t.kind === "approval_set") {
+          return (
+            <li key={`tc-${i}`} className="v-delta-row">
+              <span className="v-delta-tag">approve</span>
+              <code>{shortAddr(t.key.address)}</code>
+              <span className="v-delta-arrow">→</span>
+              <code>{shortAddr(t.spender)}</code>
+            </li>
+          );
+        }
+        return (
+          <li key={`tc-${i}`} className="v-delta-row">
+            <span className="v-delta-tag">revoke</span>
+            <code>{shortAddr(t.key.address)}</code>
+            <span className="v-delta-arrow">→</span>
+            <code>{shortAddr(t.spender)}</code>
+            <span className="v-delta-scope">{t.scope}</span>
+          </li>
+        );
+      })}
+      {view.positionChanges.map((p, i) => (
+        <li key={`pc-${i}`} className="v-delta-row">
+          <span className="v-delta-tag">position</span>
+          <span className="v-delta-kind">{p.kind}</span>
+          {p.id && <code>{shortAddr(p.id)}</code>}
+        </li>
+      ))}
+      {view.pendingChanges.map((p, i) => (
+        <li key={`pe-${i}`} className="v-delta-row">
+          <span className="v-delta-tag">pending</span>
+          <span className="v-delta-kind">{p.kind}</span>
+        </li>
+      ))}
+      {view.gasPaid && (
+        <li className="v-delta-row">
+          <span className="v-delta-tag">gas</span>
+          <code>{shortAddr(view.gasPaid.token.address)}</code>
+          <span className="v-delta-amt neg">
+            -{formatBalance(view.gasPaid.amount, 0)}
+          </span>
+        </li>
+      )}
+    </ul>
+  );
+}
+
+/** "다시 시뮬" — feeds the row's tx fields back into SimulationPage as
+ *  query params. SimulationPage's `?from=&to=&calldata=&value=&chain=`
+ *  parser populates the first row on mount, so the user lands on a
+ *  ready-to-run sim with the same calldata that produced this verdict. */
+function ReSimLink({ row }: { row: StateDeltaRow }) {
+  const qs = new URLSearchParams();
+  qs.set("from", row.from);
+  qs.set("to", row.to);
+  qs.set("calldata", row.calldata || "0x");
+  qs.set("value", row.value || "0");
+  qs.set("chain", row.chain);
+  return (
+    <Link to={`/simulation?${qs.toString()}`} className="v-delta-resim">
+      🧪 다시 시뮬
+    </Link>
   );
 }
 

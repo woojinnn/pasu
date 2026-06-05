@@ -12,6 +12,7 @@ import {
   type PendingRequest,
 } from "./storage";
 import { appendVerdict, type VerdictInsert } from "./verdict-storage";
+import { appendStateDelta } from "./state-delta-storage";
 import {
   EngineError,
   evaluateActionV2,
@@ -372,7 +373,14 @@ async function appendVerdictsForMessage(
     dapp_origin: message.data.hostname ?? null,
     ...(contract ? { contract } : {}),
     ...(selector ? { selector } : {}),
-    delta_id: null,
+    // Per-decision id linking N verdict rows (one per matched policy) to a
+    // single row in `state-deltas:log`. We reuse `message.requestId` (already
+    // a unique UUID per request, threaded through `pendingPut` and audit) so
+    // we don't generate a parallel identifier. The state-delta row is
+    // populated by `recordSimulationOnServer` keyed by the same requestId;
+    // rows that miss the server roundtrip leave `delta_id` set but the
+    // lookup returns null — dashboard renders "no delta data" in that case.
+    delta_id: message.requestId,
     ...(userDecision !== null ? { user_decision: userDecision } : {}),
   };
 
@@ -811,7 +819,9 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     // the common case needs no policy-rpc server.
     const planned = await planActionRpcV2({ manifests, action, meta, tx });
     const results =
-      planned.length > 0 ? await dispatchCallsV2(planned, policyRpcUrl) : {};
+      planned.length > 0
+        ? await dispatchCallsV2(planned, policyRpcUrl, { action, meta, tx })
+        : {};
     const verdict = await evaluateActionV2({ action, meta, tx, bundles, results });
     console.info("[Scopeball] venue-order-verdict", {
       requestId: message.requestId,
@@ -1180,7 +1190,9 @@ async function evaluateBodyTree(
       token_decimals: tokenDecimals,
     });
     const results =
-      planned.length > 0 ? await dispatchCallsV2(planned, policyRpcUrl) : {};
+      planned.length > 0
+        ? await dispatchCallsV2(planned, policyRpcUrl, { action: body, meta, tx })
+        : {};
     verdicts.push(
       await evaluateActionV2({
         action: body,
@@ -1300,13 +1312,28 @@ async function tryV2VerdictPath(
         )),
       );
 
-      // RECORD (Phase 8B): replay the simulation against the Scopeball server
-      // so the action + state-delta land in the authenticated user's
+      // RECORD (Phase 8B/8C): replay the simulation against the Scopeball
+      // server so the action + state-delta land in the authenticated user's
       // server-side state. Best-effort — the verdict above is the source of
       // truth for fail-closed decisions; recording is purely for the
       // dashboard's history view. Skipped silently when the user isn't signed
       // in to Scopeball. Recorded per TOP-LEVEL action (granularity unchanged).
-      void recordSimulationOnServer({ action, meta, tx });
+      // Phase 8C also captures the server's `deltas[0]` onto the SW's
+      // `state-deltas:log` keyed by `message.requestId` so the verdict log's
+      // `delta_id` joins without a server round-trip on the HistoryPage.
+      // Calldata / value come straight off the originating tx envelope (only
+      // present on transaction messages; signature paths have neither).
+      const tx0 = isTransaction(message)
+        ? message.data.transaction
+        : undefined;
+      void recordSimulationOnServer({
+        action,
+        meta,
+        tx,
+        decisionId: message.requestId,
+        calldata: tx0?.data ?? "",
+        value: tx0?.value ?? "0",
+      });
     } catch (err) {
       // A plan/dispatch throw makes THIS leg unevaluable. Record the fault but
       // KEEP evaluating siblings — the old `return undefined` here discarded
@@ -1721,6 +1748,17 @@ async function recordSimulationOnServer(input: {
     readonly from: string;
     readonly to: string;
   };
+  /** `message.requestId` — re-used as both the server's idempotency key
+   *  and as the local state-delta row id (so the verdict log's
+   *  `delta_id` joins cleanly). When `undefined`, no local capture
+   *  happens (the only existing call site already passes it). */
+  readonly decisionId?: string;
+  /** Raw `0x`-prefixed calldata from the originating tx. Persisted on
+   *  the local state-delta row so the HistoryPage's "다시 시뮬"
+   *  button can hand it to `/simulation?…calldata=…` without re-decoding. */
+  readonly calldata?: string;
+  /** `msg.value` as a base-10 decimal string. Optional same as calldata. */
+  readonly value?: string;
 }): Promise<void> {
   // Skip silently for signed-out users — recording is opt-in via login.
   const hasToken = await scopeballGetAccessToken().catch(() => null);
@@ -1730,7 +1768,10 @@ async function recordSimulationOnServer(input: {
   //   - wallet_id: from tx.from + tx.chain_id
   //   - envelopes: the typed action wrapped as { meta, body } (server
   //                accepts an opaque array; reducer dispatches on body.domain)
-  //   - eval_context: minimal — chain + now + RequestKind::Transaction
+  //   - eval_context: minimal — must match the server's `EvalContext` field
+  //                names + enum variants (camelCase `request_kind`, snake_case
+  //                `simulation`, REQUIRED `action_index`); a mismatch makes the
+  //                server reject with 422 and the record silently no-ops.
   //   - call_specs: empty (enrichment is rewritten LiveField-first per
   //                Phase 8B; server-side dispatcher remains intentionally
   //                unimplemented)
@@ -1738,8 +1779,9 @@ async function recordSimulationOnServer(input: {
   const evalContext = {
     chain: input.tx.chain_id,
     now: Math.floor(Date.now() / 1000),
-    request_kind: "Transaction",
-    simulation_mode: "Predicted",
+    action_index: 0,
+    request_kind: "transaction",
+    simulation: "preview",
   };
   const walletId = {
     address: input.tx.from,
@@ -1747,12 +1789,53 @@ async function recordSimulationOnServer(input: {
   };
 
   try {
-    await scopeballEvaluate({
+    const response = await scopeballEvaluate({
       wallet_id: walletId,
       envelopes: [envelope as unknown as Record<string, unknown>],
       eval_context: evalContext,
       call_specs: [],
     });
+
+    // Local capture (Phase 8C): the server already folded the reducer
+    // delta into `policyRequest.deltas`; we lift the first one onto the
+    // SW's `state-deltas:log` ring buffer so the dashboard's HistoryPage
+    // can render it without an extra server round-trip. Single-action
+    // txs (the common case) produce one delta; multi-action multicall
+    // batches surface only the FIRST action's delta here — fuller
+    // per-leg storage lands when the verdict log carries an action index.
+    if (input.decisionId) {
+      try {
+        const policyRequest = (response as { policyRequest?: unknown })
+          .policyRequest;
+        const deltasRaw =
+          policyRequest &&
+          typeof policyRequest === "object" &&
+          !Array.isArray(policyRequest)
+            ? (policyRequest as { deltas?: unknown }).deltas
+            : undefined;
+        const firstDelta = Array.isArray(deltasRaw) ? deltasRaw[0] : undefined;
+        if (firstDelta !== undefined) {
+          await appendStateDelta({
+            id: input.decisionId,
+            ts: Math.floor(Date.now() / 1000),
+            chain: input.tx.chain_id,
+            from: input.tx.from,
+            to: input.tx.to,
+            calldata: input.calldata ?? "",
+            value: input.value ?? "0",
+            delta: firstDelta,
+          });
+        }
+      } catch (storageErr) {
+        // Local storage failure shouldn't poison the audit/verdict path
+        // — the server has the canonical delta, dashboard just won't
+        // join until a future record succeeds.
+        console.warn(
+          "[Scopeball] state-delta local append failed",
+          storageErr instanceof Error ? storageErr.message : storageErr,
+        );
+      }
+    }
   } catch (err) {
     if (err instanceof ScopeballServerError && err.isUnauthorized) {
       // Token expired between getAccessToken() and the call — swallow.

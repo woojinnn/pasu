@@ -67,6 +67,10 @@ describe('policy-selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.localStore.clear();
+    // Per-user policy selection namespaces every enabled/applied-id key under
+    // the current user. Sign a user in so the persisted-selection path is
+    // exercised (logged-out behavior is `[]` / no-op by design).
+    mocks.localStore.set('dashboard:current-user-id', 'test-user');
     mocks.fetched.defaults = JSON.stringify([
       { id: 'default::dex/a', policy: POLICY_A },
       { id: 'default::dex/b', policy: POLICY_B },

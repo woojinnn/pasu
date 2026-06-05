@@ -69,8 +69,14 @@ const LOCAL_HANDLERS: Record<string, LocalHandler> = {
         "amount must be a string (uint256 in token-native smallest unit)",
       );
     }
+    // `decimals` is OPTIONAL. When the manifest supplies a literal we rescale
+    // in-process (pure, no network). When it omits decimals — the registry-driven
+    // path that wants the token's REAL decimals — we DEFER to the policy-server's
+    // `/evaluate`, which resolves decimals from the global token registry by
+    // `(chain_id, asset)`. That removes the old hard-coded-6 / USDC-gating
+    // limitation so a token-amount cap works for any token.
     if (typeof decimals !== "number" || !Number.isInteger(decimals)) {
-      throw new LocalMethodError("invalid_params", "decimals must be an integer");
+      throw new DeferToRemoteError();
     }
     if (decimals < 0 || decimals > 30) {
       throw new LocalMethodError("invalid_params", "decimals out of range (0–30)");
@@ -116,6 +122,19 @@ class LocalMethodError extends Error {
 }
 
 /**
+ * Thrown by a local handler that recognises the method but cannot serve THIS
+ * call from in-process inputs alone (e.g. `token.normalize_to_nano` without a
+ * literal `decimals`). `tryHandleLocally` maps it to `null` so the caller
+ * forwards the call to the remote policy-server instead of failing it.
+ */
+class DeferToRemoteError extends Error {
+  constructor() {
+    super("defer to remote");
+    this.name = "DeferToRemoteError";
+  }
+}
+
+/**
  * Attempt to execute `call` in-process. Returns `null` when no local
  * handler is registered for the method — the caller is expected to fall
  * back to the remote policy-rpc server in that case.
@@ -135,6 +154,8 @@ export function tryHandleLocally(call: PolicyRpcCallDto): LocalRpcResult | null 
     const result = handler(call.params);
     return { id: call.id, ok: true, result };
   } catch (err) {
+    // Recognised method, but this call needs remote data → forward, don't fail.
+    if (err instanceof DeferToRemoteError) return null;
     if (err instanceof LocalMethodError) {
       return {
         id: call.id,

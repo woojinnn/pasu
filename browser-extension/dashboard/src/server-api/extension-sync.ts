@@ -18,6 +18,17 @@ import { sendToExtension, ExtensionBridgeTimeout } from "./extension-bridge";
 /** Prefix the SW expects on dashboard-managed policy ids. */
 const ID_PREFIX = "dashboard::";
 
+/** Lifecycle stage. `draft` hides the policy from the enforced set
+ *  when the SW draft-gate ships; `publish` is the legacy default. */
+export type PolicyLife = "draft" | "publish";
+
+/** Provenance. `mine` = user-authored; `market` = installed from the
+ *  marketplace (carries listing/version stamps for update detection). */
+export type PolicySource = "mine" | "market";
+
+/** Authoring surface chosen on create. Drives the editor's default tab. */
+export type PolicyMethod = "form" | "block" | "cedar";
+
 /** A managed policy as the SW exposes it via `dashboard:list-managed`.
  *  Mirror of `ManagedPolicy` in the SW source. */
 export interface ManagedPolicy {
@@ -28,6 +39,14 @@ export interface ManagedPolicy {
   displayName?: string;
   manifest?: unknown;
   manifests?: readonly unknown[];
+  life?: PolicyLife;
+  source?: PolicySource;
+  cat?: string;
+  method?: PolicyMethod;
+  dupKey?: string;
+  memo?: string;
+  sourceListingId?: string;
+  sourceVersion?: string;
   updatedAtMs: number;
   schemaVersion: 1;
 }
@@ -56,6 +75,14 @@ export interface PutPolicyOpts {
    *  schema; user-authored policies omit it and the loader falls back to a
    *  synthesized minimal manifest. */
   manifest?: unknown;
+  life?: PolicyLife;
+  source?: PolicySource;
+  cat?: string;
+  method?: PolicyMethod;
+  dupKey?: string;
+  memo?: string;
+  sourceListingId?: string;
+  sourceVersion?: string;
 }
 
 /** Install/update a policy in the extension's local store + wasm engine. */
@@ -68,6 +95,14 @@ export async function putPolicy(opts: PutPolicyOpts): Promise<void> {
       ...(opts.policyTree != null ? { policyTree: opts.policyTree } : {}),
       ...(opts.displayName ? { displayName: opts.displayName } : {}),
       ...(opts.manifest !== undefined ? { manifest: opts.manifest } : {}),
+      ...(opts.life ? { life: opts.life } : {}),
+      ...(opts.source ? { source: opts.source } : {}),
+      ...(opts.cat ? { cat: opts.cat } : {}),
+      ...(opts.method ? { method: opts.method } : {}),
+      ...(opts.dupKey ? { dupKey: opts.dupKey } : {}),
+      ...(opts.memo !== undefined ? { memo: opts.memo } : {}),
+      ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
+      ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
     });
   } catch (err) {
     if (err instanceof ExtensionBridgeTimeout) return; // extension not installed
@@ -137,6 +172,11 @@ export interface PolicySet {
   displayName: string;
   description?: string;
   memberIds: readonly string[];
+  source?: PolicySource;
+  readOnly?: boolean;
+  cat?: string;
+  sourceListingId?: string;
+  sourceVersion?: string;
   updatedAtMs: number;
   schemaVersion: 1;
 }
@@ -163,6 +203,11 @@ export interface PutPolicySetOpts {
   displayName: string;
   description?: string;
   memberIds: readonly string[];
+  source?: PolicySource;
+  readOnly?: boolean;
+  cat?: string;
+  sourceListingId?: string;
+  sourceVersion?: string;
 }
 
 export async function putPolicySet(opts: PutPolicySetOpts): Promise<void> {
@@ -173,6 +218,11 @@ export async function putPolicySet(opts: PutPolicySetOpts): Promise<void> {
       displayName: opts.displayName,
       memberIds: opts.memberIds,
       ...(opts.description != null ? { description: opts.description } : {}),
+      ...(opts.source ? { source: opts.source } : {}),
+      ...(opts.readOnly !== undefined ? { readOnly: opts.readOnly } : {}),
+      ...(opts.cat ? { cat: opts.cat } : {}),
+      ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
+      ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
     });
   } catch (err) {
     if (err instanceof ExtensionBridgeTimeout) return;
@@ -185,6 +235,51 @@ export async function deletePolicySet(id: string): Promise<void> {
     await sendToExtension({ type: "dashboard:delete-set", id });
   } catch (err) {
     if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+/**
+ * Tell the SW which user is now active. The SW uses this id to namespace
+ * every per-user storage key (`dashboard:policies:<id>`,
+ * `policy-selection:enabled-ids:<id>`, …) so a different account on the
+ * same Chrome profile sees a disjoint policy space. Call this after a
+ * successful `fetchMe()`. Idempotent — passing the same id is a no-op.
+ */
+export async function setCurrentUser(userId: string): Promise<void> {
+  try {
+    await sendToExtension({ type: "dashboard:set-current-user", userId });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+/**
+ * Drop the active-user discriminator. After this the SW behaves as if no
+ * user is logged in: managed-policy reads return `[]`, writes fail with
+ * `no_user`, and only baked default policies stay enforced. Call from
+ * the dashboard's logout path.
+ */
+export async function clearCurrentUser(): Promise<void> {
+  try {
+    await sendToExtension({ type: "dashboard:clear-current-user" });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+/** Read whatever current-user id the SW currently has stored. Useful for
+ *  bootstrap parity checks (dashboard fetched `Me`, does the SW agree?). */
+export async function getCurrentUser(): Promise<string | null> {
+  try {
+    const data = await sendToExtension<{ userId: string | null }>({
+      type: "dashboard:get-current-user",
+    });
+    return data?.userId ?? null;
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return null;
     throw err;
   }
 }

@@ -1,6 +1,11 @@
 import Browser from "webextension-polyfill";
+import { getCurrentUserId } from "./current-user";
 
-const KEY = "dashboard:sets";
+const KEY_PREFIX = "dashboard:sets";
+function setsKey(userId: string): string {
+  return `${KEY_PREFIX}:${userId}`;
+}
+export const SETS_KEY_PREFIX = `${KEY_PREFIX}:`;
 export const DASHBOARD_SET_ID_PREFIX = "dashboard-set::";
 export const DASHBOARD_SET_ID_RE = /^dashboard-set::[A-Za-z0-9_./()-]{1,128}$/;
 export const MAX_SET_NAME_BYTES = 256;
@@ -18,6 +23,18 @@ export interface PolicySet {
    *  policy. Stale references are tolerated; the dashboard filters them
    *  when rendering. */
   memberIds: readonly string[];
+  /** Provenance. Absent = `mine` (legacy). `market` sets are installed
+   *  from the marketplace and treated as read-only in the list view. */
+  source?: "mine" | "market";
+  /** True when this set was installed from the marketplace. The list
+   *  view shows a lock + disables in-place edits. */
+  readOnly?: boolean;
+  /** Domain category slug for the marketplace landing tiles. */
+  cat?: string;
+  /** When `source === 'market'`, the source listing id. */
+  sourceListingId?: string;
+  /** When `source === 'market'`, the installed version. */
+  sourceVersion?: string;
   updatedAtMs: number;
   schemaVersion: 1;
 }
@@ -62,14 +79,21 @@ function assertWithinCaps(set: PolicySet, listLengthAfter: number): void {
 }
 
 export async function listSets(): Promise<PolicySet[]> {
-  const v = ((await Browser.storage.local.get(KEY)) as Record<string, unknown>)[
-    KEY
+  const uid = await getCurrentUserId();
+  if (!uid) return [];
+  const key = setsKey(uid);
+  const v = ((await Browser.storage.local.get(key)) as Record<string, unknown>)[
+    key
   ] as PolicySet[] | undefined;
   return v ?? [];
 }
 
 export async function upsertSet(s: PolicySet): Promise<void> {
   assertValidId(s.id);
+  const uid = await getCurrentUserId();
+  if (!uid) {
+    throw new Error("no_user: cannot save a set without an authenticated user");
+  }
   const list = await listSets();
   const idx = list.findIndex((x) => x.id === s.id);
   const next = list.slice();
@@ -79,12 +103,14 @@ export async function upsertSet(s: PolicySet): Promise<void> {
     next.push(s);
   }
   assertWithinCaps(s, next.length);
-  await Browser.storage.local.set({ [KEY]: next });
+  await Browser.storage.local.set({ [setsKey(uid)]: next });
 }
 
 export async function deleteSet(id: string): Promise<void> {
+  const uid = await getCurrentUserId();
+  if (!uid) return;
   const list = await listSets();
   await Browser.storage.local.set({
-    [KEY]: list.filter((s) => s.id !== id),
+    [setsKey(uid)]: list.filter((s) => s.id !== id),
   });
 }

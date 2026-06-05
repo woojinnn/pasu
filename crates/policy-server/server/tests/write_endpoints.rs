@@ -14,9 +14,16 @@ use policy_db::{GlobalDb, MultiUserStore};
 use policy_server::app::{build_router, AppState};
 use policy_server::auth::jwt::{issue, TokenType};
 use policy_server::events::{EventBus, LocalEventPublisher};
-use policy_state::{Decimal, PositionKind, WalletId, WalletState, WalletStore};
+use policy_state::live_field::DataSource;
+use policy_state::primitives::{Address, ChainId, Time};
+use policy_state::{
+    Balance, BaseCategory, Decimal, EvalContext, FiatCurrency, LiveField, OracleProvider,
+    PegTarget, PositionKind, RequestKind, TokenHolding, TokenKey, TokenKind, WalletId, WalletState,
+    WalletStore, U256,
+};
 use policy_sync::{HyperliquidConfig, Orchestrator, SyncConfig};
 use serde_json::{json, Value};
+use std::str::FromStr;
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
 
@@ -307,4 +314,102 @@ async fn sync_known_wallet_runs_hyperliquid_account_sync() {
 
     let state = store.load(&id).await.unwrap();
     assert_eq!(hyperliquid_perp_usdc(&state), Some(Decimal::new("456.78")));
+}
+
+/// E2E: the authenticated `POST /evaluate` serves an `oracle.usd_value` enrichment
+/// call from the signed-in user's synced holding price — the server half of the
+/// USD-cap swap policy (extension routes the call here once logged in).
+#[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
+async fn evaluate_serves_oracle_usd_value_from_synced_price() {
+    let (addr, mu, token) = spawn_server().await;
+
+    // Seed the signed-in user's wallet with 100 USDC @ $1.0001 (synced price).
+    let usdc = Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+    let key = TokenKey::Erc20 {
+        chain: ChainId::ethereum_mainnet(),
+        address: usdc,
+    };
+    let wallet_id = WalletId::new(
+        Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+        [ChainId::ethereum_mainnet()],
+    );
+    let mut state = WalletState::new(wallet_id.clone());
+    let oracle = DataSource::OracleFeed {
+        provider: OracleProvider::Chainlink,
+        feed_id: "USDC/USD".into(),
+    };
+    state.tokens.insert(
+        key.clone(),
+        TokenHolding {
+            key,
+            kind: TokenKind::Base {
+                category: BaseCategory::Stable,
+                peg_to: Some(PegTarget::Fiat(FiatCurrency::Usd)),
+            },
+            symbol: "USDC".into(),
+            decimals: 6,
+            balance: Balance::fungible(U256::from(100_000_000u64)),
+            committed: Balance::zero_fungible(),
+            approved_to: None,
+            price_usd: Some(LiveField::new(
+                Decimal::new("1.0001"),
+                oracle.clone(),
+                Time::from_unix(1_700_000_000),
+            )),
+            metadata: None,
+            value_usd: None,
+            last_synced_at: Time::from_unix(1_700_000_000),
+            primitives_source: oracle,
+        },
+    );
+    mu.for_user("u_write_alice")
+        .unwrap()
+        .save(&state)
+        .await
+        .unwrap();
+
+    // Concrete-param call-spec, exactly as the extension sends after resolving
+    // `$.action.*` selectors. 100 USDC = 0x5f5e100 raw (6 decimals).
+    let eval_ctx = EvalContext::new(
+        ChainId::ethereum_mainnet(),
+        Time::from_unix(1_700_000_000),
+        RequestKind::Transaction,
+    );
+    let mut body = json!({
+        "envelopes": [],
+        "call_specs": [{
+            "manifest_id": "swap-input-usd-cap-deny",
+            "call_id": "swap-input-usd-cap-deny::inputUsd",
+            "method": "oracle.usd_value",
+            "params": {
+                "chain_id": "eip155:1",
+                "asset": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "amount": "0x5f5e100"
+            },
+            "outputs": [{
+                "kind": "context", "field": "inputUsd", "type": "Decimal",
+                "from": "$.result.usd", "required": true
+            }],
+            "optional": false
+        }]
+    });
+    body["wallet_id"] = serde_json::to_value(&wallet_id).unwrap();
+    body["eval_context"] = serde_json::to_value(&eval_ctx).unwrap();
+
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/evaluate"))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200, "evaluate should succeed");
+
+    let parsed: Value = resp.json().await.unwrap();
+    assert_eq!(
+        parsed["policyRequest"]["results"]["swap-input-usd-cap-deny::inputUsd"],
+        json!({ "usd": "100.0100" }),
+        "server should serve oracle.usd_value from synced price; got: {parsed}"
+    );
 }

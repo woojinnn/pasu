@@ -152,15 +152,16 @@ function readActionScope(parent: Blockly.Block, inputName: string, errors: Edito
     case BLOCK_TYPES.action_scope_all:
       return { kind: "scopeAll" };
     case BLOCK_TYPES.action_scope_eq: {
+      const type = (child.getFieldValue("TYPE") ?? "Action").trim() || "Action";
       const id = (child.getFieldValue("ID") ?? "").trim();
       if (!id) {
         errors.push({
           kind: "structural",
-          message: "action == 의 Action id 가 비어있습니다",
+          message: "action == 의 id 가 비어있습니다",
           blockId: child.id,
         });
       }
-      return { kind: "scopeEq", entity: { type: "Action", id } };
+      return { kind: "scopeEq", entity: { type, id } };
     }
     case BLOCK_TYPES.action_scope_in: {
       const entities: EntityRef[] = [];

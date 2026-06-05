@@ -76,6 +76,7 @@ describe("isManifestRequest", () => {
 describe("handleManifestRequest", () => {
   beforeEach(() => {
     mocks.localStore.clear();
+    mocks.localStore.set("dashboard:current-user-id", "test-user");
     vi.clearAllMocks();
     vi.stubGlobal("fetch", mocks.fetch);
   });
@@ -550,7 +551,7 @@ describe("handleManifestRequest", () => {
     await mocks.browser.storage.local.set({
       "migration:pending": ["dashboard::v0"],
       "migration:original-enabled": { "dashboard::v0": false },
-      "policy-selection:enabled-ids": [
+      "policy-selection:enabled-ids:test-user": [
         "dashboard::v0",
         "default::dex/keep",
       ],
@@ -568,10 +569,10 @@ describe("handleManifestRequest", () => {
     // enabled-ids no longer contains v0 — and applied-ids tracks it
     // because we route the strip through `applyEnabledIds`, which
     // writes both keys in lockstep.
-    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+    expect(mocks.localStore.get("policy-selection:enabled-ids:test-user")).toEqual([
       "default::dex/keep",
     ]);
-    expect(mocks.localStore.get("policy-selection:applied-ids")).toEqual([
+    expect(mocks.localStore.get("policy-selection:applied-ids:test-user")).toEqual([
       "default::dex/keep",
     ]);
     // Reinstall fired with the new (v0-less) enabled set so WASM mirrors
@@ -591,7 +592,7 @@ describe("handleManifestRequest", () => {
     await mocks.browser.storage.local.set({
       "migration:pending": ["dashboard::v0"],
       "migration:original-enabled": { "dashboard::v0": true },
-      "policy-selection:enabled-ids": [
+      "policy-selection:enabled-ids:test-user": [
         "dashboard::v0",
         "default::dex/keep",
       ],
@@ -604,7 +605,7 @@ describe("handleManifestRequest", () => {
     expect(r.ok).toBe(true);
     expect(mocks.localStore.has("migration:pending")).toBe(false);
     expect(mocks.localStore.has("migration:original-enabled")).toBe(false);
-    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+    expect(mocks.localStore.get("policy-selection:enabled-ids:test-user")).toEqual([
       "dashboard::v0",
       "default::dex/keep",
     ]);
@@ -617,7 +618,7 @@ describe("handleManifestRequest", () => {
     // out of order), ack still clears pending without crashing.
     await mocks.browser.storage.local.set({
       "migration:pending": ["dashboard::v0"],
-      "policy-selection:enabled-ids": ["dashboard::v0"],
+      "policy-selection:enabled-ids:test-user": ["dashboard::v0"],
     });
     const r = await handleManifestRequest({
       type: "migration:ack",
@@ -625,7 +626,7 @@ describe("handleManifestRequest", () => {
     });
     expect(r.ok).toBe(true);
     expect(mocks.localStore.has("migration:pending")).toBe(false);
-    expect(mocks.localStore.get("policy-selection:enabled-ids")).toEqual([
+    expect(mocks.localStore.get("policy-selection:enabled-ids:test-user")).toEqual([
       "dashboard::v0",
     ]);
   });

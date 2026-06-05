@@ -1,5 +1,8 @@
 import { tryHandleLocally } from "./local-method-handlers";
 import { fetchStarted, fetchEnded } from "./diagnostics";
+// `./scopeball-auth/*` is imported LAZILY inside the authenticated dispatch path
+// only — it pulls `webextension-polyfill` (browser-only), which would otherwise
+// break every (test) importer of this module at load time.
 import type {
   PolicyRpcBatchRequestDto,
   PlannedCallV2Dto,
@@ -7,6 +10,69 @@ import type {
   PolicyRpcResponseDto,
   VerdictDto,
 } from "./wasm-bridge.types";
+
+/**
+ * Context the authenticated `/evaluate` enrichment path needs to build the
+ * server's `EvaluateRequest`. The tx verdict paths already have all three.
+ */
+export interface ServerEvalContext {
+  readonly action: unknown;
+  readonly meta: unknown;
+  readonly tx: { readonly chain_id: string; readonly from: string; readonly to: string };
+}
+
+/**
+ * Serve remote enrichment from the authenticated policy-server `/evaluate`
+ * (which executes e.g. `oracle.usd_value` from the signed-in user's synced
+ * holding price) instead of the legacy per-method rpc server. Returns the
+ * `{ call_id: result }` map from `policyRequest.results`. Throws on transport /
+ * auth failure so the caller can fail CLOSED (omit → required `SystemFail` deny).
+ */
+/** True when a signed-in server session token is present (lazy polyfill load). */
+async function hasServerSession(): Promise<boolean> {
+  try {
+    const { getAccessToken } = await import("./scopeball-auth/tokenStore");
+    return (await getAccessToken()) != null;
+  } catch {
+    return false;
+  }
+}
+
+async function serveEnrichmentViaEvaluate(
+  remoteCallIds: ReadonlySet<string>,
+  planned: readonly PlannedCallV2Dto[],
+  ctx: ServerEvalContext,
+): Promise<Record<string, unknown>> {
+  const { evaluate: serverEvaluate } = await import("./scopeball-auth/client");
+  // `PlannedCallV2Dto` IS the server `CallSpec` shape (manifest_id / call_id /
+  // method / params / outputs / optional) — forward the remote subset verbatim.
+  const callSpecs = planned.filter((c) => remoteCallIds.has(c.call_id));
+  const response = await serverEvaluate({
+    wallet_id: { address: ctx.tx.from, chains: [ctx.tx.chain_id] },
+    envelopes: [{ meta: ctx.meta, body: ctx.action } as Record<string, unknown>],
+    eval_context: {
+      // Field names + enum variants must match the server's `EvalContext`
+      // (asset-model/state/eval_context.rs): `request_kind` is camelCase,
+      // `simulation` (NOT `simulation_mode`) is snake_case, and `action_index`
+      // is a REQUIRED field (no serde default) — omitting any of these makes the
+      // server reject the whole request with 422 → enrichment fail-closed.
+      chain: ctx.tx.chain_id,
+      now: Math.floor(Date.now() / 1000),
+      action_index: 0,
+      request_kind: "transaction",
+      simulation: "preview",
+    },
+    call_specs: callSpecs as unknown as ReadonlyArray<Record<string, unknown>>,
+  });
+  const pr = response.policyRequest as { results?: unknown } | undefined;
+  const out: Record<string, unknown> = {};
+  if (pr && typeof pr.results === "object" && pr.results !== null) {
+    for (const [k, v] of Object.entries(pr.results as Record<string, unknown>)) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
 
 // ── Dormant v3 JSON-RPC 2.0 client ────────────────────────────────────────
 //
@@ -309,6 +375,7 @@ export interface PolicyRpcAuditMeta {
 export async function dispatchCallsV2(
   planned: readonly PlannedCallV2Dto[],
   policyRpcUrl: string,
+  ctx?: ServerEvalContext,
 ): Promise<Record<string, unknown>> {
   const results: Record<string, unknown> = {};
   if (planned.length === 0) return results;
@@ -341,8 +408,29 @@ export async function dispatchCallsV2(
     return results;
   }
 
-  // Remote policy-rpc only accepts the action-model batch shape:
-  // `{ request_id, calls }`.
+  // Preferred path: when the caller supplied a server-eval context AND the user
+  // is signed in, serve remote enrichment from the authenticated policy-server
+  // `/evaluate` (executes oracle.usd_value etc. from the user's synced state).
+  // Failures fail CLOSED — omit, so a required call trips `SystemFail` → deny.
+  if (ctx && (await hasServerSession())) {
+    try {
+      const served = await serveEnrichmentViaEvaluate(
+        new Set(remoteCalls.map((c) => c.id)),
+        planned,
+        ctx,
+      );
+      Object.assign(results, served);
+    } catch (err) {
+      console.warn(
+        "[Scopeball] /evaluate enrichment failed, omitting remote calls (fail-closed)",
+        { callCount: remoteCalls.length, err },
+      );
+    }
+    return results;
+  }
+
+  // Legacy path (signed-out / no context): the per-method rpc server only
+  // accepts the action-model batch shape `{ request_id, calls }`.
   const requestId = `action-v2:${remoteCalls[0]?.id ?? "calls"}`;
   const remotePlan: PolicyRpcBatchRequestDto = {
     request_id: requestId,

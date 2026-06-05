@@ -18,6 +18,7 @@
 
 import Browser from "webextension-polyfill";
 import { V0_KNOWN_FIELDS } from "../../../sdk/extension-client";
+import { getCurrentUserId } from "../dashboard/current-user";
 import { listManaged as defaultListManaged } from "../dashboard/storage";
 import type { ManagedPolicy } from "../dashboard/storage";
 import {
@@ -27,11 +28,15 @@ import {
   listPending,
 } from "./migration";
 
-// Mirrors `policy-selection.ts` ENABLED_KEY. Declared here too so the
-// detector doesn't have to take a runtime dependency on policy-selection
-// (which would also drag in the catalog/listManaged graph at module
-// init).
-const KEY_ENABLED_IDS = "policy-selection:enabled-ids";
+// Mirrors `policy-selection.ts`'s PER-USER enabled-ids key
+// (`policy-selection:enabled-ids:<userId>`). Built here (not imported) so the
+// detector stays off the catalog/listManaged graph at module init, but it MUST
+// namespace by the current user or it would strip from a stale base key while
+// `installFiltered` reads the real per-user set (Fix R would silently no-op).
+const ENABLED_IDS_KEY_PREFIX = "policy-selection:enabled-ids";
+function enabledIdsKey(userId: string): string {
+  return `${ENABLED_IDS_KEY_PREFIX}:${userId}`;
+}
 
 export interface MigrationDetectorDeps {
   listManaged: () => Promise<ManagedPolicy[]>;
@@ -125,11 +130,11 @@ export async function detectPendingMigrations(
 }
 
 async function readEnabledIds(): Promise<string[]> {
-  const r = (await Browser.storage.local.get(KEY_ENABLED_IDS)) as Record<
-    string,
-    unknown
-  >;
-  const raw = r[KEY_ENABLED_IDS];
+  const uid = await getCurrentUserId();
+  if (!uid) return [];
+  const key = enabledIdsKey(uid);
+  const r = (await Browser.storage.local.get(key)) as Record<string, unknown>;
+  const raw = r[key];
   if (!Array.isArray(raw)) return [];
   return raw.filter((x): x is string => typeof x === "string");
 }
@@ -150,9 +155,12 @@ async function writeDetectorState(state: {
   enabled: readonly string[];
   original: Record<string, boolean>;
 }): Promise<void> {
-  const toSet: Record<string, unknown> = {
-    [KEY_ENABLED_IDS]: [...state.enabled],
-  };
+  const uid = await getCurrentUserId();
+  const toSet: Record<string, unknown> = {};
+  // Only a signed-in user has a per-user enabled-ids set to rewrite.
+  if (uid) {
+    toSet[enabledIdsKey(uid)] = [...state.enabled];
+  }
   const toRemove: string[] = [];
   if (state.pending.length > 0) {
     toSet[KEY_PENDING_MIGRATION] = [...state.pending];

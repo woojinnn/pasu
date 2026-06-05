@@ -70,7 +70,10 @@ export interface VerdictDto {
   reason: { ko?: string | null; en?: string | null };
   user_decision: "trusted" | "cancelled" | null;
   decided_at: UnixSeconds | null;
-  delta_id: number | null;
+  /** Decision-level UUID linking to a row in `state-deltas:log`. Set to
+   *  `null` on legacy rows (predating the schema migration) and on rows
+   *  whose `recordSimulationOnServer` couldn't reach the policy-server. */
+  delta_id: string | null;
 }
 
 // ---------- query shape ----------

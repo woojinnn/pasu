@@ -339,3 +339,59 @@
   color: var(--slate-800);
   white-space: pre-wrap;
 }
+
+/* ── State-delta panel (HistoryDetail) ─────────────────────────────────── */
+.v-delta-section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--fog-300, #e2e2e2);
+}
+.v-delta-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.v-delta-resim {
+  margin-left: auto;
+  font: 600 12px/1 var(--ff-mono);
+  padding: 5px 10px; border-radius: 4px;
+  background: var(--brand-50, #f1f5ff);
+  color: var(--brand-700, #364fc7);
+  text-decoration: none;
+  border: 1px solid var(--brand-200, #c8d6ff);
+}
+.v-delta-resim:hover {
+  background: var(--brand-100, #d8e4ff);
+}
+.v-delta-empty {
+  font: 500 12px/1.4 var(--ff-mono);
+  color: var(--slate-400);
+  font-style: italic;
+}
+.v-delta-rows {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.v-delta-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px;
+  background: var(--fog-50, #fafafa); border-radius: 4px;
+  font: 500 12px/1.3 var(--ff-mono);
+}
+.v-delta-tag {
+  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--slate-500); min-width: 64px;
+}
+.v-delta-chain { font-size: 10.5px; color: var(--slate-500); }
+.v-delta-arrow,
+.v-delta-kind,
+.v-delta-scope {
+  font-size: 10.5px; color: var(--slate-500);
+}
+.v-delta-amt {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--slate-900);
+}
+.v-delta-amt.neg { color: var(--fail-800, #8a1f1f); }

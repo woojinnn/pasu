@@ -122,6 +122,9 @@ export {
   dashboardId,
   stripDashboardId,
   type ManagedPolicy,
+  type PolicyLife,
+  type PolicySource,
+  type PolicyMethod,
   listPolicySets,
   putPolicySet,
   deletePolicySet,
@@ -129,9 +132,20 @@ export {
   stripDashboardSetId,
   type PolicySet,
   type PutPolicySetOpts,
+  // Per-user namespacing handshake — call setCurrentUser after fetchMe()
+  // resolves so the SW scopes every subsequent storage op to the right user.
+  setCurrentUser,
+  clearCurrentUser,
+  getCurrentUser,
 } from "./extension-sync";
 
 export { subscribeToBroadcast } from "./extension-bridge";
+
+export {
+  getStateDeltaRow,
+  clearStateDeltas,
+  type StateDeltaRow,
+} from "./state-deltas";
 
 export {
   listListings,

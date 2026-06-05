@@ -1,0 +1,108 @@
+[
+  {
+    "type": "adapter_function",
+    "id": "standard/erc20/approve@2.0.0",
+    "publisher": "ethereum.org",
+    "schema_version": "2",
+    "match": {
+      "chain_to_addresses": {
+        "1": [
+          "0xa0B86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        ]
+      },
+      "selector": "0x095ea7b3"
+    },
+    "abi_fragment": {
+      "function_name": "approve",
+      "abi": {
+        "name": "approve",
+        "type": "function",
+        "inputs": [
+          { "name": "spender", "type": "address" },
+          { "name": "amount", "type": "uint256" }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "token",
+        "token": {
+          "action": "erc20_approve",
+          "erc20_approve": {
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$tx.to"
+              }
+            },
+            "spender": "$args.spender",
+            "amount": "$args.amount"
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": ["token_metadata"],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  },
+  {
+    "type": "adapter_function",
+    "id": "standard/erc20/transfer@2.0.0",
+    "publisher": "ethereum.org",
+    "schema_version": "2",
+    "match": {
+      "chain_to_addresses": {
+        "1": [
+          "0xa0B86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        ]
+      },
+      "selector": "0xa9059cbb"
+    },
+    "abi_fragment": {
+      "function_name": "transfer",
+      "abi": {
+        "name": "transfer",
+        "type": "function",
+        "inputs": [
+          { "name": "recipient", "type": "address" },
+          { "name": "amount", "type": "uint256" }
+        ]
+      }
+    },
+    "emit": {
+      "strategy": "single_emit",
+      "body": {
+        "domain": "token",
+        "token": {
+          "action": "erc20_transfer",
+          "erc20_transfer": {
+            "token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$tx.to"
+              }
+            },
+            "recipient": "$args.recipient",
+            "amount": "$args.amount"
+          }
+        }
+      }
+    },
+    "requires": {
+      "imperative": [],
+      "adapter_capabilities": ["token_metadata"],
+      "host_capabilities": [],
+      "extension": ">=0.1.0"
+    }
+  }
+]

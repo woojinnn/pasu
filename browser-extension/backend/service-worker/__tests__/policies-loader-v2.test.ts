@@ -18,8 +18,13 @@ const mocks = vi.hoisted(() => {
       storage: {
         local: {
           get: async (key: string) => {
-            if (key === "dashboard:policies") return { [key]: mocks.managed };
-            if (key === "policy-selection:enabled-ids")
+            // Per-user namespacing: dashboard/storage + policy-selection key
+            // their reads under `<base>:<userId>`, sourced from current-user.
+            if (key === "dashboard:current-user-id")
+              return { [key]: "test-user" };
+            if (key === "dashboard:policies:test-user")
+              return { [key]: mocks.managed };
+            if (key === "policy-selection:enabled-ids:test-user")
               return { [key]: mocks.enabledIds };
             return { [key]: undefined };
           },

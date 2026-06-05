@@ -4,19 +4,31 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { listManagedPolicies, stripDashboardId } from "../../server-api";
 import { Topbar } from "../../shell/Topbar";
+import { FEATURES } from "../../features";
 
 import { EditorPanel } from "./EditorPanel";
 import { PublishModal, type PublishSource } from "./PublishModal";
 import { nameFromPolicy } from "./policy-meta";
+import { EditorDetailPageV2 } from "./v2/EditorDetailPageV2";
 import "../editor.css";
 
 /**
- * `/editor/:id` — load the matching policy from the cached list and
- * render `<EditorPanel mode="edit">`. On delete, navigate back to the
- * list. The Publish button mounts a modal that POSTs the current cedar
- * text to `/market/listings`.
+ * Router-exposed entry for `/editor/:id`. Delegates to v2 when the
+ * `newEditorView` flag is on, otherwise renders the legacy
+ * `<EditorPanel>`-backed view.
  */
 export function EditorDetailPage() {
+  if (FEATURES.newEditorView) return <EditorDetailPageV2 />;
+  return <EditorDetailPageLegacy />;
+}
+
+/**
+ * Legacy `/editor/:id` body — load the matching policy from the cached
+ * list and render `<EditorPanel mode="edit">`. On delete, navigate back
+ * to the list. The Publish button mounts a modal that POSTs the current
+ * cedar text to `/market/listings`.
+ */
+function EditorDetailPageLegacy() {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const id = params.id ? decodeURIComponent(params.id) : "";

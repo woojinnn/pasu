@@ -47,6 +47,7 @@ describe("dashboard/storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.localStore.clear();
+    mocks.localStore.set("dashboard:current-user-id", "test-user");
   });
 
   it("returns an empty list on a fresh install", async () => {
@@ -96,7 +97,7 @@ describe("dashboard/storage", () => {
     for (let i = 0; i < MAX_ENTRIES; i++) {
       existing.push(makePolicy(`dashboard::p${i}`));
     }
-    mocks.localStore.set("dashboard:policies", existing);
+    mocks.localStore.set("dashboard:policies:test-user", existing);
     await expect(
       upsertManaged(makePolicy("dashboard::overflow")),
     ).rejects.toThrow(/too_many_entries/);

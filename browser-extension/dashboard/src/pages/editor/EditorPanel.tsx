@@ -11,6 +11,8 @@ import type { PolicySeverity } from "../../server-api";
 
 import { stampAnnotations } from "../../editor-v9/annotations";
 import { WorkspaceV9 } from "../../editor-v9/Workspace";
+import { generateManifest } from "../../editor-v9/manifest-gen";
+import type { PolicyIR } from "../../cedar/blocks";
 
 import { nameFromPolicy, severityFromCedar } from "./policy-meta";
 
@@ -44,6 +46,8 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
   const [severity, setSeverity] = useState<PolicySeverity>("deny");
   const [cedarText, setCedarText] = useState("");
   const [treeJson, setTreeJson] = useState<string | null>(null);
+  /** Latest validated policy IR (for enrichment manifest auto-generation). */
+  const [ir, setIr] = useState<PolicyIR | null>(null);
 
   /** Force a Workspace remount when the seeded policy changes. */
   const [workspaceKey, setWorkspaceKey] = useState(0);
@@ -82,11 +86,26 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
       const shortNonce = () => crypto.randomUUID().split("-")[0];
       const id =
         mode === "new" || !policy ? dashboardId(shortNonce()) : policy.id;
+
+      // Auto-generate the enrichment manifest from the policy's
+      // `context.custom.*` fields. A base-context policy yields `undefined`
+      // (no manifest); an unbound enrichment field throws here so the failure
+      // surfaces at save time instead of silently fail-opening at runtime.
+      let manifest: unknown;
+      if (ir) {
+        const gen = generateManifest(ir, undefined, { id, severity });
+        if (gen.errors.length > 0) {
+          throw new Error(gen.errors.map((e) => e.message).join("\n"));
+        }
+        manifest = gen.manifest;
+      }
+
       await putPolicy({
         id,
         cedarText: cedar,
         policyTree: treeJson,
         displayName: trimmedName,
+        ...(manifest !== undefined ? { manifest } : {}),
       });
       return id;
     },
@@ -171,9 +190,10 @@ export function EditorPanel({ mode, policy, onSaved, onDeleted }: EditorPanelPro
         policyName={name.trim() || "untitled"}
         initialJson={initialJson}
         initialCedarText={mode === "edit" && policy ? policy.text : null}
-        onChange={({ cedarText: c, json }) => {
+        onChange={({ cedarText: c, json, ir: nextIr }) => {
           setCedarText(c);
           setTreeJson(JSON.stringify({ v: 9, ws: json }));
+          setIr(nextIr ?? null);
         }}
       />
     </>

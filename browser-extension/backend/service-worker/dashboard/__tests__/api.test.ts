@@ -70,6 +70,7 @@ describe("dashboard/api", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.localStore.clear();
+    mocks.localStore.set("dashboard:current-user-id", "test-user");
     mocks.applyEnabledIds.mockResolvedValue({ ok: true });
     mocks.getCatalog.mockResolvedValue({
       policies: [],
@@ -156,7 +157,7 @@ describe("dashboard/api", () => {
       text: RAW_TEXT,
     });
     mocks.applyEnabledIds.mockClear();
-    mocks.localStore.set("policy-selection:enabled-ids", ["dashboard::demo/x"]);
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", ["dashboard::demo/x"]);
 
     const res = await handleDashboardRequest({
       type: "dashboard:delete",

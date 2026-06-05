@@ -72,11 +72,7 @@ async function forward(
 // Keys watched are deliberately narrow so unrelated storage churn doesn't
 // fan out to the page.
 const WATCHED_KEYS = new Set([
-  "dashboard:policies",
-  "dashboard:sets",
   "adapter-loader:bundles",
-  "policy-selection:enabled-ids",
-  "policy-selection:applied-ids",
   // Audit log appends on every verdict — dashboard's AuditPage uses this
   // to refresh on the fly. Storage layer trims to AUDIT_MAX (100), so the
   // change events fire at most once per decision and the payload stays small.
@@ -88,11 +84,30 @@ const WATCHED_KEYS = new Set([
   "rpc:endpointUrl",
   "rpc:enrichedSchemaHash",
   "migration:pending",
+  // Active-user discriminator — when this flips, all per-user reads change.
+  "dashboard:current-user-id",
 ]);
+
+/**
+ * Prefix-match watchers for keys that are now namespaced per user. Pre-
+ * namespacing they were flat strings (`dashboard:policies`); after
+ * namespacing they include the user id (`dashboard:policies:<uid>`), and
+ * we want to broadcast on ANY user's change so the dashboard's React
+ * Query invalidators react across account switches without needing to
+ * know the current user id up front.
+ */
+const WATCHED_KEY_PREFIXES = [
+  "dashboard:policies:",
+  "dashboard:sets:",
+  "policy-selection:enabled-ids:",
+  "policy-selection:applied-ids:",
+];
 
 Browser.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
-  const touched = Object.keys(changes).filter((k) => WATCHED_KEYS.has(k));
+  const touched = Object.keys(changes).filter(
+    (k) => WATCHED_KEYS.has(k) || WATCHED_KEY_PREFIXES.some((p) => k.startsWith(p)),
+  );
   if (touched.length === 0) return;
   window.postMessage(
     {

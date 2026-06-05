@@ -45,7 +45,24 @@ export interface WorkspaceV9Props {
   initialCedarText?: string | null;
   policyName?: string;
   locale?: "ko" | "en";
-  onChange?: (next: { cedarText: string; json: object; errors: EditorError[] }) => void;
+  /** Hide the bottom "Cedar 코드 가져오기" (paste-to-import) details
+   *  panel. The v2 editor exposes a dedicated Cedar tab for editing
+   *  raw text, so the inline import box is redundant + visually
+   *  confusing (its placeholder shows an unrelated example policy). */
+  hideImport?: boolean;
+  /** Hide the bottom "Cedar 미리보기" details panel. The legacy panel
+   *  shows the same cedar that the v2 Cedar tab edits, so consumers
+   *  that already render a separate Cedar surface can dedupe it. */
+  hidePreview?: boolean;
+  onChange?: (next: {
+    cedarText: string;
+    json: object;
+    errors: EditorError[];
+    /** Validated policy IR for the current workspace (present only when the
+     *  policy compiled). Lets the save path auto-generate the enrichment
+     *  manifest from the `context.custom.*` fields the policy reads. */
+    ir?: PolicyIR;
+  }) => void;
 }
 
 export function WorkspaceV9({
@@ -53,6 +70,8 @@ export function WorkspaceV9({
   initialCedarText,
   policyName = "untitled",
   locale = "ko",
+  hideImport = false,
+  hidePreview = false,
   onChange,
 }: WorkspaceV9Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -138,7 +157,7 @@ export function WorkspaceV9({
         setCedarText(text);
         setErrors([]);
         setBridgeError(null);
-        onChange?.({ cedarText: text, json: wsJson, errors: [] });
+        onChange?.({ cedarText: text, json: wsJson, errors: [], ir: validated.ir });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         setBridgeError(msg);
@@ -279,31 +298,48 @@ export function WorkspaceV9({
         <ParamSidebar policy={currentPolicy} onJump={onJumpToHole} />
       </div>
 
-      <details style={{ background: "var(--fog-200, #fafaf9)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
-        <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
-          Cedar 미리보기 ({cedarText.split("\n").length} 줄) {errorCount > 0 && `· ${errorCount}개 문제`}
-        </summary>
-        {errors.length > 0 && (
-          <ul style={{ margin: 0, padding: "6px 24px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
-            {errors.map((e, i) => (
-              <li key={i}>{e.message}</li>
-            ))}
-          </ul>
-        )}
-        {bridgeError && (
-          <div style={{ padding: "6px 12px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
-            Cedar 변환 실패: {bridgeError}
-          </div>
-        )}
-        <pre style={{
-          margin: 0, padding: 12, fontSize: 12,
-          fontFamily: "var(--ff-mono, monospace)",
-          maxHeight: 200, overflow: "auto",
-          background: "var(--fog-100, #fcfcfc)",
+      {!hidePreview && (
+        <details style={{ background: "var(--fog-200, #fafaf9)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
+          <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
+            Cedar 미리보기 ({cedarText.split("\n").length} 줄) {errorCount > 0 && `· ${errorCount}개 문제`}
+          </summary>
+          {errors.length > 0 && (
+            <ul style={{ margin: 0, padding: "6px 24px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
+              {errors.map((e, i) => (
+                <li key={i}>{e.message}</li>
+              ))}
+            </ul>
+          )}
+          {bridgeError && (
+            <div style={{ padding: "6px 12px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
+              Cedar 변환 실패: {bridgeError}
+            </div>
+          )}
+          <pre style={{
+            margin: 0, padding: 12, fontSize: 12,
+            fontFamily: "var(--ff-mono, monospace)",
+            maxHeight: 200, overflow: "auto",
+            background: "var(--fog-100, #fcfcfc)",
+          }}>
+            {cedarText || (errorCount > 0 ? "" : "(빈 정책)")}
+          </pre>
+        </details>
+      )}
+      {hidePreview && (errors.length > 0 || bridgeError) && (
+        <div style={{
+          margin: 0,
+          padding: "8px 12px",
+          background: "var(--fail-50, #FAEAE6)",
+          borderTop: "1px solid var(--hairline-soft, #E5E6E3)",
+          fontSize: 12,
+          color: "var(--fail-700, #7F4740)",
         }}>
-          {cedarText || (errorCount > 0 ? "" : "(빈 정책)")}
-        </pre>
-      </details>
+          {bridgeError && <div>Cedar 변환 실패: {bridgeError}</div>}
+          {errors.map((e, i) => (
+            <div key={i}>⚠ {e.message}</div>
+          ))}
+        </div>
+      )}
 
       <ParamFillPanel template={currentPolicy} onFilled={(p) => void onFilledIR(p)} />
 
@@ -350,45 +386,47 @@ export function WorkspaceV9({
         </details>
       )}
 
-      <details style={{ background: "var(--fog-100, #fcfcfc)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
-        <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
-          Cedar 코드 가져오기 — 텍스트를 붙여 넣고 블록으로 변환
-        </summary>
-        <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <textarea
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            placeholder={'permit (\n  principal,\n  action == Action::"Swap",\n  resource\n) when { context.amount > 100 };'}
-            style={{
-              fontFamily: "var(--ff-mono, monospace)",
-              fontSize: 12,
-              minHeight: 100,
-              padding: 8,
-              border: "1px solid var(--hairline-soft, #E5E6E3)",
-              borderRadius: 4,
-              resize: "vertical",
-            }}
-            disabled={importing}
-          />
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => void onImportClick()}
-              disabled={importing || !importText.trim()}
-              style={{ padding: "4px 12px", fontSize: 12 }}
-            >
-              {importing ? "변환 중…" : "불러오기"}
-            </button>
-            {importError && (
-              <span style={{ color: "var(--fail-700, #7F4740)", fontSize: 12 }}>
-                ⚠ {importError}
+      {!hideImport && (
+        <details style={{ background: "var(--fog-100, #fcfcfc)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
+          <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
+            Cedar 코드 가져오기 — 텍스트를 붙여 넣고 블록으로 변환
+          </summary>
+          <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder={'permit (\n  principal,\n  action == Action::"Swap",\n  resource\n) when { context.amount > 100 };'}
+              style={{
+                fontFamily: "var(--ff-mono, monospace)",
+                fontSize: 12,
+                minHeight: 100,
+                padding: 8,
+                border: "1px solid var(--hairline-soft, #E5E6E3)",
+                borderRadius: 4,
+                resize: "vertical",
+              }}
+              disabled={importing}
+            />
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={() => void onImportClick()}
+                disabled={importing || !importText.trim()}
+                style={{ padding: "4px 12px", fontSize: 12 }}
+              >
+                {importing ? "변환 중…" : "불러오기"}
+              </button>
+              {importError && (
+                <span style={{ color: "var(--fail-700, #7F4740)", fontSize: 12 }}>
+                  ⚠ {importError}
+                </span>
+              )}
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--slate-500, #475569)" }}>
+                주의: 현재 캔버스가 덮어쓰입니다
               </span>
-            )}
-            <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--slate-500, #475569)" }}>
-              주의: 현재 캔버스가 덮어쓰입니다
-            </span>
+            </div>
           </div>
-        </div>
-      </details>
+        </details>
+      )}
     </div>
   );
 }

@@ -27,14 +27,24 @@
 }
 .ctx-bar .ctx-cta:hover { background: var(--slate-900); }
 
-/* Active policies card (links to /editor) */
+/* Active policies / packages cards — split into two side-by-side blocks
+   that share the same chrome. Stacks vertically below 640px. */
+.active-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (max-width: 640px) {
+  .active-cards { grid-template-columns: 1fr; }
+}
+
 .policies-card {
   display: flex; align-items: center; justify-content: space-between;
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--r-md);
   padding: 14px 18px;
-  margin-bottom: 18px;
   text-decoration: none;
   transition: background 140ms ease, border-color 140ms ease;
 }

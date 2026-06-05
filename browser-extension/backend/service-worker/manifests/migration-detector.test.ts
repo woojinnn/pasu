@@ -52,7 +52,7 @@ import {
 } from "./migration";
 import type { ManagedPolicy } from "../dashboard/storage";
 
-const KEY_ENABLED_IDS = "policy-selection:enabled-ids";
+const KEY_ENABLED_IDS = "policy-selection:enabled-ids:test-user";
 
 function makePolicy(id: string, text: string): ManagedPolicy {
   return {
@@ -75,6 +75,7 @@ const NO_REF_TEXT = `@id("user/z") @severity("deny") forbid (principal, action =
 describe("detectPendingMigrations", () => {
   beforeEach(() => {
     mocks.localStore.clear();
+    mocks.localStore.set("dashboard:current-user-id", "test-user");
     vi.clearAllMocks();
   });
 

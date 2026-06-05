@@ -1,0 +1,17 @@
+{
+  "id": "swap-input-usd-cap-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "in-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.tokenIn.key.address",
+      "amount": "$.action.direction.amountIn"
+    },
+    "outputs": [{ "kind": "context", "field": "inputUsd", "type": "Decimal", "from": "$.result.usd", "required": true }],
+    "optional": false
+  }],
+  "custom_context": { "fields": { "inputUsd": "decimal" } }
+}
