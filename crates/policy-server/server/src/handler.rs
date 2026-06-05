@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
+use async_trait::async_trait;
 use policy_state::store::StoreError;
 use policy_state::{WalletState, WalletStore, U256};
 use policy_transition::apply;
@@ -20,6 +21,35 @@ use policy_transition::helpers::delta::apply_delta;
 use serde_json::{json, Value};
 
 use crate::dto::{CallSpec, Diagnostic, EvaluateRequest, EvaluateResponse, PolicyRequest};
+
+/// A market-global price source: USD price + decimals for a `(chain, address)`
+/// token, independent of any specific wallet. The price of a `(chain, contract)`
+/// pair is identical across wallets, so this lets `oracle.usd_value` value a
+/// swap even when the *requesting* wallet has never been synced — fixing the
+/// surprise that an address-independent USD-cap policy needed the wallet
+/// registered. Production backs this with the global DB
+/// (`PostgresGlobalDb::latest_token_price`); unit tests use a stub.
+#[async_trait]
+pub trait PriceBook: Send + Sync {
+    /// Global USD price (decimal string) + token decimals for `(chain, address)`,
+    /// or `None` when the token's price is not known market-wide.
+    async fn price(&self, chain: &str, address: &str) -> Option<PriceFact>;
+
+    /// Global token `decimals` for `(chain, address)`, independent of price.
+    /// Lets `token.normalize_to_nano` rescale with the token's REAL decimals
+    /// instead of a hard-coded literal, so a token-amount cap needs no per-token
+    /// gating. `None` when the token has never been synced anywhere.
+    async fn decimals(&self, chain: &str, address: &str) -> Option<u8>;
+}
+
+/// Price + decimals returned by a [`PriceBook`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PriceFact {
+    /// USD price as a decimal string (e.g. `"0.99959644"`).
+    pub price_usd: String,
+    /// Token decimals (e.g. `6` for USDC).
+    pub decimals: u8,
+}
 
 /// Error surfaced by [`evaluate`].
 /// `Reducer` is a *client* error (the action could not be applied to the given
@@ -80,6 +110,7 @@ impl From<StoreError> for HandlerError {
 /// predicted state.
 pub async fn evaluate(
     store: &dyn WalletStore,
+    price_book: &dyn PriceBook,
     req: EvaluateRequest,
 ) -> Result<EvaluateResponse, HandlerError> {
     // This handler is db-agnostic: production passes the PostgreSQL-backed
@@ -134,9 +165,12 @@ pub async fn evaluate(
     // Execute the manifest-planned enrichment calls server-side, sourcing facts
     // from the wallet state we LOADED (`state_before`), independent of whether the
     // action could be simulated. `oracle.usd_value` reads the synced `price_usd`
-    // on the held token — no live network call — so a USD-cap policy's
-    // `context.custom.*Usd` field is populated from canonical state.
-    let (results, mut diagnostics) = execute_call_specs(&state_before, &req.call_specs);
+    // on the held token, falling back to the market-global `price_book` when the
+    // requesting wallet doesn't hold it — no live network call either way — so a
+    // USD-cap policy's `context.custom.*Usd` field is populated even for a wallet
+    // that was never registered/synced.
+    let (results, mut diagnostics) =
+        execute_call_specs(&state_before, &req.call_specs, price_book).await;
     diagnostics.append(&mut sim_diagnostics);
 
     let note = if req.envelopes.is_empty() {
@@ -169,22 +203,50 @@ pub async fn evaluate(
 /// that cannot be served leaves its `call_id` absent from the map — the
 /// extension's materialize step fail-closes a *required* missing result and
 /// fail-opens an optional one, so this never fabricates a value.
-fn execute_call_specs(
+async fn execute_call_specs(
     state: &WalletState,
     specs: &[CallSpec],
+    price_book: &dyn PriceBook,
 ) -> (BTreeMap<String, Value>, Vec<Diagnostic>) {
     let mut results = BTreeMap::new();
     let mut diagnostics = Vec::new();
+    tracing::debug!(
+        n_specs = specs.len(),
+        n_synced_tokens = state.tokens.len(),
+        "execute_call_specs: enrichment requested"
+    );
     for spec in specs {
+        tracing::debug!(
+            call_id = %spec.call_id,
+            method = %spec.method,
+            params = %spec.params,
+            "execute_call_specs: serving call"
+        );
         match spec.method.as_str() {
-            "oracle.usd_value" => match oracle_usd_value(state, &spec.params) {
+            "oracle.usd_value" => match oracle_usd_value(state, &spec.params, price_book).await {
                 Some(usd) => {
+                    tracing::debug!(call_id = %spec.call_id, usd = %usd, "oracle.usd_value: OK");
                     results.insert(spec.call_id.clone(), json!({ "usd": usd }));
                 }
                 None => diagnostics.push(Diagnostic {
                     level: "warn".to_owned(),
                     message: format!(
                         "oracle.usd_value: no synced price for the requested asset \
+                         (call {}) — field left unset",
+                        spec.call_id
+                    ),
+                    call_id: Some(spec.call_id.clone()),
+                }),
+            },
+            "token.normalize_to_nano" => match normalize_to_nano(&spec.params, price_book).await {
+                Some(nano) => {
+                    tracing::debug!(call_id = %spec.call_id, nano, "token.normalize_to_nano: OK");
+                    results.insert(spec.call_id.clone(), json!({ "nano": nano }));
+                }
+                None => diagnostics.push(Diagnostic {
+                    level: "warn".to_owned(),
+                    message: format!(
+                        "token.normalize_to_nano: no synced decimals for the requested asset \
                          (call {}) — field left unset",
                         spec.call_id
                     ),
@@ -204,29 +266,89 @@ fn execute_call_specs(
     (results, diagnostics)
 }
 
-/// Value an `oracle.usd_value` call from synced state: locate the held token by
-/// the `asset` param's address, then compute `amount / 10^decimals × price_usd`.
-/// f64-scale (display, mirrors [`TokenHolding::compute_value_usd`]) and formatted
-/// to 4 fractional digits so it parses as a Cedar `decimal`. Returns `None` when
-/// the asset is not held, has no synced price, or the amount cannot be parsed.
-fn oracle_usd_value(state: &WalletState, params: &Value) -> Option<String> {
+/// Value an `oracle.usd_value` call: resolve the token's `(price_usd, decimals)`,
+/// then compute `amount / 10^decimals × price_usd`. f64-scale (display, mirrors
+/// [`TokenHolding::compute_value_usd`]) and formatted to 4 fractional digits so
+/// it parses as a Cedar `decimal`.
+///
+/// Price + decimals come from the requesting wallet's own synced holding when it
+/// holds the asset (freshest for that user); otherwise from the market-global
+/// [`PriceBook`] — the price of a `(chain, contract)` pair is wallet-independent,
+/// so a USD-cap policy works even for a wallet that was never registered. Returns
+/// `None` when neither source knows the price, or the amount cannot be parsed.
+async fn oracle_usd_value(
+    state: &WalletState,
+    params: &Value,
+    price_book: &dyn PriceBook,
+) -> Option<String> {
     let asset = params.get("asset").and_then(asset_address)?;
     let amount_raw = params.get("amount").and_then(Value::as_str)?;
     let amount = U256::from_str_radix(amount_raw.trim_start_matches("0x"), 16).ok()?;
 
-    let holding = state
+    // Prefer this wallet's own synced holding (present AND priced); else fall
+    // back to the global price book keyed by `(chain_id, asset)`.
+    let from_holding = state
         .tokens
         .values()
-        .find(|h| h.key.contract().map(|a| format!("{a:#x}")).as_deref() == Some(asset.as_str()))?;
+        .find(|h| h.key.contract().map(|a| format!("{a:#x}")).as_deref() == Some(asset.as_str()))
+        .and_then(|h| {
+            let price: f64 = h.price_usd.as_ref()?.value.as_str().parse().ok()?;
+            Some((price, h.decimals))
+        });
 
-    let price_f: f64 = holding.price_usd.as_ref()?.value.as_str().parse().ok()?;
+    let (price_f, decimals): (f64, u8) = if let Some(pd) = from_holding {
+        pd
+    } else {
+        let chain = params.get("chain_id").and_then(Value::as_str)?;
+        let fact = price_book.price(chain, &asset).await?;
+        (fact.price_usd.parse().ok()?, fact.decimals)
+    };
+
     let amount_f: f64 = amount.to_string().parse().ok()?;
-    let divisor = 10f64.powi(i32::from(holding.decimals));
+    let divisor = 10f64.powi(i32::from(decimals));
     if divisor <= 0.0 {
         return None;
     }
     let usd = amount_f / divisor * price_f;
     Some(format!("{usd:.4}"))
+}
+
+/// Server-side `token.normalize_to_nano`: rescale a raw token amount to
+/// token-native nano (`raw × 10^(9 − decimals)`, i.e. `token_amount × 10^9`),
+/// resolving the token's REAL `decimals` from the market-global [`PriceBook`] by
+/// `(chain_id, asset)` instead of a hard-coded literal — so a token-amount cap
+/// works for ANY token without per-token (e.g. USDC-only) gating.
+///
+/// Mirrors the SW's local pure handler (`NANO_SCALE = 9`, clamp to JS
+/// `MAX_SAFE_INTEGER`) so a value computed here is bit-identical to one computed
+/// in-process. Returns `None` when decimals are unknown, the amount can't be
+/// parsed, or the rescaled value overflows JS Number range.
+async fn normalize_to_nano(params: &Value, price_book: &dyn PriceBook) -> Option<i64> {
+    const NANO_SCALE: u32 = 9;
+    // Largest BigInt the SW can read back over JSON as a `number` without
+    // precision loss (`Number.MAX_SAFE_INTEGER`, 2^53 − 1).
+    let max_safe = U256::from(9_007_199_254_740_991u64);
+
+    let asset = params.get("asset").and_then(asset_address)?;
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let amount_raw = params.get("amount").and_then(Value::as_str)?;
+    let amount = U256::from_str_radix(amount_raw.trim_start_matches("0x"), 16).ok()?;
+
+    let decimals = price_book.decimals(chain, &asset).await?;
+    let dec = u32::from(decimals);
+
+    // nano = raw × 10^(9 − decimals); for decimals > 9 it divides instead so the
+    // unit stays `token_amount × 10^9` regardless of the token's own decimals.
+    let nano = if dec <= NANO_SCALE {
+        amount.checked_mul(U256::from(10u64).pow(U256::from(u64::from(NANO_SCALE - dec))))?
+    } else {
+        amount / U256::from(10u64).pow(U256::from(u64::from(dec - NANO_SCALE)))
+    };
+
+    if nano > max_safe {
+        return None;
+    }
+    nano.to_string().parse::<i64>().ok()
 }
 
 /// Extract a lowercase hex address from an `asset` param that may be a bare
@@ -259,6 +381,24 @@ mod tests {
 
     use crate::dto::{CallSpec, EvaluateRequest};
     use crate::store::InMemoryWalletStore;
+
+    /// A test [`PriceBook`] returning fixed `(price, decimals)` for ANY asset.
+    struct StubPriceBook(Option<PriceFact>, Option<u8>);
+    #[async_trait]
+    impl PriceBook for StubPriceBook {
+        async fn price(&self, _chain: &str, _address: &str) -> Option<PriceFact> {
+            self.0.clone()
+        }
+        async fn decimals(&self, _chain: &str, _address: &str) -> Option<u8> {
+            self.1
+        }
+    }
+
+    /// The default for holding-path tests: the global book knows nothing, so any
+    /// computed value MUST have come from the wallet's own synced holding.
+    fn no_price_book() -> StubPriceBook {
+        StubPriceBook(None, None)
+    }
 
     /// A wallet holding 100 USDC on mainnet with a synced $1.0001 price — the
     /// fact `oracle.usd_value` reads to value a swap that sells USDC.
@@ -434,7 +574,9 @@ mod tests {
         let seeded = non_trivial_state();
         store.seed(seeded.clone());
 
-        let resp = evaluate(&store, empty_envelope_request()).await.unwrap();
+        let resp = evaluate(&store, &no_price_book(), empty_envelope_request())
+            .await
+            .unwrap();
 
         assert_eq!(resp.policy_request.state_before, seeded);
         assert_eq!(resp.policy_request.state_after, seeded);
@@ -457,7 +599,9 @@ mod tests {
         assert_eq!(loaded, WalletState::new(id.clone()));
 
         // And the handler echoes that empty state for an empty request.
-        let resp = evaluate(&store, empty_envelope_request()).await.unwrap();
+        let resp = evaluate(&store, &no_price_book(), empty_envelope_request())
+            .await
+            .unwrap();
         assert_eq!(resp.policy_request.state_before, WalletState::new(id));
         assert!(resp.policy_request.deltas.is_empty());
     }
@@ -471,9 +615,13 @@ mod tests {
         let seeded = non_trivial_state();
         store.seed(seeded.clone());
 
-        let resp = evaluate(&store, request_with_envelope(hyperliquid_order_action()))
-            .await
-            .unwrap();
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            request_with_envelope(hyperliquid_order_action()),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(resp.policy_request.state_before, seeded);
         assert_eq!(resp.policy_request.deltas.len(), 1);
@@ -494,7 +642,7 @@ mod tests {
     }
 
     /// `oracle.usd_value` is served from the synced holding price: 100 USDC at
-    /// $1.0001 → "100.0100", folded into `results` under the call_id.
+    /// $1.0001 → "100.0100", folded into `results` under the `call_id`.
     #[tokio::test]
     async fn oracle_usd_value_is_served_from_synced_price() {
         let store = InMemoryWalletStore::new();
@@ -508,7 +656,7 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, req).await.unwrap();
+        let resp = evaluate(&store, &no_price_book(), req).await.unwrap();
         assert_eq!(
             resp.policy_request.results["swap-usdc-usd-cap-deny::usd"],
             serde_json::json!({ "usd": "100.0100" })
@@ -531,7 +679,7 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, req)
+        let resp = evaluate(&store, &no_price_book(), req)
             .await
             .expect("a non-reducible action must NOT fail the request");
 
@@ -565,13 +713,106 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, req).await.unwrap();
-        assert!(resp.policy_request.results.is_empty(), "no price → no result");
+        let resp = evaluate(&store, &no_price_book(), req).await.unwrap();
+        assert!(
+            resp.policy_request.results.is_empty(),
+            "no price → no result"
+        );
         assert!(
             resp.diagnostics
                 .iter()
                 .any(|d| d.level == "warn" && d.message.contains("no synced price")),
             "miss should surface a diagnostic"
+        );
+    }
+
+    /// Global fallback: a wallet that holds NOTHING still gets a USD value when
+    /// the market-global price book knows the token's price + decimals. This is
+    /// the fix that lets an address-independent USD-cap policy fire without the
+    /// requesting wallet ever being registered/synced.
+    #[tokio::test]
+    async fn oracle_usd_value_falls_back_to_global_price_book() {
+        let store = InMemoryWalletStore::new();
+        // Empty wallet — no holdings seeded; the value can ONLY come from the book.
+        let mut req = empty_envelope_request();
+        // 0.06 USDC = 60_000 raw (6 decimals) = 0xea60.
+        req.call_specs.push(usd_call_spec(
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "0xea60",
+        ));
+        let price_book = StubPriceBook(
+            Some(PriceFact {
+                price_usd: "0.9996".into(),
+                decimals: 6,
+            }),
+            None,
+        );
+
+        let resp = evaluate(&store, &price_book, req).await.unwrap();
+
+        // 60_000 / 1e6 × 0.9996 = 0.059976 → "0.0600" (≥ 0.05 ⇒ a USD cap denies).
+        assert_eq!(
+            resp.policy_request.results["swap-usdc-usd-cap-deny::usd"],
+            serde_json::json!({ "usd": "0.0600" })
+        );
+    }
+
+    /// `token.normalize_to_nano` is served server-side from the token's REAL
+    /// global decimals (no hard-coded literal, no per-token gating): 0.06 USDC
+    /// (raw `60_000`, decimals 6) → `60_000 × 10^(9−6)` = `60_000_000` nano.
+    #[tokio::test]
+    async fn normalize_to_nano_uses_global_decimals() {
+        let store = InMemoryWalletStore::new();
+        let mut req = empty_envelope_request();
+        req.call_specs.push(CallSpec {
+            manifest_id: "swap-intoken-cap-deny".into(),
+            call_id: "swap-intoken-cap-deny::nano".into(),
+            method: "token.normalize_to_nano".into(),
+            params: serde_json::json!({
+                "chain_id": "eip155:1",
+                "asset": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "amount": "0xea60" // 60_000
+            }),
+            outputs: Vec::new(),
+            optional: false,
+        });
+        // Empty wallet — decimals can ONLY come from the global book (=6, USDC).
+        let price_book = StubPriceBook(None, Some(6));
+
+        let resp = evaluate(&store, &price_book, req).await.unwrap();
+
+        assert_eq!(
+            resp.policy_request.results["swap-intoken-cap-deny::nano"],
+            serde_json::json!({ "nano": 60_000_000 })
+        );
+    }
+
+    /// An 18-decimals token (ETH) rescales by dividing: 1 ETH (10^18 wei) →
+    /// `10^18 / 10^(18−9)` = 10^9 nano = `1 × 10^9`. Proves decimals > 9 works,
+    /// which the old literal-6 path could not express.
+    #[tokio::test]
+    async fn normalize_to_nano_handles_18_decimals() {
+        let store = InMemoryWalletStore::new();
+        let mut req = empty_envelope_request();
+        req.call_specs.push(CallSpec {
+            manifest_id: "swap-intoken-cap-deny".into(),
+            call_id: "swap-intoken-cap-deny::nano".into(),
+            method: "token.normalize_to_nano".into(),
+            params: serde_json::json!({
+                "chain_id": "eip155:1",
+                "asset": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", // WETH
+                "amount": "0xde0b6b3a7640000" // 1e18
+            }),
+            outputs: Vec::new(),
+            optional: false,
+        });
+        let price_book = StubPriceBook(None, Some(18));
+
+        let resp = evaluate(&store, &price_book, req).await.unwrap();
+
+        assert_eq!(
+            resp.policy_request.results["swap-intoken-cap-deny::nano"],
+            serde_json::json!({ "nano": 1_000_000_000 })
         );
     }
 }

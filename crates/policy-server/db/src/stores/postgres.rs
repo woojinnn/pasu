@@ -257,6 +257,106 @@ impl PostgresGlobalDb {
     pub const fn pool(&self) -> &PgPool {
         &self.pool
     }
+
+    /// Latest synced USD price + decimals for `(chain, address)` across EVERY
+    /// wallet's holdings — a market-global fact that does not depend on the
+    /// requesting wallet being registered.
+    ///
+    /// The price of a `(chain, contract)` token is identical across wallets, so
+    /// this reuses the most-recently-synced holding that carries a price. Lets
+    /// `oracle.usd_value` value a swap even when the *specific* wallet has never
+    /// been synced, as long as the token's price has been synced anywhere.
+    /// `address` is matched case-insensitively; returns `None` when no synced
+    /// holding carries a price for that token yet.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the lookup query fails.
+    pub async fn latest_token_price(
+        &self,
+        chain: &str,
+        address: &str,
+    ) -> DbResult<Option<TokenPriceFact>> {
+        let address_lc = address.to_lowercase();
+        // `tokens` is a JSONB array of `[key, holding]` pairs; `t->1` is the
+        // holding. Native tokens carry no `key.address`, so the address filter
+        // also excludes them. Most-recently-synced wallet wins on ties.
+        let row = query(
+            "SELECT (t->1->>'decimals')::int AS decimals, \
+                    (t->1->'price_usd'->>'value') AS price \
+             FROM wallet_states w, jsonb_array_elements(w.state_json->'tokens') AS t \
+             WHERE lower(t->1->'key'->>'address') = $1 \
+               AND (t->1->'key'->>'chain') = $2 \
+               AND (t->1->'price_usd'->>'value') IS NOT NULL \
+             ORDER BY w.updated_at DESC \
+             LIMIT 1",
+        )
+        .bind(&address_lc)
+        .bind(chain)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::Invariant(e.to_string()))?;
+
+        let Some(row) = row else { return Ok(None) };
+        let decimals: i32 = row
+            .try_get("decimals")
+            .map_err(|e| DbError::Invariant(e.to_string()))?;
+        let price_usd: String = row
+            .try_get("price")
+            .map_err(|e| DbError::Invariant(e.to_string()))?;
+        let decimals = u8::try_from(decimals)
+            .map_err(|_| DbError::Invariant(format!("token decimals out of range: {decimals}")))?;
+        Ok(Some(TokenPriceFact {
+            price_usd,
+            decimals,
+        }))
+    }
+
+    /// Latest synced `decimals` for `(chain, address)` across EVERY wallet's
+    /// holdings — a token-global fact independent of price. Lets
+    /// `token.normalize_to_nano` rescale a swap amount with the token's REAL
+    /// decimals instead of a hard-coded literal, so a token-amount cap works for
+    /// any token (not just 6-decimals USDC). `address` is matched
+    /// case-insensitively; returns `None` when the token has never been synced.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DbError`] if the lookup query fails.
+    pub async fn latest_token_decimals(&self, chain: &str, address: &str) -> DbResult<Option<u8>> {
+        let address_lc = address.to_lowercase();
+        let row = query(
+            "SELECT (t->1->>'decimals')::int AS decimals \
+             FROM wallet_states w, jsonb_array_elements(w.state_json->'tokens') AS t \
+             WHERE lower(t->1->'key'->>'address') = $1 \
+               AND (t->1->'key'->>'chain') = $2 \
+               AND (t->1->>'decimals') IS NOT NULL \
+             ORDER BY w.updated_at DESC \
+             LIMIT 1",
+        )
+        .bind(&address_lc)
+        .bind(chain)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::Invariant(e.to_string()))?;
+
+        let Some(row) = row else { return Ok(None) };
+        let decimals: i32 = row
+            .try_get("decimals")
+            .map_err(|e| DbError::Invariant(e.to_string()))?;
+        u8::try_from(decimals)
+            .map(Some)
+            .map_err(|_| DbError::Invariant(format!("token decimals out of range: {decimals}")))
+    }
+}
+
+/// A market-global price fact: USD price (decimal string) + token decimals.
+/// Sourced from synced holdings via [`PostgresGlobalDb::latest_token_price`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TokenPriceFact {
+    /// USD price as a decimal string (e.g. `"0.99959644"`).
+    pub price_usd: String,
+    /// Token decimals (e.g. `6` for USDC).
+    pub decimals: u8,
 }
 
 impl PostgresMultiUserStore {

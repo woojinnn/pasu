@@ -69,14 +69,26 @@ fn usdc_swap_at_or_above_5_hundredths_is_denied() {
     };
 
     // Screenshot case: 0.14269 USDC → 142_690_000 nano → DENY.
-    assert!(is_deny(&eval(swap_ctx(ARBITRUM_USDC, Some(142_690_000)))), "0.14269 USDC");
+    assert!(
+        is_deny(&eval(swap_ctx(ARBITRUM_USDC, Some(142_690_000)))),
+        "0.14269 USDC"
+    );
     // Exact boundary: 0.05 USDC = 50_000_000 nano → DENY.
-    assert!(is_deny(&eval(swap_ctx(ARBITRUM_USDC, Some(50_000_000)))), "0.05 USDC");
+    assert!(
+        is_deny(&eval(swap_ctx(ARBITRUM_USDC, Some(50_000_000)))),
+        "0.05 USDC"
+    );
     // Below cap: 0.04 USDC = 40_000_000 nano → PASS.
-    assert!(!is_deny(&eval(swap_ctx(ARBITRUM_USDC, Some(40_000_000)))), "0.04 USDC");
+    assert!(
+        !is_deny(&eval(swap_ctx(ARBITRUM_USDC, Some(40_000_000)))),
+        "0.04 USDC"
+    );
     // Right token, but enrichment absent → has-guard false → PASS (the required
     // call would fail-CLOSED upstream at materialize; the policy itself is inert).
     assert!(!is_deny(&eval(swap_ctx(ARBITRUM_USDC, None))), "no nano");
     // Big amount but NOT USDC (WETH) → address guard false → PASS.
-    assert!(!is_deny(&eval(swap_ctx(ARBITRUM_WETH, Some(999_999_999)))), "WETH");
+    assert!(
+        !is_deny(&eval(swap_ctx(ARBITRUM_WETH, Some(999_999_999)))),
+        "WETH"
+    );
 }

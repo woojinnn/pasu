@@ -26,7 +26,7 @@ use crate::coordination::DynCoordinator;
 use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
-use crate::handler::{evaluate, HandlerError};
+use crate::handler::{evaluate, HandlerError, PriceBook, PriceFact};
 use crate::market_handlers;
 use crate::read_handlers;
 use crate::write_handlers;
@@ -270,11 +270,55 @@ async fn auth_me_handler(Extension(user): Extension<AuthUser>) -> Response {
 /// Maps [`HandlerError::Reducer`] to `422 Unprocessable Entity` (the action is
 /// invalid for the state) and [`HandlerError::Store`] to `500 Internal Server
 /// Error` (persistence failed).
+/// Adapts the global DB's market-wide price lookup to the handler's
+/// [`PriceBook`] so `oracle.usd_value` can value a swap from the synced price of
+/// ANY wallet holding that token — not just the requesting (possibly
+/// unregistered) wallet. A lookup error degrades to "unknown price" (the call
+/// then fail-closes upstream), never a 500.
+struct DbPriceBook {
+    global_db: GlobalDb,
+}
+
+#[async_trait::async_trait]
+impl PriceBook for DbPriceBook {
+    async fn price(&self, chain: &str, address: &str) -> Option<PriceFact> {
+        match self.global_db.latest_token_price(chain, address).await {
+            Ok(Some(fact)) => Some(PriceFact {
+                price_usd: fact.price_usd,
+                decimals: fact.decimals,
+            }),
+            Ok(None) => None,
+            Err(err) => {
+                tracing::warn!(%chain, %address, error = %err, "global price lookup failed");
+                None
+            }
+        }
+    }
+
+    async fn decimals(&self, chain: &str, address: &str) -> Option<u8> {
+        match self.global_db.latest_token_decimals(chain, address).await {
+            Ok(decimals) => decimals,
+            Err(err) => {
+                tracing::warn!(%chain, %address, error = %err, "global decimals lookup failed");
+                None
+            }
+        }
+    }
+}
+
 async fn evaluate_handler(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
     Json(req): Json<EvaluateRequest>,
 ) -> Response {
+    tracing::debug!(
+        user_id = %user.user_id,
+        wallet_address = %format!("{:#x}", req.wallet_id.address),
+        wallet_chains = ?req.wallet_id.chains,
+        n_envelopes = req.envelopes.len(),
+        n_call_specs = req.call_specs.len(),
+        "evaluate request: wallet + enrichment call count"
+    );
     let store = match state.multi_user.for_user(&user.user_id) {
         Ok(s) => s,
         Err(e) => {
@@ -285,7 +329,10 @@ async fn evaluate_handler(
                 .into_response();
         }
     };
-    match evaluate(&*store, req).await {
+    let price_book = DbPriceBook {
+        global_db: state.global_db.clone(),
+    };
+    match evaluate(&*store, &price_book, req).await {
         Ok(resp) => Json(resp).into_response(),
         Err(err @ HandlerError::Reducer(_)) => {
             (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into_response()

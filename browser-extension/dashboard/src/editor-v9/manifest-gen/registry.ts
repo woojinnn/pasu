@@ -60,21 +60,22 @@ export const ENRICHMENT_FIELDS: EnrichmentRegistry = {
     },
   },
 
-  // Input token amount in token-native nano, served IN-PROCESS by the host's
-  // pure `token.normalize_to_nano`. `decimals` is a literal (USDC = 6), so a
-  // policy using this MUST gate `tokenIn` to USDC by address — otherwise a
-  // non-6-decimals token is mis-scaled. Generalizing needs decimals threaded
-  // into the lowered context (a separate, larger change).
+  // Input token amount in token-native nano (`token_amount × 10^9`). Served by
+  // `token.normalize_to_nano`: when `decimals` is omitted the host DEFERS to the
+  // policy-server, which resolves the token's REAL decimals from the global token
+  // registry by `(chain_id, asset)`. So this works for ANY token (USDC 6, ETH 18,
+  // WBTC 8, …) with NO per-token gating — the old literal-6 USDC-only limitation
+  // is gone.
   inputAmountNano: {
     type: "Long",
-    label: { ko: "입력 토큰 수량 (USDC, nano)", en: "Input token amount (USDC, nano)" },
+    label: { ko: "입력 토큰 수량 (nano)", en: "Input token amount (nano)" },
     appliesTo: ["swap"],
     method: "token.normalize_to_nano",
     projection: "$.result.nano",
     params: {
       amount: "$.action.direction.amountIn",
-      decimals: { literal: 6 },
+      chain_id: "$.root.chain_id",
+      asset: "$.action.tokenIn.key.address",
     },
-    note: "decimals=6 (USDC only) — gate this policy to USDC by tokenIn address.",
   },
 };

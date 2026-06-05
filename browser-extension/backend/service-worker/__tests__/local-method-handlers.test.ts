@@ -140,5 +140,20 @@ describe("local-method-handlers", () => {
       );
       expect(result?.id).toBe("abc-123");
     });
+
+    it("DEFERS to the remote server (returns null) when decimals is omitted", () => {
+      // The registry-driven path passes `{ amount, chain_id, asset }` with NO
+      // literal decimals — the host then routes to /evaluate, which resolves the
+      // token's real decimals globally. Returning null (not an error) is what
+      // makes the call fall through to the remote dispatcher.
+      const result = tryHandleLocally(
+        call("token.normalize_to_nano", {
+          amount: "60000",
+          chain_id: "eip155:1",
+          asset: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        }),
+      );
+      expect(result).toBeNull();
+    });
   });
 });

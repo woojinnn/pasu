@@ -46,7 +46,15 @@ fn manifest_selectors_resolve_against_lowered_swap() {
     let params = &manifest.policy_rpc[0].params;
     // Resolve each selector exactly as planning does: root→$.root, lowered→$.action.
     let resolve = |sel: &Value| {
-        resolve_selector(sel.as_str().unwrap(), &root, &action, &empty, &empty, &empty).unwrap()
+        resolve_selector(
+            sel.as_str().unwrap(),
+            &root,
+            &action,
+            &empty,
+            &empty,
+            &empty,
+        )
+        .unwrap()
     };
 
     assert_eq!(resolve(&params["chain_id"]), json!("eip155:1"));
@@ -95,7 +103,10 @@ fn policy_denies_when_input_usd_at_or_above_5_cents() {
     let is_deny = |v: &Verdict| matches!(v, Verdict::Fail(_));
 
     assert!(is_deny(&eval(ctx_with_usd(Some("0.1100")))), "$0.11");
-    assert!(is_deny(&eval(ctx_with_usd(Some("0.0500")))), "$0.05 boundary");
+    assert!(
+        is_deny(&eval(ctx_with_usd(Some("0.0500")))),
+        "$0.05 boundary"
+    );
     assert!(!is_deny(&eval(ctx_with_usd(Some("0.0400")))), "$0.04");
     assert!(!is_deny(&eval(ctx_with_usd(None))), "no inputUsd");
 }
