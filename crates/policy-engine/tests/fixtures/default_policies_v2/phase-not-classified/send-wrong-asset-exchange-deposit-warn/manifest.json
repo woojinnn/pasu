@@ -1,0 +1,37 @@
+{
+  "id": "send-wrong-asset-exchange-deposit-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [
+    {
+      "id": "recipient-exchange-deposit",
+      "method": "external.recipient_exchange_deposit",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "action": "$.action"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "recipientIsCexDeposit",
+          "type": "Bool",
+          "from": "$.result.recipientIsCexDeposit"
+        },
+        {
+          "kind": "context",
+          "field": "assetSupportedAtDeposit",
+          "type": "Bool",
+          "from": "$.result.assetSupportedAtDeposit"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": {
+    "fields": {
+      "recipientIsCexDeposit": "Bool",
+      "assetSupportedAtDeposit": "Bool"
+    }
+  }
+}

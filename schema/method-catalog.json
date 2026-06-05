@@ -300,6 +300,74 @@
     }
   },
   "planned": {
+    "token.out_contract_age_seconds": {
+      "name": "token.out_contract_age_seconds",
+      "status": "planned",
+      "origin": "factory-2026-06-05-killer4",
+      "description": "SWAP: age in seconds of the tokenOut contract (now - first-seen/deploy time). Drives buy-fresh-deploy-token-warn: a brand-new tokenOut is the classic snipe-rug / honeypot-as-a-service setup. tokenOut may be absent (sell-only/native-out) -> no age emitted. fail-open.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external: tokenOut contract first-seen block / deploy timestamp (registry first-seen, or chain creation-block scan); not state DB",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "Amm::Swap action; tokenOut resolved from it." }
+      },
+      "returns": { "kind": "scalar", "type": "Long", "from": "$.result.age_seconds" }
+    },
+    "approval.spender_is_mutable_proxy": {
+      "name": "approval.spender_is_mutable_proxy",
+      "status": "planned",
+      "origin": "factory-2026-06-05-killer4",
+      "description": "APPROVAL: true iff the approve spender is an upgradeable proxy (EIP-1967) whose admin is unilaterally mutable (not a timelock/multisig/null). Drives approve-spender-upgradeable-proxy-warn (OWASP Smart Contract Top 10 2026 proxy/upgradeability category). fail-open.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "on-chain storage read: EIP-1967 implementation+admin slots of the spender; true iff upgradeable AND admin not timelock/multisig/null",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "Token::Erc20Approve action; spender resolved from it." }
+      },
+      "returns": { "kind": "scalar", "type": "Bool", "from": "$.result.mutableProxy" }
+    },
+    "external.recipient_exchange_deposit": {
+      "name": "external.recipient_exchange_deposit",
+      "status": "planned",
+      "origin": "factory-2026-06-05-killer4",
+      "description": "SEND: label the transfer recipient as a CEX deposit address and report whether THIS asset is credited at that deposit address. Drives send-wrong-asset-exchange-deposit-warn (unsupported-asset deposit = permanently frozen per Binance/Coinbase/Bitget). fail-open WARN only.",
+      "readKind": "external",
+      "server": "external",
+      "stateDependency": "external: CEX deposit-address labelling + per-(deposit-address, asset) support registry (not state DB)",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "action": { "type": "Action", "required": true, "defaultSelector": "$.action", "description": "Token::Erc20Transfer action; recipient + token resolved from it." }
+      },
+      "returns": {
+        "kind": "record",
+        "fields": {
+          "recipientIsCexDeposit": { "type": "Bool", "from": "$.result.recipientIsCexDeposit" },
+          "assetSupportedAtDeposit": { "type": "Bool", "from": "$.result.assetSupportedAtDeposit" }
+        }
+      }
+    },
+    "approval.cumulative_allowance_usd": {
+      "name": "approval.cumulative_allowance_usd",
+      "status": "planned",
+      "origin": "factory-2026-06-05-killer4",
+      "description": "APPROVAL: USD sum of every currently-active allowance this owner holds on this token across ALL spenders, PLUS this pending approve (added_amount). Drives approve-cumulative-allowance-exposure-warn. NEEDS-NEW-STATE: per-(owner,token) active spender->allowance SET does not exist in WalletState today (only a single myAllowance scalar). fail-open until the tracker ships.",
+      "readKind": "derived",
+      "server": "sim-server",
+      "stateDependency": "NEW STATE surface: per-(owner,token) set of active spender->allowance entries; reducer sums to USD + added_amount. Absent in current WalletState.",
+      "params": {
+        "chain_id": { "type": "Long", "required": true, "defaultSelector": "$.root.chain_id" },
+        "owner": { "type": "String", "required": true, "defaultSelector": "$.root.from" },
+        "token": { "type": "AssetRef", "required": true, "defaultSelector": "$.action.token" },
+        "spender": { "type": "String", "required": true, "defaultSelector": "$.action.spender" },
+        "added_amount": { "type": "String", "required": true, "defaultSelector": "$.action.amount", "description": "Amount of this pending approve (U256 hex), added to the cumulative total." }
+      },
+      "returns": { "kind": "scalar", "type": "Decimal", "from": "$.result.cumulativeAllowanceUsd" }
+    },
     "external.morpho_market_recognized": {
       "name": "external.morpho_market_recognized",
       "status": "planned",

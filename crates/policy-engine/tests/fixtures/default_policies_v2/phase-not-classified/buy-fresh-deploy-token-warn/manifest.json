@@ -1,0 +1,26 @@
+{
+  "id": "buy-fresh-deploy-token-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "out-token-contract-age",
+      "method": "token.out_contract_age_seconds",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "action": "$.action"
+      },
+      "outputs": [
+        {
+          "kind": "context",
+          "field": "outTokenAgeSeconds",
+          "type": "Long",
+          "from": "$.result.age_seconds"
+        }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "outTokenAgeSeconds": "Long" } }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "swap-deadline-missing-or-stale-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [
+    {
+      "id": "swap-deadline-window",
+      "method": "amm.swap_deadline_window",
+      "params": {
+        "chain_id": "$.root.chain_id",
+        "owner": "$.root.from",
+        "action": "$.action"
+      },
+      "outputs": [
+        { "kind": "context", "field": "deadlineIsUnbounded", "type": "Bool", "from": "$.result.unbounded" },
+        { "kind": "context", "field": "secondsUntilDeadline", "type": "Long", "from": "$.result.secondsUntilDeadline" }
+      ],
+      "optional": true
+    }
+  ],
+  "custom_context": { "fields": { "deadlineIsUnbounded": "Bool", "secondsUntilDeadline": "Long" } }
+}
