@@ -15,6 +15,14 @@
  * `shipped_swap_policy_fires_on_child_swap_position` test, run
  * `cargo test -p policy-engine-wasm shipped_swap_policy_fires_on_child_swap_position -- --nocapture`,
  * then remove the print.
+ *
+ * The `HlOrder` entry mirrors this for Hyperliquid: its `action`/`meta` JSON is
+ * the doubly-tagged `ActionBody::HyperliquidCore(Order)` + offchain-sig
+ * `ActionMeta` shape the SW converter (`hl-order-to-action.ts`) emits, captured
+ * verbatim from `crates/policy-engine-wasm/tests/hl_exchange_deny_e2e.rs`
+ * (`order_action` + `hl_meta`). `is_buy:false` ⇒ `side=="short"`, so the shipped
+ * `hl-no-short-perp` deny (`context.venue.name == "hyperliquid" && context.side
+ * == "short"`) trips — the HL analogue of the baked-150 slippage above.
  */
 
 import type { DiagnosisRequestDto } from "../server-api/diagnosis";
@@ -177,6 +185,43 @@ export const SAMPLE_ACTIONS: Record<string, () => SampleRequest> = {
       chain_id: "eip155:42161",
       from: "0x1111111111111111111111111111111111111111",
       to: "0x2222222222222222222222222222222222222222",
+    },
+    bundles: [],
+    results: {},
+  }),
+
+  // Hyperliquid `/exchange` `{"type":"order"}` — the first-class HL venue sample.
+  // Off-chain L1 order (signed by an agent key, POSTed to the venue), so the
+  // `meta.nature` is `offchain_sig` (NOT the swap's `onchain_tx`) and the `tx`
+  // chain is `hl-mainnet`. `is_buy:false` ⇒ lowered `context.side == "short"`,
+  // tripping the shipped `hl-no-short-perp` deny — the Simulate analogue of the
+  // baked-150 slippage in `Swap`. Numeric fields are decimal STRINGS (HL prices
+  // exceed Cedar's 4-dp `decimal`), so policies match on side/venue/symbol/tif.
+  HlOrder: () => ({
+    action: {
+      domain: "hyperliquid_core",
+      action: "hl_order",
+      asset_index: 0,
+      symbol: "BTC",
+      is_buy: false,
+      price: "60000",
+      size: "0.1",
+      reduce_only: false,
+      tif: "gtc",
+    },
+    meta: {
+      submitted_at: 1738000000,
+      submitter: "0x000000000000000000000000000000000000a01c",
+      nature: {
+        kind: "offchain_sig",
+        domain: { name: "Hyperliquid", version: "1" },
+        deadline: 1738000600,
+      },
+    },
+    tx: {
+      chain_id: "hl-mainnet",
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x0000000000000000000000000000000000000000",
     },
     bundles: [],
     results: {},
