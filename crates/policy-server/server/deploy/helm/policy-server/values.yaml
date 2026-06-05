@@ -101,6 +101,14 @@ syncConfig: |-
   [venues.hyperliquid]
   endpoint = "https://api.hyperliquid.xyz"
 
+  [venues.uniswap]
+  # UniswapX order-status via the public v2 service (swapper-based listing, no
+  # api-key required). Without this section the sync worker logs "uniswap_x
+  # fetcher is not configured" every tick and off-chain intent state is untracked.
+  orders_endpoint = "https://api.uniswap.org/v2"
+  api_key = "${UNISWAP_KEY}"
+  chains = ["eip155:1"]
+
 managedCertificate:
   enabled: false
 
