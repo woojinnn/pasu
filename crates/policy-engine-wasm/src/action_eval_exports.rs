@@ -61,10 +61,10 @@ use crate::exports::check_input_size;
 /// Transaction-level routing fields. Mirrors the trigger export's `TxInput`,
 /// reused for both phases. `chain_id` is the CAIP-2 string (e.g. `"eip155:1"`).
 #[derive(Debug, Clone, Deserialize)]
-struct TxInput {
-    chain_id: String,
-    from: String,
-    to: String,
+pub(crate) struct TxInput {
+    pub(crate) chain_id: String,
+    pub(crate) from: String,
+    pub(crate) to: String,
 }
 
 /// Input to [`plan_action_rpc_v2_json`].
@@ -94,9 +94,9 @@ struct PlanActionInput {
 /// One installed bundle: the user's Cedar policy text paired with the manifest
 /// that synthesizes its per-policy schema + custom-context.
 #[derive(Debug, Deserialize)]
-struct BundleInput {
-    policy: String,
-    manifest: ManifestV2,
+pub(crate) struct BundleInput {
+    pub(crate) policy: String,
+    pub(crate) manifest: ManifestV2,
 }
 
 /// Input to [`evaluate_action_v2_json`].
@@ -332,6 +332,45 @@ fn plan(
         .map_err(|error| EngineErrorDto::new("plan_failed", error.to_string()))
 }
 
+/// Rebuild the EXACT materialized context the evaluate path feeds Cedar:
+/// lower the action, plan from the bundles' manifests, replay `results` into
+/// `context.custom.*`. This MIRRORS `evaluate_action_v2_json`'s
+/// lower→plan→materialize sequence (which inlines its own copy — the two are NOT
+/// shared and must be kept in sync) so a diagnosis probe sees the identical
+/// environment as the verdict.
+pub(crate) fn materialized_context(
+    action: &ActionBody,
+    meta: &ActionMeta,
+    tx: &TxInput,
+    bundles: &[BundleInput],
+    results: &BTreeMap<String, Value>,
+) -> Result<(LoweredAction, Value), EngineErrorDto> {
+    // The diagnosis input (`DiagnosisInput`) does not carry the host-injected
+    // enrichment maps (`token_decimals` / `account_leverage`), so the probe
+    // lowers with empty maps: the `amountNano` siblings and the HL order
+    // `leverage` field are omitted from the probe context. A clause that denied
+    // purely on those enrichment-only fields is therefore diagnosed best-effort
+    // — the verdict itself is unaffected (this rebuilds context only for the
+    // dashboard's post-hoc "which clause blocked this" explainer).
+    let lowered = lower(
+        action,
+        meta,
+        tx,
+        &TokenDecimals::default(),
+        &AccountLeverage::default(),
+    )?;
+    let manifests: Vec<ManifestV2> = bundles.iter().map(|b| b.manifest.clone()).collect();
+    let planned = plan(&manifests, action, &lowered, tx)?;
+    let mut context = lowered.context.clone();
+    if let Err(error) = policy_engine::policy_rpc::materialize_v2(&mut context, &planned, results) {
+        if system_fail_verdict(&error).is_some() {
+            return Err(EngineErrorDto::new("system_fail", error.to_string()));
+        }
+        return Err(EngineErrorDto::new("projection_failed", error.to_string()));
+    }
+    Ok((lowered, context))
+}
+
 /// Evaluate every bundle whose trigger matches the action and aggregate the
 /// per-bundle verdicts (deny-overrides via [`Verdict::aggregate`]).
 ///
@@ -511,7 +550,7 @@ fn engine_error_verdict(error: EngineErrorDto) -> VerdictDto {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::too_many_lines)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use serde_json::{json, Value};
     use std::str::FromStr;
@@ -1107,7 +1146,7 @@ mod tests {
     /// `browser-extension/public/default-policies/policy-set-v2.json`): an
     /// Inner-scoped (no `trigger.scope` → default Inner) `forbid` on
     /// `Amm::Action::"Swap"` when `slippageBp > 100`.
-    fn shipped_high_slippage_bundle() -> Value {
+    pub(crate) fn shipped_high_slippage_bundle() -> Value {
         json!({
             "policy": "@id(\"high-slippage-warning\")\n@severity(\"warn\")\nforbid(principal, action == Amm::Action::\"Swap\", resource)\nwhen { context.slippageBp > 100 };\n",
             "manifest": { "id": "high-slippage-warning", "schema_version": 2,
@@ -1117,7 +1156,7 @@ mod tests {
 
     /// `swap_sample` but with a caller-chosen `slippage_bp` so the shipped
     /// `slippageBp > 100` guard can be made to trip (150) or not (50).
-    fn swap_sample_with_slippage(bp: u32) -> (ActionBody, ActionMeta) {
+    pub(crate) fn swap_sample_with_slippage(bp: u32) -> (ActionBody, ActionMeta) {
         let (body, meta) = swap_sample();
         let ActionBody::Amm(AmmAction::Swap(mut swap)) = body else {
             unreachable!("swap_sample yields an amm swap")

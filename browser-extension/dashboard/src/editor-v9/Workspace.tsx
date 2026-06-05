@@ -35,6 +35,15 @@ import { registerMakeParamContextMenu } from "./Param/make-param";
 import { ParamSidebar } from "./Param/ParamSidebar";
 import { ParamFillPanel } from "./Param/ParamFillPanel";
 import type { PolicyIR } from "../cedar/blocks";
+import type { Expr } from "../cedar/blocks/ir";
+import { buildProbes, diagnoseFromResult } from "../cedar/diagnosis";
+import { pathToBlockId, enumeratePaths } from "../cedar/diagnosis/path";
+import { runDiagnosisProbes } from "../server-api/diagnosis";
+import { applyCulprits, clearCulprits } from "./diagnosis-highlight";
+import { SAMPLE_ACTIONS } from "./sample-actions";
+import { chainToDottedPath } from "./mapping/attr-path";
+import { getGloss } from "./gloss";
+import "./diagnosis-highlight.css";
 
 Blockly.setLocale(En as unknown as Record<string, string>);
 
@@ -85,6 +94,12 @@ export function WorkspaceV9({
   const [currentPolicy, setCurrentPolicy] = useState<PolicyIR | null>(null);
   const [filledText, setFilledText] = useState<string | null>(null);
   const [filledError, setFilledError] = useState<string | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [simulateMsg, setSimulateMsg] = useState<string | null>(null);
+  // Expr→blockId identity map for the LAST irToWorkspace render the Simulate
+  // handler does. Only valid for the IR objects passed to that render, so the
+  // handler rebuilds it (and re-renders the canvas) on every click.
+  const blockIdByNodeRef = useRef<Map<Expr, string>>(new Map());
 
   const toolbox = useMemo(() => buildToolbox(locale), [locale]);
 
@@ -257,6 +272,99 @@ export function WorkspaceV9({
     })();
   };
 
+  // ────────────────────────────────────────────────────────────────────────
+  // REFERENCE INTEGRATION for denial diagnosis — copy this pattern for any new
+  // surface. Full guide: `src/cedar/diagnosis/README.md`.
+  //
+  // On-demand: evaluate the draft `forbid` policy against a sample action and
+  // red-box the sub-clause(s) that caused the (simulated) denial. Steps:
+  //   1. workspaceToIR() ONCE → `policy` (with a validity guard).
+  //   2. guard: only `forbid` policies are diagnosable (a fired forbid = denial).
+  //   3. pick the sample for the policy's action id (bail if none).
+  //   4. buildProbes(policy) → bail to @reason if `!diagnosable` (hole/raw).
+  //   5. re-render via irToWorkspace(ws, policies, map) so the Expr→blockId
+  //      identity map is keyed by the SAME `policy` objects we diagnose — this is
+  //      the load-bearing seam (README §4): map + buildProbes + diagnoseFromResult
+  //      + pathToBlockId must all share one PolicyIR object or nothing highlights.
+  //   6. runDiagnosisProbes({ ...sample(), probes }) → Cedar oracle (WASM, via SW).
+  //      (`sample` is a factory function — call it.)
+  //   7. diagnoseFromResult(policy, probeIds, result) → culprit leaf paths.
+  //   8. pathToBlockId(policy, map) → applyCulprits(ws, pathMap, culprits, note).
+  // ────────────────────────────────────────────────────────────────────────
+  const onSimulate = async () => {
+    const ws = wsRef.current;
+    if (!ws || simulating) return;
+    setSimulating(true);
+    setSimulateMsg(null);
+    clearCulprits(ws); // drop any prior red boxes before re-evaluating
+    try {
+      // Re-render from the current workspace so the Expr→blockId identity map is
+      // built from the SAME IR objects we diagnose — they're created here, with
+      // no intervening edit, so identity matches by construction. (Tradeoff: the
+      // canvas reflows to default block layout on each Simulate.)
+      const errs: EditorError[] = [];
+      const policies = workspaceToIR(ws, errs);
+      const policy = policies[0] ?? null;
+      if (!policy || errs.length > 0) {
+        setSimulateMsg("유효한 정책이 없습니다");
+        return;
+      }
+
+      if (policy.effect !== "forbid") {
+        clearCulprits(ws);
+        setSimulateMsg("forbid 정책만 진단할 수 있습니다");
+        return;
+      }
+
+      // Action uid id (Pascal) — only an `== Action::"Id"` scope names one.
+      const actionScope = policy.scope.action;
+      const actionId =
+        actionScope.kind === "scopeEq" ? actionScope.entity.id : null;
+      const sample = actionId ? SAMPLE_ACTIONS[actionId] : undefined;
+      if (!sample) {
+        setSimulateMsg("이 액션의 샘플이 없습니다");
+        return;
+      }
+
+      const { probes, diagnosable } = buildProbes(policy);
+      if (!diagnosable) {
+        const reason = policy.annotations.find((a) => a.name === "reason")?.value;
+        setSimulateMsg(reason ? `진단 불가 — ${reason}` : "이 정책은 진단할 수 없습니다");
+        clearCulprits(ws);
+        return;
+      }
+
+      blockIdByNodeRef.current = new Map<Expr, string>();
+      irToWorkspace(ws, policies, blockIdByNodeRef.current);
+
+      const result = await runDiagnosisProbes({ ...sample(), probes });
+      const d = diagnoseFromResult(policy, probes.map((p) => p.id), result);
+
+      const pathMap = pathToBlockId(policy, blockIdByNodeRef.current);
+      const byPath = new Map(enumeratePaths(policy).map((e) => [e.path, e.node]));
+      const note = (p: string): string | null => {
+        const node = byPath.get(p);
+        if (!node || node.kind !== "binary") return null;
+        const leftPath = chainToDottedPath(node.left);
+        const lhs = (leftPath !== null ? getGloss(leftPath)?.ko : undefined) ?? leftPath ?? "?";
+        const rhs =
+          node.right.kind === "lit" ? String(node.right.value) : "?";
+        return `${lhs} ${node.op} ${rhs}`;
+      };
+      applyCulprits(ws, pathMap, d.culprits, note);
+
+      if (d.culprits.length === 0) {
+        setSimulateMsg("이 샘플에서는 거부되지 않습니다 (위반 조건 없음)");
+      } else {
+        setSimulateMsg(`위반 조건 ${d.culprits.length}개를 빨간 박스로 표시했습니다`);
+      }
+    } catch (e) {
+      setSimulateMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSimulating(false);
+    }
+  };
+
   return (
     <div style={{
       display: "flex",
@@ -281,6 +389,17 @@ export function WorkspaceV9({
           <span style={{ color: "var(--fail-700, #7F4740)" }}>
             ⚠ {errorCount}개 문제
           </span>
+        )}
+        <button
+          onClick={() => void onSimulate()}
+          disabled={simulating}
+          style={{ marginLeft: "auto", padding: "3px 12px", fontSize: 11 }}
+          title="샘플 액션으로 정책을 평가해 거부 원인 블록을 빨간 박스로 표시합니다"
+        >
+          {simulating ? "시뮬레이션 중…" : "Simulate"}
+        </button>
+        {simulateMsg && (
+          <span style={{ color: "var(--slate-500, #475569)" }}>{simulateMsg}</span>
         )}
       </div>
 

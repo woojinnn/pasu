@@ -3,13 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import {
+  getDiagnosisContextRow,
   getStateDeltaRow,
   listHistoryVerdicts,
+  listManagedPolicies,
   type StateDeltaRow,
   type VerdictDto,
   type VerdictListOpts,
   type VerdictRangeAlias,
 } from "../server-api";
+import { PolicyDiagnosisByText } from "../cedar/diagram/PolicyDiagnosisByText";
 import { Topbar } from "../shell/Topbar";
 import {
   formatBalance,
@@ -22,7 +25,7 @@ import "./verdicts.css";
 
 const PAGE_SIZE = 50;
 type Verdict = VerdictDto["verdict"];
-type GroupMode = "time" | "verdict" | "origin" | "rule";
+type GroupMode = "time" | "activity" | "verdict" | "origin" | "rule";
 
 interface RangeOption {
   id: VerdictRangeAlias | "all";
@@ -38,10 +41,17 @@ const RANGE_OPTIONS: readonly RangeOption[] = [
 
 const GROUP_OPTIONS: readonly { id: GroupMode; label: string }[] = [
   { id: "time", label: "시간순" },
+  { id: "activity", label: "활동별" },
   { id: "verdict", label: "verdict별" },
   { id: "origin", label: "dApp별" },
   { id: "rule", label: "rule별" },
 ];
+
+/** Adjacent-row time gap (seconds) under which two txs from the same
+ *  (wallet, dApp origin) are treated as one user activity — e.g. the
+ *  approve + swap a dApp fires for a single intent. dApps expose no
+ *  correlation id, so this proximity heuristic is the grouping signal. */
+const ACTIVITY_WINDOW_SEC = 3;
 
 const VERDICT_ORDER: readonly Verdict[] = ["fail", "warn", "pass"];
 
@@ -71,6 +81,20 @@ export function HistoryPage() {
   const [q, setQ] = useState("");
   const [verdictFilter, setVerdictFilter] = useState<Set<Verdict>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>("time");
+  // Keys of expanded groups. Empty = all collapsed (the default for any grouped
+  // mode); the flat "time" view has no headers so it's unaffected. Reset
+  // whenever the grouping changes so a new layout starts collapsed.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setOpenGroups(new Set());
+  }, [groupMode]);
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const seenIds = useRef(new Set<string>());
 
   const baseOpts = useMemo<VerdictListOpts>(
@@ -151,6 +175,27 @@ export function HistoryPage() {
       return true;
     });
   }, [allRows, q, verdictFilter]);
+
+  // Managed policies → Cedar `@id` → text, so a deny row can resolve its
+  // policy back to source for the structure diagram + diagnosis.
+  const managedQ = useQuery({
+    queryKey: ["history-managed-policies"],
+    queryFn: listManagedPolicies,
+    staleTime: 60_000,
+  });
+  const managedPolicies = useMemo<ManagedPolicyEntry[]>(
+    () =>
+      (managedQ.data ?? []).map((p) => ({
+        dashId: p.id,
+        cedarId: p.text.match(/@id\("([^"]+)"\)/)?.[1] ?? null,
+        text: p.text,
+        manifest:
+          p.manifest && typeof p.manifest === "object"
+            ? p.manifest
+            : { id: p.id, schema_version: 2 },
+      })),
+    [managedQ.data],
+  );
 
   const counts = useMemo(() => {
     let pass = 0;
@@ -240,19 +285,33 @@ export function HistoryPage() {
                 </td>
               </tr>
             )}
-            {groups.map((g) => (
-              <Fragment key={g.key}>
-                {g.label && <GroupHeaderRow group={g} />}
-                {g.rows.map((v) => (
-                  <HistoryRow
-                    key={v.id}
-                    v={v}
-                    open={openId === v.id}
-                    onToggle={() => setOpenId(openId === v.id ? null : v.id)}
-                  />
-                ))}
-              </Fragment>
-            ))}
+            {groups.map((g) => {
+              // Grouped modes (label present) collapse; the flat "time" view
+              // (label null) always shows its rows.
+              const collapsible = g.label !== null;
+              const isOpen = !collapsible || openGroups.has(g.key);
+              return (
+                <Fragment key={g.key}>
+                  {g.label && (
+                    <GroupHeaderRow
+                      group={g}
+                      open={isOpen}
+                      onToggle={() => toggleGroup(g.key)}
+                    />
+                  )}
+                  {isOpen &&
+                    g.rows.map((v) => (
+                      <HistoryRow
+                        key={v.id}
+                        v={v}
+                        open={openId === v.id}
+                        onToggle={() => setOpenId(openId === v.id ? null : v.id)}
+                        managedPolicies={managedPolicies}
+                      />
+                    ))}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -403,12 +462,32 @@ function FilterBar({
 
 // ── Group section header ────────────────────────────────────────────────
 
-function GroupHeaderRow({ group }: { group: RenderGroup }) {
+function GroupHeaderRow({
+  group,
+  open,
+  onToggle,
+}: {
+  group: RenderGroup;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const c = group.byVerdict ?? { pass: 0, warn: 0, fail: 0 };
+  // Any fail in the group turns the whole header red, even when the group
+  // isn't a verdict-typed bucket (e.g. an activity cluster).
+  const hasFail = c.fail > 0;
   return (
-    <tr className={`v-group-head${group.verdictKind ? ` gh-${group.verdictKind}` : ""}`}>
+    <tr
+      className={`v-group-head${group.verdictKind ? ` gh-${group.verdictKind}` : ""}${
+        hasFail ? " gh-has-fail" : ""
+      }`}
+      onClick={onToggle}
+      aria-expanded={open}
+    >
       <td colSpan={9}>
         <div className="gh-row">
+          <span className="gh-caret" aria-hidden="true">
+            {open ? "▾" : "▸"}
+          </span>
           <span className="gh-title">{group.label}</span>
           <span className="gh-n">{group.rows.length}건</span>
           {!group.verdictKind && (
@@ -437,6 +516,50 @@ interface RenderGroup {
 function buildGroups(rows: VerdictDto[], mode: GroupMode): RenderGroup[] {
   if (mode === "time") {
     return [{ key: "time", label: null, rows }];
+  }
+  if (mode === "activity") {
+    // One "activity" = the txs a dApp fires for a single user intent (e.g.
+    // approve + swap). dApps give no correlation id, so cluster consecutive
+    // rows from the same (wallet, dApp origin) whose adjacent time gap is
+    // ≤ ACTIVITY_WINDOW_SEC. Rows sharing a `delta_id` (the SAME tx evaluated
+    // against N policies) always stay together regardless of the window.
+    const sorted = [...rows].sort((a, b) => b.ts - a.ts); // newest first
+    const sameActor = (a: VerdictDto, b: VerdictDto) =>
+      (a.wallet ?? "") === (b.wallet ?? "") &&
+      (a.dapp_origin ?? "") === (b.dapp_origin ?? "");
+    const groups: RenderGroup[] = [];
+    let cur: VerdictDto[] = [];
+    const flush = () => {
+      if (cur.length === 0) return;
+      const c = { pass: 0, warn: 0, fail: 0 };
+      for (const r of cur) c[r.verdict] += 1;
+      const head = cur[0];
+      groups.push({
+        key: `activity-${head.id}`,
+        label: `${head.dapp_origin ?? "(unknown origin)"} · ${fmtTs(head.ts)}`,
+        byVerdict: c,
+        rows: cur,
+      });
+      cur = [];
+    };
+    for (const r of sorted) {
+      if (cur.length === 0) {
+        cur = [r];
+        continue;
+      }
+      const prev = cur[cur.length - 1]; // oldest-so-far in the cluster
+      const sameTx = r.delta_id != null && r.delta_id === prev.delta_id;
+      const adjacent =
+        sameActor(r, prev) && prev.ts - r.ts <= ACTIVITY_WINDOW_SEC;
+      if (sameTx || adjacent) {
+        cur.push(r);
+      } else {
+        flush();
+        cur = [r];
+      }
+    }
+    flush();
+    return groups;
   }
   if (mode === "verdict") {
     return VERDICT_ORDER.map((v) => ({
@@ -479,14 +602,27 @@ function buildGroups(rows: VerdictDto[], mode: GroupMode): RenderGroup[] {
 
 // ── Row + detail ────────────────────────────────────────────────────────
 
+/** A managed policy keyed by BOTH its unique dashboard id and its (possibly
+ *  duplicated) Cedar `@id`, so a deny row can resolve the policy that actually
+ *  fired — via the manifest id in the captured results — even when two policies
+ *  share an `@id`. */
+interface ManagedPolicyEntry {
+  dashId: string;
+  cedarId: string | null;
+  text: string;
+  manifest: unknown;
+}
+
 function HistoryRow({
   v,
   open,
   onToggle,
+  managedPolicies,
 }: {
   v: VerdictDto;
   open: boolean;
   onToggle: () => void;
+  managedPolicies: ManagedPolicyEntry[];
 }) {
   const fn = v.decoded_fn ?? v.method ?? "—";
   const origin = v.dapp_origin ?? "—";
@@ -551,7 +687,7 @@ function HistoryRow({
       {open && (
         <tr className="v-detail-row">
           <td colSpan={9}>
-            <HistoryDetail v={v} />
+            <HistoryDetail v={v} managedPolicies={managedPolicies} />
           </td>
         </tr>
       )}
@@ -559,7 +695,13 @@ function HistoryRow({
   );
 }
 
-function HistoryDetail({ v }: { v: VerdictDto }) {
+function HistoryDetail({
+  v,
+  managedPolicies,
+}: {
+  v: VerdictDto;
+  managedPolicies: ManagedPolicyEntry[];
+}) {
   const reason = v.reason?.ko ?? v.reason?.en ?? null;
   const contractAddr = v.contract?.addr ?? null;
   const contractSymbol = v.contract?.symbol ?? null;
@@ -653,6 +795,123 @@ function HistoryDetail({ v }: { v: VerdictDto }) {
           `delta_id` and renders the reducer-side delta + a re-simulate
           link. The fetch is lazy (only fires when the row is expanded). */}
       <StateDeltaSection v={v} />
+
+      {/* Policy structure + denial diagnosis: for a deny whose policy we can
+          resolve back to its Cedar source. */}
+      {v.verdict === "fail" && v.policy?.name && (
+        <PolicyStructureSection
+          cedarId={v.policy.name}
+          deltaId={v.delta_id}
+          managedPolicies={managedPolicies}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The manifest id embedded in a captured-results key (`<manifestId>::<callId>`),
+ *  i.e. the dashboard id of the policy that produced that enrichment value. */
+function manifestIdsOf(results: Record<string, unknown>): Set<string> {
+  const out = new Set<string>();
+  for (const k of Object.keys(results)) {
+    const parts = k.split("::");
+    if (parts.length >= 2) out.add(parts.slice(0, -1).join("::"));
+  }
+  return out;
+}
+
+/** Collapsible policy structure diagram + "where it's blocked" diagnosis for a
+ *  history deny row. When the live deny's context was captured (keyed by
+ *  delta_id), the diagnosis auto-runs against that REAL context — reproducing
+ *  the actual blocked clause; otherwise it falls back to the structure only.
+ *
+ *  Resolving the policy by its (possibly duplicated) Cedar `@id` alone is
+ *  ambiguous — two policies can share an `@id`. So when context exists we first
+ *  pick the policy whose DASHBOARD id appears in the captured results (the one
+ *  that actually enriched this deny), falling back to the `@id` match. This is
+ *  why a USD deny no longer renders a same-`@id` nano policy's diagram. */
+function PolicyStructureSection({
+  cedarId,
+  deltaId,
+  managedPolicies,
+}: {
+  cedarId: string;
+  deltaId: string | null;
+  managedPolicies: ManagedPolicyEntry[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ctxQ = useQuery({
+    queryKey: ["diagnosis-context", deltaId],
+    queryFn: () =>
+      deltaId ? getDiagnosisContextRow(deltaId) : Promise.resolve(null),
+    enabled: open && !!deltaId,
+    retry: false,
+  });
+  const ctx = ctxQ.data ?? null;
+
+  const byCedarId = managedPolicies.filter((p) => p.cedarId === cedarId);
+  // Prefer the policy that actually enriched this deny (its dashboard id is in
+  // the captured results), disambiguating a shared @id; else the @id match.
+  const resolved =
+    (ctx &&
+      byCedarId.find((p) => manifestIdsOf(ctx.results).has(p.dashId))) ||
+    byCedarId[0] ||
+    null;
+
+  const request =
+    ctx && resolved
+      ? {
+          action: ctx.action,
+          meta: ctx.meta,
+          tx: ctx.tx,
+          bundles: [{ policy: resolved.text, manifest: resolved.manifest }],
+          results: ctx.results,
+        }
+      : undefined;
+
+  if (!resolved && !ctxQ.isLoading) {
+    return null; // can't resolve the policy back to source — nothing to draw
+  }
+
+  return (
+    <div className="v-struct-section">
+      <button
+        type="button"
+        className="v-struct-toggle"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        {open ? "정책 구조 숨기기 ▲" : "정책 구조 보기 ▼"}
+      </button>
+      {open && (
+        <>
+          {!ctxQ.isLoading && !ctx && (
+            <div className="v-struct-note">
+              이전 거래라 진단 컨텍스트가 저장되지 않아 실제 막힌 조건은 표시할 수
+              없어요. 구조만 보여드립니다 — 이후 거래의 deny부터 실제 차단 조건이
+              빨갛게 표시됩니다.
+            </div>
+          )}
+          <div className="v-struct-body">
+            {ctxQ.isLoading || !resolved ? (
+              <div className="pdiagram-empty">불러오는 중…</div>
+            ) : ctx ? (
+              <PolicyDiagnosisByText
+                cedarText={resolved.text}
+                compact
+                request={request}
+                autoRun
+              />
+            ) : (
+              <PolicyDiagnosisByText
+                cedarText={resolved.text}
+                compact
+                structureOnly
+              />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

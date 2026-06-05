@@ -38,6 +38,7 @@ import {
   estToPolicyText,
   evaluateActionV2,
   policyTextToEst,
+  runDiagnosisProbesV2,
   simulatePolicySequence,
   simulateStep,
   testPolicyText,
@@ -68,6 +69,10 @@ import {
   getStateDelta,
   type StateDeltaRow,
 } from "./state-delta-storage";
+import {
+  getDiagnosisContext,
+  type DiagnosisContextRow,
+} from "./diagnosis-context-storage";
 
 const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.TRANSACTION,
@@ -322,6 +327,10 @@ interface CedarSimulateRequest {
   steps_json: string;
   policies_json: string;
 }
+interface RunDiagnosisProbesRequest {
+  type: "run-diagnosis-probes";
+  input_json: string;
+}
 interface CedarTextToEstRequest {
   type: "cedar-text-to-est";
   text: string;
@@ -405,6 +414,14 @@ interface StateDeltasGetRequest {
 interface StateDeltasClearRequest {
   type: "state-deltas:clear";
 }
+/** HistoryPage / confirm-popup denial diagnosis: fetch the captured context
+ *  (action + materialized enrichment results) a deny's `delta_id` points at, so
+ *  the dashboard can re-run "which clause blocked this" against the real
+ *  context. `null` for non-deny / legacy rows. */
+interface DiagnosisContextGetRequest {
+  type: "diagnosis-context:get";
+  id: string;
+}
 /** Read just the enabled-policy id list. The dashboard's policy list
  *  uses this for the checkbox state; the popup also uses it indirectly
  *  via `policy-catalog`. Keeping a dedicated `:get` lets the dashboard
@@ -424,6 +441,7 @@ type PopupRequest =
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
+  | RunDiagnosisProbesRequest
   | CedarTextToEstRequest
   | CedarEstToTextRequest
   | SimStepRequest
@@ -439,7 +457,8 @@ type PopupRequest =
   | VerdictsExportCsvRequest
   | VerdictsClearRequest
   | StateDeltasGetRequest
-  | StateDeltasClearRequest;
+  | StateDeltasClearRequest
+  | DiagnosisContextGetRequest;
 
 // webextension-polyfill's listener type accepts `true | void | Promise<any>`,
 // not `boolean`. Returning `undefined` (bare `return;`) closes the channel
@@ -495,6 +514,21 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "cedar_simulate_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "run-diagnosis-probes") {
+      // Denial-diagnosis oracle. `input_json` is built by the dashboard's
+      // `runDiagnosisProbes` and forwarded verbatim to WASM; `json` is the raw
+      // WASM `{ ok, data }` envelope STRING, which the dashboard re-parses (see
+      // dashboard `server-api/diagnosis.ts`). Guide: `cedar/diagnosis/README.md`.
+      void runDiagnosisProbesV2((req as RunDiagnosisProbesRequest).input_json)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "run_diagnosis_probes_failed", message: String(err) },
           }),
         );
       return true;
@@ -792,6 +826,19 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "state_deltas_get_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "diagnosis-context:get") {
+      void getDiagnosisContext((req as DiagnosisContextGetRequest).id)
+        .then((row: DiagnosisContextRow | null) =>
+          sendResponse({ ok: true, data: row }),
+        )
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "diagnosis_context_get_failed", message: String(err) },
           }),
         );
       return true;

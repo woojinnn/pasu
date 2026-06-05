@@ -1,0 +1,7 @@
+/* Denial-diagnosis: red box around the culprit block(s). Toggled by the
+ * `diagnosis-culprit` class on a block's SVG root (see diagnosis-highlight.ts).
+ * Imported by Workspace.tsx (the editor mounts no other stylesheet). */
+.diagnosis-culprit > .blocklyPath {
+  stroke: #e5484d;
+  stroke-width: 3px;
+}

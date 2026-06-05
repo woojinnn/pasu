@@ -25,23 +25,39 @@ import { BLOCK_TYPES, blockTypeForExpr } from "./block-types";
 import { blockTypeForPath, getGloss } from "../gloss";
 import { chainToDottedPath } from "./attr-path";
 
-export function irToWorkspace(ws: Blockly.WorkspaceSvg, policies: PolicyIR[]): void {
+/**
+ * Render `policies` onto `ws`. When `blockIdByNode` is supplied, records the
+ * Blockly block id created for each expression node, keyed by the **same `Expr`
+ * object identity** from the IR (NO path strings here — the path→blockId map is
+ * derived by the pure `pathToBlockId` combiner in `cedar/diagnosis/path`). The
+ * map is only valid for the IR objects passed in this call; callers that want a
+ * fresh map must clear it and re-render.
+ */
+export function irToWorkspace(
+  ws: Blockly.WorkspaceSvg,
+  policies: PolicyIR[],
+  blockIdByNode?: Map<Expr, string>,
+): void {
   ws.clear();
   let yCursor = 30;
   for (const policy of policies) {
-    const hat = createPolicyHat(ws, policy);
+    const hat = createPolicyHat(ws, policy, blockIdByNode);
     hat.moveBy(50, yCursor);
     yCursor += 400;
   }
 }
 
-function createPolicyHat(ws: Blockly.WorkspaceSvg, policy: PolicyIR): Blockly.BlockSvg {
+function createPolicyHat(
+  ws: Blockly.WorkspaceSvg,
+  policy: PolicyIR,
+  blockIdByNode?: Map<Expr, string>,
+): Blockly.BlockSvg {
   const hat = ws.newBlock(BLOCK_TYPES.policy_hat) as Blockly.BlockSvg;
   hat.setFieldValue(policy.effect, "EFFECT");
   attachScope(ws, hat, "PRINCIPAL", policy.scope.principal);
   attachActionScope(ws, hat, "ACTION", policy.scope.action);
   attachScope(ws, hat, "RESOURCE", policy.scope.resource);
-  attachConditions(ws, hat, "CONDITIONS", policy.conditions);
+  attachConditions(ws, hat, "CONDITIONS", policy.conditions, blockIdByNode);
   hat.initSvg();
   hat.render();
   return hat;
@@ -146,13 +162,14 @@ function attachConditions(
   parent: Blockly.BlockSvg,
   inputName: string,
   conditions: Condition[],
+  blockIdByNode?: Map<Expr, string>,
 ): void {
   let prev: Blockly.BlockSvg | null = null;
   for (const cond of conditions) {
     const blockType =
       cond.kind === "when" ? BLOCK_TYPES.cond_when : BLOCK_TYPES.cond_unless;
     const block = ws.newBlock(blockType) as Blockly.BlockSvg;
-    attachExpr(ws, block, "BODY", cond.body);
+    attachExpr(ws, block, "BODY", cond.body, blockIdByNode);
     block.initSvg();
     block.render();
     if (prev === null) {
@@ -171,15 +188,25 @@ function attachExpr(
   parent: Blockly.BlockSvg,
   inputName: string,
   expr: Expr,
+  blockIdByNode?: Map<Expr, string>,
 ): void {
-  const child = createExprBlock(ws, expr);
+  const child = createExprBlock(ws, expr, blockIdByNode);
   if (!child) return;
+  // Record by Expr identity. `attachExpr` is the SOLE caller of createExprBlock
+  // and every node (clause body + children) funnels through here, so this single
+  // record captures the collapsed field block, the per-kind block, and the
+  // placeholder fallback alike — no per-branch edits inside createExprBlock.
+  blockIdByNode?.set(expr, child.id);
   child.initSvg();
   child.render();
   parent.getInput(inputName)?.connection?.connect(child.outputConnection);
 }
 
-function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg | null {
+function createExprBlock(
+  ws: Blockly.WorkspaceSvg,
+  expr: Expr,
+  blockIdByNode?: Map<Expr, string>,
+): Blockly.BlockSvg | null {
   // First — try to collapse an attr chain into a preset field block. Hits
   // when the chain's dotted path matches a gloss entry. Misses fall
   // through to the per-kind render below.
@@ -217,7 +244,7 @@ function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg
       let prev: Blockly.BlockSvg | null = null;
       for (const el of expr.elements) {
         const item = ws.newBlock(BLOCK_TYPES.expr_set_item) as Blockly.BlockSvg;
-        attachExpr(ws, item, "ITEM", el);
+        attachExpr(ws, item, "ITEM", el, blockIdByNode);
         item.initSvg();
         item.render();
         if (prev === null) {
@@ -234,7 +261,7 @@ function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg
       for (const p of expr.pairs) {
         const item = ws.newBlock(BLOCK_TYPES.expr_record_pair) as Blockly.BlockSvg;
         item.setFieldValue(p.key, "KEY");
-        attachExpr(ws, item, "VALUE", p.value);
+        attachExpr(ws, item, "VALUE", p.value, blockIdByNode);
         item.initSvg();
         item.render();
         if (prev === null) {
@@ -247,42 +274,42 @@ function createExprBlock(ws: Blockly.WorkspaceSvg, expr: Expr): Blockly.BlockSvg
       break;
     }
     case "attr":
-      attachExpr(ws, block, "OF", expr.of);
+      attachExpr(ws, block, "OF", expr.of, blockIdByNode);
       block.setFieldValue(expr.attr, "FIELD");
       break;
     case "has":
-      attachExpr(ws, block, "OF", expr.of);
+      attachExpr(ws, block, "OF", expr.of, blockIdByNode);
       block.setFieldValue(expr.attr, "FIELD");
       break;
     case "binary":
-      attachExpr(ws, block, "LEFT", expr.left);
-      attachExpr(ws, block, "RIGHT", expr.right);
+      attachExpr(ws, block, "LEFT", expr.left, blockIdByNode);
+      attachExpr(ws, block, "RIGHT", expr.right, blockIdByNode);
       block.setFieldValue(expr.op, "OP");
       break;
     case "unary":
-      attachExpr(ws, block, "OPERAND", expr.operand);
+      attachExpr(ws, block, "OPERAND", expr.operand, blockIdByNode);
       block.setFieldValue(expr.op, "OP");
       break;
     case "like":
-      attachExpr(ws, block, "OF", expr.of);
+      attachExpr(ws, block, "OF", expr.of, blockIdByNode);
       block.setFieldValue(serializeLikePattern(expr.pattern), "PATTERN");
       break;
     case "is":
-      attachExpr(ws, block, "OF", expr.of);
+      attachExpr(ws, block, "OF", expr.of, blockIdByNode);
       block.setFieldValue(expr.entityType, "TYPE");
-      if (expr.in) attachExpr(ws, block, "IN", expr.in);
+      if (expr.in) attachExpr(ws, block, "IN", expr.in, blockIdByNode);
       break;
     case "if":
-      attachExpr(ws, block, "COND", expr.cond);
-      attachExpr(ws, block, "THEN", expr.then);
-      attachExpr(ws, block, "ELSE", expr.else);
+      attachExpr(ws, block, "COND", expr.cond, blockIdByNode);
+      attachExpr(ws, block, "THEN", expr.then, blockIdByNode);
+      attachExpr(ws, block, "ELSE", expr.else, blockIdByNode);
       break;
     case "ext": {
       block.setFieldValue(expr.fn, "FN");
       let prev: Blockly.BlockSvg | null = null;
       for (const a of expr.args) {
         const arg = ws.newBlock(BLOCK_TYPES.expr_ext_arg) as Blockly.BlockSvg;
-        attachExpr(ws, arg, "ARG", a);
+        attachExpr(ws, arg, "ARG", a, blockIdByNode);
         arg.initSvg();
         arg.render();
         if (prev === null) {

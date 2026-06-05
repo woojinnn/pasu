@@ -17,6 +17,7 @@
 mod action_eval_exports;
 mod cedar_exports;
 mod declarative_exports;
+mod diagnosis_exports;
 mod dto;
 mod exports;
 pub mod field_catalog;
