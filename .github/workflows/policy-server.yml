@@ -40,27 +40,14 @@ env:
   CHART_PATH: crates/policy-server/server/deploy/helm/policy-server
 
 jobs:
+  # Rust fmt/clippy/test for these packages already run in the workspace `rust`
+  # job in ci.yml; `verify` here only covers the Helm chart.
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-
       - uses: azure/setup-helm@v4
-
-      - name: Format
-        run: cargo fmt --all -- --check
-
-      - name: Test policy-server packages
-        run: cargo test -p policy-server -p policy-db -p policy-sync
-
-      - name: Clippy policy-server packages
-        run: cargo clippy -p policy-server -p policy-db -p policy-sync --all-targets -- -D warnings
 
       - name: Helm lint
         run: helm lint "$CHART_PATH"
@@ -70,6 +57,61 @@ jobs:
           helm template policy-server "$CHART_PATH" \
             --set image.repository="$IMAGE_REPOSITORY" \
             --set image.tag="${GITHUB_SHA}"
+
+  # Postgres-backed integration tests. The ~39 server tests are gated behind
+  # `#[ignore]` (they need TEST_DATABASE_URL) and were running in no workflow;
+  # this job runs them against a real Postgres service container.
+  #
+  # Migration ordering matters: the server tests use the test-compat
+  # GlobalDb::open / MultiUserStore::new constructors, which build a lazy pool
+  # from TEST_DATABASE_URL but do NOT migrate. The policy-db crate's
+  # postgres_store tests (not #[ignore]; they no-op when TEST_DATABASE_URL is
+  # unset) call `global.migrate()` over crates/policy-server/db/migrations using
+  # the app's own sqlx Migrator. So we run `-p policy-db` first (creates the
+  # schema, idempotent) in a separate step, then the ignored server tests
+  # against the now-migrated, persistent DB. Same Migrator the app uses → no
+  # sqlx-cli / version-skew risk.
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scopeball
+          POSTGRES_PASSWORD: scopeball
+          POSTGRES_DB: scopeball_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scopeball -d scopeball_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Job runs on the host (not in a container), so reach the service via the
+      # mapped localhost port. Matches the POSTGRES_* above.
+      TEST_DATABASE_URL: postgres://scopeball:scopeball@127.0.0.1:5432/scopeball_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "ws"
+
+      # Runs the policy-db postgres_store tests, which apply the migrations
+      # (idempotent) and create the schema this DB will keep for the next step.
+      - name: Migrate + run policy-db Postgres tests
+        run: cargo test -p policy-db
+
+      # The #[ignore]-gated Postgres integration tests across policy-server.
+      # --test-threads=1: cargo already serializes across test binaries, but
+      # tests within one binary run in parallel by default; several of these
+      # reuse fixed user ids (e.g. u_test_alice) and assert exact DB state, so
+      # serialize within-binary too to avoid races on the single shared DB.
+      - name: Run ignored policy-server integration tests
+        run: cargo test -p policy-server -- --ignored --test-threads=1
 
   image:
     runs-on: ubuntu-latest

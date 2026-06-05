@@ -19,6 +19,8 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "ws"
 
       # The v3 decode harness (crates/integration-tests) reads `registryV2/index/`
       # at test runtime. That index is a build artifact (no longer tracked);
@@ -37,9 +39,8 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
 
-      - name: Check
-        run: cargo check --all-targets --all-features
-
+      # `cargo clippy --all-targets --all-features` already type-checks/builds
+      # everything, so a preceding `cargo check` is redundant.
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -67,22 +68,43 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "wasm"
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
+      # Build the wasm pkg ONCE here with the same out-dir/out-name that
+      # scripts/wasm-build.sh produces, so the extension job can download and
+      # reuse it instead of rebuilding (fat-LTO) twice more.
       - name: Build wasm
-        run: wasm-pack build crates/policy-engine-wasm --target web --release
+        run: |
+          wasm-pack build crates/policy-engine-wasm \
+            --target web \
+            --release \
+            --out-dir pkg \
+            --out-name policy_engine_wasm
 
-      - name: Cargo test (native) on wasm crate
-        run: cargo test -p policy-engine-wasm
+      - name: Upload wasm pkg (reused by the extension build)
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-engine-wasm-pkg-${{ github.sha }}
+          path: crates/policy-engine-wasm/pkg
+          if-no-files-found: error
+          retention-days: 1
 
       - name: wasm-bindgen-tests (headless Chrome)
         run: wasm-pack test --headless --chrome crates/policy-engine-wasm
 
   extension:
     runs-on: ubuntu-latest
-    needs: rust
+    needs: [rust, wasm]
+    # The wasm pkg is downloaded from the `wasm` job (built once); reuse it for
+    # both build:chrome and build:firefox (and `yarn typecheck`) instead of
+    # rebuilding via wasm-pack each time. scripts/wasm-build.sh skips its own
+    # wasm-pack build when SKIP_WASM_BUILD=1 and a prebuilt pkg/ is present.
+    env:
+      SKIP_WASM_BUILD: '1'
     steps:
       - uses: actions/checkout@v4
 
@@ -103,9 +125,17 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "ws"
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Download prebuilt wasm pkg
+        uses: actions/download-artifact@v4
+        with:
+          name: policy-engine-wasm-pkg-${{ github.sha }}
+          path: crates/policy-engine-wasm/pkg
 
       - working-directory: browser-extension
         run: yarn typecheck
@@ -166,11 +196,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "ws"
 
+      # Prebuilt binaries instead of `cargo install` from source (much faster,
+      # same checks).
       - name: Install dependency tools
-        run: |
-          cargo install cargo-audit --locked
-          cargo install cargo-deny --locked
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
 
       - name: Dependency audit
         run: cargo audit --deny warnings --ignore RUSTSEC-2024-0388 --ignore RUSTSEC-2024-0436 --ignore RUSTSEC-2025-0048
