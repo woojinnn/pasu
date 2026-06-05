@@ -48,6 +48,10 @@ import {
 import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
 import { collectTokenDecimals } from "./registry/collect-token-decimals";
 import {
+  collectHlLeverage,
+  noteHlLeverageUpdate,
+} from "./venue/collect-hl-leverage";
+import {
   normalizeTypedDataPayload,
   routeTypedSignaturePayload,
 } from "./sig-routing";
@@ -813,20 +817,46 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   } as const;
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
+  // Best-effort venue account-state enrichment: resolve this order's effective
+  // leverage (HL `activeAssetData`) so an order-leverage policy can fire — the
+  // order wire carries none. `collectHlLeverage` NEVER throws and is NOT part of
+  // the deny-closed fault surface below: a miss / timeout / unknown master just
+  // omits the leverage (a `context has leverage` policy stays dormant) rather
+  // than blocking the order. When this IS an `updateLeverage`, refresh the cache
+  // (fire-and-forget) so the next order on that asset sees the just-set value.
+  const account_leverage = await collectHlLeverage(action, message.data);
+  void noteHlLeverageUpdate(action, message.data);
+
   try {
     // PLAN: HL deny conditions read base context, so the planned set is usually
     // empty (no policy-RPC). Only dispatch when there is something to fetch, so
     // the common case needs no policy-rpc server.
-    const planned = await planActionRpcV2({ manifests, action, meta, tx });
+    const planned = await planActionRpcV2({
+      manifests,
+      action,
+      meta,
+      tx,
+      account_leverage,
+    });
     const results =
       planned.length > 0
         ? await dispatchCallsV2(planned, policyRpcUrl, { action, meta, tx })
         : {};
-    const verdict = await evaluateActionV2({ action, meta, tx, bundles, results });
+    const verdict = await evaluateActionV2({
+      action,
+      meta,
+      tx,
+      bundles,
+      results,
+      account_leverage,
+    });
     console.info("[Scopeball] venue-order-verdict", {
       requestId: message.requestId,
       venue: message.data.venue,
       verdict: verdict.kind,
+      // Injected order-time leverage (empty `{}` ⇒ enrichment dormant for this
+      // order — see the `[Scopeball] HL order-leverage ...` line for why).
+      account_leverage,
       matched: verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
     });
     return {

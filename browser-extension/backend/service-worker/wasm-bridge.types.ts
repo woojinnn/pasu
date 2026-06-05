@@ -58,6 +58,13 @@ export interface PlanActionRpcV2InputDto {
    * sibling. Omitted ⇒ no nano fields are emitted.
    */
   readonly token_decimals?: Readonly<Record<string, number>>;
+  /**
+   * Host-resolved per-asset venue leverage (decimal-string `asset_index` →
+   * effective leverage), used by the WASM lowering to fill the HL order
+   * `leverage` `Long` field from the SW's `activeAssetData` lookup. Omitted ⇒
+   * the field is not emitted (a `context has leverage` policy stays dormant).
+   */
+  readonly account_leverage?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -103,6 +110,11 @@ export interface EvaluateActionV2InputDto {
    * {@link PlanActionRpcV2InputDto.token_decimals}).
    */
   readonly token_decimals?: Readonly<Record<string, number>>;
+  /**
+   * Host-resolved per-asset venue leverage (see
+   * {@link PlanActionRpcV2InputDto.account_leverage}).
+   */
+  readonly account_leverage?: Readonly<Record<string, number>>;
 }
 
 export interface PassVerdictDto {

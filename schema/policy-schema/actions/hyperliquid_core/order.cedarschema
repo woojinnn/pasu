@@ -30,6 +30,14 @@ namespace HyperliquidCore {
     positionEffect: String,
     // Time-in-force: "gtc" | "ioc" | "post_only".
     tif: String,
+    // Effective per-asset leverage for THIS order, host-enriched by the service
+    // worker from Hyperliquid's `activeAssetData` info query (the order wire
+    // carries no leverage — it is per-(user,asset) account state the venue
+    // applies at fill). ABSENT when the SW could not resolve it (info-fetch
+    // miss / unknown account / timeout): guard with `context has leverage`
+    // before comparing, so a transient miss leaves the policy dormant rather
+    // than mis-evaluating. Same `Long` vocab as HlUpdateLeverageContext.leverage.
+    leverage?: Long,
     // Manifest-extensible slot.
     custom?: HlOrderCustomContext,
   };

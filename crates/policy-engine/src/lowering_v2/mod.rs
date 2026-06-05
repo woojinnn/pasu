@@ -33,8 +33,12 @@
 //! are **omitted** when absent — never emitted as `null`. `Long` fields are
 //! plain JSON numbers; `U256`/`U128` values are lower-hex strings (`{:#x}`).
 
+pub use common::account::AccountLeverage;
 pub use common::amount::TokenDecimals;
-pub use dispatch::{lower_action, lower_action_with_decimals, LowerError, LoweredAction, TxMeta};
+pub use dispatch::{
+    lower_action, lower_action_enriched, lower_action_with_decimals, LowerError, LoweredAction,
+    TxMeta,
+};
 
 mod airdrop;
 mod amm;

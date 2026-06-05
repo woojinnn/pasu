@@ -44,7 +44,7 @@ use serde_json::Value;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use policy_engine::lowering_v2::{
-    lower_action_with_decimals, LoweredAction, TokenDecimals, TxMeta,
+    lower_action_enriched, AccountLeverage, LoweredAction, TokenDecimals, TxMeta,
 };
 use policy_engine::policy::{MatchedPolicy, PolicyEngine, Severity, Verdict};
 use policy_engine::policy_rpc::{
@@ -84,6 +84,11 @@ struct PlanActionInput {
     /// ⇒ no nano fields are emitted (the lowering omits the optional sibling).
     #[serde(default)]
     token_decimals: BTreeMap<String, u8>,
+    /// Host-injected per-asset venue leverage (decimal-string `asset_index` →
+    /// leverage), used to fill the HL order `leverage` `Long` field from the
+    /// SW's `activeAssetData` lookup. Absent ⇒ the field is omitted.
+    #[serde(default)]
+    account_leverage: BTreeMap<String, i64>,
 }
 
 /// One installed bundle: the user's Cedar policy text paired with the manifest
@@ -119,6 +124,10 @@ struct EvaluateActionInput {
     /// Host-injected per-token decimals (see [`PlanActionInput::token_decimals`]).
     #[serde(default)]
     token_decimals: BTreeMap<String, u8>,
+    /// Host-injected per-asset venue leverage (see
+    /// [`PlanActionInput::account_leverage`]).
+    #[serde(default)]
+    account_leverage: BTreeMap<String, i64>,
 }
 
 // ── output DTOs ──────────────────────────────────────────────────────────
@@ -172,7 +181,8 @@ pub fn plan_action_rpc_v2_json(input_json: String) -> String {
         let input: PlanActionInput =
             serde_json::from_str(&input_json).map_err(|error| invalid_input(&error.to_string()))?;
         let decimals = TokenDecimals::new(input.token_decimals.clone());
-        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals)?;
+        let leverage = AccountLeverage::new(input.account_leverage.clone());
+        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals, &leverage)?;
         let planned = plan(&input.manifests, &input.action, &lowered, &input.tx)?;
         Ok(PlanActionOutput {
             planned: planned.iter().map(planned_to_dto).collect(),
@@ -211,7 +221,8 @@ pub fn evaluate_action_v2_json(input_json: String) -> String {
             serde_json::from_str(&input_json).map_err(|error| invalid_input(&error.to_string()))?;
 
         let decimals = TokenDecimals::new(input.token_decimals.clone());
-        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals)?;
+        let leverage = AccountLeverage::new(input.account_leverage.clone());
+        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals, &leverage)?;
 
         // Boundary invariant: PLAN over the bundles' own manifests, never a
         // host-supplied side list. This ties the `SystemFail` gate (driven by
@@ -264,7 +275,8 @@ pub fn debug_lowered_context_v2_json(input_json: String) -> String {
         let input: EvaluateActionInput =
             serde_json::from_str(&input_json).map_err(|error| invalid_input(&error.to_string()))?;
         let decimals = TokenDecimals::new(input.token_decimals.clone());
-        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals)?;
+        let leverage = AccountLeverage::new(input.account_leverage.clone());
+        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals, &leverage)?;
         let manifests: Vec<ManifestV2> = input.bundles.iter().map(|b| b.manifest.clone()).collect();
         let mut context = lowered.context.clone();
         // Best-effort replay so `context.custom.*` shows when enrichment is wired;
@@ -289,18 +301,21 @@ pub fn debug_lowered_context_v2_json(input_json: String) -> String {
 
 // ── shared helpers ───────────────────────────────────────────────────────
 
-/// Lower an [`ActionBody`] + [`ActionMeta`] + tx into a [`LoweredAction`].
+/// Lower an [`ActionBody`] + [`ActionMeta`] + tx into a [`LoweredAction`], with
+/// the host-injected `decimals` (for `amountNano` siblings) and `leverage` (for
+/// the HL order `leverage` field).
 fn lower(
     action: &ActionBody,
     meta: &ActionMeta,
     tx: &TxInput,
     decimals: &TokenDecimals,
+    leverage: &AccountLeverage,
 ) -> Result<LoweredAction, EngineErrorDto> {
     let tx_meta = TxMeta {
         from: &tx.from,
         to: &tx.to,
     };
-    lower_action_with_decimals(action, meta, &tx_meta, decimals)
+    lower_action_enriched(action, meta, &tx_meta, decimals, leverage)
         .map_err(|error| EngineErrorDto::new("unsupported_action", error.to_string()))
 }
 

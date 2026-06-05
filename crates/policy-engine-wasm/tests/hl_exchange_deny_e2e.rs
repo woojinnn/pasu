@@ -334,3 +334,92 @@ fn shipped_seed_policy_confirms_unknown_hl_action() {
         "matched policy must be the shipped seed id: {parsed}"
     );
 }
+
+// ── Order-time effective leverage (host-injected `account_leverage`) ─────────
+//
+// The order wire carries NO leverage — it is per-(user,asset) account state the
+// venue applies at fill. The SW resolves it from `activeAssetData` and injects
+// `account_leverage` (asset_index string → leverage); the lowering fills the
+// optional `context.leverage` Long. A `context has leverage` guard keeps the
+// policy DORMANT (not over-blocking) when the host could not resolve it.
+
+const WARN_HIGH_LEVERAGE_ORDER: &str = "\
+@id(\"hl/order-high-leverage\")\n\
+@severity(\"warn\")\n\
+@reason(\"Opening a Hyperliquid order at effective leverage above 20x\")\n\
+forbid(principal, action == HyperliquidCore::Action::\"HlOrder\", resource)\n\
+when { context.venue.name == \"hyperliquid\" && context has leverage && context.leverage > 20 };\n";
+
+/// Like [`run`] but with the host-injected `account_leverage` map the SW adds
+/// for the venue path (asset_index string → effective leverage).
+fn run_with_leverage(action: Value, bundles: Value, account_leverage: Value) -> Value {
+    let input = json!({
+        "action": action,
+        "meta": hl_meta(),
+        "tx": {
+            "chain_id": "hl-mainnet",
+            "from": "0x1111111111111111111111111111111111111111",
+            "to": "0x0000000000000000000000000000000000000000"
+        },
+        "bundles": bundles,
+        "results": {},
+        "account_leverage": account_leverage
+    });
+    serde_json::from_str(&evaluate_action_v2_json(input.to_string()))
+        .expect("entry point returns JSON")
+}
+
+/// ORDER-TIME LEVERAGE PROOF: with injected `account_leverage` (the SW
+/// `activeAssetData` lookup), an order on asset_index 0 at 26x trips the
+/// order-leverage warn — closing the gap where the order wire carries no
+/// leverage. This is the live-verified 26x case, now enforced at ORDER time.
+#[test]
+fn hl_order_high_leverage_warns_when_injected() {
+    let parsed = run_with_leverage(
+        order_action(true, "0.1"),
+        json!([{ "policy": WARN_HIGH_LEVERAGE_ORDER, "manifest": manifest("hl_order") }]),
+        json!({ "0": 26 }),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "warn",
+        "a 26x order must WARN at order time: {parsed}"
+    );
+    assert_eq!(
+        parsed["data"]["verdict"]["matched"][0]["policy_id"], "hl/order-high-leverage",
+        "{parsed}"
+    );
+}
+
+/// CONTROL (best-effort dormancy): WITHOUT injected leverage the same policy is
+/// DORMANT (the `context has leverage` guard short-circuits) — a transient
+/// info-fetch miss must NOT over-block, so the order PASSES.
+#[test]
+fn hl_order_high_leverage_dormant_without_injection() {
+    let parsed = run(
+        order_action(true, "0.1"),
+        json!([{ "policy": WARN_HIGH_LEVERAGE_ORDER, "manifest": manifest("hl_order") }]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "pass",
+        "no leverage injected ⇒ policy dormant ⇒ pass (no over-block): {parsed}"
+    );
+}
+
+/// CONTROL (threshold): injected leverage at the threshold (20x, NOT > 20) does
+/// NOT warn — proves the guard is threshold-conditional, not firing on the mere
+/// presence of the field.
+#[test]
+fn hl_order_modest_leverage_passes_when_injected() {
+    let parsed = run_with_leverage(
+        order_action(true, "0.1"),
+        json!([{ "policy": WARN_HIGH_LEVERAGE_ORDER, "manifest": manifest("hl_order") }]),
+        json!({ "0": 20 }),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "pass",
+        "20x (not > 20) must PASS: {parsed}"
+    );
+}

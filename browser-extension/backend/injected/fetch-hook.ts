@@ -112,13 +112,60 @@ function install(): void {
     }
   }
 
+  // ── connected master-account capture (order-time leverage enrichment) ──────
+  // The /exchange body carries no master account (the order is agent-signed),
+  // but the dApp connected a normal EVM wallet via `window.ethereum`. We read
+  // that account (non-prompting `eth_accounts`, which the provider proxy passes
+  // through ungated) and stamp it onto each venue payload as `wallet_id`, so the
+  // SW can key the `activeAssetData` leverage lookup to the right account.
+  // Best-effort + cached: a read failure / no wallet just leaves `wallet_id`
+  // unset — leverage enrichment then stays dormant (never blocks the order).
+  interface InpageEthProvider {
+    request?: (args: { method: string }) => Promise<unknown>;
+    on?: (event: string, cb: (...args: unknown[]) => void) => void;
+  }
+  const ethProvider = (): InpageEthProvider | undefined =>
+    (window as unknown as { ethereum?: InpageEthProvider }).ethereum;
+
+  let connectedAccount: string | null = null;
+  const setAccountFrom = (accts: unknown): void => {
+    connectedAccount =
+      Array.isArray(accts) && typeof accts[0] === "string"
+        ? accts[0].toLowerCase()
+        : null;
+  };
+  async function ensureConnectedAccount(): Promise<void> {
+    if (connectedAccount) return;
+    try {
+      const eth = ethProvider();
+      if (!eth?.request) return;
+      setAccountFrom(await eth.request({ method: "eth_accounts" }));
+    } catch {
+      /* no wallet / read failed → leverage enrichment stays dormant */
+    }
+  }
+  // Keep the cache fresh when the user connects / switches accounts.
+  try {
+    ethProvider()?.on?.("accountsChanged", (...args: unknown[]) =>
+      setAccountFrom(args[0]),
+    );
+  } catch {
+    /* provider has no event emitter → rely on lazy reads */
+  }
+
   // Evaluate every order in a POST body; return false if ANY is denied
   // (deny-closed for batches).
   async function evaluatePayloads(
     payloads: VenueOrderPayload[],
   ): Promise<boolean> {
     if (!payloads) return true; // not an order action → out of scope, allow
+    // Resolve the connected master once (cached); used to key the leverage
+    // lookup. Best-effort — never blocks or fails the verdict.
+    await ensureConnectedAccount();
     for (const payload of payloads) {
+      if (connectedAccount && !payload.wallet_id) {
+        payload.wallet_id = { address: connectedAccount, chains: [] };
+      }
       const ok = await sendToStreamAndAwaitResponse(
         stream,
         payload as MessageData,

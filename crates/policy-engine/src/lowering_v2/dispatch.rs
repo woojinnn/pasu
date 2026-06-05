@@ -12,6 +12,7 @@ use policy_state::primitives::U256;
 use policy_state::token::TokenRef;
 use policy_transition::action::{ActionBody, ActionMeta};
 
+use super::common::account::AccountLeverage;
 use super::common::amount::TokenDecimals;
 
 /// A lowered action ready for the Cedar engine: the `principal` / `action` /
@@ -71,6 +72,11 @@ pub(crate) struct LowerCtx<'a> {
     /// when the host did not / could not resolve them — every `amount_nano*`
     /// call then returns `None` and the lowering omits the optional nano field.
     pub(crate) decimals: &'a TokenDecimals,
+    /// Host-injected per-asset venue leverage (service-worker `activeAssetData`
+    /// lookups). Empty when the host did not / could not resolve it — every
+    /// `leverage_for` call then returns `None` and the lowering omits the
+    /// optional `leverage` field. See [`AccountLeverage`].
+    pub(crate) leverage: &'a AccountLeverage,
 }
 
 impl LowerCtx<'_> {
@@ -107,6 +113,13 @@ impl LowerCtx<'_> {
     pub(crate) fn amount_nano_native18(&self, raw: U256) -> i64 {
         super::common::amount::nano_from_decimals(raw, 18)
     }
+
+    /// Host-injected effective leverage for a venue `asset_index`, or `None`
+    /// when it was not injected (the lowering then omits the optional
+    /// `leverage` field). See [`AccountLeverage`].
+    pub(crate) fn leverage_for(&self, asset_index: u32) -> Option<i64> {
+        self.leverage.leverage_for(asset_index)
+    }
 }
 
 /// Lower an [`ActionBody`] to a [`LoweredAction`] by delegating to the matching
@@ -124,13 +137,20 @@ pub fn lower_action(
     meta: &ActionMeta,
     tx: &TxMeta<'_>,
 ) -> Result<LoweredAction, LowerError> {
-    lower_action_with_decimals(action, meta, tx, &TokenDecimals::default())
+    lower_action_enriched(
+        action,
+        meta,
+        tx,
+        &TokenDecimals::default(),
+        &AccountLeverage::default(),
+    )
 }
 
 /// Lower an [`ActionBody`] with host-injected per-token `decimals`, so each
 /// fungible amount also emits its `amountNano` `Long` sibling (see
 /// [`TokenDecimals`]). [`lower_action`] is the decimals-free wrapper — every
-/// nano field is then omitted.
+/// nano field is then omitted. Leverage is left unresolved (the order
+/// `leverage` field is omitted); use [`lower_action_enriched`] to inject it.
 ///
 /// `meta` is the outer `Action`'s [`ActionMeta`]; `tx` carries the EVM routing
 /// addresses. See [`LowerCtx`].
@@ -145,7 +165,34 @@ pub fn lower_action_with_decimals(
     tx: &TxMeta<'_>,
     decimals: &TokenDecimals,
 ) -> Result<LoweredAction, LowerError> {
-    let ctx = LowerCtx { meta, tx, decimals };
+    lower_action_enriched(action, meta, tx, decimals, &AccountLeverage::default())
+}
+
+/// Lower an [`ActionBody`] with both host-injected `decimals` (for `amountNano`
+/// siblings) and host-injected `leverage` (for the venue order `leverage`
+/// field). [`lower_action`] / [`lower_action_with_decimals`] are the thinner
+/// wrappers that default one or both injected maps to empty.
+///
+/// `meta` is the outer `Action`'s [`ActionMeta`]; `tx` carries the EVM routing
+/// addresses. See [`LowerCtx`].
+///
+/// # Errors
+///
+/// Returns [`LowerError::Unsupported`] for any action variant whose domain has
+/// not yet implemented a lowering.
+pub fn lower_action_enriched(
+    action: &ActionBody,
+    meta: &ActionMeta,
+    tx: &TxMeta<'_>,
+    decimals: &TokenDecimals,
+    leverage: &AccountLeverage,
+) -> Result<LoweredAction, LowerError> {
+    let ctx = LowerCtx {
+        meta,
+        tx,
+        decimals,
+        leverage,
+    };
     match action {
         ActionBody::Token(a) => super::token::lower(a, &ctx),
         ActionBody::Amm(a) => super::amm::lower(a, &ctx),
