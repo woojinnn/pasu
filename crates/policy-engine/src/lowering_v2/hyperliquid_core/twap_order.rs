@@ -39,6 +39,14 @@ pub(crate) fn lower(
     );
     m.insert("minutes".into(), Value::from(i64::from(action.minutes)));
     m.insert("randomize".into(), Value::Bool(action.randomize));
+    // Effective per-asset leverage, host-enriched (the wire has none). Emitted
+    // ONLY when injected; absent ⇒ the optional schema field is omitted and a
+    // `context has leverage` policy stays dormant. A TWAP carries the same
+    // leveraged exposure as a regular order, so it must be enriched too (else
+    // an order-leverage cap on HlOrder is evaded by routing exposure via TWAP).
+    if let Some(leverage) = ctx.leverage_for(action.asset_index) {
+        m.insert("leverage".into(), Value::from(leverage));
+    }
 
     Ok(ctx.lowered(
         r#"HyperliquidCore::Action::"HlTwapOrder""#,
@@ -96,5 +104,48 @@ mod tests {
         let reduce = lower_action(&make(true), &offchain_meta(), &tx).unwrap();
         assert_eq!(reduce.context["side"], "short");
         assert_eq!(reduce.context["positionEffect"], "reduce");
+    }
+
+    /// Host-injected leverage surfaces as `context.leverage` (Long) on a TWAP and
+    /// the enriched context conforms — closing the TWAP bypass of the
+    /// order-leverage policy. Without injection the field is omitted.
+    #[test]
+    fn twap_with_injected_leverage_emits_long_and_conforms() {
+        use crate::lowering_v2::{lower_action_enriched, AccountLeverage, TokenDecimals, TxMeta};
+
+        let body =
+            ActionBody::HyperliquidCore(HyperliquidCoreAction::TwapOrder(HlTwapOrderAction {
+                asset_index: 0,
+                symbol: Some("BTC".to_owned()),
+                is_buy: true,
+                size: Decimal::new("10"),
+                reduce_only: false,
+                minutes: 30,
+                randomize: true,
+            }));
+        let meta = offchain_meta();
+        let tx = TxMeta {
+            from: "0x1111111111111111111111111111111111111111",
+            to: "0x2222222222222222222222222222222222222222",
+        };
+        let mut map = std::collections::BTreeMap::new();
+        map.insert("0".to_owned(), 26i64);
+        let lev = AccountLeverage::new(map);
+
+        let lowered =
+            lower_action_enriched(&body, &meta, &tx, &TokenDecimals::default(), &lev).unwrap();
+        assert_eq!(lowered.context["leverage"], 26);
+
+        let manifest: crate::policy_rpc::ManifestV2 = serde_json::from_value(serde_json::json!({
+            "id": "hl_twap_order-schema",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "hl_twap_order" } } }
+        }))
+        .unwrap();
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
+        let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
+        cedar_policy::Context::from_json_value(lowered.context, Some((&schema, &uid)))
+            .unwrap_or_else(|e| panic!("enriched hl_twap_order context must conform: {e:?}"));
     }
 }

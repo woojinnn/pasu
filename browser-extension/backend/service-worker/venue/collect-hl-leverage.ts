@@ -18,9 +18,14 @@ import type { VenueOrderPayload } from "@lib/types";
 import { defaultHlInfoClient, type HlInfoClient } from "./hl-info-client";
 import { resolveHlMaster } from "./resolve-hl-master";
 
-/** The action tag the order-leverage field applies to (HlOrderContext only). */
-const ORDER_TAG = "hl_order";
-/** The leverage-change tag whose value we use to refresh the cache. */
+/**
+ * Action tags whose context carries the order-leverage field. A TWAP opens the
+ * SAME leveraged perp exposure as a regular order, so it is enriched too — else
+ * an order-leverage cap on HlOrder is trivially evaded by routing the exposure
+ * through a TWAP (a first-class HL UI order type).
+ */
+const ORDER_TAGS = new Set(["hl_order", "hl_twap_order"]);
+/** The leverage-change tag that triggers a cache invalidation. */
 const UPDATE_LEVERAGE_TAG = "hl_update_leverage";
 
 function asAssetIndex(value: unknown): number | null {
@@ -30,9 +35,9 @@ function asAssetIndex(value: unknown): number | null {
 }
 
 /**
- * Resolve `{ "<asset_index>": leverage }` for an `hl_order`, or `{}` for any
- * other action / unresolved input. `action` is the built `ActionBody`
- * (`{ action: "hl_order", asset_index, ... }`).
+ * Resolve `{ "<asset_index>": leverage }` for an order-class action
+ * (`hl_order` / `hl_twap_order`), or `{}` for any other action / unresolved
+ * input. `action` is the built `ActionBody` (`{ action, asset_index, ... }`).
  */
 export async function collectHlLeverage(
   action: Record<string, unknown>,
@@ -40,7 +45,9 @@ export async function collectHlLeverage(
   client: HlInfoClient = defaultHlInfoClient(),
 ): Promise<Record<string, number>> {
   try {
-    if (action.action !== ORDER_TAG) return {};
+    if (typeof action.action !== "string" || !ORDER_TAGS.has(action.action)) {
+      return {};
+    }
     const assetIndex = asAssetIndex(action.asset_index);
     if (assetIndex === null) return {};
 
@@ -89,10 +96,17 @@ export async function collectHlLeverage(
 }
 
 /**
- * When the SW sees an `hl_update_leverage`, seed the leverage cache for
- * (master, coin) with the just-set value so the NEXT order on that asset sees
- * the fresh leverage even within the cache TTL (free invalidation — we already
- * have the new value from the intercepted POST). Fire-and-forget; never throws.
+ * When the SW intercepts an `hl_update_leverage`, INVALIDATE the cached leverage
+ * for (master, coin) so the NEXT order on that asset re-fetches the
+ * authoritative `activeAssetData`.
+ *
+ * SECURITY: we deliberately do NOT seed the cache from the page-asserted wire
+ * `leverage` value. That value is unauthenticated MAIN-world input; seeding a
+ * deny-path cache from it would let an adversarial / compromised frontend
+ * poison the cache with a low value — e.g. a (never-broadcast)
+ * `updateLeverage{leverage:1}` — so a later genuine high-leverage order reads
+ * the poisoned `1` and a `context.leverage > N` cap stays silent (under-block).
+ * Invalidation forces a trusted re-read instead. Fire-and-forget; never throws.
  */
 export async function noteHlLeverageUpdate(
   action: Record<string, unknown>,
@@ -102,16 +116,16 @@ export async function noteHlLeverageUpdate(
   try {
     if (action.action !== UPDATE_LEVERAGE_TAG) return;
     const assetIndex = asAssetIndex(action.asset_index);
-    const leverage = action.leverage;
-    if (assetIndex === null || typeof leverage !== "number") return;
+    if (assetIndex === null) return;
 
     const master = await resolveHlMaster(payload);
     if (!master) return;
     const coin = await client.coinForIndex(assetIndex);
     if (!coin) return;
 
-    client.set(master, coin, Math.trunc(leverage));
+    // Invalidate (NOT set-from-wire) — see the SECURITY note above.
+    client.invalidate(master, coin);
   } catch {
-    // Best-effort cache refresh — a failure just means the next order re-fetches.
+    // Best-effort — a failure just means the next order re-fetches anyway.
   }
 }

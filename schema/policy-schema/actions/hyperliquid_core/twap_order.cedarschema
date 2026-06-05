@@ -25,6 +25,14 @@ namespace HyperliquidCore {
     minutes: Long,
     // Randomize sub-order timing.
     randomize: Bool,
+    // Effective per-asset leverage for THIS TWAP, host-enriched from
+    // `activeAssetData` (the wire carries none). A TWAP opens/grows the same
+    // leveraged perp exposure as a regular order, so the order-leverage policy
+    // must see it here too — otherwise a `context.leverage > N` cap on HlOrder
+    // is trivially evaded by routing the same exposure through a TWAP. ABSENT
+    // when unresolved: guard with `context has leverage`. Same Long vocab as
+    // HlOrderContext.leverage / HlUpdateLeverageContext.leverage.
+    leverage?: Long,
     // Manifest-extensible slot.
     custom?: HlTwapOrderCustomContext,
   };

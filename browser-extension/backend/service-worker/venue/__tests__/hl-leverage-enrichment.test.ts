@@ -252,29 +252,78 @@ describe("collectHlLeverage", () => {
     );
     expect(out).toEqual({ "1": 11 });
   });
+
+  it("ALSO enriches an hl_twap_order (closes the TWAP bypass of the order-leverage cap)", async () => {
+    await setConnectedAccount(HOST, MASTER);
+    const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: 26 }) });
+    const twap: Record<string, unknown> = {
+      domain: "hyperliquid_core",
+      action: "hl_twap_order",
+      asset_index: 0,
+      is_buy: true,
+      size: "10",
+      reduce_only: false,
+      minutes: 30,
+      randomize: true,
+    };
+    expect(await collectHlLeverage(twap, payload(), client)).toEqual({ "0": 26 });
+  });
 });
 
-describe("noteHlLeverageUpdate", () => {
-  it("seeds the cache from an updateLeverage so the next order needs no fetch", async () => {
+describe("noteHlLeverageUpdate (invalidation, NOT page-seed)", () => {
+  function activeAssetDataCalls(
+    fetchImpl: ReturnType<typeof vi.fn<typeof fetch>>,
+  ): number {
+    return fetchImpl.mock.calls.filter((c) => {
+      try {
+        return (
+          JSON.parse(((c[1] as RequestInit).body as string) ?? "{}").type ===
+          "activeAssetData"
+        );
+      } catch {
+        return false;
+      }
+    }).length;
+  }
+
+  it("invalidates the cache so the next order re-fetches authoritative leverage — the page wire value is NEVER served", async () => {
     await setConnectedAccount(HOST, MASTER);
-    const fetchImpl = infoFetch({ leverage: 99 }); // would return 99 if fetched
+    // Authoritative API value is 99; the page will lie and claim 1.
+    const fetchImpl = infoFetch({ leverage: 99 });
     const client = new HlInfoClient({ fetchImpl });
 
+    // Prime the cache with the authoritative value.
+    expect(await client.leverageFor(MASTER, "BTC")).toBe(99);
+
+    // A page-asserted updateLeverage claiming leverage:1 must NOT poison the
+    // deny-path cache (the historical under-block vector).
     const update = {
       domain: "hyperliquid_core",
       action: "hl_update_leverage",
       asset_index: 0,
       is_cross: true,
-      leverage: 31,
+      leverage: 1,
     };
     await noteHlLeverageUpdate(update, payload(), client);
 
-    // The seeded value (31) is served without an activeAssetData fetch — only
-    // the one `meta` fetch (for coinForIndex) happened.
-    expect(await client.leverageFor(MASTER, "BTC")).toBe(31);
-    const bodies = fetchImpl.mock.calls.map((c) =>
-      JSON.parse(((c[1] as RequestInit).body as string) ?? "{}"),
+    // The next read returns the AUTHORITATIVE 99 — never the wire-asserted 1 —
+    // and a fresh activeAssetData fetch happened (cache was invalidated, not seeded).
+    expect(await client.leverageFor(MASTER, "BTC")).toBe(99);
+    expect(activeAssetDataCalls(fetchImpl)).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does nothing for a non-updateLeverage action", async () => {
+    await setConnectedAccount(HOST, MASTER);
+    const fetchImpl = infoFetch({ leverage: 5 });
+    const client = new HlInfoClient({ fetchImpl });
+    client.set(MASTER, "BTC", 5);
+    await noteHlLeverageUpdate(
+      { domain: "hyperliquid_core", action: "hl_order", asset_index: 0 },
+      payload(),
+      client,
     );
-    expect(bodies.some((b) => b.type === "activeAssetData")).toBe(false);
+    // Cache untouched → served from cache, no activeAssetData fetch.
+    expect(await client.leverageFor(MASTER, "BTC")).toBe(5);
+    expect(activeAssetDataCalls(fetchImpl)).toBe(0);
   });
 });
