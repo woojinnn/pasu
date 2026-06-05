@@ -14,15 +14,15 @@ api:
   # preStop sleep + grace period → zero-downtime rollouts on GKE L7 (NEG drain race)
   preStopSleepSeconds: 15
   terminationGracePeriodSeconds: 30
-  publicApiUrl: https://api.scopeball.dev
-  dashboardUrl: https://app.scopeball.dev
+  publicApiUrl: https://pasu-policy.duckdns.org
+  dashboardUrl: https://pasu-policy.duckdns.org
   # Exact-match allowlist (comma-separated) of non-default OAuth redirect
   # targets — e.g. a browser extension's https://<id>.chromiumapp.org/.
   # Empty = only the default DASHBOARD_URL flow is allowed (fail-closed).
   oauthAllowedRedirectUris: ""
   corsAllowPrivateNetwork: false
   corsAllowedOrigins:
-    - https://app.scopeball.dev
+    - https://pasu-policy.duckdns.org
     - chrome-extension://<published-extension-id>
   resources:
     requests:
@@ -53,7 +53,7 @@ runtime:
 ingress:
   enabled: true
   className: nginx
-  host: api.scopeball.dev
+  host: pasu-policy.duckdns.org
   tls:
     enabled: true
     secretName: policy-server-tls
