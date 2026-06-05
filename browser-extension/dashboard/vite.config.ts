@@ -21,22 +21,22 @@ import path from "node:path";
 // webpack config has `clean: true`, which would wipe the vite output.
 export default defineConfig(({ mode }) => {
   // Server base URL is UNIFIED with the webpack (service-worker) build:
-  // both read `SCOPEBALL_SERVER_URL`, so a single env var switches the whole
+  // both read `PASU_SERVER_URL`, so a single env var switches the whole
   // extension (dashboard + service worker) between local/test and prod —
-  //   SCOPEBALL_SERVER_URL=https://pasu-policy.duckdns.org yarn build:ext
+  //   PASU_SERVER_URL=https://pasu-policy.duckdns.org yarn build:ext
   // `loadEnv(mode, dir, "")` reads .env files + process.env with no prefix
-  // filter; legacy `VITE_SCOPEBALL_SERVER_URL` is still honored as a fallback.
+  // filter; legacy `VITE_PASU_SERVER_URL` is still honored as a fallback.
   const env = loadEnv(mode, process.cwd(), "");
   const serverUrl =
-    env.SCOPEBALL_SERVER_URL || env.VITE_SCOPEBALL_SERVER_URL || "";
+    env.PASU_SERVER_URL || env.VITE_PASU_SERVER_URL || "";
 
   return {
     plugins: [react()],
     base: "./",
     // Feed the unified server URL to the dashboard client (client.ts reads
-    // `import.meta.env.VITE_SCOPEBALL_SERVER_URL`).
+    // `import.meta.env.VITE_PASU_SERVER_URL`).
     define: {
-      "import.meta.env.VITE_SCOPEBALL_SERVER_URL": JSON.stringify(serverUrl),
+      "import.meta.env.VITE_PASU_SERVER_URL": JSON.stringify(serverUrl),
     },
     build: {
       outDir: path.resolve(__dirname, "../dist/chrome"),
@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        "@scopeball/sdk": path.resolve(__dirname, "../sdk/extension-client.ts"),
+        "@pasu/sdk": path.resolve(__dirname, "../sdk/extension-client.ts"),
       },
     },
   };

@@ -236,25 +236,25 @@ fn unlimited_approve_to_covered_token_denies() {
 /// Live end-to-end: a transaction fetched from the **Etherscan API** → production
 /// decode → catalog verdict (right before `/v1/rpc`). Gated on env so a no-network
 /// run skips it; the companion shell step fetches a real tx and sets these:
-///   `SCOPEBALL_LIVE_TO`, `SCOPEBALL_LIVE_CALLDATA` (req), `SCOPEBALL_LIVE_CHAIN`,
-///   `SCOPEBALL_LIVE_VALUE` (opt).
+///   `PASU_LIVE_TO`, `PASU_LIVE_CALLDATA` (req), `PASU_LIVE_CHAIN`,
+///   `PASU_LIVE_VALUE` (opt).
 #[test]
 fn live_etherscan_tx_maps() {
     let (to, calldata) = match (
-        std::env::var("SCOPEBALL_LIVE_TO"),
-        std::env::var("SCOPEBALL_LIVE_CALLDATA"),
+        std::env::var("PASU_LIVE_TO"),
+        std::env::var("PASU_LIVE_CALLDATA"),
     ) {
         (Ok(to), Ok(cd)) if cd.len() >= 10 => (to, cd),
         _ => {
-            eprintln!("[live] skipped — set SCOPEBALL_LIVE_TO + SCOPEBALL_LIVE_CALLDATA (from an Etherscan fetch) to run");
+            eprintln!("[live] skipped — set PASU_LIVE_TO + PASU_LIVE_CALLDATA (from an Etherscan fetch) to run");
             return;
         }
     };
-    let chain: u64 = std::env::var("SCOPEBALL_LIVE_CHAIN")
+    let chain: u64 = std::env::var("PASU_LIVE_CHAIN")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(1);
-    let value = std::env::var("SCOPEBALL_LIVE_VALUE").unwrap_or_else(|_| "0x0".to_owned());
+    let value = std::env::var("PASU_LIVE_VALUE").unwrap_or_else(|_| "0x0".to_owned());
 
     let _ = adapters::load_and_install().expect("install registryV2 index");
     let bundles = load_catalog_bundles();

@@ -158,12 +158,12 @@ impl LoadOptions {
     /// Build loader options from process environment.
     ///
     /// CI can keep source-generated protocol surfaces bounded by setting
-    /// `SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS=1`. Local/manual runs
+    /// `PASU_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS=1`. Local/manual runs
     /// stay exhaustive unless the variable is explicitly enabled.
     #[must_use]
     pub fn from_env() -> Self {
         let mut options = Self::default();
-        if env_flag("SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS") {
+        if env_flag("PASU_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS") {
             options.representative_source_refs = true;
         }
         options

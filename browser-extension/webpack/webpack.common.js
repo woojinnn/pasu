@@ -20,7 +20,7 @@ require("dotenv").config({ path: path.join(extRoot, ".env") });
 const backendDir = path.join(extRoot, "backend");
 const frontendDir = path.join(extRoot, "frontend");
 const distDir = path.join(extRoot, "dist", targetBrowser);
-const serverUrl = process.env.SCOPEBALL_SERVER_URL || "http://127.0.0.1:8788";
+const serverUrl = process.env.PASU_SERVER_URL || "http://127.0.0.1:8788";
 
 // Shared bits of the webpack config — the actual exported configs differ
 // only in `entry`, `target`, and which build-time plugins they own.
@@ -75,7 +75,7 @@ const sharedPlugins = () => [
     systemvars: true,
   }),
   new webpack.DefinePlugin({
-    SCOPEBALL_SERVER_URL: JSON.stringify(serverUrl),
+    PASU_SERVER_URL: JSON.stringify(serverUrl),
   }),
   // ProvidePlugin for `process` so readable-stream's `process.nextTick` etc.
   // resolve at runtime even in code paths that don't import it explicitly.

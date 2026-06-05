@@ -45,7 +45,7 @@ jobs:
 
       - name: Test
         env:
-          SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
+          PASU_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
         run: cargo test --all-features
 
       - name: Doctest
@@ -117,12 +117,12 @@ jobs:
       - working-directory: browser-extension
         run: yarn build:chrome
         env:
-          SCOPEBALL_ALLOW_INSECURE_REGISTRY: '1'
+          PASU_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension
         run: yarn build:firefox
         env:
-          SCOPEBALL_ALLOW_INSECURE_REGISTRY: '1'
+          PASU_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension/dashboard
         name: Dashboard build (tsc --noEmit + vite build)
@@ -131,7 +131,7 @@ jobs:
       - name: Upload dashboard dist (PR build artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: scopeball-dashboard-${{ github.sha }}
+          name: pasu-dashboard-${{ github.sha }}
           path: |
             browser-extension/dist/chrome/options.html
             browser-extension/dist/chrome/assets
@@ -145,7 +145,7 @@ jobs:
       - name: Upload Chrome dist (PR build artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: scopeball-chrome-${{ github.sha }}
+          name: pasu-chrome-${{ github.sha }}
           path: browser-extension/dist/chrome.zip
           if-no-files-found: error
           retention-days: 14
@@ -153,7 +153,7 @@ jobs:
       - name: Upload Firefox dist (PR build artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: scopeball-firefox-${{ github.sha }}
+          name: pasu-firefox-${{ github.sha }}
           path: browser-extension/dist/firefox.zip
           if-no-files-found: error
           retention-days: 14
