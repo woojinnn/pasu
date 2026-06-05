@@ -18,7 +18,8 @@
           "kind": "context",
           "field": "approvalIsUnlimited",
           "type": "Bool",
-          "from": "$.result.isUnlimited"
+          "from": "$.result.isUnlimited",
+          "required": true
         },
         {
           "kind": "context",
