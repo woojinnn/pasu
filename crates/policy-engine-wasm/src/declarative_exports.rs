@@ -169,9 +169,8 @@ thread_local! {
 //
 // The v3 install validates only the structural envelope:
 //   * `bundle.id`         — required, non-empty string. Used as decoder_id.
-//   * `bundle.match`      — parsed via `BundleMatch` so v1 (`chain_ids × to`)
-//                           and v2 (`chain_to_addresses`) bundles both yield
-//                           `(chain_id, address)` pairs.
+//   * `bundle.match`      — parsed via `BundleMatch` so supported address
+//                           layouts yield `(chain_id, address)` pairs.
 //   * `bundle.match.selector` — required (carried inside `BundleMatch`).
 // `emit.strategy` / `emit.body` / `emit.per_opcode_body` are NOT validated
 // at install — they flow through `action_builder` at route time, which
@@ -192,8 +191,8 @@ thread_local! {
 /// v3 does not mint a separate `declarative.<path>` decoder id — the bundle_id
 /// itself is the canonical key (it already disambiguates publisher / contract /
 /// function / version, matching how the registry indexes manifests). Both
-/// `decoder_id` and `bundle_id` are populated to the same value so the wire
-/// shape stays identical to v1 [`DeclarativeInstallResultDto`].
+/// `decoder_id` and `bundle_id` are populated to the same value to preserve the
+/// existing [`DeclarativeInstallResultDto`] wire shape.
 #[wasm_bindgen]
 pub fn declarative_install_v3_json(bundle_json: String) -> String {
     let result = (|| -> Result<DeclarativeInstallResultDto, EngineErrorDto> {
@@ -484,7 +483,7 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 )
             })?;
 
-        // Decode calldata against the manifest ABI (same pattern as v1). A bare
+        // Decode calldata against the manifest ABI. A bare
         // native transfer has NO calldata to decode against a function ABI
         // (the byte vec is empty, and `decode_with_json_abi` requires ≥4 bytes
         // for a selector), so the args object is simply empty — the
@@ -514,11 +513,11 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
             })?
             .to_owned();
 
-        // Plan §M5 — chain 별 well-known token addresses pre-populate.
-        // Sync orchestrator (별 plan) 가 채울 동적 resolved (pool / factory
-        // 등) 외에, chain ID 만으로 결정되는 정적 token address (WETH 등) 는
-        // 본 layer 에서 미리 채워 manifest 의 `$resolved.weth` 같은 placeholder
-        // 가 zero address fallback 대신 정확한 값으로 substitute 되도록 함.
+        // Pre-populate well-known chain-scoped token addresses. Dynamic
+        // resolved values such as pool/factory addresses are supplied by
+        // higher-level sync, but static token addresses like WETH can be
+        // resolved here so `$resolved.weth` placeholders avoid zero-address
+        // fallback.
         let mut resolved = BTreeMap::new();
         let weth_address: Option<&'static str> = match input.chain_id {
             1 => Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
@@ -1207,8 +1206,8 @@ pub fn declarative_route_typed_data_v3_json(input_json: String) -> String {
         );
 
         // ── V3MapContext (same resolved/derived population as calldata) ─────
-        // Plan §M5 — static WETH-by-chain pre-populate (mirrors the calldata
-        // route path so `$resolved.weth` substitutes the correct address).
+        // Static WETH-by-chain pre-populate mirrors the calldata route path so
+        // `$resolved.weth` substitutes the correct address.
         let mut resolved = BTreeMap::new();
         let weth_address: Option<&'static str> = match input.chain_id {
             1 => Some("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
@@ -2492,22 +2491,19 @@ fn build_parallel_tagged_dispatch(
 /// raw byte buffer, returning a JSON object keyed by the tuple's named
 /// fields.
 ///
-/// M2 narrow scope (per plan §3 "본 wire-up 만, 실제 inputs_abi decode
-/// logic 은 M5 의 manual e2e 시 첫 raw Tx 로 검증"):
-///   * Reuse [`abi_resolver::decode::decode_with_function`] so we do not
-///     pull `alloy_json_abi` / `alloy_dyn_abi` symbols into the WASM
-///     surface beyond what abi-resolver already links.
-///   * The signature is wrapped into a synthetic `step<sig>` function so
-///     alloy can parse it (mirrors `subdecode::opcode_stream`'s pattern).
-///     Selector is recomputed from that function so `decode_with_function`'s
-///     selector-equality guard always passes — opcode dispatch already
-///     verified the outer call site, we are only re-decoding the inner
-///     tuple here.
-///   * Each `DecodedArg.value` (a `DynSolValue`) routes through the same
-///     `bridge::convert_value` → `eval::decoded_value_to_json` chain v1
-///     uses, so the resulting `$inputs.<name>` JSON shape matches the v1
-///     `$args.<name>` view the action_builder's placeholder walker already
-///     understands.
+/// Implementation notes:
+///   * Reuse [`abi_resolver::decode::decode_with_function`] so we do not pull
+///     `alloy_json_abi` / `alloy_dyn_abi` symbols into the WASM surface beyond
+///     what abi-resolver already links.
+///   * The signature is wrapped into a synthetic `step<sig>` function so alloy
+///     can parse it (mirrors `subdecode::opcode_stream`'s pattern). Selector is
+///     recomputed from that function so `decode_with_function`'s
+///     selector-equality guard always passes; opcode dispatch already verified
+///     the outer call site, and this helper only re-decodes the inner tuple.
+///   * Each `DecodedArg.value` (a `DynSolValue`) routes through the shared
+///     `bridge::convert_value` -> `eval::decoded_value_to_json` chain, so the
+///     resulting `$inputs.<name>` JSON shape matches the `$args.<name>` view the
+///     action_builder's placeholder walker already understands.
 ///   * Best-effort: any parse / decode / convert failure returns `Err` and
 ///     the caller substitutes `Value::Null`. The action_builder then
 ///     surfaces a precise `UnresolvedPlaceholder` for `$inputs.<x>`

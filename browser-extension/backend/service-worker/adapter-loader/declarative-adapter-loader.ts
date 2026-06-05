@@ -8,7 +8,7 @@
  *
  *   `installDeclarativeBundleV3({ chainId, to, selector })` — fetches the
  *   matching v3 manifest from the registry, shape-validates it via
- *   `parseBundleV3` (Phase 0 hand-written validator), then forwards the
+ *   `parseBundleV3`, then forwards the
  *   *raw* JSON text to `declarativeInstallV3`. We deliberately do NOT
  *   re-stringify the parsed bundle: the parser is shape-only and could drop
  *   fields (or alter ordering) that the Rust deserializer depends on for
@@ -89,8 +89,7 @@ export interface InstallDeclarativeBundleV3Args {
   selector: string;
   /**
    * Base URL of the registry. Defaults to the build-time
-   * `REGISTRY_BASE_URL`; M3 in-SW callers use the production Cloud Run
-   * URL injected via webpack.
+   * `REGISTRY_BASE_URL`; in-SW callers use the URL injected via webpack.
    */
   baseUrl?: string;
   /** Injected for tests — defaults to global `fetch`. */
@@ -110,7 +109,7 @@ export interface InstallDeclarativeV3Result {
 }
 
 /**
- * Phase A.1 — EIP-712 typed-data routing key. The 3-tuple
+ * EIP-712 typed-data routing key. The 3-tuple
  * `(chainId, verifyingContract, primaryType)` selects a manifest in the
  * `by-typed-data/` index; the optional `witnessType` is the 4th routing-key
  * segment that de-collides Permit2 `permitWitnessTransferFrom` orders
@@ -257,8 +256,8 @@ function v3SelectorUrl(
 }
 
 /**
- * M3 — hydrate a v3 bundle for `(chainId, to, selector)` from the registry
- * and install it into the WASM engine.
+ * Hydrate a v3 bundle for `(chainId, to, selector)` from the registry and
+ * install it into the WASM engine.
  *
  * Pipeline:
  *   1. Cache lookup — return the prior `DeclarativeInstallResult` when the
@@ -293,13 +292,12 @@ export async function installDeclarativeBundleV3(
     // `decoderId` / `bundleId` for telemetry, but exposing the parsed
     // bundle keeps the API uniform with the cold path. We re-parse the
     // raw text we still hold via the WASM-side state map; since the SW
-    // does not have direct access to that map, M3 carries `bundle`
+    // does not have direct access to that map, this loader carries `bundle`
     // alongside the cache.
     const parsedBundle = v3CachedBundleByCallKey.get(cacheKey);
     if (parsedBundle) {
-      // Plan §M5 — 사용자 시각 확인용 console marker. cache hit path =
-      // 같은 callkey 두 번째+ 호출. WASM in-memory `DECLARATIVE_V3_STATE`
-      // thread_local 에는 이미 등록된 상태 (= chrome.storage 와 별개).
+      // Cache-hit marker for repeat calls in the same service-worker lifetime;
+      // WASM already has this bundle installed in its in-memory v3 state.
       console.info("[Scopeball] installDeclarativeBundleV3 cache-hit", {
         callkey: cacheKey,
         bundleId: cached.bundle_id,
@@ -314,10 +312,10 @@ export async function installDeclarativeBundleV3(
     // Cache desync — fall through to a full re-hydration.
   }
 
-  // Layer 2 — chrome.storage.local mirror (plan §M3 SW restart 영속화).
-  // SW cold start 후 in-memory v3InstallCache 는 비어있지만 chrome.storage
-  // 에 직전 lifetime 의 bundle 이 남아있을 수 있음. hit 시 WASM 에 다시
-  // install 하고 in-memory cache 도 재구성 — registry-api-v3 round-trip 없음.
+  // chrome.storage.local mirror. After a service-worker cold start the
+  // process-local cache is empty, but a prior lifetime may have persisted the
+  // bundle. On hit, reinstall into WASM and rebuild the in-memory cache without
+  // a registry round-trip.
   try {
     const storageEntry = await declarativeV3Cache.get(cacheKey);
     if (storageEntry) {
@@ -477,10 +475,8 @@ export async function installDeclarativeBundleV3(
     );
   }
 
-  // Plan §M5 — 사용자 시각 확인용 console marker. fresh install path =
-  // registry-api-v3 fetch + parseBundleV3 + WASM declarative_install_v3
-  // 까지 통과 + chrome.storage.local mirror 완료. SW restart 후 같은
-  // callkey 재진입 시 storage-hit 으로 떨어짐.
+  // Fresh-install marker: registry fetch, parseBundleV3, WASM install, and
+  // best-effort chrome.storage mirroring all completed for this callkey.
   console.info("[Scopeball] installDeclarativeBundleV3 fresh-install", {
     callkey: cacheKey,
     url,
@@ -500,7 +496,7 @@ export async function installDeclarativeBundleV3(
 const v3CachedBundleByCallKey = new Map<string, V3Bundle>();
 
 /**
- * Phase A.1 — hydrate + install the v3 bundle for an EIP-712 typed-data key
+ * Hydrate and install the v3 bundle for an EIP-712 typed-data key
  * `(chainId, verifyingContract, primaryType[, witnessType])` so a subsequent
  * `declarative_route_typed_data_v3_json` finds it. The install populates the
  * WASM typed_data bridge the same `declarative_install_v3_json` call backs for

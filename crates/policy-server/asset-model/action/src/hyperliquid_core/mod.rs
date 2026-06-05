@@ -5,9 +5,11 @@
 //! self-describing JSON intent signed by an agent key. This module models only
 //! the order-/transfer-intrinsic fields the request actually carries, so the
 //! policy engine can evaluate it WITHOUT fetching any live data from the venue.
-//! v1 covers the high-risk subset: an order, a leverage change, and the three
-//! fund-movement / delegation actions (`withdraw3`, `usdSend`, `approveAgent`)
-//! that move or authorize control of funds.
+//! The modeled surface covers high-risk CORE actions that place orders, change
+//! leverage or margin, move funds, bridge to EVM, authorize agents/builders, or
+//! delegate stake. Non-benign actions that are not explicitly modeled are
+//! represented as `hl_unknown` so policy evaluation remains visible rather than
+//! silently allowing them.
 //! ## Tag naming
 //! The serde `action` tags are prefixed `hl_` (`hl_order`, `hl_withdraw`, …)
 //! so they are globally unique across every domain's action set — notably

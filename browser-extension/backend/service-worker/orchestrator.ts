@@ -523,10 +523,11 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 }
 
 async function runLifecycle(message: Message): Promise<LifecycleResult> {
-  // Venue order (Hyperliquid `/exchange`, …) — its own v2 path. It never
-  // carries EVM calldata, so it does NOT go through the `tryDeclarativeRouteV3`
-  // (calldata-decode) branch below; instead the order JSON is converted to an
-  // `ActionBody::Perp` directly and evaluated by the same stateless v2 pipeline.
+  // Venue request (Hyperliquid `/exchange`, ...) — its own v2 path. It never
+  // carries EVM calldata, so it does not go through the `tryDeclarativeRouteV3`
+  // calldata branch below; instead the JSON intent is converted to
+  // `ActionBody::HyperliquidCore` and evaluated by the same stateless v2
+  // pipeline.
   if (isVenueOrder(message)) {
     return venueOrderLifecycle(message);
   }
@@ -582,11 +583,9 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       });
       markPhase(message.requestId, "route_done", { outcome: v3Outcome.kind });
       declarativeV3Meta = auditFromDeclarativeV3Outcome(v3Outcome, nature);
-      // Plan §M4 — DevTools console 검증 entry. PDF FSM hierarchical
-      // ActionBody JSON 을 hit 시 dump (Plan 의 narrow scope 의 핵심
-      // deliverable: SW DevTools 에서 actions[] shape 정확히 출력).
-      // JSON.stringify with pretty-print so users can visually inspect
-      // each ActionBody's `domain` / `action` / payload / live_inputs.
+      // DevTools audit log for the v3 route outcome. On route hits this includes
+      // the decoded ActionBody tree so the service-worker log shows each
+      // action's domain, tag, payload, and live_inputs.
       console.info("[Scopeball] declarative-route-v3", {
         requestId: message.requestId,
         chainId: message.data.chainId,
@@ -602,10 +601,9 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
             ? { reason: v3Outcome.reason }
             : {
                 reason: v3Outcome.reason,
-                // Plan §M5 — e2e 진단용 cause exposure. fault 발생 시
-                // WASM EngineError 의 kind / message + stack 가 console 에
-                // 보여야 어떤 opcode / placeholder / serde 가 실패했는지
-                // 추적 가능.
+                // Include fault details so decode/install errors can be traced
+                // to the failing opcode, placeholder, serde path, or engine
+                // error kind.
                 cause:
                   v3Outcome.cause instanceof Error
                     ? {
