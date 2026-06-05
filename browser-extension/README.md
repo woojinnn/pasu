@@ -81,10 +81,14 @@ dev build targets it with no `SCOPEBALL_SERVER_URL` at all.
 
 - **Quick — `cargo run`:** copy the server's `.env.local.example` → `.env.local`
   (set `DATABASE_URL`, `REDIS_URL`), then `scripts/start-policy-server.sh local`.
-- **Prod-like — local k8s:** `scripts/policy-server-local-k8s.sh up`.
-  This builds the server image, loads it into minikube when needed, applies
-  Postgres/Redis, creates the Secret, installs the Helm chart with local values,
-  port-forwards the API to `127.0.0.1:8788`, and checks readiness.
+- **Prod-like — minikube:** `minikube start --driver=docker` →
+  `kubectl config use-context minikube` →
+  `scripts/policy-server-local-k8s.sh up`. This builds the server image inside
+  minikube's Docker daemon, applies Postgres/Redis, creates the Secret, installs
+  the Helm chart with local values, port-forwards the API to
+  `127.0.0.1:8788`, and checks readiness. Use minikube for this local k8s loop;
+  Docker Desktop Kubernetes can use a separate containerd image store and is not
+  the documented self-service path.
 
 Sanity check: `curl http://127.0.0.1:8788/readyz` → `200`.
 

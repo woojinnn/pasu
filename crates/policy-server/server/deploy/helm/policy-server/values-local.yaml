@@ -5,8 +5,9 @@
 image:
   repository: pasu-policy-server
   tag: dev
-  # Local clusters use an image built on the developer machine. minikube users
-  # must load it into the cluster; Docker Desktop Kubernetes can see it directly.
+  # The local wrapper builds this tag directly inside minikube's Docker daemon.
+  # Docker Desktop Kubernetes may use a separate containerd image store; use
+  # minikube for the documented local development loop.
   pullPolicy: Never
 
 existingSecret: policy-server-secrets

@@ -1,8 +1,12 @@
 # Policy Server Local Kubernetes
 
 This directory contains the local-only dependencies for running
-`policy-server` in a developer Kubernetes cluster. The wrapper is optimized for
-minikube because it can build directly into minikube's Docker daemon.
+`policy-server` in a developer Kubernetes cluster.
+
+Use **minikube** for local policy-server k8s development. The wrapper builds
+the server image directly inside minikube's Docker daemon so Kubernetes can run
+the image with `imagePullPolicy: Never`. Docker Desktop Kubernetes can use a
+separate containerd image store, so it is not the supported self-service path.
 
 The production Helm chart intentionally does not include PostgreSQL or Redis.
 For local testing, these manifests create throwaway in-cluster services:
@@ -14,6 +18,8 @@ For local testing, these manifests create throwaway in-cluster services:
 Use the top-level wrapper for the normal flow:
 
 ```bash
+minikube start --driver=docker
+kubectl config use-context minikube
 scripts/policy-server-local-k8s.sh up
 ```
 
