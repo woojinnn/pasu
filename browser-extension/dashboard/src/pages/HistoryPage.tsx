@@ -22,7 +22,7 @@ import "./verdicts.css";
 
 const PAGE_SIZE = 50;
 type Verdict = VerdictDto["verdict"];
-type GroupMode = "time" | "verdict" | "origin" | "rule";
+type GroupMode = "time" | "activity" | "verdict" | "origin" | "rule";
 
 interface RangeOption {
   id: VerdictRangeAlias | "all";
@@ -38,10 +38,17 @@ const RANGE_OPTIONS: readonly RangeOption[] = [
 
 const GROUP_OPTIONS: readonly { id: GroupMode; label: string }[] = [
   { id: "time", label: "시간순" },
+  { id: "activity", label: "활동별" },
   { id: "verdict", label: "verdict별" },
   { id: "origin", label: "dApp별" },
   { id: "rule", label: "rule별" },
 ];
+
+/** Adjacent-row time gap (seconds) under which two txs from the same
+ *  (wallet, dApp origin) are treated as one user activity — e.g. the
+ *  approve + swap a dApp fires for a single intent. dApps expose no
+ *  correlation id, so this proximity heuristic is the grouping signal. */
+const ACTIVITY_WINDOW_SEC = 3;
 
 const VERDICT_ORDER: readonly Verdict[] = ["fail", "warn", "pass"];
 
@@ -71,6 +78,20 @@ export function HistoryPage() {
   const [q, setQ] = useState("");
   const [verdictFilter, setVerdictFilter] = useState<Set<Verdict>>(new Set());
   const [groupMode, setGroupMode] = useState<GroupMode>("time");
+  // Keys of expanded groups. Empty = all collapsed (the default for any grouped
+  // mode); the flat "time" view has no headers so it's unaffected. Reset
+  // whenever the grouping changes so a new layout starts collapsed.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setOpenGroups(new Set());
+  }, [groupMode]);
+  const toggleGroup = (key: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const seenIds = useRef(new Set<string>());
 
   const baseOpts = useMemo<VerdictListOpts>(
@@ -240,19 +261,32 @@ export function HistoryPage() {
                 </td>
               </tr>
             )}
-            {groups.map((g) => (
-              <Fragment key={g.key}>
-                {g.label && <GroupHeaderRow group={g} />}
-                {g.rows.map((v) => (
-                  <HistoryRow
-                    key={v.id}
-                    v={v}
-                    open={openId === v.id}
-                    onToggle={() => setOpenId(openId === v.id ? null : v.id)}
-                  />
-                ))}
-              </Fragment>
-            ))}
+            {groups.map((g) => {
+              // Grouped modes (label present) collapse; the flat "time" view
+              // (label null) always shows its rows.
+              const collapsible = g.label !== null;
+              const isOpen = !collapsible || openGroups.has(g.key);
+              return (
+                <Fragment key={g.key}>
+                  {g.label && (
+                    <GroupHeaderRow
+                      group={g}
+                      open={isOpen}
+                      onToggle={() => toggleGroup(g.key)}
+                    />
+                  )}
+                  {isOpen &&
+                    g.rows.map((v) => (
+                      <HistoryRow
+                        key={v.id}
+                        v={v}
+                        open={openId === v.id}
+                        onToggle={() => setOpenId(openId === v.id ? null : v.id)}
+                      />
+                    ))}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -403,12 +437,32 @@ function FilterBar({
 
 // ── Group section header ────────────────────────────────────────────────
 
-function GroupHeaderRow({ group }: { group: RenderGroup }) {
+function GroupHeaderRow({
+  group,
+  open,
+  onToggle,
+}: {
+  group: RenderGroup;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const c = group.byVerdict ?? { pass: 0, warn: 0, fail: 0 };
+  // Any fail in the group turns the whole header red, even when the group
+  // isn't a verdict-typed bucket (e.g. an activity cluster).
+  const hasFail = c.fail > 0;
   return (
-    <tr className={`v-group-head${group.verdictKind ? ` gh-${group.verdictKind}` : ""}`}>
+    <tr
+      className={`v-group-head${group.verdictKind ? ` gh-${group.verdictKind}` : ""}${
+        hasFail ? " gh-has-fail" : ""
+      }`}
+      onClick={onToggle}
+      aria-expanded={open}
+    >
       <td colSpan={9}>
         <div className="gh-row">
+          <span className="gh-caret" aria-hidden="true">
+            {open ? "▾" : "▸"}
+          </span>
           <span className="gh-title">{group.label}</span>
           <span className="gh-n">{group.rows.length}건</span>
           {!group.verdictKind && (
@@ -437,6 +491,50 @@ interface RenderGroup {
 function buildGroups(rows: VerdictDto[], mode: GroupMode): RenderGroup[] {
   if (mode === "time") {
     return [{ key: "time", label: null, rows }];
+  }
+  if (mode === "activity") {
+    // One "activity" = the txs a dApp fires for a single user intent (e.g.
+    // approve + swap). dApps give no correlation id, so cluster consecutive
+    // rows from the same (wallet, dApp origin) whose adjacent time gap is
+    // ≤ ACTIVITY_WINDOW_SEC. Rows sharing a `delta_id` (the SAME tx evaluated
+    // against N policies) always stay together regardless of the window.
+    const sorted = [...rows].sort((a, b) => b.ts - a.ts); // newest first
+    const sameActor = (a: VerdictDto, b: VerdictDto) =>
+      (a.wallet ?? "") === (b.wallet ?? "") &&
+      (a.dapp_origin ?? "") === (b.dapp_origin ?? "");
+    const groups: RenderGroup[] = [];
+    let cur: VerdictDto[] = [];
+    const flush = () => {
+      if (cur.length === 0) return;
+      const c = { pass: 0, warn: 0, fail: 0 };
+      for (const r of cur) c[r.verdict] += 1;
+      const head = cur[0];
+      groups.push({
+        key: `activity-${head.id}`,
+        label: `${head.dapp_origin ?? "(unknown origin)"} · ${fmtTs(head.ts)}`,
+        byVerdict: c,
+        rows: cur,
+      });
+      cur = [];
+    };
+    for (const r of sorted) {
+      if (cur.length === 0) {
+        cur = [r];
+        continue;
+      }
+      const prev = cur[cur.length - 1]; // oldest-so-far in the cluster
+      const sameTx = r.delta_id != null && r.delta_id === prev.delta_id;
+      const adjacent =
+        sameActor(r, prev) && prev.ts - r.ts <= ACTIVITY_WINDOW_SEC;
+      if (sameTx || adjacent) {
+        cur.push(r);
+      } else {
+        flush();
+        cur = [r];
+      }
+    }
+    flush();
+    return groups;
   }
   if (mode === "verdict") {
     return VERDICT_ORDER.map((v) => ({

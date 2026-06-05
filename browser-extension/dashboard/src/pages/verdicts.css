@@ -172,6 +172,25 @@
 .v-group-head.gh-fail .gh-title { color: var(--fail-700); }
 .v-group-head.gh-warn .gh-title { color: var(--warn-700); }
 .v-group-head.gh-pass .gh-title { color: var(--pass-700); }
+
+/* Collapsible group headers: clickable, with a disclosure caret. */
+.v-table .v-group-head { cursor: pointer; user-select: none; }
+.v-table .v-group-head:hover td { background: var(--surface-hover, var(--surface)); }
+.gh-caret {
+  color: var(--slate-500);
+  font-size: 10px;
+  width: 10px;
+  display: inline-flex;
+  justify-content: center;
+}
+
+/* Any fail in the group → red header (title + caret + left accent). */
+.v-group-head.gh-has-fail .gh-title,
+.v-group-head.gh-has-fail .gh-caret { color: var(--fail-700); }
+.v-table .v-group-head.gh-has-fail td {
+  background: var(--fail-50, var(--surface));
+  box-shadow: inset 3px 0 0 var(--fail-700);
+}
 .gh-n {
   font-variant-numeric: tabular-nums;
   color: var(--slate-500); font-weight: 500;
