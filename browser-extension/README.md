@@ -81,13 +81,11 @@ dev build targets it with no `SCOPEBALL_SERVER_URL` at all.
 
 - **Quick — `cargo run`:** copy the server's `.env.local.example` → `.env.local`
   (set `DATABASE_URL`, `REDIS_URL`), then `scripts/start-policy-server.sh local`.
-- **Prod-like — minikube:** `minikube start` → build the server image +
-  `minikube image load` → apply Postgres/Redis → `create-secret.sh` →
-  `helm install … -f deploy-local/values-local.yaml` → `kubectl port-forward
-  svc/<api-svc> 8788:8788`.
+- **Prod-like — local k8s:** `scripts/policy-server-local-k8s.sh up`.
+  This builds the server image, loads it into minikube when needed, applies
+  Postgres/Redis, creates the Secret, installs the Helm chart with local values,
+  port-forwards the API to `127.0.0.1:8788`, and checks readiness.
 
-Full steps for both are in **`crates/policy-server/deploy-guideline.md` §2.5**
-(`deploy-local/` is a gitignored local-scratch dir — not in a fresh clone).
 Sanity check: `curl http://127.0.0.1:8788/readyz` → `200`.
 
 Then connect the extension, either way:
