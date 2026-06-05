@@ -10,13 +10,13 @@
  * - Stay tiny and dependency-free — no axios, no React.
  */
 
-const DEFAULT_BASE = import.meta.env.VITE_SCOPEBALL_SERVER_URL || "http://127.0.0.1:8788";
+const DEFAULT_BASE = import.meta.env.VITE_PASU_SERVER_URL || "http://127.0.0.1:8788";
 
 /** Resolve the server URL — env > localStorage > default. Read once at
  * import time; we don't expect users to swap servers mid-session. */
 function resolveBaseUrl(): string {
   if (typeof window !== "undefined") {
-    const stored = window.localStorage.getItem("scopeball_server_url");
+    const stored = window.localStorage.getItem("pasu_server_url");
     if (stored) return stored;
   }
   return DEFAULT_BASE;
@@ -24,8 +24,8 @@ function resolveBaseUrl(): string {
 
 export const SERVER_BASE_URL = resolveBaseUrl();
 
-const TOKEN_KEY = "scopeball_jwt";
-const REFRESH_KEY = "scopeball_jwt_refresh";
+const TOKEN_KEY = "pasu_jwt";
+const REFRESH_KEY = "pasu_jwt_refresh";
 
 /** Persisted access token. Returns `null` when the user is logged out. */
 export function getStoredToken(): string | null {

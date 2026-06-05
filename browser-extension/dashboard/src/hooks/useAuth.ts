@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "scopeball_jwt") void refresh();
+      if (e.key === "pasu_jwt") void refresh();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // then mirror it into localStorage and re-resolve /auth/me. The dashboard
     // page itself never navigates away.
     setLoading(true);
-    void sendToSw("scopeball-auth-sign-in")
+    void sendToSw("pasu-auth-sign-in")
       .then(() => syncTokensFromExtensionStorage())
       .then(() => refresh())
       .catch((e) => {

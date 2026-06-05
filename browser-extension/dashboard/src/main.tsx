@@ -4,8 +4,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./tokens.css";
 import { AppRouter } from "./router";
 import { bootstrapExtensionEnv } from "./extension-bootstrap";
+import { migratePasuRenameLocalStorage } from "./pasu-rename-storage-migration";
 
 const queryClient = new QueryClient();
+
+// One-time scopeball_* → pasu_* localStorage migration. Runs synchronously
+// before bootstrapExtensionEnv() and the first render so the renamed JWT /
+// server-url / market-locale keys are populated before anything reads them —
+// a returning user keeps their session and preferences across the rename.
+migratePasuRenameLocalStorage();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root mount node");
