@@ -1,6 +1,6 @@
 # Local Kubernetes overrides for a developer Kubernetes cluster.
 # Layer this on top of values.yaml:
-#   helm upgrade --install scopeball <chart> -n scopeball -f values-local.yaml
+#   helm upgrade --install pasu <chart> -n pasu -f values-local.yaml
 
 image:
   repository: pasu-policy-server

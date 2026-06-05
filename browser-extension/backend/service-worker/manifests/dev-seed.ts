@@ -77,7 +77,7 @@ export async function fetchBundledDefaultManifests(): Promise<
       out[entry.action] = (await response.json()) as store.PolicyManifest;
     } catch (err) {
       console.warn(
-        `[Scopeball] dev-seed: failed to load starter-pack manifest for action=${entry.action}`,
+        `[Pasu] dev-seed: failed to load starter-pack manifest for action=${entry.action}`,
         err,
       );
     }

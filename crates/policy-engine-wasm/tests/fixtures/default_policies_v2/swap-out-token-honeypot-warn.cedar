@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: UNI-05 (buying an unverified /
+// pasu default v2 policy — explorer id: UNI-05 (buying an unverified /
 // honeypot token).
 //
 // An impostor token (name-spoof) or a honeypot (buyable but not sellable) turns

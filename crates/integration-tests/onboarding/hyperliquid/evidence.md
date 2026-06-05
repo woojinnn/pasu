@@ -14,7 +14,7 @@
 |---|---|
 | protocol | hyperliquid |
 | branch | feat/hyperliquid-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-hyperliquid |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-hyperliquid |
 | date | 2026-06-03 |
 | main agent | Claude Opus 4.8 (1M) + 9-agent survey workflow |
 | base commit | 79d8ae90 (feat/registry-v2) |
@@ -63,7 +63,7 @@ evidence; the phase tables below are the mandatory gate.
 | permission/fund-movement/red-flag selector review recorded | done | All fund-move EIP-712 types now expose destination+amount to policy (were unknown). Permission types gateable. High-risk unmodeled (agentSendAsset/hip3LiquidatorTransfer/CSignerAction)→hl_unknown (caught, not silent). |
 | manifest files added/changed listed | done | 10 rest/*.json (usd-send,withdraw,spot-send,usd-class-transfer,send-asset,token-delegate,convert-to-multi-sig-user,send-multi-sig,user-dex-abstraction,user-set-abstraction) + whype/{deposit,withdraw} + core-writer/send-raw-action. |
 | enrichment/live_field decision recorded for every COVER action | done | NO enrichment/live_inputs — every HL action decodes statically (decimal-string amounts + address strings). No remote policy-RPC. |
-| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | done | n/a — zero remote/live/enrichment methods (fully static decode, ScopeBall no-simulation invariant). |
+| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | done | n/a — zero remote/live/enrichment methods (fully static decode, Pasu no-simulation invariant). |
 | Tier3 not needed or full Tier3 downstream contract completed | done | NO new Tier3 — reused existing hyperliquid_core domain (18 variants/lowering/cedarschema/conformance) + just-merged token::{WrapNative,UnwrapNative}. Changes are manifest + test + surface only. |
 | Tier3 files listed if applicable: ActionBody/effect/view/sync/lowering_v2/cedarschema/schema registration/conformance test | done | n/a (no new Tier3). |
 | `npm run check:manifest` or protocol-filtered validate output recorded | done | `npm run check:manifest` = 'validate (all): 1781 single_emit OK, 0 structural errors'; build-index 892 manifests. (16 callkey COLLISION warnings = pre-existing, non-HL.) |

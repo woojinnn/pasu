@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AAVE-03 (high-utilization market).
+// pasu default v2 policy — explorer id: AAVE-03 (high-utilization market).
 //
 // ACTION-FIELD. The reserve's utilization is injected into the borrow action's
 // live_inputs and is exposed verbatim as the base context field

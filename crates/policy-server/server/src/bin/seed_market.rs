@@ -28,7 +28,7 @@ use tracing_subscriber::EnvFilter;
 /// each row carries the badge; this row in `users` only exists so the FK is
 /// satisfied.
 const OFFICIAL_USER_ID: &str = "u_seed_official";
-const OFFICIAL_EMAIL: &str = "official@scopeball.seed";
+const OFFICIAL_EMAIL: &str = "official@pasu.seed";
 
 #[derive(Deserialize)]
 struct SeedEntry {

@@ -19,7 +19,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@scopeball/sdk": ["../sdk/extension-client.ts"]
+      "@pasu/sdk": ["../sdk/extension-client.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

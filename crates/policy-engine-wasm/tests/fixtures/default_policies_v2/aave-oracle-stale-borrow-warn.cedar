@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AAVE-14 (borrow while the price
+// pasu default v2 policy — explorer id: AAVE-14 (borrow while the price
 // oracle is stale / in L2 sequencer grace).
 //
 // EXTERNAL freshness fact. Borrowing on a frozen (stale) oracle or during L2

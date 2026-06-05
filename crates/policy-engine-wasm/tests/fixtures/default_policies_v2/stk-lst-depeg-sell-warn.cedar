@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: STK-01 (selling/collateralizing a
+// pasu default v2 policy — explorer id: STK-01 (selling/collateralizing a
 // depegged LST/LRT at its discounted market price).
 //
 // COMPOSITE state+oracle, NOT a pure action-field. The token being sold

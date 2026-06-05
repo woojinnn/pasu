@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: UNI-10 (exact-out max-in far above
+// pasu default v2 policy — explorer id: UNI-10 (exact-out max-in far above
 // fair value).
 //
 // An exact-out swap ("receive exactly N") carries a `maxAmountIn` ceiling; if

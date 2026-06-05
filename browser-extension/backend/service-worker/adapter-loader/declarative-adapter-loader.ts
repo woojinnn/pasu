@@ -159,7 +159,7 @@ async function timedRegistryFetch(
   const sentAtMs = Date.now();
   const startedAt = performance.now();
   const traceSeq = fetchStarted(label, url);
-  console.info("[Scopeball] registry-fetch → sent", {
+  console.info("[Pasu] registry-fetch → sent", {
     label,
     url,
     sentAt: new Date(sentAtMs).toISOString(),
@@ -168,7 +168,7 @@ async function timedRegistryFetch(
     const response = await doFetch(url);
     const durationMs = Math.round(performance.now() - startedAt);
     fetchEnded(traceSeq, response.status, durationMs);
-    console.info("[Scopeball] registry-fetch ← recv", {
+    console.info("[Pasu] registry-fetch ← recv", {
       label,
       url,
       sentAt: new Date(sentAtMs).toISOString(),
@@ -184,7 +184,7 @@ async function timedRegistryFetch(
       `error:${err instanceof Error ? err.message : String(err)}`,
       durationMs,
     );
-    console.warn("[Scopeball] registry-fetch ✗ error", {
+    console.warn("[Pasu] registry-fetch ✗ error", {
       label,
       url,
       sentAt: new Date(sentAtMs).toISOString(),
@@ -298,7 +298,7 @@ export async function installDeclarativeBundleV3(
     if (parsedBundle) {
       // Cache-hit marker for repeat calls in the same service-worker lifetime;
       // WASM already has this bundle installed in its in-memory v3 state.
-      console.info("[Scopeball] installDeclarativeBundleV3 cache-hit", {
+      console.info("[Pasu] installDeclarativeBundleV3 cache-hit", {
         callkey: cacheKey,
         bundleId: cached.bundle_id,
         decoderId: cached.decoder_id,
@@ -334,7 +334,7 @@ export async function installDeclarativeBundleV3(
         v3InstallCache.set(k, reinstalled);
         v3CachedBundleByCallKey.set(k, storageEntry.bundle);
       }
-      console.info("[Scopeball] installDeclarativeBundleV3 storage-hit", {
+      console.info("[Pasu] installDeclarativeBundleV3 storage-hit", {
         callkey: cacheKey,
         bundleId: reinstalled.bundle_id,
         decoderId: reinstalled.decoder_id,
@@ -349,7 +349,7 @@ export async function installDeclarativeBundleV3(
     // chrome.storage 읽기 실패 / WASM install 실패 — 무음으로 cold fetch 로
     // 떨어뜨림. storage corruption 이 SW 를 brick 시키지 않게 함.
     console.warn(
-      "[Scopeball] installDeclarativeBundleV3 storage rehydrate failed",
+      "[Pasu] installDeclarativeBundleV3 storage rehydrate failed",
       err instanceof Error ? err.message : err,
     );
   }
@@ -470,14 +470,14 @@ export async function installDeclarativeBundleV3(
     // Persisting is best-effort — degrade gracefully so a storage fault
     // (quota exceeded etc.) cannot block the v3 install path itself.
     console.warn(
-      "[Scopeball] installDeclarativeBundleV3 storage persist failed",
+      "[Pasu] installDeclarativeBundleV3 storage persist failed",
       err instanceof Error ? err.message : err,
     );
   }
 
   // Fresh-install marker: registry fetch, parseBundleV3, WASM install, and
   // best-effort chrome.storage mirroring all completed for this callkey.
-  console.info("[Scopeball] installDeclarativeBundleV3 fresh-install", {
+  console.info("[Pasu] installDeclarativeBundleV3 fresh-install", {
     callkey: cacheKey,
     url,
     bundleId: installed.bundle_id,
@@ -520,7 +520,7 @@ export async function installDeclarativeBundleV3ByTypedData(
   const cached = v3InstallCache.get(cacheKey);
   if (cached) {
     console.info(
-      "[Scopeball] installDeclarativeBundleV3ByTypedData cache-hit",
+      "[Pasu] installDeclarativeBundleV3ByTypedData cache-hit",
       {
         typedDataKey: cacheKey,
         bundleId: cached.bundle_id,
@@ -539,7 +539,7 @@ export async function installDeclarativeBundleV3ByTypedData(
     response = await timedRegistryFetch(doFetch, url, "typed-data");
   } catch (err) {
     console.warn(
-      "[Scopeball] installDeclarativeBundleV3ByTypedData fetch failed",
+      "[Pasu] installDeclarativeBundleV3ByTypedData fetch failed",
       {
         typedDataKey: cacheKey,
         message: err instanceof Error ? err.message : err,
@@ -560,7 +560,7 @@ export async function installDeclarativeBundleV3ByTypedData(
     parsedResponse = (await response.json()) as DeclarativeRegistryV3Response;
   } catch (err) {
     console.warn(
-      "[Scopeball] installDeclarativeBundleV3ByTypedData json parse failed",
+      "[Pasu] installDeclarativeBundleV3ByTypedData json parse failed",
       {
         typedDataKey: cacheKey,
         message: err instanceof Error ? err.message : err,
@@ -579,7 +579,7 @@ export async function installDeclarativeBundleV3ByTypedData(
   } catch (err) {
     if (err instanceof BundleParseError) {
       console.warn(
-        "[Scopeball] installDeclarativeBundleV3ByTypedData parse failed",
+        "[Pasu] installDeclarativeBundleV3ByTypedData parse failed",
         { typedDataKey: cacheKey, message: err.message },
       );
       return { ok: false, reason: "parse_failed" };
@@ -596,7 +596,7 @@ export async function installDeclarativeBundleV3ByTypedData(
     installed = await declarativeInstallV3(bundleJson);
   } catch (err) {
     console.warn(
-      "[Scopeball] installDeclarativeBundleV3ByTypedData install failed",
+      "[Pasu] installDeclarativeBundleV3ByTypedData install failed",
       {
         typedDataKey: cacheKey,
         message: err instanceof Error ? err.message : err,
@@ -610,7 +610,7 @@ export async function installDeclarativeBundleV3ByTypedData(
   v3InstalledBundleIds.add(installed.bundle_id);
 
   console.info(
-    "[Scopeball] installDeclarativeBundleV3ByTypedData fresh-install",
+    "[Pasu] installDeclarativeBundleV3ByTypedData fresh-install",
     {
       typedDataKey: cacheKey,
       url,
@@ -661,7 +661,7 @@ export async function installDeclarativeBundleV3BySelector(args: {
   try {
     response = await doFetch(url);
   } catch (err) {
-    console.warn("[Scopeball] installDeclarativeBundleV3BySelector fetch failed", {
+    console.warn("[Pasu] installDeclarativeBundleV3BySelector fetch failed", {
       selectorKey: cacheKey,
       message: err instanceof Error ? err.message : err,
     });
@@ -670,7 +670,7 @@ export async function installDeclarativeBundleV3BySelector(args: {
 
   if (response.status === 404) return null;
   if (!response.ok) {
-    console.warn("[Scopeball] installDeclarativeBundleV3BySelector fetch_status", {
+    console.warn("[Pasu] installDeclarativeBundleV3BySelector fetch_status", {
       selectorKey: cacheKey,
       status: response.status,
     });
@@ -681,7 +681,7 @@ export async function installDeclarativeBundleV3BySelector(args: {
   try {
     parsedResponse = (await response.json()) as DeclarativeRegistryV3Response;
   } catch (err) {
-    console.warn("[Scopeball] installDeclarativeBundleV3BySelector json parse failed", {
+    console.warn("[Pasu] installDeclarativeBundleV3BySelector json parse failed", {
       selectorKey: cacheKey,
       message: err instanceof Error ? err.message : err,
     });
@@ -695,7 +695,7 @@ export async function installDeclarativeBundleV3BySelector(args: {
     parsedBundle = parseBundleV3(parsedResponse.bundle);
   } catch (err) {
     if (err instanceof BundleParseError) {
-      console.warn("[Scopeball] installDeclarativeBundleV3BySelector parse failed", {
+      console.warn("[Pasu] installDeclarativeBundleV3BySelector parse failed", {
         selectorKey: cacheKey,
         message: err.message,
       });
@@ -710,7 +710,7 @@ export async function installDeclarativeBundleV3BySelector(args: {
   try {
     installed = await declarativeInstallV3(bundleJson);
   } catch (err) {
-    console.warn("[Scopeball] installDeclarativeBundleV3BySelector install failed", {
+    console.warn("[Pasu] installDeclarativeBundleV3BySelector install failed", {
       selectorKey: cacheKey,
       message: err instanceof Error ? err.message : err,
     });
@@ -721,7 +721,7 @@ export async function installDeclarativeBundleV3BySelector(args: {
   v3CachedBundleByCallKey.set(cacheKey, parsedBundle);
   v3InstalledBundleIds.add(installed.bundle_id);
 
-  console.info("[Scopeball] installDeclarativeBundleV3BySelector fresh-install", {
+  console.info("[Pasu] installDeclarativeBundleV3BySelector fresh-install", {
     selectorKey: cacheKey,
     url,
     bundleId: installed.bundle_id,

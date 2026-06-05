@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AIR-06 (claim demands an upfront
+// pasu default v2 policy — explorer id: AIR-06 (claim demands an upfront
 // approve / fee / "unlock" payment first — the classic advance-fee scam).
 //
 // METHOD-BACKED bundle fold (Aggregator type 9; sv = COV). A real claim only

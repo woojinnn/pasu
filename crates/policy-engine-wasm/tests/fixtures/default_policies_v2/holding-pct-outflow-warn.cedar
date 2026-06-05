@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: GEN-06 (moving too large a share of
+// pasu default v2 policy — explorer id: GEN-06 (moving too large a share of
 // one asset's holding in a single action).
 //
 // Sending or approving a very large fraction of what you hold of one token is a

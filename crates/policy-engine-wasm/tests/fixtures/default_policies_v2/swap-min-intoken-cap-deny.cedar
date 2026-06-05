@@ -1,4 +1,4 @@
-// scopeball default v2 policy — deny any swap selling 0.05 or more of the input
+// pasu default v2 policy — deny any swap selling 0.05 or more of the input
 // token (token-amount basis, NOT USD).
 //
 // The raw `direction.amountIn` is a U256 hex String (not Cedar-comparable), so

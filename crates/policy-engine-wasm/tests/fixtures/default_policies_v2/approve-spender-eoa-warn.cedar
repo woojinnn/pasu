@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: GEN-14 (approving an EOA instead of
+// pasu default v2 policy — explorer id: GEN-14 (approving an EOA instead of
 // a contract).
 //
 // A legitimate `approve` almost always targets a contract (a router, a vault, a

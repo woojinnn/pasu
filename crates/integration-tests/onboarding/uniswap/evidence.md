@@ -9,7 +9,7 @@
 |---|---|
 | protocol | uniswap |
 | branch | feat/uniswap-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2 |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-registry-v2 |
 | date | 2026-06-02 |
 | main agent | Codex |
 | base commit | 77d33ddf8a7e70658ce18592c505eb4dc84c89c3 |

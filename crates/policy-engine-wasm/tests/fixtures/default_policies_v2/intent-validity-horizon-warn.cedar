@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: UNI-11 (UniswapX/CoW order TTL too
+// pasu default v2 policy — explorer id: UNI-11 (UniswapX/CoW order TTL too
 // long → free option for the filler).
 //
 // A signed open order is effectively a free option for the filler/solver: a long

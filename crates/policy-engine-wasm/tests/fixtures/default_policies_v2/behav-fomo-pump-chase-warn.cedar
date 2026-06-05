@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: F4 / ORDER (FOMO pump chasing).
+// pasu default v2 policy — explorer id: F4 / ORDER (FOMO pump chasing).
 // Personal-trading (TradFi pre-trade) family.
 //
 // Rule: warn when the token being BOUGHT (`tokenOut`) has already run up sharply

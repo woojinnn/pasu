@@ -9,7 +9,7 @@
 |---|---|
 | protocol | curve |
 | branch | feat/curve-onboarding-redo |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2 |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-registry-v2 |
 | date | 2026-06-01 |
 | main agent | Codex |
 | base commit | e2bb86d2 |

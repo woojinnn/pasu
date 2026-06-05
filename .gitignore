@@ -96,7 +96,7 @@ AGENTS.md
 !/crates/integration-tests/logs/README.md
 
 # Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
-.scopeball-runtime/
+.pasu-runtime/
 
 # Extension signing key — never commit
 *.pem

@@ -115,7 +115,7 @@ const mocks = vi.hoisted(() => {
         },
       },
       runtime: {
-        getURL: vi.fn((path: string) => `chrome-extension://scopeball/${path}`),
+        getURL: vi.fn((path: string) => `chrome-extension://pasu/${path}`),
         sendMessage: vi.fn(async () => undefined),
         onMessage: {
           addListener: vi.fn((listener: (message: unknown) => void) => {
@@ -240,7 +240,7 @@ function untypedMessage(requestId = "sig-1"): Message {
 
 function approve(requestId: string, ok: boolean): void {
   for (const listener of [...mocks.runtimeMessageListeners]) {
-    listener({ type: "scopeball:verdict-decision", requestId, ok });
+    listener({ type: "pasu:verdict-decision", requestId, ok });
   }
 }
 
@@ -830,7 +830,7 @@ describe("orchestrator", () => {
 
     const summary = infoSpy.mock.calls
       .map((call) => String(call[0]))
-      .find((line) => line.startsWith("[Scopeball] off-chain signature parsed"));
+      .find((line) => line.startsWith("[Pasu] off-chain signature parsed"));
     expect(summary).toBeDefined();
     // EIP-712 primaryType + routing decoder + the decoded action tag/fields are
     // all surfaced in one readable line.

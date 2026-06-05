@@ -905,7 +905,7 @@ fn curve_llamalend_create_loan_borrows_crvusd_against_collateral() {
 }
 
 /// Field-level golden for Curve LlamaLend `approve(address,bool)` — the permission-
-/// delegation primitive (ScopeBall's raison d'être). On a newgen LlamaLend
+/// delegation primitive (Pasu's raison d'être). On a newgen LlamaLend
 /// Controller (sreUSD market), `approve(_spender, _allow)` must decode to a
 /// `permission` / `protocol_authorization` granting the OPERATOR role to
 /// `_spender`, with `is_authorized` reflecting the `_allow` bool. A silent drop

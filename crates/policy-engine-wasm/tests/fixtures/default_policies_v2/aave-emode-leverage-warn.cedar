@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AAVE-06 (eMode/collateral toggle
+// pasu default v2 policy — explorer id: AAVE-06 (eMode/collateral toggle
 // pushes looping leverage too high).
 //
 // STATE / REDUCER fact. Bundling correlated assets (e.g. stETH/ETH) into eMode

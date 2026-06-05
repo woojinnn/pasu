@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: UNI-03 (estimated price impact too
+// pasu default v2 policy — explorer id: UNI-03 (estimated price impact too
 // large → thin pool, you move the market against yourself).
 //
 // `priceImpactBp` is a base `Long` field of `Amm::SwapContext` (a lowered

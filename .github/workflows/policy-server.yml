@@ -22,11 +22,11 @@ on:
       namespace:
         description: Kubernetes namespace
         required: true
-        default: scopeball
+        default: pasu
       release_name:
         description: Helm release name
         required: true
-        default: scopeball
+        default: pasu
       image_tag:
         description: Image tag to deploy. Defaults to the current git SHA.
         required: false
@@ -36,7 +36,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/scopeball-policy-server
+  IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/pasu-policy-server
   CHART_PATH: crates/policy-server/server/deploy/helm/policy-server
 
 jobs:

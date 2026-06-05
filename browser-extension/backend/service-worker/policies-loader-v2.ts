@@ -112,7 +112,7 @@ async function loadBakedSetV2(): Promise<V2Bundle[]> {
       return parsed;
     } catch (err) {
       console.warn(
-        "[Scopeball] v2 default policy set load failed:",
+        "[Pasu] v2 default policy set load failed:",
         err instanceof Error ? err.message : err,
       );
       // Cache the empty result so a transient failure doesn't re-fetch on
@@ -170,7 +170,7 @@ async function refreshDashboardBundles(): Promise<void> {
       .map(managedToV2Bundle);
   } catch (err) {
     console.warn(
-      "[Scopeball] v2 dashboard policy load failed:",
+      "[Pasu] v2 dashboard policy load failed:",
       err instanceof Error ? err.message : err,
     );
   }

@@ -1,15 +1,15 @@
 # DESIGN — Wiring the v2 Enrichment Pipeline: server-side `POST /v1/rpc` fetcher route
 
 **Status:** Design (decision-ready, not implementation)
-**Audience:** ScopeBall maintainer + woojinnn (owner of the axum `policy-server`)
+**Audience:** Pasu maintainer + woojinnn (owner of the axum `policy-server`)
 **Date:** 2026-06-03
-**Branch context:** `feat/lido-onboarding` (worktree `scopeball-lido`); Lido decoder slice landed in `decoder.rs` at commit `03de73e3`. This doc is the **L6(B)** deliverable; **L6(A)** = the decoder slice. Cross-ref: `LIMITATIONS.md` §L6.
+**Branch context:** `feat/lido-onboarding` (worktree `pasu-lido`); Lido decoder slice landed in `decoder.rs` at commit `03de73e3`. This doc is the **L6(B)** deliverable; **L6(A)** = the decoder slice. Cross-ref: `LIMITATIONS.md` §L6.
 
 ---
 
 ## 1. Summary
 
-ScopeBall's stateless **v2 enrichment / policy-RPC pipeline** is built end to end on the **client/WASM side** but **dormant in production** because it has no server to talk to. A manifest's `policy_rpc[]` enrichment specs are planned by WASM (`plan_action_rpc_v2_json`), the extension SW POSTs the resolved batch to `${POLICY_RPC_URL}/v1/rpc` (`postPolicyRpc`, `policy-rpc.ts:382-421`), and WASM folds results back into Cedar `context.custom.*` (`materialize_v2.rs`). **Every hop exists except one: the server route that actually receives the batch, executes the reads, and returns results.** `app.rs` has **no `/v1/rpc` route**, `/evaluate` stubs the results map to empty, and `config.rs` has no RPC-provider URL. The single deliverable is a **fetch-plus-decode-only** `POST /v1/rpc` handler on the policy-server that resolves each planned `(method, params)` against a server-side registry whitelist, performs `eth_call`s via the existing `OnchainViewFetcher`, decodes by `decoder_id`, and echoes `{request_id, results[]}`. Default config keeps it disabled; when a `POLICY_RPC_*` URL is configured, enrichment goes live. **Verdicts stay 100% local in WASM Cedar — the server returns data, never a verdict.**
+Pasu's stateless **v2 enrichment / policy-RPC pipeline** is built end to end on the **client/WASM side** but **dormant in production** because it has no server to talk to. A manifest's `policy_rpc[]` enrichment specs are planned by WASM (`plan_action_rpc_v2_json`), the extension SW POSTs the resolved batch to `${POLICY_RPC_URL}/v1/rpc` (`postPolicyRpc`, `policy-rpc.ts:382-421`), and WASM folds results back into Cedar `context.custom.*` (`materialize_v2.rs`). **Every hop exists except one: the server route that actually receives the batch, executes the reads, and returns results.** `app.rs` has **no `/v1/rpc` route**, `/evaluate` stubs the results map to empty, and `config.rs` has no RPC-provider URL. The single deliverable is a **fetch-plus-decode-only** `POST /v1/rpc` handler on the policy-server that resolves each planned `(method, params)` against a server-side registry whitelist, performs `eth_call`s via the existing `OnchainViewFetcher`, decodes by `decoder_id`, and echoes `{request_id, results[]}`. Default config keeps it disabled; when a `POLICY_RPC_*` URL is configured, enrichment goes live. **Verdicts stay 100% local in WASM Cedar — the server returns data, never a verdict.**
 
 ---
 
@@ -234,7 +234,7 @@ Add fields to `ServerConfig` (`config.rs:9-33`), populate in `from_env()` (`conf
 5. **Concrete `eth_call` method?** Do we need a generic `chain.eth_call`/`onchain.view` method (§3.3 mechanism 2), or is registry-keyed resolution (mechanism 1) sufficient for all near-term manifests (Lido included)? If yes, **defer** the generic method — it adds attack surface.
 6. **Enable-gate default & rollout.** `POLICY_RPC_ENABLED=false` by default (preserves today's 100%-local verdicts, `LIMITATIONS.md:172`); flip per-environment once whitelist + rate-limit + cache land.
 
-**woojinnn coordination point:** he owns the axum `policy-server` — the **route tier + auth decision (Q1)**, the **middleware stack** (rate-limit/body-limit/CORS), the **config additions** (`config.rs`), and the **provider/quota isolation (Q3)** are his surface. The ScopeBall maintainer owns the **registry call-spec mirror / whitelist (Q2)**, the **`ttl_s`-driven cache contract (Q4)**, and the **registryV2 gating-lint** (§5 row 7). The wire contract (§3) is **fixed by the already-shipped client** — neither side may change `request_id`-echo, the `{id,ok,result}` entry shape, or the unwrapped-`$.result` payload convention without a coordinated extension change.
+**woojinnn coordination point:** he owns the axum `policy-server` — the **route tier + auth decision (Q1)**, the **middleware stack** (rate-limit/body-limit/CORS), the **config additions** (`config.rs`), and the **provider/quota isolation (Q3)** are his surface. The Pasu maintainer owns the **registry call-spec mirror / whitelist (Q2)**, the **`ttl_s`-driven cache contract (Q4)**, and the **registryV2 gating-lint** (§5 row 7). The wire contract (§3) is **fixed by the already-shipped client** — neither side may change `request_id`-echo, the `{id,ok,result}` entry shape, or the unwrapped-`$.result` payload convention without a coordinated extension change.
 
 ---
 

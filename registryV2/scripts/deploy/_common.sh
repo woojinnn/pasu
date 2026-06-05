@@ -22,13 +22,13 @@
 set -euo pipefail
 
 # --- Identity / resources -----------------------------------------------------
-PROJECT_ID="${PROJECT_ID:-scopeball-registry-poc-g}"
+PROJECT_ID="${PROJECT_ID:-pasu-registry-poc-g}"
 REGION="${REGION:-asia-northeast3}"
-BUCKET="${BUCKET:-scopeball-registry-v3-seoul}"
+BUCKET="${BUCKET:-pasu-registry-v3-seoul}"
 SA_NAME="${SA_NAME:-registry-api-v3-sa}"
 SA_EMAIL="${SA_EMAIL:-${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com}"
 SERVICE_NAME="${SERVICE_NAME:-registry-api-v3}"
-AR_REPO="${AR_REPO:-${REGION}-docker.pkg.dev/${PROJECT_ID}/scopeball/registry-api}"
+AR_REPO="${AR_REPO:-${REGION}-docker.pkg.dev/${PROJECT_ID}/pasu/registry-api}"
 
 # --- Cloud Run runtime shape (env-overridable) --------------------------------
 # max-instances = denial-of-wallet cost ceiling (threat model A5) — always pin.
@@ -62,11 +62,11 @@ EXPECTED_ACCOUNT="${EXPECTED_ACCOUNT:-sujini000522@gmail.com}"
 RV2_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # registryV2/
 REPO_ROOT="$(cd "${RV2_DIR}/.." && pwd)"                        # repo root
 
-# Activate the scopeball gcloud config + project, then assert the active account
+# Activate the pasu gcloud config + project, then assert the active account
 # matches EXPECTED_ACCOUNT (misfire guard). Fatal on mismatch.
 rv3_activate_and_guard() {
   echo "=== gcloud config 활성 + 계정 가드 ==="
-  gcloud config configurations activate scopeball >/dev/null
+  gcloud config configurations activate pasu >/dev/null
   gcloud config set project "${PROJECT_ID}" >/dev/null
   local active
   active="$(gcloud config get-value account 2>/dev/null || true)"

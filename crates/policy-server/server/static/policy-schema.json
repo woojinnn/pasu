@@ -1,5 +1,5 @@
 {
-  "$schema": "scopeball/policy-schema/v1",
+  "$schema": "pasu/policy-schema/v1",
   "actions": [
     {
       "id": "Amm::Swap",
