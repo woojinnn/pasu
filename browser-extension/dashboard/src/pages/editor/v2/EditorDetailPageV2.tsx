@@ -28,8 +28,10 @@ import "../../market.css";
 import { catLabel, catStyle } from "./categories";
 import { CatIcon, PencilIcon, ShieldIcon, WarnIcon } from "./icons";
 import { isDraft, isMarketSource } from "./helpers";
+import { PolicyDiagram } from "../../../cedar/diagram/PolicyDiagram";
+import { textToBlocks } from "../../../cedar";
 
-type Tab = "cedar" | "form" | "block";
+type Tab = "cedar" | "form" | "block" | "diagram";
 
 function defaultTab(method: PolicyMethod | undefined): Tab {
   if (method === "block") return "block";
@@ -317,6 +319,11 @@ function EditorBody({
             active={tab === "block"}
             onClick={() => handleTabChange("block")}
           />
+          <TabBtn
+            label="다이어그램"
+            active={tab === "diagram"}
+            onClick={() => handleTabChange("diagram")}
+          />
           <span className="ev2-spc" />
           {draft && (
             <button
@@ -406,6 +413,7 @@ function EditorBody({
             }}
           />
         )}
+        {tab === "diagram" && <DiagramTab cedarText={cedarText} />}
       </div>
 
       <PublishModal
@@ -439,6 +447,42 @@ function TabBtn(props: {
       {props.label}
       {props.disabled && <span className="ev2-tab-soon">준비 중</span>}
     </button>
+  );
+}
+
+/**
+ * The 다이어그램 tab — a read-only UML-feel structure view of the policy.
+ * Parses the live `cedarText` (the shared source both the Cedar and Block tabs
+ * keep current) into a {@link PolicyIR} via the WASM bridge, then renders it.
+ * Last good diagram is kept while a malformed in-progress edit can't parse.
+ */
+function DiagramTab({ cedarText }: { cedarText: string }) {
+  const q = useQuery({
+    queryKey: ["editor-diagram-ir", cedarText],
+    queryFn: async () => {
+      const text = cedarText.trim();
+      if (!text) return null;
+      const irs = await textToBlocks(text);
+      return irs[0] ?? null;
+    },
+    placeholderData: (prev) => prev, // hold the last diagram across re-parses
+    retry: false,
+  });
+
+  if (q.isError) {
+    return (
+      <div className="ev2-empty">
+        <div className="big">아직 다이어그램을 그릴 수 없어요</div>
+        <div className="sm">
+          Cedar 또는 블록 탭에서 정책을 완성하면 구조가 표시됩니다.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="ev2-diagram-pane">
+      <PolicyDiagram ir={q.data ?? null} />
+    </div>
   );
 }
 
