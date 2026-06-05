@@ -1,12 +1,12 @@
 [package]
-name = "simulation-db"
+name = "policy-db"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 
 [dependencies]
-simulation-state = { workspace = true }
+policy-state = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -16,3 +16,4 @@ blake3 = "1.5"
 hex = { workspace = true }
 sqlx-core = { version = "=0.8.6", default-features = false, features = ["_rt-tokio", "_tls-rustls-ring-webpki", "json", "migrate"] }
 sqlx-postgres = { version = "=0.8.6", default-features = false, features = ["chrono", "json", "migrate", "uuid"] }
+uuid = { version = "1", features = ["v4"] }

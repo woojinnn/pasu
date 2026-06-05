@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xec4ba53e617e72313ed750db891e17f972b1f573",
+  "symbol": "iouUSDC",
+  "decimals": 6,
+  "name": "Clear IOU: USD Coin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

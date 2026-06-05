@@ -1,0 +1,81 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x7b06f57669a7feb587ac72acb8fd9bbd403e9ffd",
+  "symbol": "PHmsUSD",
+  "decimals": 18,
+  "name": "Power Harvest msUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x7b06f57669a7feb587ac72acb8fd9bbd403e9ffd"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xb2f050fb276ecfcb77c9ca1ce92d8914750a41fb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcea7de485cf3b69cf3d5f7dfadf9e1df31303988"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x90613e167d42ca420942082157b42af6fc6a8087"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xd9e38d724cc5ee983bc0fd0ce35c3eb20417b673"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x58f8afd6f6499b02e68cb8964fd1d3da3afb9465"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcf58a2fec96ffdf11b0dfa1ed15433b488485cf3"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x0487694d04b2473b1239cbbcf4dd1b8c14f40e2b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x526728dbc96689597f85ae4cd716d4f7fccbae9d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

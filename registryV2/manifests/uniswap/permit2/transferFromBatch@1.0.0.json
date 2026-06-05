@@ -1,0 +1,64 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/transferFromBatch@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note": "Permit2 AllowanceTransfer.transferFrom(AllowanceTransferDetails[]). Each tuple is (from,to,amount,token). array_emit expands each entry to token/erc20_transfer so the wallet surfaces every moved token, recipient, and amount. The delegated owner `from` is not represented by the current Erc20Transfer ActionBody; owner-aware policy needs a future dedicated Permit2TransferFrom action.",
+  "match": {
+    "selector": "0x0d58b1db",
+    "chain_to_addresses": {
+      "1":     ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "10":    ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "8453":  ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "42161": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "transferFrom",
+    "abi": {
+      "name": "transferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "transferDetails",
+          "type": "tuple[]",
+          "components": [
+            { "name": "from", "type": "address" },
+            { "name": "to", "type": "address" },
+            { "name": "amount", "type": "uint160" },
+            { "name": "token", "type": "address" }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.transferDetails",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$inputs.[3]"
+            }
+          },
+          "recipient": "$inputs.[1]",
+          "amount": "$inputs.[2]"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

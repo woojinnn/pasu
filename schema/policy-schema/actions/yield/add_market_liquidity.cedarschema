@@ -1,0 +1,49 @@
+// Yield::AddMarketLiquidity — add liquidity to a Pendle market / mint LP
+// (ActionAddRemoveLiqV3 facet, addLiquidity*).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/add_market_liquidity.rs`
+// (`AddMarketLiquidityAction` + `MarketTokensLiveInputs`). The sy/pt/yt/maturity
+// fields are host-populated live inputs (P1c, §4d); `LiveField<T>` is inlined as `T`.
+
+namespace Yield {
+  type AddMarketLiquidityContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // Pendle market receiving liquidity (address).
+    market: String,
+    // Add-liquidity kind discriminant: "dual_token_and_pt" | "dual_sy_and_pt" |
+    // "single_pt" | "single_token" | "single_sy" | "single_token_keep_yt" |
+    // "single_sy_keep_yt".
+    kind: String,
+    // Plain external token supplied; present for the *token* kinds.
+    externalToken?: Core::TokenRef,
+    // External-token amount supplied (U256 hex; 0 if not a token kind).
+    netTokenIn: String,
+    // PT amount supplied (U256 hex; 0 if not supplied).
+    netPtIn: String,
+    // SY amount supplied (U256 hex; 0 if not supplied).
+    netSyIn: String,
+    // Minimum LP minted / slippage floor (U256 hex).
+    minLpOut: String,
+    // LP recipient (address).
+    recipient: String,
+    // Market-derived instruments + maturity (host-populated live fields):
+    // SY/PT/YT from IPMarket.readTokens(), maturity from IPMarket.expiry().
+    sy: String,
+    pt: String,
+    yt: String,
+    maturity: String,
+    // Manifest-extensible slot.
+    custom?: AddMarketLiquidityCustomContext,
+  };
+
+  type AddMarketLiquidityCustomContext = {};
+
+  action "AddMarketLiquidity" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: AddMarketLiquidityContext,
+  };
+}

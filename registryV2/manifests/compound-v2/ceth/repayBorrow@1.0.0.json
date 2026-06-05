@@ -1,0 +1,77 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/ceth/repayBorrow@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 cETH repayBorrow(): repay own ETH debt via msg.value (Lending::Repay; payable).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x4e4d9fea",
+    "chain_to_addresses": {
+      "1": [
+        "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "repayBorrow",
+    "abi": {
+      "name": "repayBorrow",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": {
+            "name": "compound_v2",
+            "chain": "$chain",
+            "comptroller": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+          },
+          "asset": {
+            "key": {
+              "standard": "native",
+              "chain": "$chain",
+              "address": "0x0000000000000000000000000000000000000000"
+            }
+          },
+          "amount": "$tx.value",
+          "rate_mode": "variable",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_reserve_state"
+        },
+        "ttl_s": 30
+      },
+      "current_debt": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_current_debt"
+        },
+        "ttl_s": 12
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_user_state_before"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

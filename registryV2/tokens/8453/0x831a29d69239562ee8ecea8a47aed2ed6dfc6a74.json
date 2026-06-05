@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x831a29d69239562ee8ecea8a47aed2ed6dfc6a74",
+  "symbol": "BRRR",
+  "decimals": 9,
+  "name": "MoneyPrinterGoBRRR",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

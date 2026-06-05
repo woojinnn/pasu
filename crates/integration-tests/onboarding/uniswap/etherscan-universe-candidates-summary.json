@@ -1,0 +1,408 @@
+{
+  "generatedAt": "2026-06-01T18:44:42.314Z",
+  "protocol": "uniswap",
+  "source": "Etherscan v2 account txlist, adapter-blind by P0 address-universe candidate addresses",
+  "targetSource": "universe-candidates",
+  "apiCallsUsed": 8,
+  "targetsQueried": 8,
+  "coverAddressesQueried": 8,
+  "offset": 10000,
+  "pageLimit": 1,
+  "targetRawTxFloor": 1,
+  "floorMet": true,
+  "rawTxsSeen": 3,
+  "uniqueTxHashesSeen": 3,
+  "inputTxsSeen": 3,
+  "matchedInputTxs": 3,
+  "excludedInputTxs": 0,
+  "unmatchedInputTxs": 0,
+  "actionableUnmatchedInputTxs": 0,
+  "nonActionableUnmatchedInputTxs": 0,
+  "unmatchedDispositions": [],
+  "uniqueSelectorsSeen": 3,
+  "uniqueMatchedSelectorsSeen": 3,
+  "uniqueExcludedSelectorsSeen": 0,
+  "uniqueUnmatchedSelectorsSeen": 0,
+  "matchedCallkeys": 3,
+  "errors": [
+    {
+      "chainId": 8453,
+      "address": "0x58aeb29a7e88b83ce8509b43ce4b42d6e68a0dd1",
+      "name": "uniswap-v2-child-universe-deferred",
+      "page": 1,
+      "message": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    },
+    {
+      "chainId": 10,
+      "address": "0xaefede5dfacde87bc09e9ae12dfa94275b4ea01d",
+      "name": "uniswap-v2-child-universe-deferred",
+      "page": 1,
+      "message": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    },
+    {
+      "chainId": 8453,
+      "address": "0x741acb797fe6906aa99b25a15125ded583cd2be6",
+      "name": "uniswap-v3-child-universe-deferred",
+      "page": 1,
+      "message": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    },
+    {
+      "chainId": 10,
+      "address": "0x9fba24e356ef975f758bb259640ca48a0344db4b",
+      "name": "uniswap-v3-child-universe-deferred",
+      "page": 1,
+      "message": "NOTOK: Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis"
+    }
+  ],
+  "topSelectors": [
+    {
+      "selector": "0x095ea7b3",
+      "count": 1
+    },
+    {
+      "selector": "0xa9059cbb",
+      "count": 1
+    },
+    {
+      "selector": "0xfff6cae9",
+      "count": 1
+    }
+  ],
+  "topMatchedSelectors": [
+    {
+      "selector": "0x095ea7b3",
+      "count": 1
+    },
+    {
+      "selector": "0xa9059cbb",
+      "count": 1
+    },
+    {
+      "selector": "0xfff6cae9",
+      "count": 1
+    }
+  ],
+  "topExcludedSelectors": [],
+  "topUnmatchedSelectors": [],
+  "topUnmatchedAddressSelectors": [],
+  "topExcludedAddressSelectors": [],
+  "manifestSelectorsByCoverAddress": [
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xa9059cbb",
+      "txCount": 1,
+      "manifestIds": [
+        "standard/erc20/transfer@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xfff6cae9",
+      "txCount": 1,
+      "manifestIds": [
+        "uniswap/v2-pair/sync/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x095ea7b3",
+      "txCount": 1,
+      "manifestIds": [
+        "standard/erc20/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x022c0d9f",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/swap/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x095ea7b3",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x23b872dd",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x6a627842",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/mint/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x89afcb44",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/burn/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xbc25cf77",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/skim/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xd505accf",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/permit/1-v2-pair-d841745e@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x022c0d9f",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/swap/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x23b872dd",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x6a627842",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/mint/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0x89afcb44",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/burn/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xa9059cbb",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transfer@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xbc25cf77",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/skim/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xd505accf",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/permit/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    },
+    {
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "name": "uniswap-v2-child-universe-deferred",
+      "selector": "0xfff6cae9",
+      "txCount": 0,
+      "manifestIds": [
+        "uniswap/v2-pair/sync/42161-v2-pair-1be1b384@1.0.0"
+      ]
+    }
+  ],
+  "perAddress": [
+    {
+      "name": "uniswap-v2-child-universe-deferred",
+      "chainId": 1,
+      "address": "0xd841745e607f0d8d0027d92b10b7e4005d20ecab",
+      "rawTxs": 2,
+      "inputTxs": 2,
+      "matchedInputTxs": 2,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0xa9059cbb",
+          "count": 1,
+          "manifestIds": [
+            "standard/erc20/transfer@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xfff6cae9",
+          "count": 1,
+          "manifestIds": [
+            "uniswap/v2-pair/sync/1-v2-pair-d841745e@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v2-child-universe-deferred",
+      "chainId": 42161,
+      "address": "0x1be1b3847364f91fad268fb7e1067bce7f1fc87a",
+      "rawTxs": 1,
+      "inputTxs": 1,
+      "matchedInputTxs": 1,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x095ea7b3",
+          "count": 1,
+          "manifestIds": [
+            "standard/erc20/approve@1.0.0"
+          ]
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v3-child-universe-deferred",
+      "chainId": 1,
+      "address": "0x2c40c7b9f106f39a6e2aab6d9f1f29364e7250bc",
+      "rawTxs": 0,
+      "inputTxs": 0,
+      "matchedInputTxs": 0,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v3-child-universe-deferred",
+      "chainId": 10,
+      "address": "0x9fba24e356ef975f758bb259640ca48a0344db4b",
+      "rawTxs": 0,
+      "inputTxs": 0,
+      "matchedInputTxs": 0,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v2-child-universe-deferred",
+      "chainId": 10,
+      "address": "0xaefede5dfacde87bc09e9ae12dfa94275b4ea01d",
+      "rawTxs": 0,
+      "inputTxs": 0,
+      "matchedInputTxs": 0,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v2-child-universe-deferred",
+      "chainId": 8453,
+      "address": "0x58aeb29a7e88b83ce8509b43ce4b42d6e68a0dd1",
+      "rawTxs": 0,
+      "inputTxs": 0,
+      "matchedInputTxs": 0,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v3-child-universe-deferred",
+      "chainId": 8453,
+      "address": "0x741acb797fe6906aa99b25a15125ded583cd2be6",
+      "rawTxs": 0,
+      "inputTxs": 0,
+      "matchedInputTxs": 0,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    },
+    {
+      "name": "uniswap-v3-child-universe-deferred",
+      "chainId": 42161,
+      "address": "0xda13a26f67a195a352ed429d7a999e75e01a2021",
+      "rawTxs": 0,
+      "inputTxs": 0,
+      "matchedInputTxs": 0,
+      "excludedInputTxs": 0,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": []
+    }
+  ]
+}

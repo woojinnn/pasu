@@ -1,0 +1,45 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-erc20Transfer@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 erc20Transfer plumbing leg (reached via Bundler3 multicall(Call[])). GA1 sends `amount` of `token` to `receiver` from its own balance (bundle funding / leftover sweep). Modeled as token/erc20_transfer so the per-bundle token movement (token + amount + recipient) is legible — all three are in the leg calldata.",
+  "match": {
+    "selector": "0x3790767d",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "erc20Transfer",
+    "abi": {
+      "name": "erc20Transfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "address", "name": "token", "type": "address" },
+        { "internalType": "address", "name": "receiver", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.token" } },
+          "recipient": "$args.receiver",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

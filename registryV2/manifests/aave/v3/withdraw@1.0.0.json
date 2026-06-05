@@ -1,0 +1,81 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/withdraw@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x69328dec",
+    "chain_to_addresses": {
+      "1":     ["0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2"],
+      "10":    ["0x794a61358d6845594f94dc1db02a252b5b4814ad"],
+      "8453":  ["0xa238dd80c259a72e81d7e4664a9801593f98d1c5"],
+      "42161": ["0x794a61358d6845594f94dc1db02a252b5b4814ad"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "asset",  "type": "address" },
+        { "name": "amount", "type": "uint256" },
+        { "name": "to",     "type": "address" }
+      ],
+      "outputs": [
+        { "name": "", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name":      "aave_v3",
+            "chain":     "$chain",
+            "pool":      "$to",
+            "market_id": null
+          },
+          "asset":     { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.asset" } },
+          "amount":    "$args.amount",
+          "recipient": "$args.to"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "getReserveData(address)",
+          "decoder_id": "aave_v3_reserve_data"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind":    "derived_from",
+          "inputs":  [],
+          "calc_id": "aave_v3_available_to_withdraw"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$to",
+          "function":   "getUserAccountData(address)",
+          "decoder_id": "aave_v3_user_account_data"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x674e149dffcbc9d1a1fd67bb78513f7bc02482b1",
+  "symbol": "USDaf",
+  "decimals": 18,
+  "name": "USDaf Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

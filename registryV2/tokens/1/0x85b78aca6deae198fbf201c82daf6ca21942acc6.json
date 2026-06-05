@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x85b78aca6deae198fbf201c82daf6ca21942acc6",
+  "symbol": "ARM-WETH-stETH",
+  "decimals": 18,
+  "name": "Lido ARM",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

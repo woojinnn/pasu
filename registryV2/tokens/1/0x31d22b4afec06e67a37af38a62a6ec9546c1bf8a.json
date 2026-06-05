@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x31d22b4afec06e67a37af38a62a6ec9546c1bf8a",
+  "symbol": "lecrvUSD",
+  "decimals": 18,
+  "name": "Long ETH crvUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

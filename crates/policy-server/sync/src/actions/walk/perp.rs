@@ -1,19 +1,15 @@
-//! Perp 도메인 walk + apply.
-//!
 //! Wired: Open/Close/Increase/Decrease (10+4+10+4), `AdjustMargin` (2),
 //!        `ChangeLeverage` (3), `ChangeMarginMode` (2), `PlaceLimit` (4),
-//!        `PlaceStop` (2), `ClaimFunding` (1). 총 42 slots.
-//! `CancelOrder` 는 `live_inputs` 없음.
 
 use serde_json::Value;
 
-use simulation_reducer::action::perp::{
+use policy_state::{SignedI256, Time};
+use policy_transition::action::perp::{
     AdjustMarginAction, ChangeLeverageAction, ChangeMarginModeAction, ClaimFundingAction,
     ClosePerpAction, DecreasePerpAction, IncreasePerpAction, OpenPerpAction, PlaceLimitOrderAction,
     PlaceStopOrderAction,
 };
-use simulation_reducer::action::PerpAction;
-use simulation_state::{SignedI256, Time};
+use policy_transition::action::PerpAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 
@@ -566,7 +562,6 @@ fn apply_close(c: &mut ClosePerpAction, slot: &ActionSlot, value: Value, now: Ti
 }
 
 fn apply_increase(i: &mut IncreasePerpAction, slot: &ActionSlot, value: Value, now: Time) {
-    // Increase 의 live_inputs 가 OpenPerpLiveInputs 라서 슬롯 이름만 다르고 구조 동일.
     let li = &mut i.live_inputs;
     match slot {
         ActionSlot::PerpIncreaseMarkPrice => {
@@ -759,7 +754,6 @@ fn apply_claim_funding(c: &mut ClaimFundingAction, slot: &ActionSlot, value: Val
     }
 }
 
-/// `SignedI256` 변환 — decimal-string 또는 i64 number.
 fn value_to_i256(v: &Value) -> Option<SignedI256> {
     use std::str::FromStr;
     match v {

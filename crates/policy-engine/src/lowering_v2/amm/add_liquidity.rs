@@ -2,9 +2,9 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::{AddLiquidityAction, AddLiquidityParams};
-use simulation_state::primitives::U256;
-use simulation_state::token::{RangeSpec, TokenRef};
+use policy_state::primitives::U256;
+use policy_state::token::{RangeSpec, TokenRef};
+use policy_transition::action::amm::{AddLiquidityAction, AddLiquidityParams};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::{lower_token_key, lower_token_ref};
@@ -129,21 +129,21 @@ fn lower_range_spec(range: &RangeSpec) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::primitives::{Address, ChainId, Decimal, U128, U256};
+    use policy_state::token::{RangeSpec, TokenKey};
+    use policy_state::LiveField;
+    use policy_transition::action::amm::{
         AddLiquidityAction, AddLiquidityLiveInputs, AddLiquidityParams, AmmAction, AmmVenue,
         PoolState,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Address, ChainId, Decimal, U128, U256};
-    use simulation_state::token::{RangeSpec, TokenKey};
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{
         assert_conforms, now, onchain_meta, onchain_source, sample_token_ref, user,
     };
 
     /// A Uniswap V3 concentrated-mint add-liquidity (Tick range), on-chain meta.
-    fn sample_concentrated_mint() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_concentrated_mint() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let pool = Address::from_str("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").unwrap();
         let venue = AmmVenue::UniswapV3 {
@@ -185,7 +185,7 @@ mod tests {
 
     /// A Uniswap V2-style pooled deposit, on-chain meta — exercises the
     /// `tokens` set + `minLpOut` branch.
-    fn sample_pooled() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_pooled() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV2 {
             chain: chain.clone(),
@@ -220,7 +220,7 @@ mod tests {
     /// A Uniswap V3 ConcentratedIncrease (add to an existing position NFT) —
     /// exercises the third `AddLiquidityParams` arm (nftKey, amountDesired,
     /// amountMin; NO recipient field).
-    fn sample_concentrated_increase() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_concentrated_increase() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::UniswapV3 {
             chain: chain.clone(),
@@ -257,8 +257,7 @@ mod tests {
 
     /// A ConcentratedMint with a `RangeSpec::Bin` range (Trader Joe LB) —
     /// exercises the `bin` range arm (activeId emitted; distribution dropped).
-    fn sample_concentrated_mint_bin_range() -> (ActionBody, simulation_reducer::action::ActionMeta)
-    {
+    fn sample_concentrated_mint_bin_range() -> (ActionBody, policy_transition::action::ActionMeta) {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::TraderJoeLB {
             chain: chain.clone(),
@@ -301,8 +300,8 @@ mod tests {
 
     /// A ConcentratedMint with a `RangeSpec::Custom` range (Maverick / unknown)
     /// — exercises the `custom` range arm (protocol emitted; raw dropped).
-    fn sample_concentrated_mint_custom_range(
-    ) -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample_concentrated_mint_custom_range() -> (ActionBody, policy_transition::action::ActionMeta)
+    {
         let chain = ChainId::ethereum_mainnet();
         let venue = AmmVenue::MaverickV2 {
             chain: chain.clone(),

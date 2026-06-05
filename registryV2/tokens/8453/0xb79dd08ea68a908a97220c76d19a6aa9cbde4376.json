@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb79dd08ea68a908a97220c76d19a6aa9cbde4376",
+  "symbol": "USD+",
+  "decimals": 6,
+  "name": "USD+",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

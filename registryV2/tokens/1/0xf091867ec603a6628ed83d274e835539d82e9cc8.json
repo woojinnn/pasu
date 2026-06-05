@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf091867ec603a6628ed83d274e835539d82e9cc8",
+  "symbol": "ZETA",
+  "decimals": 18,
+  "name": "Zeta",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

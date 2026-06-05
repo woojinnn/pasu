@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0dfe11cf6969b8368589259125996cb0cddc0149",
+  "symbol": "DXNXLON-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: DXN/XLON",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x0db0a66daf641f812493c556a1e0f97379766276"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x80f0c1c49891dcfdd40b6e0f960f84e6042bcb6f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x36ff4dae0e88113d68b1209e245b0e3af92e9d58"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

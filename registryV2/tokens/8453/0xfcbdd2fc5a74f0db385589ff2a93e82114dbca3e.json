@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xfcbdd2fc5a74f0db385589ff2a93e82114dbca3e",
+  "symbol": "stEZ",
+  "decimals": 18,
+  "name": "Staked Eazy",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

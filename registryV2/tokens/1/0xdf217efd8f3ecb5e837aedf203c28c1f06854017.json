@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdf217efd8f3ecb5e837aedf203c28c1f06854017",
+  "symbol": "stBTC",
+  "decimals": 18,
+  "name": "Acre Staked Bitcoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

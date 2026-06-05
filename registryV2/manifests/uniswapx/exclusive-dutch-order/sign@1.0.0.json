@@ -1,0 +1,166 @@
+{
+  "type": "adapter_action",
+  "id": "uniswapx/exclusive-dutch-order/sign@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "UniswapX ExclusiveDutchOrder (V1) signed as a Permit2 permitWitnessTransferFrom witness — domain=Permit2, verifying_contract=canonical Permit2 (all chains), primary_type=PermitWitnessTransferFrom, witness_type=ExclusiveDutchOrder (the EIP-712 witness struct). reactor read from the witness order.info.reactor (NOT the EIP-712 verifying_contract). Mainnet only (ExclusiveDutchOrderReactor 0x6000da47…, 1차 SDK REACTOR_ADDRESS_MAPPING + Etherscan Exact Match, research §3.2/§3.3). EIP-712 type FLATTENS input → witness.inputToken/inputStartAmount/inputEndAmount. selector 0x00000001 is a sign-only placeholder (off-chain order is never an on-chain calldata call against this manifest; distinct per family to avoid by-callkey collision on the shared Permit2 address).",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    },
+    "typed_data": {
+      "domain_name": "Permit2",
+      "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      "primary_type": "PermitWitnessTransferFrom",
+      "witness_type": "ExclusiveDutchOrder",
+      "types": {
+        "PermitWitnessTransferFrom": [
+          { "name": "permitted", "type": "TokenPermissions" },
+          { "name": "spender", "type": "address" },
+          { "name": "nonce", "type": "uint256" },
+          { "name": "deadline", "type": "uint256" },
+          { "name": "witness", "type": "ExclusiveDutchOrder" }
+        ],
+        "TokenPermissions": [
+          { "name": "token", "type": "address" },
+          { "name": "amount", "type": "uint256" }
+        ],
+        "ExclusiveDutchOrder": [
+          { "name": "info", "type": "OrderInfo" },
+          { "name": "decayStartTime", "type": "uint256" },
+          { "name": "decayEndTime", "type": "uint256" },
+          { "name": "exclusiveFiller", "type": "address" },
+          { "name": "exclusivityOverrideBps", "type": "uint256" },
+          { "name": "inputToken", "type": "address" },
+          { "name": "inputStartAmount", "type": "uint256" },
+          { "name": "inputEndAmount", "type": "uint256" },
+          { "name": "outputs", "type": "DutchOutput[]" }
+        ],
+        "OrderInfo": [
+          { "name": "reactor", "type": "address" },
+          { "name": "swapper", "type": "address" },
+          { "name": "nonce", "type": "uint256" },
+          { "name": "deadline", "type": "uint256" },
+          { "name": "additionalValidationContract", "type": "address" },
+          { "name": "additionalValidationData", "type": "bytes" }
+        ],
+        "DutchOutput": [
+          { "name": "token", "type": "address" },
+          { "name": "startAmount", "type": "uint256" },
+          { "name": "endAmount", "type": "uint256" },
+          { "name": "recipient", "type": "address" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permitWitnessTransferFrom",
+    "abi": {
+      "name": "permitWitnessTransferFrom",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "order",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "permitted",
+              "type": "tuple",
+              "components": [
+                { "name": "token", "type": "address" },
+                { "name": "amount", "type": "uint256" }
+              ]
+            },
+            { "name": "spender", "type": "address" },
+            { "name": "nonce", "type": "uint256" },
+            { "name": "deadline", "type": "uint256" },
+            {
+              "name": "witness",
+              "type": "tuple",
+              "components": [
+                {
+                  "name": "info",
+                  "type": "tuple",
+                  "components": [
+                    { "name": "reactor", "type": "address" },
+                    { "name": "swapper", "type": "address" },
+                    { "name": "nonce", "type": "uint256" },
+                    { "name": "deadline", "type": "uint256" },
+                    { "name": "additionalValidationContract", "type": "address" },
+                    { "name": "additionalValidationData", "type": "bytes" }
+                  ]
+                },
+                { "name": "decayStartTime", "type": "uint256" },
+                { "name": "decayEndTime", "type": "uint256" },
+                { "name": "exclusiveFiller", "type": "address" },
+                { "name": "exclusivityOverrideBps", "type": "uint256" },
+                { "name": "inputToken", "type": "address" },
+                { "name": "inputStartAmount", "type": "uint256" },
+                { "name": "inputEndAmount", "type": "uint256" },
+                {
+                  "name": "outputs",
+                  "type": "tuple[]",
+                  "components": [
+                    { "name": "token", "type": "address" },
+                    { "name": "startAmount", "type": "uint256" },
+                    { "name": "endAmount", "type": "uint256" },
+                    { "name": "recipient", "type": "address" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        { "name": "signature", "type": "bytes" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "sign_intent_order",
+        "sign_intent_order": {
+          "venue": {
+            "name": "uniswap_x",
+            "chain": "$chain",
+            "reactor": "$args.order.witness.info.reactor"
+          },
+          "sell": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.witness.inputToken" } },
+          "buy": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.witness.outputs[0].token" } },
+          "sell_amount": "$args.order.witness.inputStartAmount",
+          "buy_min": "$args.order.witness.outputs[0].endAmount",
+          "order_kind": "dutch",
+          "recipient": "$args.order.witness.outputs[0].recipient",
+          "valid_until": "$args.order.witness.info.deadline"
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_fill_price": {
+        "source": {
+          "kind": "venue_api",
+          "endpoint": "https://api.uniswap.org/v2/orders",
+          "parser_id": "uniswapx_quote"
+        },
+        "ttl_s": 6
+      },
+      "competing_orders": {
+        "source": {
+          "kind": "venue_api",
+          "endpoint": "https://api.uniswap.org/v2/orders",
+          "parser_id": "uniswapx_open_orders"
+        },
+        "ttl_s": 6
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5a0dea3fa18d20381958ff59f6387ea89883b656",
+  "symbol": "stELX",
+  "decimals": 18,
+  "name": "Staked Elixir",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

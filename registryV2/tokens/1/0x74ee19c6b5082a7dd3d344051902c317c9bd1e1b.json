@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x74ee19c6b5082a7dd3d344051902c317c9bd1e1b",
+  "symbol": "wenUSD",
+  "decimals": 18,
+  "name": "Wen Protocol USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

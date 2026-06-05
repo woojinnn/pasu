@@ -1,14 +1,14 @@
 /**
  * Shared TypeScript types matching the scopeball policy-rpc server's
  * Rust DTOs. Hand-written today; the Rust side uses `tsify_next` for
- * the simulation-state types, so a future build step could generate
+ * the policy-state types, so a future build step could generate
  * these instead.
  *
  * Group conventions:
- * - `Wallet*` mirrors `simulation_state::wallet::WalletState`
- * - `Token*` mirrors `simulation_state::token::*`
+ * - `Wallet*` mirrors `policy_state::wallet::WalletState`
+ * - `Token*` mirrors `policy_state::token::*`
  * - `Policy*` is legacy server API shape; policy management is extension-local
- * - `Verdict*` is the new audit/history model (Phase 2)
+ * - `Verdict*` is the audit/history model
  */
 
 // ---------- primitives ----------
@@ -149,7 +149,7 @@ export interface I18nString {
   en: string;
 }
 
-// ---------- verdict model (Phase 2 / Decision #1) ----------
+// ---------- verdict model ----------
 
 export type Verdict = "pass" | "warn" | "fail";
 
@@ -172,7 +172,7 @@ export interface VerdictRow {
   user_decision: "trusted" | "cancelled" | null;
 }
 
-// ---------- dashboard summary (Phase 3) ----------
+// ---------- dashboard summary ----------
 
 export interface DashboardSummary {
   wallet_count: number;

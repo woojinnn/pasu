@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1db6f097cce2c1d5ea323652a97703f93688e57e",
+  "symbol": "CRV FTM-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: liq_CRV_FANTOM",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xfaf83f9d84faf25ed4ecbc1857f6aadc3c1977c3"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4e15361fd6b4bb609fa63c81a2be19d873717870"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x514910771af9ca656af840dff83e8264ecf986ca"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

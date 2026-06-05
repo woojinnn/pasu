@@ -23,26 +23,51 @@ use super::merge_namespace_blocks;
 use crate::policy_rpc::{
     evaluate_trigger, ManifestV2, PolicyRpcError, Trigger, TriggerField, TxView,
 };
-use simulation_reducer::action::ActionView;
+use policy_transition::action::ActionView;
 
 use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
-    AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA,
+    AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_GSM_SWAP_SCHEMA,
+    AMM_PRE_SIGN_INTENT_ORDER_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA, AMM_SETTLE_INTENT_ORDER_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, HL_APPROVE_AGENT_SCHEMA, HL_ORDER_SCHEMA, HL_UPDATE_LEVERAGE_SCHEMA,
-    HL_USD_SEND_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
+    CORE_UNKNOWN_SCHEMA, GOVERNANCE_ACTIVATE_VOTING_SCHEMA, GOVERNANCE_CANCEL_SCHEMA,
+    GOVERNANCE_CLOSE_VOTE_SCHEMA, GOVERNANCE_DELEGATE_SCHEMA, GOVERNANCE_EXECUTE_SCHEMA,
+    GOVERNANCE_PROPOSE_SCHEMA, GOVERNANCE_QUEUE_SCHEMA, GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
+    GOVERNANCE_START_VOTE_SCHEMA, GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA, GOVERNANCE_VOTE_SCHEMA,
+    HL_APPROVE_AGENT_SCHEMA, HL_APPROVE_BUILDER_FEE_SCHEMA, HL_C_DEPOSIT_SCHEMA,
+    HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA, HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
+    HL_SPOT_SEND_SCHEMA, HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_TOKEN_DELEGATE_SCHEMA,
+    HL_TWAP_ORDER_SCHEMA, HL_UNKNOWN_SCHEMA, HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
+    HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA,
+    HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
-    LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
-    LENDING_DISABLE_COLLATERAL_SCHEMA, LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA,
-    LENDING_REPAY_SCHEMA, LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA,
-    LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA,
-    PERP_CANCEL_ORDER_SCHEMA, PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA,
-    PERP_CLAIM_FUNDING_SCHEMA, PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA,
-    PERP_INCREASE_POSITION_SCHEMA, PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA,
-    PERP_PLACE_STOP_ORDER_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA,
+    LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
+    LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
+    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_PERIPHERY_OPERATION_SCHEMA,
+    LENDING_REPAY_SCHEMA, LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA,
+    LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA,
+    LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA, LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_STAKE_SCHEMA, LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
+    LIQUID_STAKING_UNWRAP_SCHEMA, LIQUID_STAKING_WRAP_SCHEMA,
+    PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
+    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
+    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
+    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
+    RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA, RESTAKING_DELEGATE_TO_SCHEMA, RESTAKING_DEPOSIT_SCHEMA,
+    RESTAKING_QUEUE_WITHDRAWAL_SCHEMA, RESTAKING_REDELEGATE_SCHEMA,
+    RESTAKING_REGISTER_OPERATOR_SCHEMA, RESTAKING_UNDELEGATE_SCHEMA, STAKING_CLAIM_REWARDS_SCHEMA,
+    STAKING_COOLDOWN_SCHEMA, STAKING_GAUGE_DEPOSIT_SCHEMA, STAKING_GAUGE_WITHDRAW_SCHEMA,
+    STAKING_INCREASE_LOCK_AMOUNT_SCHEMA, STAKING_INCREASE_LOCK_TIME_SCHEMA, STAKING_LOCK_SCHEMA,
+    STAKING_REDEEM_SCHEMA, STAKING_STAKE_SCHEMA, STAKING_UNLOCK_SCHEMA,
+    STAKING_VOTE_FOR_GAUGE_SCHEMA, TOKEN_ERC20_APPROVE_SCHEMA, TOKEN_ERC20_PERMIT_SCHEMA,
     TOKEN_ERC20_TRANSFER_SCHEMA, TOKEN_NFT_APPROVE_SCHEMA, TOKEN_NFT_SET_APPROVAL_FOR_ALL_SCHEMA,
     TOKEN_NFT_TRANSFER_SCHEMA, TOKEN_PERMIT2_APPROVE_SCHEMA, TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
-    TOKEN_REVOKE_APPROVAL_SCHEMA,
+    TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA, TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA,
+    TOKEN_REVOKE_APPROVAL_SCHEMA, TOKEN_UNWRAP_NATIVE_SCHEMA, TOKEN_WRAP_NATIVE_SCHEMA,
+    YIELD_ADD_MARKET_LIQUIDITY_SCHEMA, YIELD_CANCEL_LIMIT_ORDER_SCHEMA, YIELD_CLAIM_YIELD_SCHEMA,
+    YIELD_MINT_PY_SCHEMA, YIELD_MINT_SY_SCHEMA, YIELD_PT_SWAP_SCHEMA, YIELD_REDEEM_PY_SCHEMA,
+    YIELD_REDEEM_SY_SCHEMA, YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA, YIELD_SIGN_LIMIT_ORDER_SCHEMA,
+    YIELD_YT_SWAP_SCHEMA,
 };
 
 /// One row of the action resolver: the `(domain, action_tag)` a trigger can
@@ -98,6 +123,73 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: AIRDROP_DELEGATE_SCHEMA,
         pascal_stub: "Delegate",
     },
+    // governance
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("delegate"),
+        schema_text: GOVERNANCE_DELEGATE_SCHEMA,
+        pascal_stub: "Delegate",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("vote"),
+        schema_text: GOVERNANCE_VOTE_SCHEMA,
+        pascal_stub: "Vote",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("propose"),
+        schema_text: GOVERNANCE_PROPOSE_SCHEMA,
+        pascal_stub: "Propose",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("cancel"),
+        schema_text: GOVERNANCE_CANCEL_SCHEMA,
+        pascal_stub: "Cancel",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("activate_voting"),
+        schema_text: GOVERNANCE_ACTIVATE_VOTING_SCHEMA,
+        pascal_stub: "ActivateVoting",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("queue"),
+        schema_text: GOVERNANCE_QUEUE_SCHEMA,
+        pascal_stub: "Queue",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("execute"),
+        schema_text: GOVERNANCE_EXECUTE_SCHEMA,
+        pascal_stub: "Execute",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("start_vote"),
+        schema_text: GOVERNANCE_START_VOTE_SCHEMA,
+        pascal_stub: "StartVote",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("close_vote"),
+        schema_text: GOVERNANCE_CLOSE_VOTE_SCHEMA,
+        pascal_stub: "CloseVote",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("redeem_cancellation_fee"),
+        schema_text: GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
+        pascal_stub: "RedeemCancellationFee",
+    },
+    ActionEntry {
+        domain: "governance",
+        action_tag: Some("update_representative"),
+        schema_text: GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA,
+        pascal_stub: "UpdateRepresentative",
+    },
     // amm
     ActionEntry {
         domain: "amm",
@@ -125,15 +217,33 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     },
     ActionEntry {
         domain: "amm",
+        action_tag: Some("gsm_swap"),
+        schema_text: AMM_GSM_SWAP_SCHEMA,
+        pascal_stub: "GsmSwap",
+    },
+    ActionEntry {
+        domain: "amm",
         action_tag: Some("sign_intent_order"),
         schema_text: AMM_SIGN_INTENT_ORDER_SCHEMA,
         pascal_stub: "SignIntentOrder",
     },
     ActionEntry {
         domain: "amm",
+        action_tag: Some("settle_intent_order"),
+        schema_text: AMM_SETTLE_INTENT_ORDER_SCHEMA,
+        pascal_stub: "SettleIntentOrder",
+    },
+    ActionEntry {
+        domain: "amm",
         action_tag: Some("cancel_intent_order"),
         schema_text: AMM_CANCEL_INTENT_ORDER_SCHEMA,
         pascal_stub: "CancelIntentOrder",
+    },
+    ActionEntry {
+        domain: "amm",
+        action_tag: Some("pre_sign_intent_order"),
+        schema_text: AMM_PRE_SIGN_INTENT_ORDER_SCHEMA,
+        pascal_stub: "PreSignIntentOrder",
     },
     // lending
     ActionEntry {
@@ -153,6 +263,12 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("borrow"),
         schema_text: LENDING_BORROW_SCHEMA,
         pascal_stub: "Borrow",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("buy_collateral"),
+        schema_text: LENDING_BUY_COLLATERAL_SCHEMA,
+        pascal_stub: "BuyCollateral",
     },
     ActionEntry {
         domain: "lending",
@@ -197,6 +313,122 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("liquidate"),
         schema_text: LENDING_LIQUIDATE_SCHEMA,
         pascal_stub: "Liquidate",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("set_authorization"),
+        schema_text: LENDING_SET_AUTHORIZATION_SCHEMA,
+        pascal_stub: "SetAuthorization",
+    },
+    ActionEntry {
+        domain: "lending",
+        action_tag: Some("periphery_operation"),
+        schema_text: LENDING_PERIPHERY_OPERATION_SCHEMA,
+        pascal_stub: "PeripheryOperation",
+    },
+    // liquid_staking
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("claim_withdrawal"),
+        schema_text: LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+        pascal_stub: "ClaimWithdrawal",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("request_withdrawal"),
+        schema_text: LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
+        pascal_stub: "RequestWithdrawal",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("stake"),
+        schema_text: LIQUID_STAKING_STAKE_SCHEMA,
+        pascal_stub: "Stake",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("transfer_shares"),
+        schema_text: LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
+        pascal_stub: "TransferShares",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("unwrap"),
+        schema_text: LIQUID_STAKING_UNWRAP_SCHEMA,
+        pascal_stub: "Unwrap",
+    },
+    ActionEntry {
+        domain: "liquid_staking",
+        action_tag: Some("wrap"),
+        schema_text: LIQUID_STAKING_WRAP_SCHEMA,
+        pascal_stub: "Wrap",
+    },
+    // yield
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("pt_swap"),
+        schema_text: YIELD_PT_SWAP_SCHEMA,
+        pascal_stub: "PtSwap",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("yt_swap"),
+        schema_text: YIELD_YT_SWAP_SCHEMA,
+        pascal_stub: "YtSwap",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("add_market_liquidity"),
+        schema_text: YIELD_ADD_MARKET_LIQUIDITY_SCHEMA,
+        pascal_stub: "AddMarketLiquidity",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("remove_market_liquidity"),
+        schema_text: YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA,
+        pascal_stub: "RemoveMarketLiquidity",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("mint_py"),
+        schema_text: YIELD_MINT_PY_SCHEMA,
+        pascal_stub: "MintPy",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("redeem_py"),
+        schema_text: YIELD_REDEEM_PY_SCHEMA,
+        pascal_stub: "RedeemPy",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("mint_sy"),
+        schema_text: YIELD_MINT_SY_SCHEMA,
+        pascal_stub: "MintSy",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("redeem_sy"),
+        schema_text: YIELD_REDEEM_SY_SCHEMA,
+        pascal_stub: "RedeemSy",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("claim_yield"),
+        schema_text: YIELD_CLAIM_YIELD_SCHEMA,
+        pascal_stub: "ClaimYield",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("sign_limit_order"),
+        schema_text: YIELD_SIGN_LIMIT_ORDER_SCHEMA,
+        pascal_stub: "SignLimitOrder",
+    },
+    ActionEntry {
+        domain: "yield",
+        action_tag: Some("cancel_limit_order"),
+        schema_text: YIELD_CANCEL_LIMIT_ORDER_SCHEMA,
+        pascal_stub: "CancelLimitOrder",
     },
     // launchpad
     ActionEntry {
@@ -296,6 +528,123 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: PERP_CLAIM_FUNDING_SCHEMA,
         pascal_stub: "ClaimFunding",
     },
+    // permission
+    ActionEntry {
+        domain: "permission",
+        action_tag: Some("protocol_authorization"),
+        schema_text: PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+        pascal_stub: "ProtocolAuthorization",
+    },
+    // restaking
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("complete_withdrawal"),
+        schema_text: RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA,
+        pascal_stub: "CompleteWithdrawal",
+    },
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("delegate_to"),
+        schema_text: RESTAKING_DELEGATE_TO_SCHEMA,
+        pascal_stub: "DelegateTo",
+    },
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("deposit"),
+        schema_text: RESTAKING_DEPOSIT_SCHEMA,
+        pascal_stub: "Deposit",
+    },
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("queue_withdrawal"),
+        schema_text: RESTAKING_QUEUE_WITHDRAWAL_SCHEMA,
+        pascal_stub: "QueueWithdrawal",
+    },
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("redelegate"),
+        schema_text: RESTAKING_REDELEGATE_SCHEMA,
+        pascal_stub: "Redelegate",
+    },
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("register_operator"),
+        schema_text: RESTAKING_REGISTER_OPERATOR_SCHEMA,
+        pascal_stub: "RegisterOperator",
+    },
+    ActionEntry {
+        domain: "restaking",
+        action_tag: Some("undelegate"),
+        schema_text: RESTAKING_UNDELEGATE_SCHEMA,
+        pascal_stub: "Undelegate",
+    },
+    // staking
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("claim_rewards"),
+        schema_text: STAKING_CLAIM_REWARDS_SCHEMA,
+        pascal_stub: "ClaimRewards",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("gauge_deposit"),
+        schema_text: STAKING_GAUGE_DEPOSIT_SCHEMA,
+        pascal_stub: "GaugeDeposit",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("gauge_withdraw"),
+        schema_text: STAKING_GAUGE_WITHDRAW_SCHEMA,
+        pascal_stub: "GaugeWithdraw",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("increase_lock_amount"),
+        schema_text: STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
+        pascal_stub: "IncreaseLockAmount",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("increase_lock_time"),
+        schema_text: STAKING_INCREASE_LOCK_TIME_SCHEMA,
+        pascal_stub: "IncreaseLockTime",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("lock"),
+        schema_text: STAKING_LOCK_SCHEMA,
+        pascal_stub: "Lock",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("unlock"),
+        schema_text: STAKING_UNLOCK_SCHEMA,
+        pascal_stub: "Unlock",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("vote_for_gauge"),
+        schema_text: STAKING_VOTE_FOR_GAUGE_SCHEMA,
+        pascal_stub: "VoteForGauge",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("stake"),
+        schema_text: STAKING_STAKE_SCHEMA,
+        pascal_stub: "Stake",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("cooldown"),
+        schema_text: STAKING_COOLDOWN_SCHEMA,
+        pascal_stub: "Cooldown",
+    },
+    ActionEntry {
+        domain: "staking",
+        action_tag: Some("redeem"),
+        schema_text: STAKING_REDEEM_SCHEMA,
+        pascal_stub: "Redeem",
+    },
     // token
     ActionEntry {
         domain: "token",
@@ -320,6 +669,18 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("permit2_sign_allowance"),
         schema_text: TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
         pascal_stub: "Permit2SignAllowance",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("permit2_sign_transfer"),
+        schema_text: TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA,
+        pascal_stub: "Permit2SignTransfer",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("permit2_transfer_from"),
+        schema_text: TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA,
+        pascal_stub: "Permit2TransferFrom",
     },
     ActionEntry {
         domain: "token",
@@ -351,6 +712,18 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         schema_text: TOKEN_REVOKE_APPROVAL_SCHEMA,
         pascal_stub: "RevokeApproval",
     },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("unwrap_native"),
+        schema_text: TOKEN_UNWRAP_NATIVE_SCHEMA,
+        pascal_stub: "UnwrapNative",
+    },
+    ActionEntry {
+        domain: "token",
+        action_tag: Some("wrap_native"),
+        schema_text: TOKEN_WRAP_NATIVE_SCHEMA,
+        pascal_stub: "WrapNative",
+    },
     // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
     ActionEntry {
         domain: "hyperliquid_core",
@@ -381,6 +754,84 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("hl_approve_agent"),
         schema_text: HL_APPROVE_AGENT_SCHEMA,
         pascal_stub: "HlApproveAgent",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_unknown"),
+        schema_text: HL_UNKNOWN_SCHEMA,
+        pascal_stub: "HlUnknown",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_spot_send"),
+        schema_text: HL_SPOT_SEND_SCHEMA,
+        pascal_stub: "HlSpotSend",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_usd_class_transfer"),
+        schema_text: HL_USD_CLASS_TRANSFER_SCHEMA,
+        pascal_stub: "HlUsdClassTransfer",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_send_asset"),
+        schema_text: HL_SEND_ASSET_SCHEMA,
+        pascal_stub: "HlSendAsset",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_send_to_evm_with_data"),
+        schema_text: HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
+        pascal_stub: "HlSendToEvmWithData",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_c_deposit"),
+        schema_text: HL_C_DEPOSIT_SCHEMA,
+        pascal_stub: "HlCDeposit",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_c_withdraw"),
+        schema_text: HL_C_WITHDRAW_SCHEMA,
+        pascal_stub: "HlCWithdraw",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_vault_transfer"),
+        schema_text: HL_VAULT_TRANSFER_SCHEMA,
+        pascal_stub: "HlVaultTransfer",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_sub_account_transfer"),
+        schema_text: HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
+        pascal_stub: "HlSubAccountTransfer",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_approve_builder_fee"),
+        schema_text: HL_APPROVE_BUILDER_FEE_SCHEMA,
+        pascal_stub: "HlApproveBuilderFee",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_token_delegate"),
+        schema_text: HL_TOKEN_DELEGATE_SCHEMA,
+        pascal_stub: "HlTokenDelegate",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_twap_order"),
+        schema_text: HL_TWAP_ORDER_SCHEMA,
+        pascal_stub: "HlTwapOrder",
+    },
+    ActionEntry {
+        domain: "hyperliquid_core",
+        action_tag: Some("hl_update_isolated_margin"),
+        schema_text: HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
+        pascal_stub: "HlUpdateIsolatedMargin",
     },
 ];
 
@@ -429,10 +880,20 @@ pub fn compose_per_policy(manifest: &ManifestV2) -> Result<String, PolicyRpcErro
     }
     let mut text = merge_namespace_blocks(&inputs);
 
-    // Inject custom context fields into each matched action's stub.
+    // Inject custom context fields into each matched action's stub. Dedup by
+    // `pascal_stub`: when one trigger matches two actions that share a stub
+    // (e.g. tag-only `delegate` → `airdrop::delegate` + `governance::delegate`,
+    // or `stake` → `liquid_staking::stake` + `staking::stake`), the bare
+    // `type <Stub>CustomContext = {};` line appears in BOTH namespace blocks.
+    // `inject_custom_context`'s `text.replace` is GLOBAL, so one call already
+    // rewrites every namespace's copy — calling it again for the second
+    // same-stub action would find no stub left and fail. Inject once per stub.
     if !manifest.custom_context.fields.is_empty() {
+        let mut injected: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
         for entry in &matched {
-            inject_custom_context(&mut text, entry, &manifest.custom_context.fields)?;
+            if injected.insert(entry.pascal_stub) {
+                inject_custom_context(&mut text, entry, &manifest.custom_context.fields)?;
+            }
         }
     }
 
@@ -511,7 +972,7 @@ fn render_custom_body(
     // Source of truth for an action's base context fields is its OWN shipped
     // `.cedarschema` (`schema/policy-schema/actions/...`), parsed from the
     // `type <Stub>Context = { ... }` block — NOT a hardcoded table. This keeps
-    // the collision check aligned with the `simulation-reducer` action shapes.
+    // the collision check aligned with the `policy-transition` action shapes.
     let base_fields = context_base_fields(entry.schema_text, entry.pascal_stub);
 
     let mut lines = String::new();
@@ -751,7 +1212,7 @@ mod tests {
         assert!(parsed.is_ok(), "{:?}", parsed.err());
     }
 
-    /// Domain-only trigger `{ action.domain: eq "amm" }` includes all 6 amm
+    /// Domain-only trigger `{ action.domain: eq "amm" }` includes the amm
     /// action contexts and parses.
     #[test]
     fn domain_only_trigger_includes_all_amm() {
@@ -769,6 +1230,7 @@ mod tests {
             "CollectFeesContext",
             "SignIntentOrderContext",
             "CancelIntentOrderContext",
+            "PreSignIntentOrderContext",
         ] {
             assert!(text.contains(ctx), "amm trigger must include `{ctx}`");
         }
@@ -823,10 +1285,20 @@ mod tests {
                 entry.pascal_stub,
             );
         }
-        // The table covers exactly the 50 shipped actions (multicall + unknown +
-        // 5 hyperliquid_core included). Guards against a row being dropped or
-        // duplicated.
-        assert_eq!(RESOLVER_TABLE.len(), 50, "resolver table must have 50 rows");
+        // Union of feat/registry-v2 (74: + 7 restaking + 8 staking + 5 hyperliquid_core)
+        // and the 11 Pendle `yield` rows = 85 shipped actions (multicall + unknown
+        // included), plus 13 more HyperliquidCore actions (the `hl_unknown`
+        // catch-all + 8 fund-movement + 2 permission + 2 trading/margin) = 98,
+        // plus UniswapX `settle_intent_order` and two Permit2 SignatureTransfer
+        // rows = 101, plus the two Token native wrap/unwrap rows
+        // (`wrap_native` / `unwrap_native`) = 103, plus the CoW Swap
+        // `pre_sign_intent_order` on-chain SC-wallet pre-signature row = 104.
+        // Guards against a row being dropped or duplicated.
+        assert_eq!(
+            RESOLVER_TABLE.len(),
+            120,
+            "resolver table must have 120 rows"
+        );
     }
 
     /// A `custom_context` field whose name collides with one of the matched
@@ -850,6 +1322,31 @@ mod tests {
                 assert!(msg.contains("swap"), "error must name the action: {msg}");
             }
             other => panic!("expected PolicyRpcError::Schema, got {other:?}"),
+        }
+    }
+
+    /// A tag-only trigger that matches TWO actions sharing a `pascal_stub`
+    /// (`delegate` → `airdrop::delegate` + `governance::delegate`; `stake` →
+    /// `liquid_staking::stake` + `staking::stake`) must still compose when the
+    /// manifest declares `custom_context`: the inject loop dedups by stub so the
+    /// global `text.replace` runs once per stub instead of erroring on the
+    /// second same-stub action. Regression for the collision that
+    /// `feat/morpho-onboarding` (governance + staking domains) surfaced in the
+    /// policy catalog.
+    #[test]
+    fn same_stub_actions_compose_with_custom_context() {
+        for tag in ["delegate", "stake"] {
+            let trigger =
+                trigger_of(&[(TriggerField::ActionTag, TriggerConstraint::Eq(tag.into()))]);
+            let m = manifest(trigger, &[("flagged", "Bool")]);
+            let text = compose_per_policy(&m)
+                .unwrap_or_else(|e| panic!("same-stub `{tag}` must compose, got {e:?}"));
+            let parsed = cedar_policy::Schema::from_cedarschema_str(&text);
+            assert!(
+                parsed.is_ok(),
+                "`{tag}` per-policy schema must parse: {:?}",
+                parsed.err()
+            );
         }
     }
 

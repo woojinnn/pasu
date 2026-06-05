@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8c30e56cb9070421cb8605047e051704d10d30c2",
+  "symbol": "NTL",
+  "decimals": 18,
+  "name": "Notila.org",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

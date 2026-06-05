@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x91af0fbb28aba7e31403cb457106ce79397fd4e6",
-  "symbol": "AERGO",
-  "decimals": 18,
-  "name": "Aergo"
-}

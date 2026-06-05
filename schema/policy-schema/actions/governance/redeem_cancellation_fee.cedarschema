@@ -1,0 +1,18 @@
+// Governance::RedeemCancellationFee — redeem a proposal cancellation fee.
+
+namespace Governance {
+  type RedeemCancellationFeeContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    proposalId: String,
+    custom?: RedeemCancellationFeeCustomContext,
+  };
+
+  type RedeemCancellationFeeCustomContext = {};
+
+  action "RedeemCancellationFee" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RedeemCancellationFeeContext,
+  };
+}

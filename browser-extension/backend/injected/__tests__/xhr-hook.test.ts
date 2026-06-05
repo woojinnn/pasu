@@ -1,21 +1,28 @@
 /**
  * Unit test for the XHR branch of the MAIN-world venue hook.
  *
- * happy-dom's `XMLHttpRequest` plus the `@metamask/post-message-stream` import
- * in `fetch-hook.ts` throws at module load under happy-dom (no
- * `MessageEvent.prototype.source`). So we DON'T import `fetch-hook.ts` here;
- * instead we reproduce its XHR install logic — patching `prototype.open` /
- * `prototype.send` — against a minimal fake whose native `open`/`send` live on
- * the PROTOTYPE (exactly like real `XMLHttpRequest`, so the prototype patch
- * actually intercepts). The pure parser is covered by `fetch-hook.test.ts`; the
- * orchestrator verdict path by `orchestrator.test.ts`. This pins the XHR
- * *blocking mechanics*:
- *   - allow  → native send IS called,
- *   - deny   → native send is NOT called + an `error` event fires,
- *   - non-venue POST → straight to native send, no verdict.
+ * `@metamask/post-message-stream` (imported by `fetch-hook.ts`) throws at module
+ * load under happy-dom (no `MessageEvent.prototype.source`), so we cannot import
+ * `install()` directly. We therefore reproduce ONLY the thin prototype-patch
+ * plumbing (`prototype.open` / `prototype.send`) here — but the actual
+ * deny-closed body decision runs the REAL shared `decideVenueBody` from
+ * `hl-exchange-parse.ts` (the same function `fetch-hook.ts` calls), so the
+ * HL-1-critical body handling (string vs Blob/ArrayBuffer vs unreadable) is
+ * tested against production code, not a divergent copy. Pins:
+ *   - allow                         → native send IS called,
+ *   - deny (policy)                 → native send NOT called + an `error` event,
+ *   - deny (unreadable body, HL-1)  → native send NOT called (no bypass),
+ *   - non-string order (Blob/ArrayBuffer) → coerced + evaluated, NOT bypassed,
+ *   - non-venue POST                → straight to native send, no verdict.
  */
 import { describe, it, expect, vi } from "vitest";
-import { matchVenue, parseHyperliquidExchangeOrders } from "../hl-exchange-parse";
+import type { VenueOrderPayload } from "@lib/types";
+import {
+  matchVenue,
+  parseHyperliquidExchangeOrders,
+  decideVenueBody,
+  type VenueBodyDecision,
+} from "../hl-exchange-parse";
 
 const XHR_META = Symbol.for("__scopeball_xhr_meta__");
 
@@ -44,11 +51,15 @@ function makeFakeXHRClass(nativeSend: (body?: unknown) => void) {
   return FakeXHR as unknown as typeof XMLHttpRequest;
 }
 
-// Re-implement the install against an injectable `evaluateBody` so we test the
-// mechanics without the stream import. Byte-aligned with fetch-hook.ts.
+// Reproduce ONLY the prototype-patch plumbing; the body decision delegates to
+// the REAL shared `decideVenueBody`. `evaluate` is the per-leg verdict callback
+// (what `fetch-hook.ts` wires to the SW stream). Mirrors fetch-hook.ts:
+//   - native-send unless this is a venue POST with a (non-null) body,
+//   - otherwise defer the real send behind `decideVenueBody`,
+//   - fail-CLOSED on a thrown fault (D6).
 function installXhrHook(
   XHRClass: typeof XMLHttpRequest,
-  evaluateBody: (url: string, venue: string, body: unknown) => Promise<boolean>,
+  evaluate: (payloads: VenueOrderPayload[]) => Promise<boolean>,
 ) {
   const proto = XHRClass.prototype;
   const originalOpen = proto.open;
@@ -68,13 +79,9 @@ function installXhrHook(
     const meta = (this as unknown as Record<PropertyKey, unknown>)[XHR_META] as
       | { method: string; url: string; venue?: string }
       | undefined;
-    if (
-      !meta ||
-      !meta.venue ||
-      meta.method !== "POST" ||
-      body == null ||
-      typeof body !== "string"
-    ) {
+    // No `typeof body !== "string"` short-circuit (HL-1): non-string venue
+    // bodies must be coerced + evaluated, not native-sent unevaluated.
+    if (!meta || !meta.venue || meta.method !== "POST" || body == null) {
       return originalSend.call(
         this,
         body as Parameters<XMLHttpRequest["send"]>[0],
@@ -83,14 +90,20 @@ function installXhrHook(
     const xhr = this;
     const { url, venue } = meta;
     void (async () => {
-      let allowed = true;
+      let decision: VenueBodyDecision;
       try {
-        allowed = await evaluateBody(url, venue, body);
+        decision = await decideVenueBody(
+          venue,
+          url,
+          "app.hyperliquid.xyz",
+          body,
+          evaluate,
+        );
       } catch {
-        allowed = true;
+        decision = { kind: "deny", reason: "policy", payloads: null };
       }
-      if (allowed) {
-        originalSend.call(xhr, body);
+      if (decision.kind !== "deny") {
+        originalSend.call(xhr, body as Parameters<XMLHttpRequest["send"]>[0]);
         return;
       }
       xhr.dispatchEvent(new Event("error"));
@@ -171,5 +184,67 @@ describe("XHR venue-order hook mechanics", () => {
     );
     expect(out).toHaveLength(1);
     expect(out![0].hlAction).toMatchObject({ kind: "order", order: { b: false } });
+  });
+
+  // ── HL-1 regression: non-string / unreadable venue bodies ────────────────
+  // Before the fix, the XHR guard short-circuited any non-string body straight
+  // to the native send (bypassing all policy). These pin that a non-string
+  // order is now coerced + evaluated, and an un-inspectable body fails CLOSED.
+
+  it("HL-1: a Blob order body is coerced + evaluated (not bypassed); deny blocks", async () => {
+    const nativeSend = vi.fn();
+    const evaluate = vi.fn(async () => false);
+    const FakeXHR = makeFakeXHRClass(nativeSend);
+    const restore = installXhrHook(FakeXHR, evaluate);
+
+    const x = new FakeXHR();
+    let errored = false;
+    x.addEventListener("error", () => (errored = true));
+    x.open("POST", "https://api.hyperliquid.xyz/exchange");
+    x.send(new Blob([ORDER_BODY]));
+    await new Promise((r) => setTimeout(r, 0));
+
+    // The non-string body was decoded → evaluate ran → deny → blocked.
+    expect(evaluate).toHaveBeenCalledOnce();
+    expect(nativeSend).not.toHaveBeenCalled();
+    expect(errored).toBe(true);
+    restore();
+  });
+
+  it("HL-1: an ArrayBuffer order body is coerced + evaluated; allow sends", async () => {
+    const nativeSend = vi.fn();
+    const evaluate = vi.fn(async () => true);
+    const FakeXHR = makeFakeXHRClass(nativeSend);
+    const restore = installXhrHook(FakeXHR, evaluate);
+
+    const buf = new TextEncoder().encode(ORDER_BODY).buffer;
+    const x = new FakeXHR();
+    x.open("POST", "https://api.hyperliquid.xyz/exchange");
+    x.send(buf);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(evaluate).toHaveBeenCalledOnce();
+    expect(nativeSend).toHaveBeenCalledWith(buf);
+    restore();
+  });
+
+  it("HL-1: an UNREADABLE venue body (FormData) is denied without bypass", async () => {
+    const nativeSend = vi.fn();
+    const evaluate = vi.fn(async () => true); // would ALLOW if it were ever asked
+    const FakeXHR = makeFakeXHRClass(nativeSend);
+    const restore = installXhrHook(FakeXHR, evaluate);
+
+    const x = new FakeXHR();
+    let errored = false;
+    x.addEventListener("error", () => (errored = true));
+    x.open("POST", "https://api.hyperliquid.xyz/exchange");
+    x.send(new FormData());
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Un-inspectable body → deny-closed BEFORE any verdict; never native-sent.
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(nativeSend).not.toHaveBeenCalled();
+    expect(errored).toBe(true);
+    restore();
   });
 });

@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x7566e1f5e03d82548f2e04b9023399fdc46c7544",
+  "symbol": "nip",
+  "decimals": 18,
+  "name": "nipool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x7566e1f5e03d82548f2e04b9023399fdc46c7544"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcfa3ef56d303ae4faaba0592388f19d7c3399fb4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x65a2508c429a6078a7bc2f7df81ab575bd9d9275"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x59d9356e565ab3a36dd77763fc0d87feaf85508c"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

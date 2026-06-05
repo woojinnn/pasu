@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdb25f211ab05b1c97d595516f45794528a807ad8",
+  "symbol": "EURS",
+  "decimals": 2,
+  "name": "STASIS EURS Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

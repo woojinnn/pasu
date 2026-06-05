@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xfc8c34a3b3cfe1f1dd6dbccec4bc5d3103b80ff0",
+  "symbol": "FLREURS-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: FLR/EURS",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xfc8c34a3b3cfe1f1dd6dbccec4bc5d3103b80ff0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5e5d9aeec4a6b775a175b883dca61e4297c14ecb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdb25f211ab05b1c97d595516f45794528a807ad8"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

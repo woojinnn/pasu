@@ -1,0 +1,87 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/comp/delegateBySig@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 COMP delegateBySig(delegatee,nonce,expiry,v,r,s): EIP-712 gasless voting-power delegation, on-chain submission (Airdrop::Delegate).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xc3cda520",
+    "chain_to_addresses": {
+      "1": [
+        "0xc00e94cb662c3520282e6f5717214004a7f26888"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "delegateBySig",
+    "abi": {
+      "name": "delegateBySig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "delegatee",
+          "type": "address"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256"
+        },
+        {
+          "name": "expiry",
+          "type": "uint256"
+        },
+        {
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "delegate",
+        "delegate": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "delegatee": "$args.delegatee"
+        }
+      }
+    },
+    "live_inputs": {
+      "current_delegate": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_current_delegate"
+        },
+        "ttl_s": 60
+      },
+      "voting_power": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_voting_power"
+        },
+        "ttl_s": 60
+      }
+    }
+  }
+}

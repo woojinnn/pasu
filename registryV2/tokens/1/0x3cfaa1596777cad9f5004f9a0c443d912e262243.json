@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3cfaa1596777cad9f5004f9a0c443d912e262243",
+  "symbol": "mEUR-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Meta EUR",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x3cfaa1596777cad9f5004f9a0c443d912e262243"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x68037790a0229e9ce6eaa8a99ea92964106c4703"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc581b735a1688071a1746c968e0798d642ede491"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdb25f211ab05b1c97d595516f45794528a807ad8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd71ecff9342a5ced620049e616c5035f1db98620"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

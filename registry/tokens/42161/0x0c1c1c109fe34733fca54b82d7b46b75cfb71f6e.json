@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x0c1c1c109fe34733fca54b82d7b46b75cfb71f6e",
-  "symbol": "CHIP",
-  "decimals": 18,
-  "name": "Chip"
-}

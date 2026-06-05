@@ -19,6 +19,10 @@ namespace Airdrop {
     token: Core::TokenRef,
     // Address receiving the delegated voting power.
     delegatee: String,
+    // Which governance power is delegated: "voting_and_proposition" (default,
+    // ERC20Votes `delegate` / Aave `delegate`/`metaDelegate`), "voting", or
+    // "proposition" (Aave `delegateByType`/`metaDelegateByType`, 0=voting/1=proposition).
+    powerType: String,
     // ----- Live inputs (flattened from `DelegateLiveInputs`) -----
     // Address currently delegated to. Absent means no current delegate has
     // ever been recorded (most ERC20Votes tokens initialise to zero/self).

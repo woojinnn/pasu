@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xaab1b6aeaf6c613ba19be8f7bfec11062efa0fa1",
+  "symbol": "VT",
+  "decimals": 18,
+  "name": "VaultToken",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -4,7 +4,7 @@
 //! `policy.cedarschema` (marketplace bundle). It carries three things:
 //!
 //! 1. a [`Trigger`] — a declarative selector deciding *when* this policy
-//!    applies to a decoded [`simulation_reducer::action::ActionBody`], evaluated
+//!    applies to a decoded [`policy_transition::action::ActionBody`], evaluated
 //!    by the host *before* any policy-rpc call (see [`super::trigger`]);
 //! 2. a [`PolicyRpcCallSpec`] list — the enrichment calls to run when the
 //!    trigger matches (same shape as the v1 `requires[]`, minus the per-call
@@ -12,9 +12,7 @@
 //! 3. a [`CustomContext`] — the extra Cedar context fields this policy's
 //!    `.cedarschema` declares, each fed by one [`PolicyRpcCallSpec`] output.
 //!
-//! This type is additive: it lives beside the legacy [`super::PolicyManifest`]
-//! (action-keyed `requires[]`) and does not replace it. The legacy path is
-//! retired when the old `ActionEnvelope` model is deleted.
+//! This is the active per-policy manifest shape for the ActionBody pipeline.
 
 use std::collections::{BTreeMap, HashSet};
 

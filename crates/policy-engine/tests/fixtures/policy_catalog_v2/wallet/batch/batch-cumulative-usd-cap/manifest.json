@@ -1,0 +1,15 @@
+{
+  "id": "batch-cumulative-usd-cap",
+  "schema_version": 2,
+  "trigger": { "scope": "outer", "where": { "action.domain": { "eq": "multicall" } } },
+  "policy_rpc": [{
+    "id": "batch-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id"
+    },
+    "outputs": [{ "kind": "context", "field": "usdValue", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "usdValue": "decimal" } }
+}

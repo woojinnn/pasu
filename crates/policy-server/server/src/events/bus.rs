@@ -1,9 +1,7 @@
 //! In-process broadcast bus for [`Event`]s, tagged by `user_id`.
-//!
 //! Built on `tokio::sync::broadcast` — one channel for the whole process,
 //! every SSE subscriber filters by their own `user_id` so leaks across
 //! tenants are impossible.
-//!
 //! Capacity = 256 — recent messages get dropped if a slow subscriber
 //! falls behind. That's fine for a live activity feed (the dashboard can
 //! always re-poll for state); raise it if you start losing events the
@@ -20,7 +18,6 @@ use crate::events::types::Event;
 pub type Tagged = (String, Event);
 
 /// Cheaply-cloneable handle to the global bus.
-///
 /// Clones share the same underlying channel — publish on one, receive on
 /// any. The `Arc` wrapping makes the type fit naturally in `AppState`
 /// without callers having to think about lifetimes.
@@ -56,6 +53,7 @@ impl EventBus {
 
     /// Subscribe to every tagged event. Filter on the receiver side by
     /// matching against the caller's own `user_id`.
+    #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<Tagged> {
         self.tx.subscribe()
     }
@@ -77,7 +75,7 @@ impl Default for EventBus {
 mod tests {
     use super::*;
     use crate::events::types::{Event as Ev, TxRef};
-    use simulation_state::primitives::ChainId;
+    use policy_state::primitives::ChainId;
 
     fn sample_event(id: &str) -> Event {
         Ev::TxPredicted(TxRef {

@@ -40,9 +40,12 @@ target/web-server.pid
 .claude/
 
 # Secret env vars (OAuth, JWT) — NEVER commit. See .env.example for layout.
+# Profile files (.env.local, .env.sim, .env.ext, …) feed
+# scripts/start-policy-server.sh and carry the same secrets as .env.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
 # wasm-pack artifacts (produced by scripts/wasm-build*.sh and copied into consumers).
 crates/*-wasm/pkg/
@@ -50,10 +53,47 @@ crates/*-wasm/pkg-tsify-test/
 browser-extension/backend/wasm/
 browser-extension/public/wasm/
 
+# Legacy v1/v2 `registry/` tree — moved out of the repo. Runtime + harness load
+# `registryV2/` only; this tree is dead weight. Kept locally at ~/Desktop/registry.
+/registry/
+
+# Generated registry index — output of `registryV2/scripts/build-index.ts`
+# (`cd registryV2 && npm run build`). Regenerated locally and in CI (rust job's
+# "Build registry index" step) from registryV2/{manifests,tokens}; never committed.
+/registryV2/index/
+/registryV2/bundles/
+/registryV2/contexts/
+
 # Markdown docs, research + audit notes — only README.md stays tracked.
 *.md
 !README.md
 # Catalog standards-alignment doc — tracked alongside its JSON sibling.
 !schema/method-catalog.README.md
-/docs/
+# Policy-catalog shared aggregator-method impl-spec library — tracked so the RPC
+# server implementer (and auditors) get each method's spec alongside the policies.
+!**/policy_catalog_v2/_methods/*.md
+# Local Codex session memory; keep repo-specific copies out of git.
+AGENTS.md
+# The rest of /docs/ stays ignored (scratch research/audit notes).
+/docs/*
+
+# Methodology deliverables — these SHIP with the repo (not scratch notes). A
+# teammate/agent needs them to onboard a new protocol end-to-end. ALL instruction
+# docs live in crates/integration-tests/ now (README + PROTOCOL_ONBOARDING +
+# ACTIONBODY_EXTENSION_GUIDE); this one rule un-ignores every top-level .md there
+# (current + future). Subdir .md (logs/) stay ignored except their own README.md.
+!crates/integration-tests/*.md
+!crates/integration-tests/onboarding/
+!crates/integration-tests/onboarding/**
+!crates/integration-tests/onboarding/**/*.md
+
+# integration-tests per-run harness logs — keep the dir via its README (format
+# guide + curated index), but the actual per-run dumps are local scratch.
+/crates/integration-tests/logs/*
+!/crates/integration-tests/logs/README.md
+
+# Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
 .scopeball-runtime/
+
+# Extension signing key — never commit
+*.pem

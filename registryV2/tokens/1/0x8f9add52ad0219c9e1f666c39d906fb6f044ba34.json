@@ -1,0 +1,60 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8f9add52ad0219c9e1f666c39d906fb6f044ba34",
+  "symbol": "SuperCRVLP",
+  "decimals": 18,
+  "name": "SuperCRV by CurveYield",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8f9add52ad0219c9e1f666c39d906fb6f044ba34"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x293d273dff3026fea6a537015d639050d77b284c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x27b5739e22ad9033bcbf192059122d163b60349d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x43e54c2e7b3e294de3a155785f52ab49d87b9922"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2b95a1dcc3d405535f9ed33c219ab38e8d7e0884"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

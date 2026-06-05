@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x99956d38059cf7beda96ec91aa7bb2477e0901dd",
-  "symbol": "DIA",
-  "decimals": 18,
-  "name": "DIAToken"
-}

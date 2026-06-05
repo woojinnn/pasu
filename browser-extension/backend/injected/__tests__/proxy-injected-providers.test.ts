@@ -306,6 +306,125 @@ describe("inpage provider proxy", () => {
     expect(originalSendAsync).toHaveBeenCalledTimes(1);
   });
 
+  it("N8: gates eth_signTransaction like a transaction (deny throws 4001, never forwards)", async () => {
+    streamState.responses.push(false); // SW denies
+    const originalRequest = vi.fn(async (request: { method: string }) => {
+      if (request.method === "eth_chainId") return "0x1";
+      return "signed-tx-hex";
+    });
+    (window as any).ethereum = { request: originalRequest };
+
+    await import("../proxy-injected-providers");
+
+    const tx = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+    await expect(
+      (window as any).ethereum.request({
+        method: "eth_signTransaction",
+        params: [tx],
+      }),
+    ).rejects.toMatchObject({ code: 4001 });
+
+    // It was gated as a transaction (one policy write of type "transaction") and
+    // the underlying provider was NEVER asked to sign (blocked before forward).
+    expect(policyWrites()).toHaveLength(1);
+    expect((policyWrites()[0].data as { type?: string }).type).toBe(
+      "transaction",
+    );
+    expect(
+      originalRequest.mock.calls.map(([r]) => r.method),
+    ).not.toContain("eth_signTransaction");
+  });
+
+  it("N4: gates each eth_sendTransaction in a send([...]) JSON-RPC batch array (any deny blocks)", async () => {
+    streamState.responses.push(true, false); // leg1 allow, leg2 deny
+    const originalSend = vi.fn(() => "batch-sent");
+    const provider = {
+      request: vi.fn(async (request: { method: string }) => {
+        if (request.method === "eth_chainId") return "0x1";
+        return "request-result";
+      }),
+      send: originalSend,
+    };
+    (window as any).ethereum = provider;
+
+    await import("../proxy-injected-providers");
+
+    const tx1 = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+    const tx2 = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x3333333333333333333333333333333333333333",
+      value: "0x0",
+      data: "0x",
+    };
+
+    // A JSON-RPC 2.0 batch ARRAY has no top-level `.method`, so the per-method
+    // gate used to see `undefined` and forward the whole array ungated (N4).
+    await expect(
+      (window as any).ethereum.send([
+        { method: "eth_sendTransaction", params: [tx1] },
+        { method: "eth_sendTransaction", params: [tx2] },
+      ]),
+    ).rejects.toMatchObject({ code: 4001 });
+
+    // Both legs were gated (2 transaction writes); the denied leg blocked the
+    // batch before it reached the native provider.
+    expect(policyWrites()).toHaveLength(2);
+    expect(originalSend).not.toHaveBeenCalled();
+  });
+
+  it("N4: gates each eth_sendTransaction in a request([...]) batch array (any deny blocks)", async () => {
+    streamState.responses.push(true, false); // leg1 allow, leg2 deny
+    const originalRequest = vi.fn(async (request: unknown) => {
+      if ((request as { method?: string }).method === "eth_chainId") return "0x1";
+      return "request-result";
+    });
+    (window as any).ethereum = { request: originalRequest };
+
+    await import("../proxy-injected-providers");
+
+    const tx1 = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+    const tx2 = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x3333333333333333333333333333333333333333",
+      value: "0x0",
+      data: "0x",
+    };
+
+    // EIP-1193 `request` takes a single object, but a non-standard wallet may
+    // honour an array; the array has no top-level `.method` so it used to
+    // forward ungated.
+    await expect(
+      (window as any).ethereum.request([
+        { method: "eth_sendTransaction", params: [tx1] },
+        { method: "eth_sendTransaction", params: [tx2] },
+      ]),
+    ).rejects.toMatchObject({ code: 4001 });
+
+    expect(policyWrites()).toHaveLength(2);
+    // The native request was only used for eth_chainId reads, never for the
+    // ungated batch array.
+    expect(
+      originalRequest.mock.calls.every(
+        ([r]) => (r as { method?: string }).method === "eth_chainId",
+      ),
+    ).toBe(true);
+  });
+
   it("wraps newly added provider methods without double-gating request", async () => {
     streamState.responses.push(true);
     const provider = {

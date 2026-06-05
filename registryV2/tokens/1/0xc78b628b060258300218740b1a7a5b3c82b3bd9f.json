@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc78b628b060258300218740b1a7a5b3c82b3bd9f",
+  "symbol": "wCOMAI",
+  "decimals": 18,
+  "name": "Wrapped Commune AI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

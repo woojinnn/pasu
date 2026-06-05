@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::{AdjustMarginAction, PerpPositionLive};
+use policy_transition::action::perp::{AdjustMarginAction, PerpPositionLive};
 
 use super::super::common::cedar::u256_hex;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -73,13 +73,11 @@ fn lower_perp_position_live(pos: &PerpPositionLive) -> Value {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{
-        AdjustMarginAction, AdjustMarginLiveInputs, PerpAction,
-    };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{SignedI256, U256};
+    use policy_state::primitives::{SignedI256, U256};
+    use policy_transition::action::perp::{AdjustMarginAction, AdjustMarginLiveInputs, PerpAction};
+    use policy_transition::action::ActionBody;
 
-    use simulation_reducer::action::perp::PerpPositionLive;
+    use policy_transition::action::perp::PerpPositionLive;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_position_live, sample_position_live_no_liq,
@@ -101,7 +99,7 @@ mod tests {
         ActionBody::Perp(PerpAction::AdjustMargin(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         // Withdraw 100 (negative delta) + position with a `liqPrice` (Some arm).
         (
             build(

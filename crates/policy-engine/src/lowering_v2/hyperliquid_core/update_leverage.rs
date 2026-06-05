@@ -3,7 +3,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::hyperliquid_core::HlUpdateLeverageAction;
+use policy_transition::action::hyperliquid_core::HlUpdateLeverageAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::{hl_market, hl_venue};
@@ -39,10 +39,10 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::hyperliquid_core::{
+    use policy_transition::action::hyperliquid_core::{
         HlUpdateLeverageAction, HyperliquidCoreAction,
     };
-    use simulation_reducer::action::ActionBody;
+    use policy_transition::action::ActionBody;
 
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 

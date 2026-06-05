@@ -1,0 +1,48 @@
+{
+  "type": "adapter_action",
+  "id": "aave/governance/core/executeProposal@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Governance V3 proposal execution.",
+  "match": {
+    "selector": "0x0d61b519",
+    "chain_to_addresses": {
+      "1": [
+        "0x9aee0b04504cef83a65ac3f0e838d0593bcb2bc7"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "executeProposal",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "executeProposal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "governance",
+      "governance": {
+        "action": "execute",
+        "execute": {
+          "venue": {
+            "name": "aave_governance_v3",
+            "chain": "$chain",
+            "governance": "$to"
+          },
+          "proposal_id": "$args.proposalId"
+        }
+      }
+    }
+  }
+}

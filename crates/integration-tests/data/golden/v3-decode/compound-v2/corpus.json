@@ -1,0 +1,678 @@
+{
+  "_comment": "Compound v2 REAL-tx corpus (Etherscan txlist, mainnet, 2026-06-02). Real calldata to the cToken/Comptroller/COMP addresses for each COVER selector. expect=pass/expect_domain per the manifest mapping. Augment with expect_body field-pins + multichain later.",
+  "transactions": [
+    {
+      "intent": "cUSDC repayBorrow real 0x8648de455fde",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0x0e752702ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cUSDC redeem real 0x0401b2d37a52",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0xdb006a750000000000000000000000000000000000000000000000000000000346ebf2ee"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x346ebf2ee"
+        }
+      ]
+    },
+    {
+      "intent": "cUSDC redeem real 0x016c444ca5c7",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0xdb006a750000000000000000000000000000000000000000000000000000000520d3a57a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x520d3a57a"
+        }
+      ]
+    },
+    {
+      "intent": "cUSDC repayBorrow real 0x0388183f8eb0",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0x0e752702000000000000000000000000000000000000000000000000000000001d8d3251"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cUSDC redeemUnderlying real 0xcc86a4c147cb",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0x852a12e30000000000000000000000000000000000000000000000000000000026f32aba"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x26f32aba"
+        }
+      ]
+    },
+    {
+      "intent": "cUSDC redeemUnderlying real 0xdd5dacac6c96",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0x852a12e30000000000000000000000000000000000000000000000000000000146cba268"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x146cba268"
+        }
+      ]
+    },
+    {
+      "intent": "cETH redeem real 0xc424a8200178",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "0",
+            "data": "0xdb006a750000000000000000000000000000000000000000000000000000000062e1630f"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH redeemUnderlying real 0x449735624021",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "0",
+            "data": "0x852a12e3000000000000000000000000000000000000000000000000000757736bcd8098"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH redeemUnderlying real 0x3bdea15f107c",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "0",
+            "data": "0x852a12e300000000000000000000000000000000000000000000000000202ace8f4c20af"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH redeem real 0xb81221b06a93",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "0",
+            "data": "0xdb006a75000000000000000000000000000000000000000000000000000000000827e004"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH mint() real 0xf32bfb6854c8",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "14900000000000000000",
+            "data": "0x1249c58b"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH mint() real 0x11549ebecec8",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "460000000000000000",
+            "data": "0x1249c58b"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH borrow real 0x14ee0bb651eb",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "0",
+            "data": "0xc5ebeaec00000000000000000000000000000000000000000000000029a2241af62c0000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "cETH borrow real 0x237be0d85733",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+            "value": "0",
+            "data": "0xc5ebeaec00000000000000000000000000000000000000000000000005d423c655aa0000"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Unitroller exitMarket real 0xb320be2f4931",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+            "value": "0",
+            "data": "0xede4edd00000000000000000000000004ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Unitroller enterMarkets real 0x3103c943b1fb",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+            "value": "0",
+            "data": "0xc29982380000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000100000000000000000000000039aa39c021dfbae8fac545936693ac917d5e7563"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Unitroller claimComp real 0xe32048013e2e",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+            "value": "0",
+            "data": "0xe9af0292000000000000000000000000cfc50541c3deaf725ce738ef87ace2ad778ba0c5"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xcfc50541c3deaf725ce738ef87ace2ad778ba0c5"
+        }
+      ]
+    },
+    {
+      "intent": "Unitroller claimComp real 0xf0e3afc7809b",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+            "value": "0",
+            "data": "0xe9af02920000000000000000000000004084142ef742531743dc9f36e1a0cab448eee791"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x4084142ef742531743dc9f36e1a0cab448eee791"
+        }
+      ]
+    },
+    {
+      "intent": "Unitroller exitMarket real 0xa709395fe520",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+            "value": "0",
+            "data": "0xede4edd00000000000000000000000005d3a536e4d6dbd6114cc1ead35777bab948e3643"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "Unitroller enterMarkets real 0xc87270b39281",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+            "value": "0",
+            "data": "0xc2998238000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000004ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "COMP delegate real 0x17ae62ce866a",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+            "value": "0",
+            "data": "0x5c19a95c0000000000000000000000002dbfe54507f5dad4bb0ad2a9fbd87d60049edffb"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xc00e94cb662c3520282e6f5717214004a7f26888"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x2dbfe54507f5dad4bb0ad2a9fbd87d60049edffb"
+        }
+      ]
+    },
+    {
+      "intent": "COMP delegate real 0x050ec1882d0b",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+            "value": "0",
+            "data": "0x5c19a95c0000000000000000000000000909676e701f65f68644aeee9318c2790654ff5b"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xc00e94cb662c3520282e6f5717214004a7f26888"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x0909676e701f65f68644aeee9318c2790654ff5b"
+        }
+      ]
+    },
+    {
+      "intent": "cUSDC mint real 0x56e660fa8352",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x966211e4a01e0e479e86f24f9d3209b8cc8a7993",
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0xa0712d680000000000000000000000000000000000000000000000000000000000c4d4c5"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xc4d4c5"
+        }
+      ]
+    },
+    {
+      "intent": "cUSDC liquidateBorrow real 0x9802bc9eda91",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x43f0665f3a38f66fffde59a3549292e8a5592646",
+            "to": "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+            "value": "0",
+            "data": "0xf5e3c46200000000000000000000000078b074db3ef2c3c9c30318d033f2124519113259000000000000000000000000000000000000000000000000000000000004625f0000000000000000000000006c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "liquidate"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "compound_v2"
+        },
+        {
+          "path": "$.data.actions[0].body.victim",
+          "op": "hex_eq",
+          "value": "0x78b074db3ef2c3c9c30318d033f2124519113259"
+        },
+        {
+          "path": "$.data.actions[0].body.debt_asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.collat_asset.key.address",
+          "op": "hex_eq",
+          "value": "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e"
+        },
+        {
+          "path": "$.data.actions[0].body.debt_to_cover",
+          "op": "u256_hex_eq",
+          "value": "0x4625f"
+        }
+      ]
+    },
+    {
+      "intent": "Maximillion repayBehalf real 0x0d01467d1363",
+      "expect": "pass",
+      "expect_domain": "lending",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "from": "0x74accb7c89c5e4cf3390b4066ede5d3eb3782167",
+            "to": "0xf859a1ad94bcf445a406b892ef0d3082f4174088",
+            "value": "2985265522970674",
+            "data": "0x9f35c3d500000000000000000000000074accb7c89c5e4cf3390b4066ede5d3eb3782167"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "repay"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.standard",
+          "op": "equals",
+          "value": "native"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xa9b154b0e9032"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0x74accb7c89c5e4cf3390b4066ede5d3eb3782167"
+        }
+      ]
+    },
+    {
+      "intent": "COMP Delegation hand typed-data",
+      "expect": "pass",
+      "expect_domain": "airdrop",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+        "primary_type": "Delegation",
+        "domain_name": "Compound",
+        "message": {
+          "delegatee": "0x4444444444444444444444444444444444444444",
+          "nonce": "5",
+          "expiry": "9999999999"
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "airdrop"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "delegate"
+        },
+        {
+          "path": "$.data.actions[0].body.delegatee",
+          "op": "hex_eq",
+          "value": "0x4444444444444444444444444444444444444444"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xc00e94cb662c3520282e6f5717214004a7f26888"
+        }
+      ]
+    }
+  ]
+}

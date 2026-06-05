@@ -1,0 +1,63 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/bundler3/1-multicall@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "Bundler3 multicall(Call[]) — the user pre-sign entrypoint. emit.strategy=multicall_call_array decodes each Call leg AT ITS OWN `to` (per-leg-to, unlike multicall_recurse same-to) into the installed GeneralAdapter1 position-leg manifests, wrapped in one ActionBody::Multicall. Unmapped/plumbing legs (transfers, wraps, deferred adapters) are skipped; the lending legs carry the intent. recurse_arg=bundle. Call = (address to, bytes data, uint256 value, bool skipRevert, bytes32 callbackHash).",
+  "match": {
+    "selector": "0x374f435d",
+    "chain_to_addresses": {
+      "1": [
+        "0x6566194141eefa99af43bb5aa71460ca2dc90245"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "multicall",
+    "abi": {
+      "name": "multicall",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "skipRevert",
+              "type": "bool"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "callbackHash",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct Call[]",
+          "name": "bundle",
+          "type": "tuple[]"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "multicall_call_array",
+    "recurse_arg": "bundle",
+    "max_depth": 4
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x31b2df002ada378a1ca9c78c8ec334fd9291c46a",
+  "symbol": "rsCOMAI-LP",
+  "decimals": 18,
+  "name": "rsCOMAI/wCOMAI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x31b2df002ada378a1ca9c78c8ec334fd9291c46a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcd7d22146ea9f26d0208848b6a1a9d1bb538245a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc78b628b060258300218740b1a7a5b3c82b3bd9f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

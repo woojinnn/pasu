@@ -1,0 +1,68 @@
+{
+  "type": "adapter_action",
+  "id": "aave/gho/sgho/mint@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "sGHO mint(shares,receiver) represented as staking deposit; amount is signed share amount.",
+  "match": {
+    "selector": "0x94bf804d",
+    "chain_to_addresses": {
+      "1": [
+        "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "name": "mint",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "stake",
+        "stake": {
+          "venue": {
+            "name": "aave_savings_gho",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+            }
+          },
+          "amount": "$args.shares",
+          "on_behalf_of": null,
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  }
+}

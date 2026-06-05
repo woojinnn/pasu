@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x703d728685d25bdb983b8bbb436c4aa18a2e03ed",
+  "symbol": "scrvUSD-B",
+  "decimals": 18,
+  "name": "Curve Bond scrvUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

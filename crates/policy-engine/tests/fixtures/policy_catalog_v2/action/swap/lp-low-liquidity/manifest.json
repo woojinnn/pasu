@@ -1,0 +1,13 @@
+{
+  "id": "lp-low-liquidity",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "add_liquidity" } } },
+  "policy_rpc": [{
+    "id": "pool-liq",
+    "method": "pool.liquidity",
+    "params": { "chain_id": "$.root.chain_id", "venue": "$.action.venue" },
+    "outputs": [{ "kind": "context", "field": "poolVol24hUsd", "type": "Decimal", "from": "$.result.vol24hUsd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "poolVol24hUsd": "decimal" } }
+}

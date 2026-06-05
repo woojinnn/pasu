@@ -1,0 +1,50 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/whype/transferFrom@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "WHYPE (HyperEVM chain 999) standard ERC20 transferFrom. Mirrors standard/erc20/transferFrom@1.0.0 -> token/erc20_transfer (recipient = $args.to, amount = $args.amount; the `from` arg has no erc20_transfer field, matching the standard manifest's convention). WHYPE-specific manifest (explicit chain_to_addresses) because chain 999 has no committed tokens/999 list; no collision with standard/erc20 (chains [1,10,8453,42161]). CAVEAT: WHYPE full 40-hex D9-limited; 0x5555...5 ASSUMED.",
+  "match": {
+    "selector": "0x23b872dd",
+    "chain_to_addresses": {
+      "999": ["0x5555555555555555555555555555555555555555"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "transferFrom",
+    "abi": {
+      "name": "transferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "from", "type": "address" },
+        { "name": "to", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": [
+        { "name": "", "type": "bool" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "recipient": "$args.to",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

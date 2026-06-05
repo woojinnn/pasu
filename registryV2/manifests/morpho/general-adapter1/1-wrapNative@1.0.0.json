@@ -1,0 +1,44 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-wrapNative@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 wrapNative plumbing leg (reached via Bundler3 multicall(Call[])). GA1 wraps `amount` of native ETH into WETH and credits `receiver`. Modeled as token/erc20_transfer of the NET CREDIT — `receiver` receives `amount` WETH — rather than the ETH→WETH mechanism (no dedicated wrap ActionBody). $resolved.weth is the chain-static WETH address (mainnet 0xC02a…, injected by the route per chain_id).",
+  "match": {
+    "selector": "0x3244c12c",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "wrapNative",
+    "abi": {
+      "name": "wrapNative",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "uint256", "name": "amount", "type": "uint256" },
+        { "internalType": "address", "name": "receiver", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.weth" } },
+          "recipient": "$args.receiver",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

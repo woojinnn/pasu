@@ -6,7 +6,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::ActionBody;
+use policy_transition::action::ActionBody;
 
 use super::common::cedar::{addr, u256_hex};
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -56,10 +56,10 @@ mod tests {
 
     use serde_json::Value;
 
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 

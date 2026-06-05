@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::launchpad::RefundAction;
+use policy_transition::action::launchpad::RefundAction;
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -47,16 +47,16 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::launchpad::{LaunchpadAction, RefundAction, RefundLiveInputs};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
-    use simulation_state::LiveField;
+    use policy_state::primitives::U256;
+    use policy_state::LiveField;
+    use policy_transition::action::launchpad::{LaunchpadAction, RefundAction, RefundLiveInputs};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{now, platform, src, usdc, user};
 
     /// A representative on-chain `Refund`: a refund amount and the refunded
     /// token (the ERC20 pay token).
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         let action = RefundAction {
             platform: platform(),
             sale_id: "sale-42".into(),

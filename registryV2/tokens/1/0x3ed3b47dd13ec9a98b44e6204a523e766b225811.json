@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3ed3b47dd13ec9a98b44e6204a523e766b225811",
+  "symbol": "aUSDT",
+  "decimals": 6,
+  "name": "Aave interest bearing USDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

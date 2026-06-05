@@ -1,0 +1,54 @@
+{
+  "contract": "AaveV3WrappedTokenGateway",
+  "chainId": 8453,
+  "address": "0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24",
+  "snapshot": "weth-gateway-base.abi.json",
+  "functions": {
+    "0xe74f7b85": {
+      "name": "borrowETH",
+      "decision": "cover",
+      "reason": "user position: borrow WETH from Aave V3 and unwrap to ETH"
+    },
+    "0x474cf53d": {
+      "name": "depositETH",
+      "decision": "cover",
+      "reason": "user position: wrap ETH and supply WETH to Aave V3"
+    },
+    "0xeed88b8d": {
+      "name": "emergencyEtherTransfer",
+      "decision": "exclude",
+      "reason": "owner-only emergency recovery, not a normal user pre-sign action"
+    },
+    "0xa3d5b255": {
+      "name": "emergencyTokenTransfer",
+      "decision": "exclude",
+      "reason": "owner-only emergency recovery, not a normal user pre-sign action"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "governance/admin ownership operation"
+    },
+    "0xbcc3c255": {
+      "name": "repayETH",
+      "decision": "cover",
+      "reason": "user position: repay Aave V3 WETH debt with ETH"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "governance/admin ownership operation"
+    },
+    "0x80500d20": {
+      "name": "withdrawETH",
+      "decision": "cover",
+      "reason": "user position: withdraw WETH from Aave V3 and unwrap to ETH"
+    },
+    "0xd4c40b6c": {
+      "name": "withdrawETHWithPermit",
+      "decision": "cover",
+      "reason": "user position: withdraw via aToken permit bundled into the gateway call"
+    }
+  },
+  "signed_structs": {}
+}

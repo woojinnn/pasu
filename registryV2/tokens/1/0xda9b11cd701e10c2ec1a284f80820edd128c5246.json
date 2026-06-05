@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xda9b11cd701e10c2ec1a284f80820edd128c5246",
+  "symbol": "InwbETH",
+  "decimals": 18,
+  "name": "Inception Restaked wbETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

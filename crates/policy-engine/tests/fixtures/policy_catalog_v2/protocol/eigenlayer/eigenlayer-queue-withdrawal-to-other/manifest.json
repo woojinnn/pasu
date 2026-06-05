@@ -1,0 +1,5 @@
+{
+  "id": "eigenlayer-queue-withdrawal-to-other",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "queue_withdrawal" } } }
+}

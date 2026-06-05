@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xfb072b42907da2bf7a8e8cb5dcaa790d45fd81a8",
-  "symbol": "K",
-  "decimals": 18,
-  "name": "Sidekick"
-}

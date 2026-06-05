@@ -52,7 +52,6 @@ impl Balance {
     pub fn is_zero(&self) -> bool {
         match self {
             Self::Fungible { amount } => amount.is_zero(),
-            // Owned entry 존재 자체가 보유. is_zero 의 의미 없음 → false.
             Self::Owned => false,
         }
     }

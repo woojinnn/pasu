@@ -1,0 +1,98 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/stakeToken/depositWithPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Umbrella stake-token deposit. Underlying asset is stake-token-specific and retained conservatively as the stake token contract until a source resolver supplies it.",
+  "match": {
+    "selector": "0x03fc9747",
+    "chain_to_addresses": {
+      "1": [
+        "0x6bf183243fdd1e306ad2c4450bc7dcf6f0bf8aa6",
+        "0xa484ab92fe32b143aee7019fc1502b1daa522d31",
+        "0xaafd07d53a7365d3e9fb6f3a3b09ec19676b73ce",
+        "0x4f827a63755855cdf3e8f3bcd20265c833f15033"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "depositWithPermit",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct IERC4626StakeToken.SignatureParams",
+          "name": "sig",
+          "type": "tuple"
+        }
+      ],
+      "name": "depositWithPermit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "stake",
+        "stake": {
+          "venue": {
+            "name": "aave_umbrella_stake_token",
+            "chain": "$chain",
+            "stake_token": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "amount": "$args.assets",
+          "on_behalf_of": null,
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  }
+}

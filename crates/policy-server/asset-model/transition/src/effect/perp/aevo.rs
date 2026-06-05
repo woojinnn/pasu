@@ -1,16 +1,11 @@
 //! Aevo venue math — off-chain orderbook with on-chain settlement on Aevo L2
 //! (Optimism stack).
-//!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::Aevo`. Not a `Reducer` impl.
-//!
 //! ## Formulas
-//!
 //! Identical algebraic form to Hyperliquid (off-chain orderbook isolated
 //! margin); the only knob is the venue tag carried in error messages.
-//!
 //! ## Primary sources
-//!
 //! - <https://docs.aevo.xyz/portfolio-margin/margin-overview> — margin /
 //!   liquidation reference
 //! - <https://docs.aevo.xyz/reference/api> — `account` endpoint
@@ -18,8 +13,8 @@
 
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;
@@ -37,7 +32,6 @@ pub(super) fn required_initial_margin(
 }
 
 /// Compute the liquidation price of a newly opened position on Aevo.
-///
 /// Aevo uses single-asset isolated margin — same closed form as Hyperliquid.
 pub(super) fn liquidation_price(
     _state: &WalletState,

@@ -1,0 +1,5 @@
+{
+  "id": "jurisdiction-mica-restricted-pack-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.domain": { "eq": "unknown" } } }
+}

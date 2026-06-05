@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8dc3c42fa99e36636b33e40d7949ba434c946511",
+  "symbol": "DUSD",
+  "decimals": 18,
+  "name": "DeFi Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x0c288302629fc22504d59ddf8fbf8aa92bd86d3d",
-  "symbol": "SUPER",
-  "decimals": 18,
-  "name": "SuperFarm"
-}

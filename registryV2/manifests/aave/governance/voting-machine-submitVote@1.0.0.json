@@ -1,0 +1,77 @@
+{
+  "type": "adapter_action",
+  "id": "aave/governance/votingMachine/submitVote@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Governance V3 voting machine vote submission.",
+  "match": {
+    "selector": "0xa7f8451c",
+    "chain_to_addresses": {
+      "1": [
+        "0x06a1795a88b82700896583e123f46be43877bfb6"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "submitVote",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "support",
+          "type": "bool"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "underlyingAsset",
+              "type": "address"
+            },
+            {
+              "internalType": "uint128",
+              "name": "slot",
+              "type": "uint128"
+            },
+            {
+              "internalType": "bytes",
+              "name": "proof",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct IVotingMachineWithProofs.VotingBalanceProof[]",
+          "name": "votingBalanceProofs",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "submitVote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "governance",
+      "governance": {
+        "action": "vote",
+        "vote": {
+          "venue": {
+            "name": "aave_voting_machine",
+            "chain": "$chain",
+            "voting_machine": "$to"
+          },
+          "proposal_id": "$args.proposalId",
+          "support": "$args.support",
+          "reason": null
+        }
+      }
+    }
+  }
+}

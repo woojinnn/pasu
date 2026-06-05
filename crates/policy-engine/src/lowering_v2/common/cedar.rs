@@ -1,6 +1,6 @@
 //! Small Cedar-encoding helpers shared across every new-model lowering.
 
-use simulation_state::primitives::{Address, U256};
+use policy_state::primitives::{Address, U256};
 
 /// Lower-hex (`0x…`) rendering of a [`U256`] (alloy `LowerHex`).
 pub(crate) fn u256_hex(v: U256) -> String {

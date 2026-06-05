@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5010263ac1978297f56048c7d2b02316a3435404",
+  "symbol": "2BTC-f-gauge",
+  "decimals": 18,
+  "name": "Curve.fi 2BTC-f Gauge Deposit",
+  "source": "https://etherscan.io/token/0x5010263ac1978297f56048c7d2b02316a3435404",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "curve_gauge", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0xb7ecb2aa52aa64a717180e030241bc75cd946726" }
+    }
+  }
+}

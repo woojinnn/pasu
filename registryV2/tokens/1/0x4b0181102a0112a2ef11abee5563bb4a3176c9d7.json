@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4b0181102a0112a2ef11abee5563bb4a3176c9d7",
+  "symbol": "cSUSHI",
+  "decimals": 8,
+  "name": "Compound Sushi Token",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

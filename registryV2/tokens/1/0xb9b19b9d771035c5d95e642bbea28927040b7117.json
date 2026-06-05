@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb9b19b9d771035c5d95e642bbea28927040b7117",
+  "symbol": "CRVXEN-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: DXN/XLON/XEN",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xb9b19b9d771035c5d95e642bbea28927040b7117"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x06450dee7fd2fb8e39061434babcfc05599a6fb8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x80f0c1c49891dcfdd40b6e0f960f84e6042bcb6f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x36ff4dae0e88113d68b1209e245b0e3af92e9d58"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

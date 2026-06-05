@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3ce38a9e2403415c50661a3f78acf4d392320e7e",
+  "symbol": "z0RWAUSDC",
+  "decimals": 6,
+  "name": "RWA ZeroLend USDC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

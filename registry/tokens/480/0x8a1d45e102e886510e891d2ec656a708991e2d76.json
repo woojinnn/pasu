@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 480,
-  "address": "0x8a1d45e102e886510e891d2ec656a708991e2d76",
-  "symbol": "wCOP",
-  "decimals": 18,
-  "name": "Peso Colombiano"
-}

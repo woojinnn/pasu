@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x26832769a1539c17f04d50b4061c8c4baa1e997f",
+  "symbol": "yvyYB/BOND",
+  "decimals": 18,
+  "name": "stcrvBOND/yvyYB",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x26832769a1539c17f04d50b4061c8c4baa1e997f"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x20d9ef5524babc1e2bf4d1d1ab720033cf2f4a8e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1f6f16945e395593d8050d6cc33e4328a515b648"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4c58bb48cbbd06c06773f703cc62dee42f2f1bc1"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

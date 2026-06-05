@@ -64,6 +64,11 @@ pub enum PegKind {
     SoftPeg,
     /// Balance grows over time via rebasing.
     Rebasing,
+    /// Non-rebasing wrapper redeemable for a monotonically rising amount of the
+    /// underlying via an on-chain exchange rate (wstETH→stETH, rETH→ETH). The
+    /// balance is fixed; value accrues in the rate — neither a 1:1 hard peg nor a
+    /// market-floating soft peg, and distinct from `Rebasing` (no balance growth).
+    ExchangeRate,
 }
 
 /// How yield accrual is reflected for a yield-bearing receipt.
@@ -217,4 +222,26 @@ pub enum TokenKind {
 
     /// Unrecognized token — policy default is "warn".
     Unknown,
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::PegKind;
+
+    /// The token registry JSON (e.g. wstETH `peg_kind: "exchange_rate"`) stores
+    /// these exact strings, so the Rust serde wire names and the registry values
+    /// must stay in lockstep — this test locks them.
+    #[test]
+    fn peg_kind_wire_names_round_trip() {
+        for (variant, wire) in [
+            (PegKind::HardPeg, "\"hard_peg\""),
+            (PegKind::SoftPeg, "\"soft_peg\""),
+            (PegKind::Rebasing, "\"rebasing\""),
+            (PegKind::ExchangeRate, "\"exchange_rate\""),
+        ] {
+            assert_eq!(serde_json::to_string(&variant).unwrap(), wire);
+            assert_eq!(serde_json::from_str::<PegKind>(wire).unwrap(), variant);
+        }
+    }
 }

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7ec90ed9297dbc5702b1e616a938235afd20a1de",
+  "symbol": "USAD",
+  "decimals": 6,
+  "name": "Golden backed US Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

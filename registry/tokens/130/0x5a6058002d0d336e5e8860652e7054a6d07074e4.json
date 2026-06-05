@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x5a6058002d0d336e5e8860652e7054a6d07074e4",
-  "symbol": "SKY",
-  "decimals": 18,
-  "name": "SKY Governance Token"
-}

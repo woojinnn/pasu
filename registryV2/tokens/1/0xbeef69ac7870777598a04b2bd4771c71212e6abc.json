@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbeef69ac7870777598a04b2bd4771c71212e6abc",
+  "symbol": "steakLRT",
+  "decimals": 18,
+  "name": "Steakhouse Resteaking Vault",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

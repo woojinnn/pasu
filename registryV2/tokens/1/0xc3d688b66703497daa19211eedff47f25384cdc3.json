@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc3d688b66703497daa19211eedff47f25384cdc3",
+  "symbol": "cUSDCv3",
+  "decimals": 6,
+  "name": "Compound USDC",
+  "source": "https://docs.compound.finance/#networks",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "compound_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" }
+    },
+    "rebase_form": "index"
+  }
+}

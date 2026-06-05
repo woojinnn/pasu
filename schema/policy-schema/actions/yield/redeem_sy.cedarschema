@@ -1,0 +1,33 @@
+// Yield::RedeemSy — unwrap an SY back into a token (ActionMiscV3 redeemSyToToken).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/redeem_sy.rs`
+// (`RedeemSyAction`). No LiveInputs (P1a).
+
+namespace Yield {
+  type RedeemSyContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // SY contract redeemed from (address).
+    sy: String,
+    // External token received.
+    externalToken: Core::TokenRef,
+    // SY shares redeemed (U256 hex).
+    netSyIn: String,
+    // Minimum external-token out / slippage floor (U256 hex).
+    minTokenOut: String,
+    // Output recipient (address).
+    recipient: String,
+    // Manifest-extensible slot.
+    custom?: RedeemSyCustomContext,
+  };
+
+  type RedeemSyCustomContext = {};
+
+  action "RedeemSy" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RedeemSyContext,
+  };
+}

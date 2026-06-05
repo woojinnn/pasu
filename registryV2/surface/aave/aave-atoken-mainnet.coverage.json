@@ -1,0 +1,98 @@
+{
+  "contract": "AaveV3AToken (aEthAAVE)",
+  "chainId": 1,
+  "address": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+  "snapshot": "aave-atoken-mainnet.abi.json",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0xb18d6afd": {
+      "name": "burn",
+      "decision": "exclude",
+      "reason": "pool-only aToken accounting hook"
+    },
+    "0xa457c2d7": {
+      "name": "decreaseAllowance",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0x5c19a95c": {
+      "name": "delegate",
+      "decision": "cover",
+      "reason": "governance power-delegation primitive (same surface as AAVE token) \u2014 both powers, on-chain"
+    },
+    "0xdc937e1c": {
+      "name": "delegateByType",
+      "decision": "cover",
+      "reason": "governance power-delegation primitive (same surface as AAVE token) \u2014 one power type, on-chain"
+    },
+    "0x39509351": {
+      "name": "increaseAllowance",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0x7fdd585f": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "proxy init"
+    },
+    "0xa095ac19": {
+      "name": "metaDelegate",
+      "decision": "exclude",
+      "reason": "relayer-submit: on-chain consumer of off-chain EIP-712 sig; signer risk at off-chain sign"
+    },
+    "0x657f0cde": {
+      "name": "metaDelegateByType",
+      "decision": "exclude",
+      "reason": "relayer-submit: on-chain consumer of off-chain EIP-712 sig; signer risk at off-chain sign"
+    },
+    "0xb3f1c93d": {
+      "name": "mint",
+      "decision": "exclude",
+      "reason": "pool-only aToken accounting hook"
+    },
+    "0x7df5bd3b": {
+      "name": "mintToTreasury",
+      "decision": "exclude",
+      "reason": "pool-only aToken accounting hook"
+    },
+    "0xd505accf": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0xaf5f243b": {
+      "name": "renounceAllowance",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0xcea9d26f": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "admin token rescue"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard aToken ERC-20/EIP-2612; erc20 standard adapter auto-enumerates"
+    },
+    "0x353b7b9a": {
+      "name": "transferOnLiquidation",
+      "decision": "exclude",
+      "reason": "pool-only aToken accounting hook"
+    },
+    "0x4efecaa5": {
+      "name": "transferUnderlyingTo",
+      "decision": "exclude",
+      "reason": "pool-only aToken accounting hook"
+    }
+  }
+}

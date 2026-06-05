@@ -6,6 +6,11 @@
   "type": "module",
   "scripts": {
     "build": "tsx scripts/build-index.ts",
+    "check:universe": "tsx scripts/check-address-universe.ts",
+    "check:surface": "tsx scripts/check-surface-completeness.ts",
+    "check:tokens": "tsx scripts/check-tokens.ts",
+    "check:manifest": "tsx scripts/build-index.ts --summary-only --representative-source-refs --strict-callkeys && cargo run --quiet --bin v3-harness -- validate --representative-source-refs",
+    "check:manifest:full": "tsx scripts/build-index.ts --strict-callkeys && cargo run --quiet --bin v3-harness -- validate",
     "typecheck": "tsc --noEmit",
     "serve": "python3 -m http.server 8000"
   },
@@ -13,6 +18,7 @@
     "@types/node": "^20.0.0",
     "canonicalize": "^2.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "viem": "^2.13.7"
   }
 }

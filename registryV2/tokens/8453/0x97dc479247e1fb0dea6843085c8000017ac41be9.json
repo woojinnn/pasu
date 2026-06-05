@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x97dc479247e1fb0dea6843085c8000017ac41be9",
+  "symbol": "TIR",
+  "decimals": 0,
+  "name": "XTIER",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

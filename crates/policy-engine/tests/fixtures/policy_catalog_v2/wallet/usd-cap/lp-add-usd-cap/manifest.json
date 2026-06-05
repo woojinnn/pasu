@@ -1,0 +1,17 @@
+{
+  "id": "lp-add-usd-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "add_liquidity" } } },
+  "policy_rpc": [{
+    "id": "lp-add-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.params.poolPair.tokenA",
+      "amount": "$.action.params.amountDesired.a"
+    },
+    "outputs": [{ "kind": "context", "field": "lpAddUsd", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "lpAddUsd": "decimal" } }
+}

@@ -1,0 +1,45 @@
+{
+  "protocol": "hyperliquid",
+  "category": "perp_dex",
+  "source": "Etherscan v2 getsourcecode (verified): WHYPE9 + CoreWriter on HyperEVM (chain 999, hyperevmscan), Bridge2 on Arbitrum (chain 42161, arbiscan). System addresses from HyperLiquid official docs (HyperEVM / Wrapped HYPE / HyperCore<->HyperEVM transfers).",
+  "url": "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm",
+  "fetchedAt": "2026-06-03",
+  "note": "I0 contract-inventory for HyperLiquid's ON-CHAIN surface across HyperEVM (999) + Arbitrum (42161). HyperLiquid is split: (a) OFF-CHAIN HyperCore /exchange actions (no contract) \u2014 proven by the typed-data + venue corpus, NOT this ABI gate; (b) ON-CHAIN HyperEVM/Arbitrum contracts \u2014 this file. cover = user pre-sign surface; exclude = native-transfer sentinel / infra. The EIP-712 user-signed typed-data surface (domain HyperliquidSignTransaction, verifyingContract=0x0) has NO deployed contract \u2014 its coverage lives in hyperliquid-sign-transaction.coverage.json (signed_structs, S1/S2) keyed on the cosmetic mainnet signatureChainId 42161. System vanity addresses (0x2222/0x3333/0x5555) are 1\ucc28-confirmed against HL docs; WHYPE/CoreWriter/Bridge2 ABIs are Etherscan-verified.",
+  "contracts": [
+    {
+      "name": "WHYPE9 (Wrapped HYPE, WETH9 fork)",
+      "chainId": 999,
+      "address": "0x5555555555555555555555555555555555555555",
+      "decision": "cover",
+      "reason": "User ERC20 + wrap/unwrap surface (approve/transfer/transferFrom/deposit/withdraw). Etherscan-verified WHYPE9. 1\ucc28: HL docs 'Wrapped HYPE'."
+    },
+    {
+      "name": "CoreWriter (HyperEVM->HyperCore system contract)",
+      "chainId": 999,
+      "address": "0x3333333333333333333333333333333333333333",
+      "decision": "cover",
+      "reason": "sendRawAction(bytes) \u2014 the EVM->HyperCore write dispatch ScopeBall decodes via tagged_dispatch (15 actions). Etherscan-verified. 1\ucc28: HL docs 'Interacting with HyperCore' (CoreWriter.sol)."
+    },
+    {
+      "name": "Bridge2 (HyperLiquid USDC bridge)",
+      "chainId": 42161,
+      "address": "0x2df1c51e09aecf9cacb7bc98cb1742757f163df7",
+      "decision": "cover",
+      "reason": "batchedDepositWithPermit = user USDC deposit to HyperCore (the 1 user fn of 14; the rest are validator/finalizer/governance infra). Etherscan-verified Bridge2 on Arbitrum. 1\ucc28: HL docs Bridge2."
+    },
+    {
+      "name": "HYPE system address (HyperCore<->HyperEVM native transfer sink)",
+      "chainId": 999,
+      "address": "0x2222222222222222222222222222222222222222",
+      "decision": "exclude",
+      "reason": "Native HYPE transfer target (selector 0x00000000, no ABI). A bare value transfer to this system address moves HYPE EVM<->Core. No fitting structured ActionBody (Token has no native-transfer variant) \u2014 decoded as domain:unknown, which still preserves target+value for a value-threshold policy. Structured representation deferred (would need a new native-transfer ActionBody). 1\ucc28: HL docs 'HyperCore<->HyperEVM transfers'."
+    },
+    {
+      "name": "HyperliquidSignTransaction (EIP-712 user-signed domain, verifyingContract=0x0)",
+      "chainId": 42161,
+      "address": "0x0000000000000000000000000000000000000000",
+      "decision": "cover",
+      "reason": "OFF-CHAIN EIP-712 typed-data domain (no deployed contract; verifyingContract=0x0 sentinel). Coverage is signed_structs-only (12 HyperliquidTransaction:* primaryTypes) in hyperliquid-sign-transaction.coverage.json; the snapshot is an intentionally-empty ABI. Keyed on the cosmetic mainnet signatureChainId 42161 (representative; testnet 421614 deferred)."
+    }
+  ]
+}

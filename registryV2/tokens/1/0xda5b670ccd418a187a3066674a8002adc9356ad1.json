@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xda5b670ccd418a187a3066674a8002adc9356ad1",
+  "symbol": "crvCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Ahead of the Curve",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xda5b670ccd418a187a3066674a8002adc9356ad1"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd533a949740bb3306d119cc777fa900ba034cd52"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9d409a0a012cfba9b15f6d4b36ac57a46966ab9a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x62b9c7356a2dc64a1969e19c23e4f579f9810aa7"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd38aeb759891882e78e957c80656572503d8c1b1"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,282 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v4-position-manager/modify-liquidities@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xdd46508f",
+    "chain_to_addresses": {
+      "1":     ["0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"],
+      "10":    ["0x3c3ea4b57a46241e54610e5f022e5c45859a1017"],
+      "42161": ["0xd88f38f930b7952f2db2432cb002e7abbf3dd869"],
+      "8453":  ["0x7c5f5a4bbd8fd63184577525326123b519429bdc"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "modifyLiquidities",
+    "abi": {
+      "name": "modifyLiquidities",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "unlockData", "type": "bytes"   },
+        { "name": "deadline",   "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "opcode_stream_dispatch",
+    "dispatcher_id": "uniswap_v4_actions",
+    "unlock_data_source": "$args.unlockData",
+    "mask": "0xff",
+    "allow_revert_bit": "0x00",
+    "unknown_opcode_policy": "skip",
+    "_note": "unlockData = abi.encode(bytes actions, bytes[] params). The dispatcher pre-decodes it into (commands, inputs[]) — structurally identical to the Universal Router envelope — then runs the shared per-opcode dispatch. V4 actions are NOT masked (full byte 0x00-0x1b), so mask=0xff / allow_revert_bit=0x00. Settlement actions (0x0b-0x16: SETTLE/SETTLE_PAIR/TAKE/TAKE_PAIR/CLOSE_CURRENCY/CLEAR_OR_TAKE/SWEEP/WRAP/UNWRAP) are absent from per_opcode_body + policy=skip → silently dropped: the liquidity action IS the intent, and they would otherwise add Unknown noise that trips the policy engine's warn-on-Unknown default. Swap codes (0x06-0x09) are UnsupportedAction inside modifyLiquidities (PositionManager table only) and are likewise skipped. Native-ETH V4 pools (currency0 == address(0)) currently surface the native leg as erc20{0x0...0}; a value-map native-token mapping is a follow-up. pool_manager is injected per-chain by the route handler as $resolved.pool_manager (mainnet/Base/OP/ARB V4 PoolManager singletons).",
+    "per_opcode_body": {
+      "0x00": {
+        "name": "INCREASE_LIQUIDITY",
+        "inputs_abi": "(uint256 tokenId, uint256 liquidity, uint128 amount0Max, uint128 amount1Max, bytes hookData)",
+        "body": {
+          "domain": "amm",
+          "amm": {
+            "action": "add_liquidity",
+            "add_liquidity": {
+              "venue": {
+                "name":         "uniswap_v4",
+                "chain":        "$chain",
+                "pool_id":      "unknown",
+                "pool_manager": "$resolved.pool_manager",
+                "hooks":        "0x0000000000000000000000000000000000000000"
+              },
+              "params": {
+                "kind": "concentrated_increase",
+                "nft_key": {
+                  "standard": "erc721",
+                  "chain":    "$chain",
+                  "contract": "$to",
+                  "token_id": "$inputs.tokenId"
+                },
+                "amount_desired": ["$inputs.amount0Max", "$inputs.amount1Max"],
+                "amount_min":     ["0", "0"]
+              },
+              "live_inputs": {
+                "pool_state": {
+                  "source": {
+                    "kind":       "onchain_view",
+                    "chain":      "$chain",
+                    "contract":   "$resolved.pool_manager",
+                    "function":   "getSlot0(bytes32)",
+                    "decoder_id": "uniswap_v4_slot0"
+                  },
+                  "ttl_s": 12
+                },
+                "current_price": {
+                  "source": {
+                    "kind":    "derived_from",
+                    "inputs":  [{ "scope": "global", "name": "uniswap_v4_pool_state" }],
+                    "calc_id": "uniswap_v3_sqrt_price_to_price"
+                  },
+                  "ttl_s": 12
+                }
+              }
+            }
+          }
+        },
+        "_note": "INCREASE carries only tokenId — PoolKey is looked up on-chain via positionInfo[tokenId], so pool_id/hooks are NOT statically recoverable (D9). pool_id = 'unknown' sentinel; hooks = zero address. amount0Max/amount1Max are slippage UPPER bounds (validateMaxIn). amount_min is unknown statically → '0'."
+      },
+      "0x01": {
+        "name": "DECREASE_LIQUIDITY",
+        "inputs_abi": "(uint256 tokenId, uint256 liquidity, uint128 amount0Min, uint128 amount1Min, bytes hookData)",
+        "body": {
+          "domain": "amm",
+          "amm": {
+            "action": "remove_liquidity",
+            "remove_liquidity": {
+              "venue": {
+                "name":         "uniswap_v4",
+                "chain":        "$chain",
+                "pool_id":      "unknown",
+                "pool_manager": "$resolved.pool_manager",
+                "hooks":        "0x0000000000000000000000000000000000000000"
+              },
+              "params": {
+                "kind": "concentrated_decrease",
+                "nft_key": {
+                  "standard": "erc721",
+                  "chain":    "$chain",
+                  "contract": "$to",
+                  "token_id": "$inputs.tokenId"
+                },
+                "liquidity_burn": "$inputs.liquidity",
+                "amount_min":     ["$inputs.amount0Min", "$inputs.amount1Min"]
+              },
+              "live_inputs": {
+                "pool_state": {
+                  "source": {
+                    "kind":       "onchain_view",
+                    "chain":      "$chain",
+                    "contract":   "$resolved.pool_manager",
+                    "function":   "getSlot0(bytes32)",
+                    "decoder_id": "uniswap_v4_slot0"
+                  },
+                  "ttl_s": 12
+                },
+                "fees_owed": {
+                  "source": {
+                    "kind":       "onchain_view",
+                    "chain":      "$chain",
+                    "contract":   "$to",
+                    "function":   "getPositionLiquidity(uint256)",
+                    "decoder_id": "uniswap_v4_position_fees_owed"
+                  },
+                  "ttl_s": 12
+                }
+              }
+            }
+          }
+        },
+        "_note": "DECREASE shares INCREASE's wire decoder (uint256 tokenId, uint256 liquidity, uint128, uint128, bytes); slots 2/3 are slippage LOWER bounds amount0Min/amount1Min (validateMinOut). liquidity is uint256 on the wire but bound into the U128 liquidity_burn (fits for every real position; > u128 would reject at deserialize, mirroring V3). pool_id NOT statically recoverable → 'unknown'."
+      },
+      "0x02": {
+        "name": "MINT_POSITION",
+        "inputs_abi": "(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks, int24 tickLower, int24 tickUpper, uint256 liquidity, uint128 amount0Max, uint128 amount1Max, address owner, bytes hookData)",
+        "body": {
+          "domain": "amm",
+          "amm": {
+            "action": "add_liquidity",
+            "add_liquidity": {
+              "venue": {
+                "name":         "uniswap_v4",
+                "chain":        "$chain",
+                "pool_id":      "$inputs.pool_id",
+                "pool_manager": "$resolved.pool_manager",
+                "hooks":        "$inputs.hooks"
+              },
+              "params": {
+                "kind": "concentrated_mint",
+                "pool_pair": [
+                  { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.currency0" } },
+                  { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.currency1" } }
+                ],
+                "amount_desired": ["$inputs.amount0Max", "$inputs.amount1Max"],
+                "amount_min":     ["0", "0"],
+                "range": {
+                  "kind":      "tick",
+                  "lower":     "$inputs.tickLower",
+                  "upper":     "$inputs.tickUpper",
+                  "liquidity": "0"
+                },
+                "recipient": "$inputs.owner"
+              },
+              "live_inputs": {
+                "pool_state": {
+                  "source": {
+                    "kind":       "onchain_view",
+                    "chain":      "$chain",
+                    "contract":   "$resolved.pool_manager",
+                    "function":   "getSlot0(bytes32)",
+                    "decoder_id": "uniswap_v4_slot0"
+                  },
+                  "ttl_s": 12
+                },
+                "current_price": {
+                  "source": {
+                    "kind":    "derived_from",
+                    "inputs":  [{ "scope": "global", "name": "uniswap_v4_pool_state" }],
+                    "calc_id": "uniswap_v3_sqrt_price_to_price"
+                  },
+                  "ttl_s": 12
+                }
+              }
+            }
+          }
+        },
+        "_note": "MINT_POSITION is the only modifyLiquidities action fully self-describing from calldata: the PoolKey is encoded INLINE (head-flattened 5 fields: currency0, currency1, fee, tickSpacing, hooks) at the head of params[i], so the inputs_abi is a FLAT 12-field tuple (no nested offset). pool_id = keccak256(abi.encode(poolKey)) is computed in Rust by the dispatcher and injected as the synthetic $inputs.pool_id (the manifest can't hash). hooks/currency0/currency1 come straight from the inline PoolKey. owner is the recipient (address(1)=MSG_SENDER / address(2)=ADDRESS_THIS sentinels surface verbatim — sentinel→self mapping is a follow-up). amount0Max/amount1Max are slippage upper bounds. range.liquidity placeholder '0' (the position's minted liquidity is on-chain-assigned)."
+      },
+      "0x03": {
+        "name": "BURN_POSITION",
+        "inputs_abi": "(uint256 tokenId, uint128 amount0Min, uint128 amount1Min, bytes hookData)",
+        "body": {
+          "domain": "amm",
+          "amm": {
+            "action": "remove_liquidity",
+            "remove_liquidity": {
+              "venue": {
+                "name":         "uniswap_v4",
+                "chain":        "$chain",
+                "pool_id":      "unknown",
+                "pool_manager": "$resolved.pool_manager",
+                "hooks":        "0x0000000000000000000000000000000000000000"
+              },
+              "params": {
+                "kind": "concentrated_burn",
+                "nft_key": {
+                  "standard": "erc721",
+                  "chain":    "$chain",
+                  "contract": "$to",
+                  "token_id": "$inputs.tokenId"
+                }
+              },
+              "live_inputs": {
+                "pool_state": {
+                  "source": {
+                    "kind":       "onchain_view",
+                    "chain":      "$chain",
+                    "contract":   "$resolved.pool_manager",
+                    "function":   "getSlot0(bytes32)",
+                    "decoder_id": "uniswap_v4_slot0"
+                  },
+                  "ttl_s": 12
+                },
+                "fees_owed": {
+                  "source": {
+                    "kind":       "onchain_view",
+                    "chain":      "$chain",
+                    "contract":   "$to",
+                    "function":   "getPositionLiquidity(uint256)",
+                    "decoder_id": "uniswap_v4_position_fees_owed"
+                  },
+                  "ttl_s": 12
+                }
+              }
+            }
+          }
+        },
+        "_note": "BURN_POSITION auto-decreases remaining liquidity to 0 then burns the position NFT. Only tokenId in calldata → pool_id NOT statically recoverable → 'unknown'. amount0Min/amount1Min are slippage lower bounds (not surfaced — concentrated_burn carries no amount field)."
+      },
+      "0x04": {
+        "name": "INCREASE_LIQUIDITY_FROM_DELTAS",
+        "body": {
+          "domain": "unknown",
+          "unknown": {
+            "target": "$to",
+            "chain":  "$chain",
+            "calldata": "0x",
+            "value":  "0"
+          }
+        },
+        "_note": "DEPRECATED (Actions.sol @notice: 'Vulnerable to sandwich attacks - do not use'). Emitted as Unknown so the policy engine can warn/deny rather than treat it as a normal add. Params intentionally NOT decoded (the intent signal is 'a deprecated, slippage-unprotected liquidity action was used')."
+      },
+      "0x05": {
+        "name": "MINT_POSITION_FROM_DELTAS",
+        "body": {
+          "domain": "unknown",
+          "unknown": {
+            "target": "$to",
+            "chain":  "$chain",
+            "calldata": "0x",
+            "value":  "0"
+          }
+        },
+        "_note": "DEPRECATED (Actions.sol @notice: 'Vulnerable to sandwich attacks - do not use'). Emitted as Unknown (same rationale as 0x04)."
+      }
+    }
+  },
+  "requires": {
+    "imperative": ["uniswap-v4-actions-dispatcher@^1.0"],
+    "adapter_capabilities": ["token_metadata", "v4_pool_resolver"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

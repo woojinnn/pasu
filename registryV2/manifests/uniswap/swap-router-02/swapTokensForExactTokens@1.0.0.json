@@ -1,0 +1,144 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/swap-router-02/swapTokensForExactTokens@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x42712a67",
+    "chain_to_addresses": {
+      "1": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "10": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ],
+      "8453": [
+        "0x2626664c2603336E57B271c5C0b26F421741e481"
+      ],
+      "42161": [
+        "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapTokensForExactTokens",
+    "abi": {
+      "name": "swapTokensForExactTokens",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "amountOut",
+          "type": "uint256"
+        },
+        {
+          "name": "amountInMax",
+          "type": "uint256"
+        },
+        {
+          "name": "path",
+          "type": "address[]"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "uniswap_v2",
+            "chain": "$chain",
+            "pool": "$resolved.pool",
+            "factory": "$resolved.factory"
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$args.path[0]"
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$args.path[-1]"
+              }
+            },
+            "direction": {
+              "kind": "exact_output",
+              "amount_out": "$args.amountOut",
+              "max_amount_in": "$args.amountInMax"
+            },
+            "recipient": "$args.to",
+            "slippage_bp": "$derived.slippage_bp"
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$resolved.pool",
+                "function": "getReserves()",
+                "decoder_id": "uniswap_v2_get_reserves"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "uniswap_v2_pool_state"
+                  }
+                ],
+                "calc_id": "uniswap_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "uniswap_v2_pool_state"
+                  }
+                ],
+                "calc_id": "uniswap_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata",
+      "v2_pool_resolver"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

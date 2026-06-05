@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa4798d55e0cb1fae8fc6e8066118c2f9fca0994e",
+  "symbol": "WBSPANK-gauge",
+  "decimals": 18,
+  "name": "Curve.fi WBSPANK Gauge Deposit",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

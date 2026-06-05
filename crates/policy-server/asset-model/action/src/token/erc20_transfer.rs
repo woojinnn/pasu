@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, U256};
-use simulation_state::token::TokenRef;
+use policy_state::primitives::{Address, U256};
+use policy_state::token::TokenRef;
 
 /// `ERC20` `transfer(recipient, amount)` — direct token transfer from the actor.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

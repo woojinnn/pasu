@@ -236,15 +236,25 @@ async function checkTypedSignature(
   readRequest?: ProviderRequest,
 ): Promise<boolean> {
   const [first, second] = params;
-  const address = looksLikeAddress(first) ? first : second;
+  // EIP-712 convention is params=[signer, typedData]; tolerate the reversed
+  // order. `typedData` is whichever param is NOT the 40-hex signer address.
   const typedData = looksLikeAddress(first) ? second : first;
-  if (!looksLikeAddress(address) || typedData === undefined) return true;
+  // Only skip when there is genuinely no typed-data payload to evaluate. A
+  // missing / non-address signer must NOT waive the verdict (F2-1): the SW
+  // routes on (verifyingContract, primaryType), not `from`, so fall back to the
+  // zero address and still evaluate the payload rather than passing it through.
+  if (typedData === undefined || typedData === null) return true;
+  const signer = looksLikeAddress(first)
+    ? first
+    : looksLikeAddress(second)
+      ? second
+      : `0x${"0".repeat(40)}`;
 
   return sendToStreamAndAwaitResponse(stream, {
     type: RequestType.TYPED_SIGNATURE,
     chainId: await readChainId(provider, readRequest),
     hostname: location.hostname,
-    address: String(address) as `0x${string}`,
+    address: String(signer) as `0x${string}`,
     typedData,
   });
 }
@@ -293,6 +303,20 @@ async function ensureAllowed(
   readRequest?: ProviderRequest,
 ): Promise<void> {
   if (method === "eth_sendTransaction") {
+    const isOk = await checkTransaction(
+      provider,
+      params,
+      undefined,
+      readRequest,
+    );
+    if (!isOk) throw REJECT_TX;
+    return;
+  }
+
+  if (method === "eth_signTransaction") {
+    // N8: sign-without-broadcast carries full tx params, and a signed tx can be
+    // raw-broadcast elsewhere. Evaluate it exactly like eth_sendTransaction
+    // rather than letting it through ungated/unlogged.
     const isOk = await checkTransaction(
       provider,
       params,
@@ -623,6 +647,15 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
 
   const proxiedRequest = new Proxy(originalRequest, {
     apply: async (target, _thisArg, args) => {
+      if (Array.isArray(args[0])) {
+        // N4: EIP-1193 `request` takes a single object, but some non-standard
+        // wallets honour a JSON-RPC batch ARRAY here too. An array has no
+        // top-level `.method`, so the gate below would forward it ungated —
+        // gate each leg first (any deny throws, rejecting the request), then
+        // forward intact. (gateBatchArray is closed over from below.)
+        await gateBatchArray(args[0] as unknown[]);
+        return Reflect.apply(target, provider, args);
+      }
       const request = (args[0] ?? {}) as JsonRpcRequest;
       const method = request.method;
       const params = paramsArray(request.params);
@@ -647,6 +680,22 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
   // `thisArg`. See the comment on `proxiedRequest` above for the rationale —
   // MetaMask's native methods are stateful and silently no-op when called
   // with the wrong `this`.
+  // N4: a legacy `send`/`sendAsync` JSON-RPC BATCH is an ARRAY of requests with
+  // no top-level `.method`, so the per-method gate would see `undefined` and
+  // forward the whole array ungated. Gate each element first; any deny throws.
+  const gateBatchArray = async (batch: unknown[]): Promise<void> => {
+    for (const item of batch) {
+      const record = asRecord(item);
+      if (!record) continue;
+      await ensureAllowed(
+        provider,
+        record.method as string | undefined,
+        paramsArray(record.params),
+        originalRequest,
+      );
+    }
+  };
+
   const proxiedSendAsync =
     typeof originalSendAsync === "function"
       ? new Proxy(originalSendAsync, {
@@ -655,6 +704,26 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
             const callback = args[1] as JsonRpcCallback | undefined;
             const method = request.method;
             const params = paramsArray(request.params);
+
+            if (Array.isArray(args[0])) {
+              // N4: JSON-RPC batch array — gate each leg, then forward intact.
+              const batch = args[0] as unknown[];
+              if (typeof callback === "function") {
+                void (async () => {
+                  try {
+                    await gateBatchArray(batch);
+                    Reflect.apply(target, provider, args);
+                  } catch (error) {
+                    rejectJsonRpc(callback, {} as JsonRpcRequest, error);
+                  }
+                })();
+                return undefined;
+              }
+              return (async () => {
+                await gateBatchArray(batch);
+                return Reflect.apply(target, provider, args);
+              })();
+            }
 
             if (typeof callback !== "function") {
               if (!method) return Reflect.apply(target, provider, args);
@@ -693,6 +762,27 @@ function proxyEthereumProvider(provider: Eip1193Provider | undefined): boolean {
                 method: payloadOrMethod,
                 params: callbackOrParams,
               });
+            }
+
+            if (Array.isArray(payloadOrMethod)) {
+              // N4: JSON-RPC batch array — gate each leg, then forward intact.
+              const batch = payloadOrMethod as unknown[];
+              if (typeof callbackOrParams === "function") {
+                const cb = callbackOrParams as JsonRpcCallback;
+                void (async () => {
+                  try {
+                    await gateBatchArray(batch);
+                    Reflect.apply(target, provider, args);
+                  } catch (error) {
+                    rejectJsonRpc(cb, {} as JsonRpcRequest, error);
+                  }
+                })();
+                return undefined;
+              }
+              return (async () => {
+                await gateBatchArray(batch);
+                return Reflect.apply(target, provider, args);
+              })();
             }
 
             const request = (payloadOrMethod ?? {}) as JsonRpcRequest;

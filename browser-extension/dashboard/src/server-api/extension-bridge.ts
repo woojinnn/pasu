@@ -8,8 +8,8 @@
  * SW handler's `{ ok, data | error }` envelope.
  *
  * Why a thin module?
- * - The Phase-N refactor moves verdict / execution-report storage off the
- *   simulation-server and into `chrome.storage.local`. The dashboard talks to
+ * - Verdict / execution-report storage lives outside the
+ *   policy-server and into `chrome.storage.local`. The dashboard talks to
  *   the SW for those reads — the bridge is the only available channel
  *   (`chrome.runtime.sendMessage` isn't reachable from a regular web page).
  * - Keeps the dashboard's React Query hooks unchanged: they still call
@@ -139,4 +139,97 @@ export async function sendToExtension<T>(
       window.location.origin,
     );
   });
+}
+
+// ─── broadcasts ──────────────────────────────────────────────────────
+
+/** Shape of `chrome.storage.local` change broadcasts the content-script
+ *  fans out via window.postMessage. */
+interface BridgeBroadcastEnvelope {
+  source: typeof RES_TAG;
+  id: typeof BROADCAST_ID;
+  event: "changed";
+  keys: string[];
+}
+
+function isBridgeBroadcast(value: unknown): value is BridgeBroadcastEnvelope {
+  if (!value || typeof value !== "object") return false;
+  const o = value as Record<string, unknown>;
+  return (
+    o.source === RES_TAG &&
+    o.id === BROADCAST_ID &&
+    o.event === "changed" &&
+    Array.isArray(o.keys)
+  );
+}
+
+interface ChromeStorageShim {
+  storage?: {
+    onChanged: {
+      addListener(
+        cb: (
+          changes: Record<string, unknown>,
+          areaName: string,
+        ) => void,
+      ): void;
+      removeListener(
+        cb: (
+          changes: Record<string, unknown>,
+          areaName: string,
+        ) => void,
+      ): void;
+    };
+  };
+}
+
+/**
+ * Subscribe to storage-change broadcasts.
+ *
+ * Two delivery paths cover the two hosts the dashboard ships in:
+ *  1. Extension options page (chrome-extension://<id>/options.html) —
+ *     `chrome.storage.onChanged` is available directly; the
+ *     content-script bridge does NOT inject here (its manifest only
+ *     matches localhost dev origins), so the page MUST subscribe to
+ *     the storage API itself.
+ *  2. Vite dev server (http://localhost:5173) — `chrome.storage` is
+ *     undefined; the content-script bridge fans `onChanged` out via
+ *     `window.postMessage` and we listen on that.
+ *
+ * We register whichever paths are available so the callback fires once
+ * per change in either host.
+ */
+export function subscribeToBroadcast(
+  callback: (keys: string[]) => void,
+): () => void {
+  const cleanups: Array<() => void> = [];
+
+  const messageHandler = (event: MessageEvent): void => {
+    if (event.source !== window) return;
+    if (event.origin !== window.location.origin) return;
+    if (!isBridgeBroadcast(event.data)) return;
+    callback(event.data.keys);
+  };
+  window.addEventListener("message", messageHandler);
+  cleanups.push(() => window.removeEventListener("message", messageHandler));
+
+  const chrome = (globalThis as unknown as { chrome?: ChromeStorageShim })
+    .chrome;
+  const storageOnChanged = chrome?.storage?.onChanged;
+  if (storageOnChanged) {
+    const storageHandler = (
+      changes: Record<string, unknown>,
+      areaName: string,
+    ): void => {
+      if (areaName !== "local") return;
+      const keys = Object.keys(changes);
+      if (keys.length === 0) return;
+      callback(keys);
+    };
+    storageOnChanged.addListener(storageHandler);
+    cleanups.push(() => storageOnChanged.removeListener(storageHandler));
+  }
+
+  return () => {
+    for (const fn of cleanups) fn();
+  };
 }

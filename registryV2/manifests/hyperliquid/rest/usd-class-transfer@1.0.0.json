@@ -1,0 +1,65 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/usd-class-transfer@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) `HyperliquidTransaction:UsdClassTransfer` — an OFF-CHAIN L1 action authorized by an eth_signTypedData_v4 signature (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0, chainId=signatureChainId). Decoded to the `hyperliquid_core::hl_usd_class_transfer` ActionBody (the HL-native thin off-chain action domain, reused from the /exchange Flow-3 path) so a single policy fires for BOTH the typed-sig pre-sign moment and the /exchange POST. Amounts are decimal strings (fractional-safe Decimal) and addresses are L1 identifier strings — both map losslessly. SUPERSEDES the prior `domain:unknown` mapping (the off-chain-exchange ActionBody variant the old note deferred now exists).",
+  "match": {
+    "selector": "0x00000004",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:UsdClassTransfer",
+      "types": {
+        "HyperliquidTransaction:UsdClassTransfer": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "amount", "type": "string" },
+          { "name": "toPerp", "type": "bool" },
+          { "name": "nonce", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "usdClassTransfer",
+    "abi": {
+      "name": "usdClassTransfer",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "usdClassTransfer",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "amount", "type": "string" },
+            { "name": "toPerp", "type": "bool" },
+            { "name": "nonce", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "hyperliquid_core",
+      "hyperliquid_core": {
+        "action": "hl_usd_class_transfer",
+        "hl_usd_class_transfer": {
+          "amount": "$args.usdClassTransfer.amount",
+          "to_perp": "$args.usdClassTransfer.toPerp"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

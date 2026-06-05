@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x1bdcc2075d5370293e248cab0173ec3e551e6218",
-  "symbol": "ORN",
-  "decimals": 8,
-  "name": "Orion Protocol"
-}

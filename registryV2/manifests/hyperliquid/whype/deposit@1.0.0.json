@@ -1,0 +1,42 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/whype/deposit@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note": "WHYPE (Wrapped HYPE, HyperEVM chain 999) is a WETH9 fork. deposit() wraps native HYPE -> WHYPE; the wrapped amount is msg.value. Decoded to token::wrap_native (token.key.address = the WHYPE contract = $to; amount = $tx.value). The WrapNative/UnwrapNative TokenActions now exist (added in the WETH wrap-action work), so HYPE wrapping is structurally legible — a policy can scope on the wrapped amount instead of seeing an anonymous Unknown call. WHYPE address 0x5555555555555555555555555555555555555555 is 1차-confirmed (HyperLiquid docs 'Wrapped HYPE').",
+  "match": {
+    "selector": "0xd0e30db0",
+    "chain_to_addresses": {
+      "999": ["0x5555555555555555555555555555555555555555"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "deposit",
+    "abi": {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "wrap_native",
+        "wrap_native": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "amount": "$tx.value"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

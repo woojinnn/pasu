@@ -1,28 +1,22 @@
 import { tryHandleLocally } from "./local-method-handlers";
 import type {
+  PolicyRpcBatchRequestDto,
   PlannedCallV2Dto,
   PolicyRpcCallDto,
-  PolicyRpcPlanDto,
   PolicyRpcResponseDto,
   VerdictDto,
 } from "./wasm-bridge.types";
 
-// ── Phase 5A — `scopeball.evaluate_v3` JSON-RPC 2.0 client ────────────────
+// ── Dormant v3 JSON-RPC 2.0 client ────────────────────────────────────────
 //
-// The Phase 5 cutover introduces a typed envelope channel between the SW
-// and a stateful rpc-server. Where the legacy `evaluateWithPolicyRpc`
-// flow (kept in place above for observability) issues many small REST
-// enrichment calls (`oracle.usd_value`, `clock.now`, …), the v3 channel
-// makes a single JSON-RPC 2.0 call that hands the rpc-server a typed
-// `Action[]` + `EvalContext` + `WalletId` and gets back a fully
-// post-processed `PolicyRequest` (envelopes lowered to `policy_request.actions`
-// + `state_before` / `deltas` / `state_after` populated). The SW then
-// hands that `PolicyRequest` to the WASM `evaluate_policy_request_json`
-// entry (Phase 5B stub today, Cedar engine in Phase 6).
+// Kept for experiments with a typed action channel between the service worker
+// and a stateful RPC server. The active extension verdict path is the v2
+// ActionBody pipeline below: `plan_action_rpc_v2_json` → host dispatch →
+// `evaluate_action_v2_json`.
 //
 // Wire shape (request body):
 //   { jsonrpc: "2.0", method: "scopeball.evaluate_v3",
-//     params: { wallet_id, envelopes, eval_context }, id: <unique> }
+//     params: { wallet_id, actions, eval_context }, id: <unique> }
 //
 // Wire shape (success response):
 //   { jsonrpc: "2.0", id, result: { policyRequest, diagnostics } }
@@ -30,10 +24,9 @@ import type {
 // Wire shape (error response — JSON-RPC 2.0 §5.1):
 //   { jsonrpc: "2.0", id, error: { code, message, data? } }
 //
-// Phase 5A scope = client only. The mock rpc-server method (`scopeball.evaluate_v3`)
-// lives in `policy-rpc/src/methods/scopeball-evaluate-v3.ts` and currently
-// echoes the envelopes verbatim into `policyRequest.actions` (Phase 5D).
-// Phase 6 replaces the mock with the real reducer + state-sync orchestrator.
+// There is no standalone `policy-rpc/` package in this worktree. Do not treat
+// this client as the active transaction driver unless a future change wires it
+// back into the orchestrator.
 
 /**
  * JSON-RPC 2.0 (§5.1) error body. The rpc-server may include arbitrary
@@ -124,7 +117,7 @@ export type Action = Record<string, unknown>;
 
 /**
  * Phase 5A — opaque `EvalContext` payload. Mirrors
- * `simulation_state::EvalContext` (chain + clock + RequestKind +
+ * `policy_state::EvalContext` (chain + clock + RequestKind +
  * SimulationMode + envelope_index). Carried verbatim by the SW.
  */
 export type EvalContext = Record<string, unknown>;
@@ -188,10 +181,9 @@ function generateRequestId(): string {
  *   * `RpcError(code, message, data?)` — rpc-server returned a
  *     JSON-RPC 2.0 error response. Caller can inspect `code` for routing.
  *   * Generic `Error` — transport failure (HTTP non-2xx, network reset,
- *     malformed JSON, missing `result` field on a 200). The orchestrator
- *     should fence this similarly to how `evaluateWithPolicyRpc` does —
- *     a v3 transport fault must fall back to the v1 verdict path so we
- *     never lose a wallet decision.
+ *     malformed JSON, missing `result` field on a 200). If this dormant path
+ *     is reactivated, transport faults must be fenced so wallet decisions
+ *     still fail closed.
  */
 export async function evaluateV3(
   actions: readonly Action[],
@@ -203,14 +195,14 @@ export async function evaluateV3(
   const id = generateRequestId();
   const body: JsonRpcRequest<{
     readonly wallet_id: WalletId;
-    readonly envelopes: readonly Action[];
+    readonly actions: readonly Action[];
     readonly eval_context: EvalContext;
   }> = {
     jsonrpc: "2.0",
     method: "scopeball.evaluate_v3",
     params: {
       wallet_id: walletId,
-      envelopes: actions,
+      actions,
       eval_context: evalContext,
     },
     id,
@@ -226,8 +218,8 @@ export async function evaluateV3(
       body: JSON.stringify(body),
     });
   } catch (err) {
-    // Network / DNS / abort — surface as transport failure so the
-    // orchestrator's catch can fall back to the v1 path.
+    // Network / DNS / abort — surface as transport failure. Any future caller
+    // must map this to fail-closed behavior.
     throw new Error(
       `policy-rpc v3 transport failed: ${
         err instanceof Error ? err.message : String(err)
@@ -320,7 +312,7 @@ export async function dispatchCallsV2(
   const results: Record<string, unknown> = {};
   if (planned.length === 0) return results;
 
-  // Map every planned v2 call onto the v1 wire DTO keyed by `call_id`, so
+  // Map every planned v2 call onto the policy-rpc batch DTO keyed by `call_id`, so
   // both the local handlers and the remote server correlate by the same id
   // the WASM materializer reads `results` under.
   const calls: PolicyRpcCallDto[] = planned.map((call) => ({
@@ -348,17 +340,12 @@ export async function dispatchCallsV2(
     return results;
   }
 
-  // Reuse the v1 transport. `postPolicyRpc` wants a `PolicyRpcPlanDto`; only
-  // `request_id` + `calls` are read on the wire, so synthesise a minimal one.
+  // Remote policy-rpc only accepts the action-model batch shape:
+  // `{ request_id, calls }`.
   const requestId = `action-v2:${remoteCalls[0]?.id ?? "calls"}`;
-  const remotePlan: PolicyRpcPlanDto = {
+  const remotePlan: PolicyRpcBatchRequestDto = {
     request_id: requestId,
-    root: { chain_id: 0, from: "", to: "", value_wei: "0" },
-    envelopes: [],
     calls: remoteCalls,
-    manifest_set_hash: "",
-    schema_hash: "",
-    diagnostics: [],
   };
 
   let remoteResponse: PolicyRpcResponseDto;
@@ -374,7 +361,7 @@ export async function dispatchCallsV2(
     return results;
   }
 
-  // Fold the envelope results: `ok: true` → unwrapped `result`; everything
+  // Fold the batch results: `ok: true` → unwrapped `result`; everything
   // else is omitted so a downstream required call fails closed.
   for (const entry of remoteResponse.results) {
     if (
@@ -394,7 +381,7 @@ export async function dispatchCallsV2(
 
 async function postPolicyRpc(
   policyRpcUrl: string,
-  plan: PolicyRpcPlanDto,
+  plan: PolicyRpcBatchRequestDto,
 ): Promise<PolicyRpcResponseDto> {
   const url = `${policyRpcUrl.replace(/\/+$/, "")}/v1/rpc`;
   const startedAtMs = Date.now();
@@ -402,7 +389,7 @@ async function postPolicyRpc(
     const response = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ request_id: plan.request_id, calls: plan.calls }),
+      body: JSON.stringify(plan),
     });
     if (!response.ok) {
       throw new Error(`policy-rpc returned HTTP ${response.status}`);

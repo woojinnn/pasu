@@ -7,7 +7,11 @@ const AUDIT_MAX = 100;
 export interface PendingRequest {
   requestId: string;
   hostname: string;
-  type: "transaction" | "typed-signature" | "untyped-signature";
+  type:
+    | "transaction"
+    | "typed-signature"
+    | "untyped-signature"
+    | "venue-order";
   bypassed: boolean;
   envelope: unknown; // redacted summary; raw body in IndexedDB if ever stored
   enqueuedAtMs: number;
@@ -41,12 +45,9 @@ export interface AuditEntry {
     reason?: string;
   };
   /**
-   * Phase 4B — v3 declarative pipeline audit. Observability-only at
-   * Phase 4B: the v3 WASM entry returns a single `ActionBody::Unknown`
-   * stub so this column always shows `outcome: "hit"` with `action_count:
-   * 1` for transactions, and `outcome: "miss"` for typed/untyped sigs
-   * (Phase 4C adds the SignAdapter). Phase 4D promotes the column to
-   * carry a real `decoder_id` once registry-v2 manifest lookup is wired.
+   * v3 declarative / ActionBody pipeline audit. For onchain tx and typed
+   * signatures this reflects registry-v3 routing. For venue orders this
+   * records the HyperLiquid ActionBody conversion/evaluation branch.
    * See `orchestrator.ts::DeclarativeV3AuditMeta` for the contract.
    */
   declarativeV3?: {
@@ -61,8 +62,9 @@ export interface AuditEntry {
    * `"declarative-v2"` ⇒ the stateless v2 pipeline
    *   (`plan_action_rpc_v2_json` → host dispatch → `evaluate_action_v2_json`).
    * `"fail_closed"` ⇒ no decoder produced an evaluable verdict (v3 miss/fault,
-   *   all-`Unknown` bodies, no v2 bundles, a v2 throw, a typed signature, the
-   *   untyped-signature short-circuit, or the hard-timeout fallback).
+   *   all-`Unknown` bodies, no v2 bundles, a v2 throw, typed-signature
+   *   route/evaluate miss, the untyped-signature short-circuit, venue-order
+   *   deny-closed paths, or the hard-timeout fallback).
    * Absent on engine-error short-circuits (where we have no signal).
    */
   verdictSource?: "declarative-v2" | "fail_closed";

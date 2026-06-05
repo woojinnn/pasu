@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf6cfc890b643f17fd439d2ea54004c1e336b76b5",
+  "symbol": "NEMESIDA",
+  "decimals": 18,
+  "name": "Nemesida",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

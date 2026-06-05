@@ -239,12 +239,12 @@ fn owner_appears_in_word(word: &str, owner_hex: &str) -> bool {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use simulation_state::primitives::Address;
+    use policy_state::primitives::Address;
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::ChainId;
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::primitives::ChainId;
+    use policy_state::{WalletId, WalletState};
 
     const OWNER: &str = "0x000000000000000000000000000000000000a01c";
     const OTHER: &str = "0x0000000000000000000000000000000000000bad";

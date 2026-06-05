@@ -1,0 +1,264 @@
+{
+  "contract": "PendleRouterV4",
+  "chainId": 8453,
+  "address": "0x888888888889758f76e7103c6cbf23abbf58f946",
+  "snapshot": "router-v4.base.abi.json",
+  "functions": {
+    "0x97ee279e": {
+      "name": "addLiquidityDualSyAndPt",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0x2756ce06": {
+      "name": "addLiquidityDualTokenAndPt",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0x4e390267": {
+      "name": "addLiquiditySinglePt",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0x58bda475": {
+      "name": "addLiquiditySingleSy",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0x844384aa": {
+      "name": "addLiquiditySingleSyKeepYt",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0x12599ac6": {
+      "name": "addLiquiditySingleToken",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0x3dbe1c55": {
+      "name": "addLiquiditySingleTokenKeepYt",
+      "decision": "cover",
+      "reason": "user add liquidity to a Pendle market (LP)"
+    },
+    "0xb7d75b8b": {
+      "name": "removeLiquidityDualSyAndPt",
+      "decision": "cover",
+      "reason": "user remove liquidity from a Pendle market (LP)"
+    },
+    "0xb00f09d7": {
+      "name": "removeLiquidityDualTokenAndPt",
+      "decision": "cover",
+      "reason": "user remove liquidity from a Pendle market (LP)"
+    },
+    "0x6b77ac9e": {
+      "name": "removeLiquiditySinglePt",
+      "decision": "cover",
+      "reason": "user remove liquidity from a Pendle market (LP)"
+    },
+    "0xd13b4fdc": {
+      "name": "removeLiquiditySingleSy",
+      "decision": "cover",
+      "reason": "user remove liquidity from a Pendle market (LP)"
+    },
+    "0x60da0860": {
+      "name": "removeLiquiditySingleToken",
+      "decision": "cover",
+      "reason": "user remove liquidity from a Pendle market (LP)"
+    },
+    "0x3346d3a3": {
+      "name": "swapExactPtForSy",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0x594a88cc": {
+      "name": "swapExactPtForToken",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0x2a50917c": {
+      "name": "swapExactSyForPt",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0xc81f847a": {
+      "name": "swapExactTokenForPt",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0x7b8b4b95": {
+      "name": "swapExactSyForYt",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0xed48907e": {
+      "name": "swapExactTokenForYt",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0x80c4d566": {
+      "name": "swapExactYtForSy",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0x05eb5327": {
+      "name": "swapExactYtForToken",
+      "decision": "cover",
+      "reason": "user swap token/SY <-> PT/YT through a Pendle market"
+    },
+    "0x2d8f9d8d": {
+      "name": "boostMarkets",
+      "decision": "exclude",
+      "reason": "keeper/maintenance: boost vePENDLE on markets, no user fund move"
+    },
+    "0x9fa02c86": {
+      "name": "callAndReflect",
+      "decision": "exclude",
+      "reason": "meta-call reflector wrapper (callAndReflect) — infra, deferred"
+    },
+    "0xc2d6d65d": {
+      "name": "exitPostExpToSy",
+      "decision": "exclude",
+      "reason": "pre/post-expiry exit = remove-liquidity + redeem compound — deferred (model after liquidity)"
+    },
+    "0xf06a07a0": {
+      "name": "exitPostExpToToken",
+      "decision": "exclude",
+      "reason": "pre/post-expiry exit = remove-liquidity + redeem compound — deferred (model after liquidity)"
+    },
+    "0x8354a5e5": {
+      "name": "exitPreExpToSy",
+      "decision": "exclude",
+      "reason": "pre/post-expiry exit = remove-liquidity + redeem compound — deferred (model after liquidity)"
+    },
+    "0x7036e052": {
+      "name": "exitPreExpToToken",
+      "decision": "exclude",
+      "reason": "pre/post-expiry exit = remove-liquidity + redeem compound — deferred (model after liquidity)"
+    },
+    "0x1a8631b2": {
+      "name": "mintPyFromSy",
+      "decision": "cover",
+      "reason": "user split token/SY into PT+YT (mintPy)"
+    },
+    "0xd0f42385": {
+      "name": "mintPyFromToken",
+      "decision": "cover",
+      "reason": "user split token/SY into PT+YT (mintPy)"
+    },
+    "0x2e071dc6": {
+      "name": "mintSyFromToken",
+      "decision": "cover",
+      "reason": "user wrap token into SY (mintSy)"
+    },
+    "0x60fc8466": {
+      "name": "multicall",
+      "decision": "exclude",
+      "reason": "Multicall3-style Call3[] self-delegatecall — engine-unsupported shape, deferred"
+    },
+    "0xf7e375e8": {
+      "name": "redeemDueInterestAndRewards",
+      "decision": "cover",
+      "reason": "user claim due interest + rewards (redeemDueInterestAndRewards)"
+    },
+    "0x0741a803": {
+      "name": "redeemDueInterestAndRewardsV2",
+      "decision": "exclude",
+      "reason": "redeemDueInterestAndRewardsV2 with embedded aggregator SwapDataExtra[] (opaque route) — deferred; base claim covered"
+    },
+    "0x339748cb": {
+      "name": "redeemPyToSy",
+      "decision": "cover",
+      "reason": "user recombine PT+YT into token/SY (redeemPy)"
+    },
+    "0x47f1de22": {
+      "name": "redeemPyToToken",
+      "decision": "cover",
+      "reason": "user recombine PT+YT into token/SY (redeemPy)"
+    },
+    "0x339a5572": {
+      "name": "redeemSyToToken",
+      "decision": "cover",
+      "reason": "user unwrap SY into token (redeemSy)"
+    },
+    "0xbd61951d": {
+      "name": "simulate",
+      "decision": "exclude",
+      "reason": "simulation helper (always reverts) — not a real user action"
+    },
+    "0xa89eba4a": {
+      "name": "swapTokenToTokenViaSy",
+      "decision": "exclude",
+      "reason": "token<->token routed via SY (not PT/YT yield-tokenization core) — deferred"
+    },
+    "0xa373cf1a": {
+      "name": "swapTokensToTokens",
+      "decision": "exclude",
+      "reason": "pure aggregator multi-swap (opaque SwapData, no PT/YT) — deferred"
+    },
+    "0xf2f6eae5": {
+      "name": "addLiquiditySinglePtSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0x252f9db3": {
+      "name": "addLiquiditySingleSySimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0x4cc30915": {
+      "name": "addLiquiditySingleTokenSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0x0af8a5cf": {
+      "name": "removeLiquiditySinglePtSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0x40a169f9": {
+      "name": "swapExactSyForPtSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0x6afe6998": {
+      "name": "swapExactSyForYtSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0xfeb9d1d2": {
+      "name": "swapExactTokenForPtSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0x22bfddd0": {
+      "name": "swapExactTokenForYtSimple",
+      "decision": "exclude",
+      "reason": "internal router-use-only (source comment); not a user/SDK entry — secondary surface, deferred"
+    },
+    "0xeb3a7d47": {
+      "name": "limitRouterCallback",
+      "decision": "exclude",
+      "reason": "callback invoked by market/limit-router mid-swap; reverts for an EOA caller — not a user entry"
+    },
+    "0xfa483e72": {
+      "name": "swapCallback",
+      "decision": "exclude",
+      "reason": "callback invoked by market/limit-router mid-swap; reverts for an EOA caller — not a user entry"
+    },
+    "0x4e71e0c8": {
+      "name": "claimOwnership",
+      "decision": "exclude",
+      "reason": "diamond admin: ownership / setSelectorToFacets (onlyOwner)"
+    },
+    "0xa47dbf82": {
+      "name": "setSelectorToFacets",
+      "decision": "exclude",
+      "reason": "diamond admin: ownership / setSelectorToFacets (onlyOwner)"
+    },
+    "0x078dfbe7": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "diamond admin: ownership / setSelectorToFacets (onlyOwner)"
+    }
+  },
+  "signed_structs": {}
+}

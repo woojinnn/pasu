@@ -1,5 +1,4 @@
-//! LP share shapes — Pooled (V2/Curve/Balancer) vs Concentrated (V3/V4/Joe LB)
-//! vs Custom (escape hatch).
+//! LP share shapes: pooled, concentrated, or custom.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,84 +7,80 @@ use tsify_next::Tsify;
 use super::token_ref::TokenRef;
 use crate::primitives::{Weight, U128, U256};
 
+/// Whether an LP share is fungible or non-fungible.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
-/// How an LP position's share is represented on-chain.
 pub enum ShareForm {
-    /// Fungible ERC20 LP tokens (e.g. Uniswap V2, Curve, Balancer pool shares).
+    /// ERC-20 LP share, such as Uniswap V2 or Curve LP tokens.
     Fungible,
-    /// Non-fungible position represented as an NFT (e.g. Uniswap V3/V4 positions).
+    /// ERC-721 LP share, such as Uniswap V3/V4 position NFTs.
     NonFungible,
 }
 
-/// The price-distribution shape of an LP share.
+/// Price distribution shape for an LP share.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum LpShape {
-    /// Liquidity spread proportionally across the whole pool — Uniswap V2,
-    /// Curve V1, Balancer.
+    /// Pro-rata share of the whole pool.
     Pooled {
-        /// Per-asset pool weights (e.g. Balancer weighted pools); `None` for
-        /// uniformly weighted pools.
+        /// Per-asset pool weights; `None` for equal weights.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[tsify(optional)]
         weights: Option<Vec<Weight>>,
     },
 
-    /// Liquidity concentrated within a price/tick range — Uniswap V3/V4,
-    /// Trader Joe LB, Maverick.
+    /// Liquidity concentrated in a price, tick, or bin range.
     Concentrated {
-        /// The range specification the liquidity is concentrated within.
+        /// Concentrated range held by this share.
         range: RangeSpec,
-        /// Uncollected fees accrued to the position, as `(token, raw amount)`
-        /// pairs.
+        /// Uncollected fees accrued by this share as `(token, base units)`.
         #[serde(default)]
         #[tsify(type = "Array<[TokenRef, string]>")]
         fees_owed: Vec<(TokenRef, U256)>,
     },
 
-    /// An LP that fits neither shape above — escape hatch.
+    /// Escape hatch for LP shapes that do not fit the standard models.
     Custom {
-        /// Identifier of the originating protocol.
+        /// Protocol identifier for display.
         protocol: String,
-        /// Opaque protocol-specific payload preserved verbatim.
+        /// Protocol-specific raw JSON.
         #[tsify(type = "unknown")]
         raw: Value,
     },
 }
 
-/// The range over which concentrated liquidity is provided.
+/// Range representation for `LpShape::Concentrated`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RangeSpec {
-    /// Tick-based concentration as used by Uniswap V3/V4.
+    /// Tick range, used by Uniswap V3/V4 style positions.
     Tick {
-        /// Lower tick boundary of the position (inclusive).
+        /// Inclusive lower tick.
         lower: i32,
-        /// Upper tick boundary of the position (inclusive).
+        /// Inclusive upper tick.
         upper: i32,
-        /// Liquidity amount held across the tick range.
+        /// Liquidity inside the range.
         #[tsify(type = "string")]
         liquidity: U128,
     },
 
-    /// Bin-based distribution as used by Trader Joe Liquidity Book.
+    /// Bin distribution, used by Trader Joe LB style positions.
     Bin {
-        /// Identifier of the currently active (in-price) bin.
+        /// Current active bin id.
         active_id: u32,
-        /// Liquidity distribution as `(bin id, liquidity)` pairs.
+        /// Liquidity distribution held by this share per bin id.
         #[tsify(type = "Array<[number, string]>")]
         distribution: Vec<(u32, U128)>,
     },
 
-    /// A range format that differs from the above — e.g. Maverick.
+    /// Custom range for protocols with different shapes.
     Custom {
-        /// Identifier of the originating protocol.
+        /// Protocol identifier for display.
         protocol: String,
-        /// Opaque protocol-specific payload preserved verbatim.
+        /// Protocol-specific raw JSON.
         #[tsify(type = "unknown")]
         raw: Value,
     },

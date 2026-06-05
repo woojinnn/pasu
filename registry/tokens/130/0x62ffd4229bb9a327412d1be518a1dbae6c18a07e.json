@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x62ffd4229bb9a327412d1be518a1dbae6c18a07e",
-  "symbol": "YFII",
-  "decimals": 18,
-  "name": "DFI money"
-}

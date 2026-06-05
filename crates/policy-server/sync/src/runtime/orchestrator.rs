@@ -1,34 +1,31 @@
-//! Orchestrator — walker + batcher + fetchers 를 묶어 한 `WalletState` 를 신선화.
+//! Runtime orchestrator for wallet-state and action live-input refresh.
 //!
-//! 일반 흐름:
-//! 1. [`walk_stale`] 로 stale `LiveField` 수집
-//! 2. [`batch_by_source`] 로 source 별 묶음
-//! 3. 각 batch 를 해당 fetcher 로 dispatch
-//! 4. 결과 (`Value`) 를 다시 state 의 `LiveField` 에 write back
-//!
-//! Phase 4 에선 `OnchainView` 만 wired up. 나머지 (Oracle/Venue/Registry/Derived) 는
-//! 후속 phase 에서 차례로.
+//! The orchestrator walks stale `LiveField`s, batches them by external source,
+//! dispatches each batch to the matching fetcher, and writes successful results
+//! back into the state or action being refreshed.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::Value;
 
-use simulation_reducer::action::{Action, ActionBody, PerpAction};
-use simulation_state::{
+use policy_state::{
     Confidence, DataSource, LiveField, Position, PositionKind, Price, ProtocolRef, SignedI256,
-    Time, WalletState,
+    Time, WalletState, U256,
 };
+use policy_transition::action::{Action, ActionBody, PerpAction, TokenAction};
 
 use crate::batcher::{batch_by_source, BatchKind, FetchBatch};
 use crate::calc::{CalcContext, CalcRegistry};
 use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
 use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
-use crate::fetchers::{ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher};
-use crate::walker::{walk_stale, FieldLocation, WalkStats};
+use crate::fetchers::{
+    ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher, UniswapFetcher,
+    UniswapXFetcher, UniswapXOrder,
+};
+use crate::walker::{walk_stale, ActionSlot, FieldLocation, WalkStats};
 
-/// 한 wallet refresh 결과 요약 — 디버깅 / 메트릭용.
 #[derive(Debug, Default, Clone)]
 pub struct RefreshReport {
     pub walked: WalkStats,
@@ -38,28 +35,30 @@ pub struct RefreshReport {
     pub errors: Vec<String>,
 }
 
-/// Hyperliquid account snapshot refresh 결과.
 #[derive(Debug, Default, Clone)]
 pub struct HyperliquidAccountReport {
     pub account_updated: bool,
     pub errors: Vec<String>,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct IntentOrdersReport {
+    pub orders_updated: usize,
+    pub errors: Vec<String>,
+}
+
 pub struct Orchestrator {
     onchain: OnchainViewFetcher,
-    /// `provider_key` → fetcher. `provider_key` 는
-    /// [`crate::fetchers::oracle::provider_key`] 로 정규화된 문자열.
-    /// 예: `"chainlink"`, `"coingecko"`, `"pyth"`, `"redstone"`, ...
-    ///
-    /// Chainlink (on-chain) 든 REST oracle 이든 모두 같은 trait object 로 들어감.
+    // Normalized oracle provider key to fetcher.
     price_fetchers: HashMap<String, Arc<dyn PriceFetcher>>,
     registry: Option<RegistryFetcher>,
     hyperliquid: Option<HyperliquidFetcher>,
+    uniswap: Option<UniswapFetcher>,
+    uniswap_x: Option<UniswapXFetcher>,
     calc: CalcRegistry,
-    /// Global `LiveField` 값 (`gas_price`, `eth_usd` 등). `DerivedFrom` 의 Global `FieldRef`
-    /// resolve 에 사용. scheduler/sync 가 주기적으로 갱신.
+    // Global values used by derived live-field inputs.
     globals: crate::resolver::GlobalValues,
-    /// primitives sync (`balance/block_height/approval`) 용 직접 router 접근.
+    // Direct router access for primitive sync and receipt watchers.
     router: Option<Arc<crate::RpcRouter>>,
 }
 
@@ -71,30 +70,27 @@ impl Orchestrator {
             price_fetchers: HashMap::new(),
             registry: None,
             hyperliquid: None,
+            uniswap: Some(UniswapFetcher::new()),
+            uniswap_x: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: None,
         }
     }
 
-    /// Global `LiveField` 값 갱신 (`gas_price`, `eth_usd` 등).
     pub fn set_global(&mut self, name: impl Into<String>, value: serde_json::Value) {
         self.globals.insert(name.into(), value);
     }
 
-    /// primitives sync 가 사용할 router 참조.
     pub(crate) fn router_ref(&self) -> Option<Arc<crate::RpcRouter>> {
         self.router.clone()
     }
 
-    /// 외부에서 (예: receipt watcher) 직접 RPC 호출이 필요할 때.
     #[must_use]
     pub fn router_arc(&self) -> Option<Arc<crate::RpcRouter>> {
         self.router.clone()
     }
 
-    /// 임의 provider name 에 `PriceFetcher` 등록. dispatch 시 [`provider_key`] 가
-    /// 반환하는 문자열과 일치해야 매칭됨.
     pub fn with_price_fetcher(
         mut self,
         name: impl Into<String>,
@@ -104,7 +100,6 @@ impl Orchestrator {
         self
     }
 
-    /// Chainlink fetcher 를 "chainlink" 키로 등록.
     #[must_use]
     pub fn with_chainlink(self, chainlink: ChainlinkFetcher) -> Self {
         self.with_price_fetcher("chainlink", Arc::new(chainlink))
@@ -123,13 +118,23 @@ impl Orchestrator {
     }
 
     #[must_use]
+    pub fn with_uniswap(mut self, uniswap: UniswapFetcher) -> Self {
+        self.uniswap = Some(uniswap);
+        self
+    }
+
+    #[must_use]
+    pub fn with_uniswap_x(mut self, uni: UniswapXFetcher) -> Self {
+        self.uniswap_x = Some(uni);
+        self
+    }
+
+    #[must_use]
     pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
         self.calc = calc;
         self
     }
 
-    /// router 만으로 minimal 구성 — Chainlink registry 와 Hyperliquid endpoint 는
-    /// 기본값. 실 운영에서는 [`Self::from_sync_config`] 사용 권장.
     #[must_use]
     pub fn from_rpc_router(router: Arc<crate::RpcRouter>) -> Self {
         let onchain = OnchainViewFetcher::new(router.clone());
@@ -141,19 +146,15 @@ impl Orchestrator {
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid: Some(HyperliquidFetcher::new()),
+            uniswap: Some(UniswapFetcher::new()),
+            uniswap_x: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
         }
     }
 
-    /// `scopeball-sync.toml` (= [`crate::SyncConfig`]) 한 방으로 모든 fetcher 와이어링.
-    ///
     /// - `RpcRouter` ← `cfg.rpc`
-    /// - `ChainlinkFetcher` ← `cfg.oracles.chainlink` ("chainlink" 키)
-    /// - `RestJsonOracleFetcher` × N ← `cfg.oracles.rest` (각 키 그대로)
-    /// - `HyperliquidFetcher` ← `cfg.venues.hyperliquid` (있을 때만)
-    /// - `RegistryFetcher` 는 stub
     pub fn from_sync_config(cfg: &crate::SyncConfig) -> Result<Self, SyncError> {
         let router = Arc::new(crate::RpcRouter::from_config(cfg.rpc.clone())?);
         let onchain = OnchainViewFetcher::new(router.clone());
@@ -164,7 +165,6 @@ impl Orchestrator {
         let chainlink = ChainlinkFetcher::from_sync_config(router.clone(), &cfg.oracles.chainlink);
         price_fetchers.insert("chainlink".into(), Arc::new(chainlink));
 
-        // REST oracles — 각 [oracles.rest.<name>] 블록당 fetcher 하나.
         for (name, rest_cfg) in &cfg.oracles.rest {
             let f = RestJsonOracleFetcher::from_sync_config(name.clone(), rest_cfg);
             price_fetchers.insert(name.clone(), Arc::new(f));
@@ -175,31 +175,36 @@ impl Orchestrator {
             .hyperliquid
             .as_ref()
             .map(HyperliquidFetcher::from_sync_config);
+        let uniswap_x = cfg
+            .venues
+            .uniswap
+            .as_ref()
+            .map(UniswapXFetcher::from_sync_config);
         Ok(Self {
             onchain,
             price_fetchers,
             registry: Some(RegistryFetcher::new()),
             hyperliquid,
+            uniswap: Some(UniswapFetcher::new()),
+            uniswap_x,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
         })
     }
 
-    /// 주어진 `OracleFeed` source 에 매핑되는 `PriceFetcher` 를 반환.
     fn price_fetcher_for(
         &self,
-        source: &simulation_state::DataSource,
+        source: &policy_state::DataSource,
     ) -> Option<&Arc<dyn PriceFetcher>> {
         match source {
-            simulation_state::DataSource::OracleFeed { provider, .. } => {
+            policy_state::DataSource::OracleFeed { provider, .. } => {
                 self.price_fetchers.get(&provider_key(provider))
             }
             _ => None,
         }
     }
 
-    /// `state` 안의 모든 stale `LiveField` 를 `now` 기준으로 갱신.
     pub async fn refresh(
         &self,
         state: &mut WalletState,
@@ -230,11 +235,6 @@ impl Orchestrator {
         Ok(report)
     }
 
-    /// Hyperliquid L1 계정 전체를 venue snapshot 기준으로 갱신.
-    ///
-    /// 이 경로는 reducer가 기록한 pending intent보다 venue state를 우선한다. 따라서
-    /// 주문이 체결되거나 취소되면 다음 snapshot에서 `open_orders`, `positions`,
-    /// `perp_usdc`, `agents`가 Hyperliquid 응답 기준으로 교체된다.
     pub async fn sync_hyperliquid_account(
         &self,
         state: &mut WalletState,
@@ -261,13 +261,83 @@ impl Orchestrator {
         })
     }
 
-    /// `action` 안의 모든 stale `LiveField` 를 갱신. wallet refresh 와 같은 인프라
-    /// (walker → batcher → fetcher) 를 재사용하되 walker 와 apply 만 Action 측.
-    ///
-    /// `state` 는 read-only context — fetcher 가 wallet 정보 (address 등) 가 필요할 때 참고.
+    /// Discover and reconcile `UniswapX` (intent) order status for this wallet.
+    /// Venue is the source of truth: each configured chain is polled and the
+    /// returned orders are upserted into `state.pending` (keyed by `orderHash`).
+    pub async fn sync_intent_orders(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<IntentOrdersReport, SyncError> {
+        let Some(uni) = self.uniswap_x.as_ref() else {
+            return Ok(IntentOrdersReport {
+                orders_updated: 0,
+                errors: vec!["uniswap_x fetcher is not configured".into()],
+            });
+        };
+        let swapper = state.wallet_id.address;
+        let mut report = IntentOrdersReport::default();
+        let reactor = uniswap_x_reactor();
+        // v2 lists by swapper across all chains in one call; each order carries
+        // its own chainId, so there is no per-chain loop.
+        match uni.fetch_orders(&swapper).await {
+            Ok(orders) => {
+                report.orders_updated = orders.len();
+                upsert_intent_orders(state, &orders, reactor, &swapper, now);
+            }
+            Err(e) => report.errors.push(format!("uniswap_x: {e}")),
+        }
+        Ok(report)
+    }
+
+    /// Best-effort **core** account sync (every tick): fetch the native-dex core,
+    /// then field-scoped-merge so a partial failure preserves prior values
+    /// instead of clobbering them to defaults.
+    pub async fn sync_hyperliquid_core(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+        let user = state.wallet_id.address;
+        let (core, fresh, errors) = hl.fetch_hl_core("", &user, now).await;
+        upsert_hyperliquid_merge(state, |a| a.merge_core(core, fresh), now);
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors,
+        })
+    }
+
+    /// Best-effort **long-tail** account sync (sub-cadence): staking / vaults /
+    /// borrow-lend / agents, each preserved on failure.
+    pub async fn sync_hyperliquid_longtail(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<HyperliquidAccountReport, SyncError> {
+        let Some(hl) = self.hyperliquid.as_ref() else {
+            return Ok(HyperliquidAccountReport {
+                account_updated: false,
+                errors: vec!["hyperliquid fetcher is not configured".into()],
+            });
+        };
+        let user = state.wallet_id.address;
+        let (lt, fresh, errors) = hl.fetch_hl_longtail("", &user).await;
+        upsert_hyperliquid_merge(state, |a| a.merge_longtail(lt, fresh), now);
+        Ok(HyperliquidAccountReport {
+            account_updated: true,
+            errors,
+        })
+    }
+
     pub async fn refresh_action(
         &self,
-        action: &mut simulation_reducer::action::Action,
+        action: &mut policy_transition::action::Action,
         state: &WalletState,
         now: Time,
     ) -> Result<RefreshReport, SyncError> {
@@ -302,11 +372,10 @@ impl Orchestrator {
     async fn process_batch_for_action(
         &self,
         batch: FetchBatch,
-        action: &mut simulation_reducer::action::Action,
+        action: &mut policy_transition::action::Action,
         state: &WalletState,
         now: Time,
     ) -> Result<(usize, usize), SyncError> {
-        // 같은 fetcher 들을 호출하되, 결과를 apply_value_to_action 으로 적용.
         let mut ok = 0usize;
         let mut fail = 0usize;
         match &batch.kind {
@@ -331,16 +400,17 @@ impl Orchestrator {
                 }
             }
             BatchKind::Onchain { chain } => {
-                // Action live_inputs 의 OnchainView 는 인자가 필요한 경우가 많음
-                // (balanceOf(user), getReserveData(asset) 등). slot 별 resolver
-                // (args_resolver::resolve_args) 가 action context 에서 인자를 추출.
                 let calls: Result<Vec<_>, _> = batch
                     .items
                     .iter()
                     .map(|item| {
                         let args = match &item.location {
-                            crate::walker::FieldLocation::Action { slot, .. } => {
-                                crate::args_resolver::resolve_args(slot, action, state)
+                            crate::walker::FieldLocation::Action { .. } => {
+                                crate::args_resolver::resolve_args_for_location(
+                                    &item.location,
+                                    action,
+                                    state,
+                                )
                             }
                             _ => Vec::new(),
                         };
@@ -354,6 +424,22 @@ impl Orchestrator {
                 for (item, outcome) in batch.items.into_iter().zip(outcomes.into_iter()) {
                     if outcome.success {
                         if let Some(value) = outcome.value {
+                            let value = if is_permit2_nonce_bitmap_source(&item.source) {
+                                match permit2_nonce_bitmap_apply_value(
+                                    action,
+                                    &item.location,
+                                    &value,
+                                ) {
+                                    Some(Ok(v)) => v,
+                                    Some(Err(_)) => {
+                                        fail += 1;
+                                        continue;
+                                    }
+                                    None => value,
+                                }
+                            } else {
+                                value
+                            };
                             crate::action_walk::apply_value_to_action(
                                 action,
                                 &item.location,
@@ -390,29 +476,43 @@ impl Orchestrator {
             }
             BatchKind::Venue { endpoint } => {
                 let is_hl = is_hyperliquid_endpoint(endpoint);
-                let Some(hl) = (if is_hl {
-                    self.hyperliquid.as_ref()
-                } else {
-                    None
-                }) else {
-                    return Ok((0, batch.items.len()));
-                };
+                let is_uniswap = is_uniswap_endpoint(endpoint);
                 for item in batch.items {
                     let FieldLocation::Action { slot, .. } = &item.location else {
                         fail += 1;
                         continue;
                     };
-                    let market_symbol =
-                        action_market_symbol(action, state, &item.location).unwrap_or_default();
-                    match hl
-                        .fetch_action_value(
+                    let fetched = if is_hl {
+                        let Some(hl) = self.hyperliquid.as_ref() else {
+                            fail += 1;
+                            continue;
+                        };
+                        let market_symbol =
+                            action_market_symbol(action, state, &item.location).unwrap_or_default();
+                        hl.fetch_action_value(
                             &item.source,
                             slot,
                             &market_symbol,
                             &state.wallet_id.address,
                         )
                         .await
-                    {
+                    } else if is_uniswap {
+                        let Some(uniswap) = self.uniswap.as_ref() else {
+                            fail += 1;
+                            continue;
+                        };
+                        let Some(body) = action_body_for_location(action, &item.location) else {
+                            fail += 1;
+                            continue;
+                        };
+                        uniswap
+                            .fetch_action_value(&item.source, slot, body, &action.meta.submitter)
+                            .await
+                    } else {
+                        fail += 1;
+                        continue;
+                    };
+                    match fetched {
                         Ok(v) => {
                             crate::action_walk::apply_value_to_action(
                                 action,
@@ -448,8 +548,8 @@ impl Orchestrator {
     ) -> Result<(usize, usize), SyncError> {
         match batch.kind {
             BatchKind::Onchain { chain } => {
-                // OnchainView 의 args 가 없는 함수만 우선 지원 (totalSupply 등).
-                // 인자가 필요한 함수는 후속 phase 에서 source 메타에 args 인코드 추가.
+                // State-level on-chain live fields only support no-arg calls.
+                // Action refresh resolves call arguments through `actions::args`.
                 let calls: Result<Vec<OnchainCall>, _> = batch
                     .items
                     .iter()
@@ -510,9 +610,8 @@ impl Orchestrator {
                 for item in batch.items {
                     match registry.fetch(&item.source).await {
                         Ok(value) => {
-                            // Registry 결과는 LiveField value 로 그대로 사용 가능한
-                            // location 이 아직 없음 (TokenKind 분류는 별도 영역).
-                            // 일단 token price 위치만 처리, 나머지는 후속.
+                            // Registry values can be assigned directly to the
+                            // requested live-field location.
                             apply_value(state, &item.location, value, now);
                             ok += 1;
                         }
@@ -523,15 +622,13 @@ impl Orchestrator {
             }
 
             BatchKind::Derived => {
-                // 한 batch 안의 derived 필드들끼리는 서로 독립이라고 가정 (단순한
-                // 1-level 처리). 다중 layer DerivedFrom 은 호출자가 여러 번 refresh.
+                // Derived fields in one batch are assumed independent. Callers
+                // rerun refresh for multi-layer derived dependencies.
                 let mut ok = 0;
                 let mut fail = 0;
                 for item in batch.items {
-                    if let simulation_state::DataSource::DerivedFrom { calc_id, inputs } =
-                        &item.source
+                    if let policy_state::DataSource::DerivedFrom { calc_id, inputs } = &item.source
                     {
-                        // ★ FieldRef inputs 를 현재 state 값으로 resolve (Phase 7 완성)
                         let resolved =
                             crate::resolver::resolve_inputs(state, &self.globals, inputs);
                         let ctx = CalcContext {
@@ -553,8 +650,8 @@ impl Orchestrator {
             }
 
             BatchKind::Venue { endpoint } => {
-                // 지금은 Hyperliquid 만 지원 — endpoint 가 hyperliquid 면 dispatch.
-                // 향후 GMX/dYdX 추가 시 endpoint 패턴 매칭으로 분기.
+                // Endpoint matching currently routes venue live fields to the
+                // Hyperliquid fetcher.
                 let is_hl = is_hyperliquid_endpoint(&endpoint);
                 let hl = if is_hl {
                     self.hyperliquid.as_ref()
@@ -596,13 +693,10 @@ impl Orchestrator {
     }
 }
 
-/// 갱신된 `value` 를 state 의 해당 `LiveField.value/synced_at` 으로 반영.
-///
-/// 실패해도 상위에서 errors 에 누적할 뿐. state 자체는 일관성 유지.
 fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: Time) {
     match loc {
         FieldLocation::TokenPrice { token_key_json } => {
-            if let Ok(key) = serde_json::from_str::<simulation_state::TokenKey>(token_key_json) {
+            if let Ok(key) = serde_json::from_str::<policy_state::TokenKey>(token_key_json) {
                 if let Some(holding) = state.tokens.get_mut(&key) {
                     if let Some(price) = holding.price_usd.as_mut() {
                         if let Some(p) = value_to_price(&value) {
@@ -682,16 +776,14 @@ fn apply_value(state: &mut WalletState, loc: &FieldLocation, value: Value, now: 
                 set_decimal(field, &value, now);
             }
         }
-        // Action 측 슬롯은 apply_value_to_action 이 별도로 처리.
-        // 여기서는 무시 (refresh_action 흐름에서 dispatch 됨).
         FieldLocation::Action { .. } => {}
     }
 }
 
 fn value_to_price(v: &Value) -> Option<Price> {
     match v {
-        Value::String(s) => Some(simulation_state::Decimal::new(s.clone())),
-        Value::Number(n) => Some(simulation_state::Decimal::new(n.to_string())),
+        Value::String(s) => Some(policy_state::Decimal::new(s.clone())),
+        Value::Number(n) => Some(policy_state::Decimal::new(n.to_string())),
         _ => None,
     }
 }
@@ -705,7 +797,7 @@ fn value_to_i256(v: &Value) -> Option<SignedI256> {
     }
 }
 
-fn set_decimal(field: &mut LiveField<simulation_state::Decimal>, v: &Value, now: Time) {
+fn set_decimal(field: &mut LiveField<policy_state::Decimal>, v: &Value, now: Time) {
     if let Some(d) = value_to_price(v) {
         field.value = d;
         field.synced_at = now;
@@ -723,7 +815,7 @@ fn lending_field_mut<'a>(
     state: &'a mut WalletState,
     position_id: &str,
     metric: LendingMetric,
-) -> Option<&'a mut LiveField<simulation_state::Decimal>> {
+) -> Option<&'a mut LiveField<policy_state::Decimal>> {
     let pos = state.positions.iter_mut().find(|p| p.id == position_id)?;
     match &mut pos.kind {
         PositionKind::LendingAccount(la) => Some(match metric {
@@ -738,7 +830,7 @@ fn lending_field_mut<'a>(
 fn perp_position_mut<'a>(
     state: &'a mut WalletState,
     position_id: &str,
-) -> Option<&'a mut simulation_state::PerpPosition> {
+) -> Option<&'a mut policy_state::PerpPosition> {
     let pos = state.positions.iter_mut().find(|p| p.id == position_id)?;
     match &mut pos.kind {
         PositionKind::PerpPosition(p) => Some(p),
@@ -750,7 +842,7 @@ const HL_ACCOUNT_ID: &str = "hyperliquid/account";
 
 fn upsert_hyperliquid_account(
     state: &mut WalletState,
-    account: simulation_state::HlAccount,
+    account: policy_state::HlAccount,
     source: DataSource,
     now: Time,
 ) -> Result<(), SyncError> {
@@ -777,10 +869,166 @@ fn upsert_hyperliquid_account(
     Ok(())
 }
 
+/// `UniswapX` V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
+/// reactors can be threaded through config later (spec §12).
+fn uniswap_x_reactor() -> policy_state::Address {
+    use std::str::FromStr;
+    policy_state::Address::from_str("0x00000011f84b9aa48e5f8aa8b9897600006289be")
+        .unwrap_or(policy_state::Address::ZERO)
+}
+
+/// Upsert discovered `UniswapX` orders into `state.pending`, keyed by the venue
+/// `orderHash` embedded in `PendingTx.id`. Existing entries are replaced in
+/// place (status transitions); new ones are appended.
+pub(crate) fn upsert_intent_orders(
+    state: &mut WalletState,
+    orders: &[UniswapXOrder],
+    reactor: policy_state::Address,
+    swapper: &policy_state::Address,
+    now: Time,
+) {
+    use policy_state::pending::PendingStatus;
+    for order in orders {
+        let pending = order.to_pending_tx(reactor, swapper, now);
+        // Terminal orders are pruned from `pending` — filled / cancelled /
+        // expired / failed no longer need tracking. Active ones are upserted in
+        // place (status transitions) or appended.
+        let terminal = matches!(
+            pending.lifecycle.status,
+            PendingStatus::Filled
+                | PendingStatus::Cancelled
+                | PendingStatus::Expired
+                | PendingStatus::Failed
+        );
+        if terminal {
+            state.pending.retain(|p| p.id != pending.id);
+        } else if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
+            *existing = pending;
+        } else {
+            state.pending.push(pending);
+        }
+    }
+}
+
+/// Load-or-create the HL account position, apply `f` (a field-scoped merge), and
+/// store it back. Preserves whatever fields `f` leaves untouched; only ever
+/// creates/updates the single reserved `HL_ACCOUNT_ID` position. A pre-existing
+/// position of a different kind is left alone (the id is reserved for HL).
+fn upsert_hyperliquid_merge(
+    state: &mut WalletState,
+    f: impl FnOnce(&mut policy_state::HlAccount),
+    now: Time,
+) {
+    if let Some(pos) = state.positions.iter_mut().find(|p| p.id == HL_ACCOUNT_ID) {
+        if let PositionKind::HyperliquidAccount(acct) = &mut pos.kind {
+            f(acct);
+            pos.primitives_synced_at = now;
+        }
+    } else {
+        let mut acct = policy_state::HlAccount::default();
+        f(&mut acct);
+        state.positions.push(Position {
+            id: HL_ACCOUNT_ID.to_owned(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(acct),
+            primitives_synced_at: now,
+            primitives_source: DataSource::VenueApi {
+                endpoint: "https://api.hyperliquid.xyz/info".into(),
+                parser_id: "hl_account".into(),
+                auth: None,
+            },
+        });
+    }
+}
+
 fn is_hyperliquid_endpoint(endpoint: &str) -> bool {
     endpoint.is_empty()
         || endpoint.contains("hyperliquid")
         || endpoint == "https://api.hyperliquid.xyz/info"
+}
+
+fn is_uniswap_endpoint(endpoint: &str) -> bool {
+    endpoint.contains("api.uniswap.org") || endpoint.contains("uniswap")
+}
+
+fn is_permit2_nonce_bitmap_source(source: &DataSource) -> bool {
+    matches!(
+        source,
+        DataSource::OnchainView { decoder_id, .. } if decoder_id == "permit2_nonce_bitmap"
+    )
+}
+
+fn permit2_nonce_bitmap_apply_value(
+    action: &Action,
+    location: &FieldLocation,
+    value: &Value,
+) -> Option<Result<Value, SyncError>> {
+    let FieldLocation::Action { slot, .. } = location else {
+        return None;
+    };
+    if !matches!(slot, ActionSlot::TokenPermit2SignNonce) {
+        return None;
+    }
+    let Some((word, bit)) = permit2_nonce_pair_for_location(action, location) else {
+        return Some(Err(SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: "action location is not a Permit2 unordered nonce".into(),
+        }));
+    };
+    let Some(bitmap) = u256_from_json_decimal(value) else {
+        return Some(Err(SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: format!("expected bitmap u256 string, got {value}"),
+        }));
+    };
+    if bitmap_bit_is_set(bitmap, bit) {
+        return Some(Err(SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: format!("Permit2 nonce bit already used: word={word}, bit={bit}"),
+        }));
+    }
+    Some(Ok(serde_json::json!([word.to_string(), bit])))
+}
+
+fn permit2_nonce_pair_for_location(
+    action: &Action,
+    location: &FieldLocation,
+) -> Option<(U256, u8)> {
+    let FieldLocation::Action { action_index, .. } = location else {
+        return None;
+    };
+    match body_at_index(&action.body, *action_index)? {
+        ActionBody::Token(TokenAction::Permit2SignAllowance(p)) => Some(p.nonce.value),
+        ActionBody::Token(TokenAction::Permit2SignTransfer(p)) => Some(p.nonce.value),
+        ActionBody::Token(TokenAction::Permit2TransferFrom(p)) => Some(p.nonce.value),
+        _ => None,
+    }
+}
+
+fn u256_from_json_decimal(value: &Value) -> Option<U256> {
+    match value {
+        Value::String(s) => U256::from_str_radix(s, 10).ok(),
+        Value::Number(n) => U256::from_str_radix(&n.to_string(), 10).ok(),
+        _ => None,
+    }
+}
+
+fn bitmap_bit_is_set(bitmap: U256, bit: u8) -> bool {
+    let bytes = bitmap.to_be_bytes::<32>();
+    let byte_index = 31usize.saturating_sub(usize::from(bit / 8));
+    let bit_index = bit % 8;
+    (bytes[byte_index] & (1u8 << bit_index)) != 0
+}
+
+fn action_body_for_location<'a>(
+    action: &'a Action,
+    location: &FieldLocation,
+) -> Option<&'a ActionBody> {
+    let FieldLocation::Action { action_index, .. } = location else {
+        return None;
+    };
+    body_at_index(&action.body, *action_index)
 }
 
 fn state_market_symbol(state: &WalletState, location: &FieldLocation) -> Option<String> {
@@ -854,9 +1102,56 @@ fn state_position_market_symbol(state: &WalletState, position_id: &str) -> Optio
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::{Address, ChainId};
+    use policy_state::{Address, ChainId};
 
-    // 실제 RPC 가 필요 없는 빈 state 의 refresh — no-op 동작 확인.
+    #[test]
+    fn upsert_intent_orders_tracks_active_and_prunes_on_terminal() {
+        use crate::fetchers::UniswapXOrder;
+        use policy_state::pending::PendingStatus;
+        use policy_state::{WalletId, U256};
+
+        let reactor = Address::ZERO;
+        let swapper = Address::ZERO;
+        let now = Time::from_unix(1_738_000_000);
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // Round 1: one open order is discovered → added as Active.
+        let open = UniswapXOrder {
+            order_hash: "0xhash1".into(),
+            order_status: "open".into(),
+            order_type: "Dutch_V2".into(),
+            chain_id: 1,
+            deadline: Some(1_738_003_600),
+            sell_token: Address::ZERO,
+            sell_amount: U256::from(600u64),
+            buy_token: Address::ZERO,
+            buy_min: U256::from(1u64),
+        };
+        super::upsert_intent_orders(
+            &mut state,
+            std::slice::from_ref(&open),
+            reactor,
+            &swapper,
+            now,
+        );
+        assert_eq!(state.pending.len(), 1);
+        assert_eq!(state.pending[0].id, "intent:uniswap_x:0xhash1");
+        assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Active);
+
+        // Round 2: same hash now filled → pruned from pending (terminal cleanup).
+        let filled = UniswapXOrder {
+            order_status: "filled".into(),
+            ..open
+        };
+        super::upsert_intent_orders(&mut state, &[filled], reactor, &swapper, now);
+        assert!(
+            state.pending.is_empty(),
+            "terminal order pruned from pending"
+        );
+    }
+
     #[tokio::test]
     async fn refresh_empty_state_is_noop() {
         let toml = r#"
@@ -872,7 +1167,7 @@ priority = 1
         let router = std::sync::Arc::new(crate::RpcRouter::from_config(cfg).unwrap());
         let orch = Orchestrator::from_rpc_router(router);
 
-        let mut state = WalletState::new(simulation_state::WalletId::new(
+        let mut state = WalletState::new(policy_state::WalletId::new(
             Address::ZERO,
             [ChainId::ethereum_mainnet()],
         ));
@@ -882,16 +1177,67 @@ priority = 1
         assert_eq!(report.batches_processed, 0);
     }
 
-    /// `DerivedFrom` HF 가 Global `FieldRef` inputs 로부터 실제 계산되는지 end-to-end.
-    /// RPC 호출 없음 — Derived batch 만 처리.
+    #[test]
+    fn upsert_hl_merge_creates_updates_and_preserves_across_domains() {
+        use policy_state::{CoreFresh, Decimal, HlAccount, LongtailFresh, WalletId};
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // A core snapshot whose clearinghouse domain is fresh (rest stale).
+        let fresh = CoreFresh {
+            clearinghouse: true,
+            ..Default::default()
+        };
+
+        // (1) first core sync creates the HL position.
+        let core = HlAccount {
+            perp_usdc: Some(Decimal::new("5")),
+            ..Default::default()
+        };
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_core(core, fresh),
+            Time::from_unix(0),
+        );
+
+        // (2) a long-tail sync (all-stale here) must NOT wipe the core perp_usdc.
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_longtail(HlAccount::default(), LongtailFresh::default()),
+            Time::from_unix(1),
+        );
+
+        // (3) a second core sync updates the same position in place.
+        let core2 = HlAccount {
+            perp_usdc: Some(Decimal::new("9")),
+            ..Default::default()
+        };
+        upsert_hyperliquid_merge(
+            &mut state,
+            |a| a.merge_core(core2, fresh),
+            Time::from_unix(2),
+        );
+
+        let hits: Vec<_> = state
+            .positions
+            .iter()
+            .filter(|p| p.id == HL_ACCOUNT_ID)
+            .collect();
+        assert_eq!(hits.len(), 1); // upsert, not duplicate
+        let PositionKind::HyperliquidAccount(acct) = &hits[0].kind else {
+            panic!("not an HL account");
+        };
+        assert_eq!(acct.perp_usdc, Some(Decimal::new("9"))); // last core, preserved across long-tail
+    }
+
     #[tokio::test]
     async fn derived_hf_computes_from_globals() {
-        use simulation_state::{
+        use policy_state::{
             DataSource, Decimal, Duration, FieldRef, LendingAccount, LiveField, MarketRef,
             Position, PositionKind, Time as T, VenueRef, WalletId,
         };
 
-        // RPC 안 쓰는 orchestrator (onchain fetcher 는 존재하지만 derived 만 처리)
         let toml = r#"
 [chains."eip155:1"]
 [[chains."eip155:1".providers]]
@@ -909,7 +1255,6 @@ priority = 1
         orch.set_global("debt_usd", serde_json::json!("500"));
         orch.set_global("liq_threshold", serde_json::json!("0.8"));
 
-        // HF LiveField 의 source = DerivedFrom(aave_hf, [collateral, debt, liq_threshold])
         let hf_source = DataSource::DerivedFrom {
             calc_id: "aave_hf".into(),
             inputs: vec![
@@ -925,7 +1270,6 @@ priority = 1
             ],
         };
 
-        // stale 하도록 ttl=60, synced_at=0, now=10000
         let stale_at = T::from_unix(0);
         let now = T::from_unix(10_000);
         let fresh_source = DataSource::UserSupplied;
@@ -951,7 +1295,7 @@ priority = 1
             WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
         state.positions.push(Position {
             id: "aave_v3:main".into(),
-            protocol: simulation_state::ProtocolRef::new("aave_v3"),
+            protocol: policy_state::ProtocolRef::new("aave_v3"),
             chain: Some(ChainId::ethereum_mainnet()),
             kind: PositionKind::LendingAccount(lending),
             primitives_synced_at: now,
@@ -961,7 +1305,6 @@ priority = 1
         let report = orch.refresh(&mut state, now).await.unwrap();
         assert!(report.fields_updated >= 1, "HF should have been updated");
 
-        // HF 가 1.6 으로 계산됐는지 확인
         if let PositionKind::LendingAccount(la) = &state.positions[0].kind {
             assert_eq!(la.health_factor.value.as_str(), "1.6");
         } else {
@@ -973,12 +1316,12 @@ priority = 1
     async fn sync_hyperliquid_account_replaces_local_account_with_snapshot() {
         use std::str::FromStr;
 
-        use serde_json::{json, Value};
-        use simulation_state::{
+        use policy_state::{
             DataSource, Decimal, HlAccount, HlBorrowLendAccount, HlBorrowLendBalance,
             HlBorrowLendTokenState, HlOpenOrder, HlSpotBalance, HlStakingAccount, HlVaultEquity,
             Position, PositionKind, ProtocolRef, Time as T, WalletId,
         };
+        use serde_json::{json, Value};
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::{TcpListener, TcpStream};
 
@@ -1217,7 +1560,7 @@ priority = 1
         let now = T::from_unix(10_000);
         let user = Address::from_str("0x2222222222222222222222222222222222222222").unwrap();
         let mut state =
-            simulation_state::WalletState::new(WalletId::new(user, [ChainId::ethereum_mainnet()]));
+            policy_state::WalletState::new(WalletId::new(user, [ChainId::ethereum_mainnet()]));
         state.positions.push(Position {
             id: HL_ACCOUNT_ID.to_owned(),
             protocol: ProtocolRef::new("hyperliquid"),

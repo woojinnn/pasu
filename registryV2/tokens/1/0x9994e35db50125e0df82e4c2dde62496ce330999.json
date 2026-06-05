@@ -1,0 +1,12 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9994e35db50125e0df82e4c2dde62496ce330999",
+  "symbol": "MORPHO",
+  "decimals": 18,
+  "name": "Morpho Token (legacy)",
+  "source": "https://docs.morpho.org/get-started/resources/addresses + etherscan (ContractName verified)",
+  "token_kind": {
+    "kind": "base"
+  }
+}

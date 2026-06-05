@@ -1,0 +1,103 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v2/vault-exit-pool@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V2 Vault.exitPool(bytes32 poolId, address sender, address recipient, (address[] assets, uint256[] minAmountsOut, bytes userData, bool toInternalBalance) request) — selector 0x8bdb3913. Source: balancer/balancer-v2-monorepo pkg/interfaces/contracts/vault/IVault.sol. Maps to Amm::RemoveLiquidity::PooledBurn. lp_token (the BPT) is the pool contract = leading 20 bytes of poolId, sliced by $fn balancer_pool_id_to_address. min_out is the index-aligned calldata arrays request.assets[] (token addrs) and request.minAmountsOut[] (per-token min received the user signs), zipped by $fn balancer_zip_token_amounts. lp_amount (BPT burned) lives inside the opaque request.userData enum-tagged blob (ExitKind), extracted by $fn balancer_v2_userdata_field (tries Weighted then Stable to resolve kind-reuse); undecodable kinds fall back to 0. Mainnet only (multichain expansion deferred per scope contract).",
+  "match": {
+    "selector": "0x8bdb3913",
+    "chain_to_addresses": {
+      "1": ["0xBA12222222228d8Ba445958a75a0704d566BF2C8"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "exitPool",
+    "abi": {
+      "name": "exitPool",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "poolId",    "type": "bytes32" },
+        { "name": "sender",    "type": "address" },
+        { "name": "recipient", "type": "address" },
+        {
+          "name": "request",
+          "type": "tuple",
+          "components": [
+            { "name": "assets",            "type": "address[]" },
+            { "name": "minAmountsOut",      "type": "uint256[]" },
+            { "name": "userData",          "type": "bytes"     },
+            { "name": "toInternalBalance", "type": "bool"      }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name":      "balancer_v2",
+            "chain":     "$chain",
+            "vault":     "$to",
+            "pool_id":   "$args.poolId",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "kind": "pooled_burn",
+            "lp_token": {
+              "key": {
+                "standard": "erc20",
+                "chain":    "$chain",
+                "address": {
+                  "$fn": "balancer_pool_id_to_address",
+                  "$args": ["$args.poolId"]
+                }
+              }
+            },
+            "lp_amount": {
+              "$fn": "balancer_v2_userdata_field",
+              "$args": ["$args.request[2]", "exit", "bpt_in"]
+            },
+            "min_out": {
+              "$fn": "balancer_zip_token_amounts",
+              "$args": ["$chain", "$args.request[0]", "$args.request[1]"]
+            },
+            "recipient": "$args.recipient"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$to",
+                "function":   "getPoolTokens(bytes32)",
+                "decoder_id": "balancer_v2_pool_tokens"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [],
+                "calc_id": "balancer_v2_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

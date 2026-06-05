@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7e625503f9a5ce5a878bfa2adb0f5c1c6cc31018",
+  "symbol": "testUSD",
+  "decimals": 18,
+  "name": "Test USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

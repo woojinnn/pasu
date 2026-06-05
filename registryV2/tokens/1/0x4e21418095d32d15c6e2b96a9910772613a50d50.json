@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4e21418095d32d15c6e2b96a9910772613a50d50",
+  "symbol": "frxeth-ng-f-gauge",
+  "decimals": 18,
+  "name": "Curve.fi frxeth-ng-f Gauge Deposit",
+  "source": "https://etherscan.io/token/0x4e21418095d32d15c6e2b96a9910772613a50d50",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "curve_gauge", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc" }
+    }
+  }
+}

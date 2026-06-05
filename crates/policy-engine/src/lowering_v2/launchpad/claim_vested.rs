@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::launchpad::ClaimVestedAction;
+use policy_transition::action::launchpad::ClaimVestedAction;
 
 use super::super::common::cedar::u256_hex;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
@@ -55,12 +55,12 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::launchpad::{
+    use policy_state::primitives::{Time, U256};
+    use policy_state::LiveField;
+    use policy_transition::action::launchpad::{
         ClaimVestedAction, ClaimVestedLiveInputs, LaunchpadAction,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::{Time, U256};
-    use simulation_state::LiveField;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{now, src};
 
@@ -69,7 +69,7 @@ mod tests {
     fn claim_vested_with(
         amount: Option<U256>,
         next_unlock: Option<(Time, U256)>,
-    ) -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    ) -> (ActionBody, policy_transition::action::ActionMeta) {
         let action = ClaimVestedAction {
             position_id: "launchpad-alloc-7".into(),
             amount,
@@ -86,7 +86,7 @@ mod tests {
 
     /// A representative on-chain `ClaimVested`: an explicit amount and a next
     /// unlock present (exercises both flattened `nextUnlock*` fields).
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         claim_vested_with(
             Some(U256::from(100u64)),
             Some((Time::from_unix(1_742_000_000), U256::from(500u64))),

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x1bab804803159ad84b8854581aa53ac72455614e",
-  "symbol": "SYND",
-  "decimals": 18,
-  "name": "Syndicate"
-}

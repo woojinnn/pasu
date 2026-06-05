@@ -1,7 +1,5 @@
 //! `ClaimFundingAction` reducer — settle accrued funding payments to the wallet.
-//!
 //! ## Effect
-//!
 //! For each `(token, amount)` in `live_inputs.claimable`:
 //!   - `amount > 0` → credit the wallet (received funding).
 //!   - `amount == 0` → no-op (skipped).
@@ -9,15 +7,13 @@
 //!     claimable balances only — funding *paid* is debited at the
 //!     time-of-close step and tracked via `ClosePerpLiveInputs::funding_accrued`,
 //!     not here).
-//!
 //! ## Multi-market
-//!
 //! `self.market` is optional. When `None` the claim covers all markets on
 //! the venue (the orchestrator pre-aggregates the per-token totals into
 //! `live_inputs.claimable`). Reducer-side this distinction is invisible —
 //! we iterate the slice either way.
 
-use simulation_state::{EvalContext, StateDelta, WalletState, U256};
+use policy_state::{EvalContext, StateDelta, WalletState, U256};
 
 use crate::action::perp::ClaimFundingAction;
 use crate::apply::Reducer;
@@ -40,13 +36,13 @@ impl Reducer for ClaimFundingAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::TokenChange;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::token::{
+    use policy_state::delta::TokenChange;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{ClaimFundingLiveInputs, PerpVenue};
@@ -57,7 +53,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

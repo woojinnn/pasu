@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 81457,
-  "address": "0x68449870eea84453044bd430822827e21fd8f101",
-  "symbol": "ZAI",
-  "decimals": 18,
-  "name": "Zaibot"
-}

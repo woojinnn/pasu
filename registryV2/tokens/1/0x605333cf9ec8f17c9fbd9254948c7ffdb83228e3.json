@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x605333cf9ec8f17c9fbd9254948c7ffdb83228e3",
+  "symbol": "BABYSPANK",
+  "decimals": 18,
+  "name": "BABYSPANK",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x697c54a84d83f37380d034e2bfc6f7ce8d89f4ee",
+  "symbol": "tmvUSDC",
+  "decimals": 6,
+  "name": "USDC Meta Vault",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

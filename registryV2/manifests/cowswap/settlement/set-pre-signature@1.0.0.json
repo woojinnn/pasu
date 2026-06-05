@@ -1,0 +1,52 @@
+{
+  "type": "adapter_action",
+  "id": "cowswap/settlement/set-pre-signature@1.0.0",
+  "publisher": "cowswap",
+  "schema_version": "3",
+  "note": "CoW Protocol on-chain order pre-signature. GPv2Settlement.setPreSignature(bytes orderUid, bool signed), selector 0xec6cb13f, mainnet 0x9008d19f58aabd9ed0d60971565aa8510560ab41. This is the smart-contract-wallet (e.g. Safe) order-placement path: an EOA signs the EIP-712 Order off-chain (-> cowswap/order/sign), while a contract wallet authorises the SAME order on-chain by marking its orderUid pre-signed. signed=true sets PRE_SIGNED (the order becomes tradable / commit); signed=false unsets it (revoke / cancel). -> amm pre_sign_intent_order (venue=cow_swap). order_hash carries the full opaque orderUid (56B: 32B orderDigest + 20B owner + 4B validTo via GPv2Order.packOrderUidParams); the order's economic terms (sell/buy/amounts) live in the off-chain order keyed by the digest and are NOT statically decodable from this calldata (CoW orderbook API is the enrichment source). 1st-party: github.com/cowprotocol/contracts src/contracts/mixins/GPv2Signing.sol::setPreSignature, src/contracts/libraries/GPv2Order.sol::packOrderUidParams.",
+  "match": {
+    "selector": "0xec6cb13f",
+    "chain_to_addresses": {
+      "1": [
+        "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setPreSignature",
+    "abi": {
+      "name": "setPreSignature",
+      "type": "function",
+      "inputs": [
+        { "name": "orderUid", "type": "bytes" },
+        { "name": "signed", "type": "bool" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "pre_sign_intent_order",
+        "pre_sign_intent_order": {
+          "venue": {
+            "name": "cow_swap",
+            "chain": "$chain",
+            "settlement": "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+          },
+          "order_hash": "$args.orderUid",
+          "signed": "$args.signed"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

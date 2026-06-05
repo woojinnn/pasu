@@ -1,27 +1,20 @@
 //! Vertex venue math — hybrid orderbook + AMM; supports spot, perp, and money
 //! market in one venue.
-//!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::Vertex`. Not a `Reducer` impl.
-//!
 //! ## Sequencer-routed settlement
-//!
 //! Vertex routes order matching through an off-chain sequencer but settles
 //! on-chain at the per-product clearinghouse contract. From the reducer's
 //! perspective the position is on-chain (state mutates immediately upon
 //! settlement), unlike Hyperliquid / Aevo where the orderbook is itself the
 //! source of truth.
-//!
 //! ## Formulas
-//!
 //! Vertex publishes per-product `maintenance_margin_fraction` and
 //! `initial_margin_fraction` in the clearinghouse `SubaccountUtils` library.
 //! Our `LiveFields` surface them as `maintenance_bp` / `initial_margin_bp`;
 //! the closed-form simple-margin formula applies for the dominant-position
 //! case (matches the venue's `SubaccountUtils.healthCheck` linearisation).
-//!
 //! ## Primary sources
-//!
 //! - <https://docs.vertexprotocol.com/developer-resources/api/v2/intro> —
 //!   `subaccount/info` endpoint for live margin params
 //! - <https://github.com/vertex-protocol/vertex-contracts> —
@@ -29,8 +22,8 @@
 
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;
@@ -48,7 +41,6 @@ pub(super) fn required_initial_margin(
 }
 
 /// Compute the liquidation price of a newly opened position on Vertex.
-///
 /// Vertex's `SubaccountUtils.healthCheck` linearises the multi-product
 /// healthbook around the dominant position; the simple-margin closed form
 /// is accurate in that regime.

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3b5f2810fb2168ffa9c73160f97bf9f2461ffa5c",
+  "symbol": "litUSD",
+  "decimals": 6,
+  "name": "litUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

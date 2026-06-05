@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x22e17d15f57b5200fba8b4ec1d62a8c49a6804cd",
+  "symbol": "YFV",
+  "decimals": 18,
+  "name": "YieldFi Base Vault",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

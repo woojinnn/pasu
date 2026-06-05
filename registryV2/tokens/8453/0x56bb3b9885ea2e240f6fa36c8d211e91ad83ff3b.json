@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x56bb3b9885ea2e240f6fa36c8d211e91ad83ff3b",
+  "symbol": "sUSD",
+  "decimals": 18,
+  "name": "SOS USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,28 +1,14 @@
-//! `DerivedFrom` dependency 그래프의 위상정렬.
-//!
-//! `DerivedFrom` 은 다른 `LiveField` 들의 값을 input 으로 받는다 (예: `aave_hf` 는
-//! `collateral_value`, `debt_value`, `liq_threshold` 에 의존). 따라서 sync 가 derived
-//! 들을 처리할 때:
-//!   1. input 으로 쓰이는 source-of-truth 필드 (`OnchainView`, `OracleFeed` 등) 먼저 갱신
-//!   2. `DerivedFrom` 들끼리는 의존 관계 따라 위상정렬 후 차례로 계산
-//!
-//! Kahn's algorithm 으로 단순 구현. cycle 이 있으면 `SyncError::CyclicDeps`.
-
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::error::SyncError;
 
-/// 한 노드 — 노드 id 와 자기 의존성 (input) 들의 id 목록.
 #[derive(Clone, Debug)]
 pub struct DepNode {
     pub id: String,
-    /// 이 노드의 input 들. 모두 처리된 후에야 이 노드 실행.
     pub depends_on: Vec<String>,
 }
 
-/// nodes → 처리 순서 (먼저 처리해야 할 것이 앞).
 pub fn topological_sort(nodes: Vec<DepNode>) -> Result<Vec<String>, SyncError> {
-    // adjacency: dep_id → 이 dep 가 풀리면 진행 가능해지는 노드들
     let mut adj: HashMap<String, Vec<String>> = HashMap::new();
     let mut in_degree: HashMap<String, usize> = HashMap::new();
     let mut all_ids: HashSet<String> = HashSet::new();
@@ -36,7 +22,6 @@ pub fn topological_sort(nodes: Vec<DepNode>) -> Result<Vec<String>, SyncError> {
         }
     }
 
-    // dep 들의 indegree 는 0 (입력 없음).
     for n in &nodes {
         let entry = in_degree.entry(n.id.clone()).or_insert(0);
         *entry = n.depends_on.len();

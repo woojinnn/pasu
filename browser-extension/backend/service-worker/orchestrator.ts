@@ -30,7 +30,12 @@ import {
   getDefaultPolicyBundlesV2,
   loadDefaultPolicySetV2,
 } from "./policies-loader-v2";
-import type { MatchedPolicyDto, VerdictDto } from "./wasm-bridge.types";
+import type {
+  ActionBundleInputDto,
+  ActionTxInputDto,
+  MatchedPolicyDto,
+  VerdictDto,
+} from "./wasm-bridge.types";
 import {
   isTransaction,
   isTypedSignature,
@@ -39,6 +44,10 @@ import {
   type Message,
 } from "@lib/types";
 import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
+import {
+  normalizeTypedDataPayload,
+  routeTypedSignaturePayload,
+} from "./sig-routing";
 
 /**
  * Phase 4A — submission-shape classifier. Maps the SW `Message` envelope
@@ -53,10 +62,9 @@ import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
  *     v3 because we cannot tell what the signer is approving.
  *
  * The classifier is a pure lookup. The orchestrator uses it to route into
- * the v3 WASM entry (`tryDeclarativeRouteV3`) for transactions and to keep
- * the legacy untyped-sig short-circuit for personal_sign — Phase 4B does
- * NOT yet add a typed-data v3 entry; that arrives in Phase 4C alongside
- * the SignAdapter.
+ * the v3 WASM entry (`tryDeclarativeRouteV3`) for transactions, the
+ * manifest-driven typed-data entry for EIP-712 signatures, and the legacy
+ * untyped-sig short-circuit for personal_sign.
  */
 export type ActionNatureKind = "onchain_tx" | "offchain_sig" | "untyped_sig";
 
@@ -83,14 +91,8 @@ interface DecisionOptions {
 }
 
 /**
- * Phase 4B — v3 route audit meta. Observability-only at Phase 4B (the v3
- * fn is a stub that always returns one `Unknown` action). Phase 4D fills
- * in `decoder_id` once registry-v2 manifest lookup is wired.
- *
- * Kept separate from `DeclarativeAuditMeta` so the audit log can show
- * both pipelines running in parallel during cutover — when Phase 5
- * promotes v3 to verdict driver, this meta moves into the `verdict`
- * branch and `DeclarativeAuditMeta` is retired.
+ * v3 route audit meta. The same route result is also the input to the active
+ * v2 ActionBody verdict path when the decoder emits real, non-Unknown bodies.
  */
 export interface DeclarativeV3AuditMeta {
   outcome: DeclarativeRouteV3Outcome["kind"]; // "hit" | "miss" | "fault"
@@ -106,14 +108,13 @@ export interface DeclarativeV3AuditMeta {
  * `"declarative-v2"` ⇒ the v3 route hit with a real (non-`Unknown`)
  *   `ActionBody`, and the verdict was driven by the stateless v2 pipeline
  *   (`plan_action_rpc_v2_json` → host dispatch → `evaluate_action_v2_json`).
- *   This is the ONLY real verdict driver for transactions after the v1
- *   declarative-envelope + static paths were removed.
+ *   This is the ONLY real verdict driver for transactions after the legacy
+ *   declarative/static fallbacks were removed.
  * `"fail_closed"` ⇒ no decoder produced an evaluable verdict, so the engine
  *   fails closed with a warn-and-proceed verdict. Covers: a v3 route
  *   miss/fault, a v3 hit whose bodies were all `Unknown`, zero v2 bundles
- *   loaded, a v2 plan/dispatch throw, and — until the SignAdapter lands —
- *   every typed signature (which has no v3 route today). Also used as the
- *   hard-timeout fallback source and for the untyped-signature short-circuit.
+ *   loaded, a v2 plan/dispatch throw, typed-signature route/evaluate misses,
+ *   hard-timeout fallback, and the untyped-signature short-circuit.
  */
 export type VerdictSource = "declarative-v2" | "fail_closed";
 
@@ -198,6 +199,11 @@ async function decideInner(
     const { verdict } = lifecycle;
 
     let ok = false;
+    // user_decision is only meaningful for WARN — PASS auto-passes and FAIL's
+    // popup is informational only. WARN's `ok` boolean (trust vs. cancel/X)
+    // is mapped to the storage enum and persisted on the audit row so the
+    // history view can render agree/deny without round-tripping.
+    let userDecision: "trusted" | "cancelled" | null = null;
     if (verdict.kind === "pass") {
       ok = true;
     } else if (verdict.kind === "fail") {
@@ -217,6 +223,7 @@ async function decideInner(
         verdict,
         options.onAwaitingUser,
       );
+      userDecision = ok ? "trusted" : "cancelled";
     }
 
     await appendAudit(
@@ -226,6 +233,7 @@ async function decideInner(
       lifecycle.verdictSource,
       lifecycle.policyRpc,
       lifecycle.declarativeV3,
+      userDecision,
     );
     return { ok, verdict };
   } catch (err) {
@@ -293,6 +301,7 @@ async function appendAudit(
   verdictSource?: VerdictSource,
   policyRpc?: PolicyRpcAuditMeta,
   declarativeV3?: DeclarativeV3AuditMeta,
+  userDecision: "trusted" | "cancelled" | null = null,
 ): Promise<void> {
   logDecision(message, verdict);
   await auditAppend({
@@ -314,7 +323,7 @@ async function appendAudit(
   // Keep the user-facing verdict log on-device. The server returns simulated
   // state for policy evaluation; the extension owns policy verdicts and audit
   // history, so this replaces the old server `/verdicts` write path.
-  void appendVerdictsForMessage(message, verdict).catch((err) => {
+  void appendVerdictsForMessage(message, verdict, userDecision).catch((err) => {
     console.warn("[Scopeball] verdict-storage append failed", err);
   });
 }
@@ -322,6 +331,7 @@ async function appendAudit(
 async function appendVerdictsForMessage(
   message: Message,
   verdict: VerdictDto,
+  userDecision: "trusted" | "cancelled" | null = null,
 ): Promise<void> {
   const ts = Math.floor(Date.now() / 1000);
   const { contract, selector } = inferContractSelector(message);
@@ -335,6 +345,7 @@ async function appendVerdictsForMessage(
     ...(contract ? { contract } : {}),
     ...(selector ? { selector } : {}),
     delta_id: null,
+    ...(userDecision !== null ? { user_decision: userDecision } : {}),
   };
 
   if (verdict.kind === "pass" || !verdict.matched?.length) {
@@ -384,9 +395,9 @@ function inferContractSelector(message: Message): {
   }
 
   if (isTypedSignature(message)) {
-    const verifyingContract = (
-      message.data.typedData as { domain?: { verifyingContract?: string } }
-    )?.domain?.verifyingContract?.toLowerCase();
+    const verifyingContract = normalizeTypedDataPayload(
+      message.data.typedData,
+    )?.domain.verifyingContract?.toLowerCase();
     return verifyingContract
       ? { contract: { addr: verifyingContract, symbol: null } }
       : {};
@@ -418,12 +429,12 @@ function logIncoming(message: Message): void {
   }
 
   if (isTypedSignature(message)) {
+    const typedData = normalizeTypedDataPayload(message.data.typedData);
     console.info("[Scopeball] typed-sig.incoming", {
       ...common,
       chainId: message.data.chainId,
       address: message.data.address,
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
+      primaryType: typedData?.primaryType,
       typedData: message.data.typedData,
     });
     return;
@@ -466,11 +477,11 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   }
 
   if (isTypedSignature(message)) {
+    const typedData = normalizeTypedDataPayload(message.data.typedData);
     console.info("[Scopeball] typed-sig", {
       ...common,
       chainId: message.data.chainId,
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
+      primaryType: typedData?.primaryType,
     });
     return;
   }
@@ -490,6 +501,16 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   // `ActionBody::Perp` directly and evaluated by the same stateless v2 pipeline.
   if (isVenueOrder(message)) {
     return venueOrderLifecycle(message);
+  }
+
+  // EIP-712 typed-data signature — its own manifest-driven decode→verdict
+  // path (`sig-routing.ts` → WASM `declarative_route_typed_data_v3_json`),
+  // analogous to the venue-order path above: no EVM calldata, the typed-data
+  // `message` is decoded into the same `Action[]` tree and driven through the
+  // same stateless v2 pipeline. Routed early (before `classifyMessage` /
+  // the tx branch) since it owns its own lifecycle + audit row.
+  if (isTypedSignature(message)) {
+    return typedSignatureLifecycle(message);
   }
 
   // Phase 4A classifier — `nature` lets us tell the v3 path apart at a
@@ -512,8 +533,8 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   }
 
   // Phase 4B → Phase 1/P3 — v3 route. Calls the WASM v3 entry to decode the
-  // tx into the PDF-FSM `Action[]` tree. After the v1 declarative-envelope
-  // and static paths were removed this is the SOLE input the verdict is
+  // tx into the PDF-FSM `Action[]` tree. After the legacy declarative/static
+  // fallbacks were removed this is the SOLE input the verdict is
   // driven from (via the v2 pipeline below). Failures here must never throw
   // out of the lifecycle — we fence the call and fail closed downstream.
   let declarativeV3Meta: DeclarativeV3AuditMeta | undefined;
@@ -567,6 +588,15 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
                     : v3Outcome.cause,
               }),
       });
+      // Pretty-printed dump so the decoded ActionBody[] is readable as text in
+      // DevTools (the object above collapses to `[{…}]`). Hex string fields
+      // (amounts/addresses) serialize cleanly — no BigInt in the v3 envelope.
+      if (v3Outcome.kind === "hit") {
+        console.info(
+          `[Scopeball] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
+            JSON.stringify(v3Outcome.value.actions, null, 2),
+        );
+      }
     } catch (err) {
       console.warn("[Scopeball] declarative-route-v3 threw", {
         requestId: message.requestId,
@@ -579,20 +609,18 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       };
     }
   } else {
-    // Typed-sig path — Phase 4B does NOT yet route signatures through the
-    // v3 WASM entry (SignAdapter arrives in Phase 4C). Record a miss with
-    // the nature so the audit log still shows the v3 column populated.
-    declarativeV3Meta = {
-      outcome: "miss",
-      nature,
-      reason: "typed_sig_not_yet_routed",
-    };
+    // Defensive: unreachable. Venue orders, typed signatures, and untyped
+    // signatures all short-circuit above (typed sigs route through
+    // `typedSignatureLifecycle`); the only remaining nature here is a
+    // transaction, handled by the `if` branch. Kept fail-safe in case a new
+    // message nature is added without a dedicated branch.
+    declarativeV3Meta = { outcome: "miss", nature, reason: "unrouted" };
   }
 
   // Phase 1 / P2 — v2 (ActionBody-model) verdict path. When the v3 route HIT
   // with one or more real (non-`Unknown`) `ActionBody` elements, the
   // stateless v2 pipeline drives the verdict. This is the ONLY real verdict
-  // driver after the v1 declarative-envelope + static paths were removed.
+  // driver after the legacy declarative/static fallbacks were removed.
   // Fail-safe: `tryV2VerdictPath` returns `undefined` (NOT a Fail verdict —
   // that is a real verdict we honour) when there is no real action, no v2
   // bundle, or a plan/dispatch throw; the lifecycle then fails closed below
@@ -626,12 +654,12 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   //   - a transaction whose v3 route missed/faulted, whose decoded bodies
   //     were all `Unknown`, had zero v2 bundles, or whose v2 plan/dispatch
   //     threw (`tryV2VerdictPath` → undefined), OR
-  //   - a typed signature (`offchain_sig`) — no v3 route exists for it until
-  //     the SignAdapter (Phase 4C) lands, so it always lands here.
+  //   - a typed signature route/evaluate miss, OR
+  //   - an unsupported untyped signature.
   // Rather than waive the request through, we emit a warn verdict that the
   // user must explicitly approve via the verdict window (mirrors the untyped
-  // signature short-circuit). This replaces the deleted v1 declarative-
-  // envelope + static `evaluateWithPolicyRpc` fallback.
+  // signature short-circuit). This replaces the deleted legacy
+  // `evaluateWithPolicyRpc` fallback.
   console.info("[Scopeball] declarative-verdict", {
     requestId: message.requestId,
     verdictSource: "fail_closed",
@@ -701,6 +729,17 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   let meta: Record<string, unknown>;
   try {
     ({ action, meta } = hlOrderToAction(message.data));
+    // Devtools: the canonical parsed representation (the `ActionBody` the policy
+    // engine evaluates). Visible in the service-worker console
+    // (chrome://extensions → ScopeBall → "Inspect views: service worker").
+    console.info("[Scopeball] HL /exchange parsed →", {
+      requestId: message.requestId,
+      venue: message.data.venue,
+      wireKind: message.data.hlAction?.kind,
+      action,
+      submitter: meta.submitter,
+      submitted_at: meta.submitted_at,
+    });
   } catch (err) {
     // Malformed order wire → deny-closed (do NOT let an unparseable order pass).
     console.warn("[Scopeball] venue-order convert threw", {
@@ -777,6 +816,266 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   }
 }
 
+// ── Off-chain signature decode logging helpers ─────────────────────────────
+
+/** Abbreviate a long `0x` hex (address / 32-byte hash) for log readability. */
+function abbrevHex(value: string): string {
+  return /^0x[0-9a-fA-F]{40,}$/.test(value)
+    ? `${value.slice(0, 8)}…${value.slice(-6)}`
+    : value;
+}
+
+/**
+ * Flatten an `ActionBody`'s scalar leaves into compact `path=value` pairs for a
+ * one-line, human-readable summary. Skips the `domain` / `action` discriminants
+ * (shown in the line header) and the live-input plumbing (`source` /
+ * `synced_at` / `ttl`), and abbreviates long hex so the security-relevant fields
+ * (spender / token / amount / deadline) read at a glance.
+ */
+function summarizeBodyFields(body: unknown): string {
+  const pairs: string[] = [];
+  const walk = (value: unknown, path: string): void => {
+    if (value === null || value === undefined) return;
+    if (typeof value === "object") {
+      if (Array.isArray(value)) {
+        value.forEach((item, i) => walk(item, `${path}[${i}]`));
+        return;
+      }
+      for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+        if (path === "" && (key === "domain" || key === "action")) continue;
+        if (key === "source" || key === "synced_at" || key === "ttl") continue;
+        walk(val, path ? `${path}.${key}` : key);
+      }
+      return;
+    }
+    const rendered = typeof value === "string" ? abbrevHex(value) : String(value);
+    pairs.push(`${path}=${rendered}`);
+  };
+  walk(body, "");
+  return pairs.join("  ");
+}
+
+/**
+ * Unwrap a (possibly `Multicall`) `ActionBody` into its leaf bodies, so a
+ * batched signature (Permit2 `PermitBatch`) summarizes one line per inner
+ * permit rather than a single opaque `multicall` entry.
+ */
+function leafBodies(body: unknown): unknown[] {
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { domain?: unknown }).domain === "multicall" &&
+    Array.isArray((body as { actions?: unknown }).actions)
+  ) {
+    return ((body as { actions: unknown[] }).actions).flatMap(leafBodies);
+  }
+  return [body];
+}
+
+/**
+ * Emit a signature-tailored, readable summary of a decoded off-chain payload to
+ * the ScopeBall DevTools console: the EIP-712 `domain` / `primaryType` that was
+ * signed, the routing decoder, and one `domain/action  field=value …` line per
+ * decoded (leaf) `ActionBody`. Complements the full JSON dump.
+ */
+function logParsedSignature(message: Message, routed: { actions: unknown[]; decoderId: string }): void {
+  const td = isTypedSignature(message)
+    ? normalizeTypedDataPayload(message.data.typedData)
+    : null;
+  const domainName = td?.domain?.name ?? "?";
+  const primaryType = td?.primaryType ?? "?";
+  const leaves = routed.actions.flatMap((a) =>
+    leafBodies((a as { body?: unknown }).body),
+  );
+  const lines = leaves.map((body, i) => {
+    const b = body as { domain?: string; action?: string };
+    return `  #${i} ${b?.domain ?? "?"}/${b?.action ?? "?"}  ${summarizeBodyFields(body)}`;
+  });
+  console.info(
+    `[Scopeball] off-chain signature parsed — ${domainName} / ${primaryType} ` +
+      `(${leaves.length} action${leaves.length === 1 ? "" : "s"}) via ${routed.decoderId}\n` +
+      lines.join("\n"),
+  );
+}
+
+/**
+ * EIP-712 typed-data signature verdict lifecycle.
+ *
+ * Mirrors {@link venueOrderLifecycle} but sources the `Action[]` from the
+ * manifest-driven typed-data router ({@link routeTypedSignaturePayload} →
+ * registry `by-typed-data/` lookup → WASM `declarative_route_typed_data_v3_json`)
+ * instead of an EVM calldata decode, then drives the SAME stateless v2 pipeline
+ * (plan → dispatch → evaluate) the transaction path uses.
+ *
+ * **warn-closed** (like the tx path, NOT deny-closed like venue orders): a
+ * route miss / decode-or-evaluate fault yields a `noDecoderVerdict()` warn the
+ * user must approve — a benign signature we cannot decode must not be hard
+ * blocked. A decoded signature with no matching policy baseline-passes.
+ */
+async function typedSignatureLifecycle(
+  message: Message,
+): Promise<LifecycleResult> {
+  const nature: ActionNatureKind = "offchain_sig";
+  if (!isTypedSignature(message)) {
+    // Unreachable (caller guards); keep the type narrow + fail-closed.
+    return { verdict: noDecoderVerdict(), verdictSource: "fail_closed" };
+  }
+
+  // Route the typed-data payload through the registry-v2 `by-typed-data/`
+  // index + WASM decode. `null` = no published manifest / decode miss; a throw
+  // is an unexpected fault. Both warn-close (mirrors the tx fail-closed tail).
+  let routed: Awaited<ReturnType<typeof routeTypedSignaturePayload>>;
+  try {
+    routed = await routeTypedSignaturePayload({
+      payload: message.data,
+      submittedAt: Math.floor(Date.now() / 1000),
+    });
+  } catch (err) {
+    console.warn("[Scopeball] typed-sig route threw", {
+      requestId: message.requestId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3: {
+        outcome: "fault",
+        nature,
+        reason: "typed_sig_route_threw",
+      },
+    };
+  }
+  if (!routed) {
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3: { outcome: "miss", nature, reason: "typed_sig_no_manifest" },
+    };
+  }
+
+  // Off-chain signature observability: a readable per-action summary (EIP-712
+  // domain / primaryType + each leaf body's security fields), then the full
+  // ActionBody[] JSON dump (mirrors the tx-path dump) for complete detail.
+  logParsedSignature(message, routed);
+  console.info(
+    `[Scopeball] decoded ActionBody[] (${routed.actions.length})\n` +
+      JSON.stringify(routed.actions, null, 2),
+  );
+  const declarativeV3: DeclarativeV3AuditMeta = {
+    outcome: "hit",
+    nature,
+    decoder_id: routed.decoderId,
+    action_count: routed.actions.length,
+  };
+
+  // Warm the v2 bundle cache (idempotent) before reading it — closes the
+  // pre-boot race where a sig arriving early sees [] and baseline-passes.
+  await loadDefaultPolicySetV2();
+  const bundles = getDefaultPolicyBundlesV2();
+  // No policies ⇒ baseline pass (you cannot deny without a policy).
+  if (bundles.length === 0) {
+    return {
+      verdict: { kind: "pass" },
+      verdictSource: "declarative-v2",
+      declarativeV3,
+    };
+  }
+  const manifests = bundles.map((b) => b.manifest);
+
+  // Skip `Unknown` bodies — only real ActionBody variants drive a verdict.
+  const realActions = routed.actions.filter((a) => {
+    const body = (a as { body?: unknown }).body;
+    return (
+      typeof body === "object" &&
+      body !== null &&
+      (body as { domain?: unknown }).domain !== "unknown"
+    );
+  });
+  if (realActions.length === 0) {
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3,
+    };
+  }
+
+  // v2 `tx` context for a signature: `to` is the EIP-712 verifyingContract
+  // (e.g. Permit2), `from` the signer. Only `{chain_id, from, to}` is consumed
+  // by the WASM (`ActionTxInputDto`); `to` is NOT a trigger-match field
+  // (`TriggerField` = action.domain/tag/venue + tx.chain_id), so a missing
+  // verifyingContract degrades to the zero sentinel without affecting
+  // action-tag-based policies.
+  const verifyingContract =
+    normalizeTypedDataPayload(
+      message.data.typedData,
+    )?.domain.verifyingContract?.toLowerCase() ??
+    "0x" + "0".repeat(40);
+  const tx = {
+    chain_id: `eip155:${message.data.chainId}`,
+    from: message.data.address,
+    to: verifyingContract,
+  } as const;
+  const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
+
+  const verdicts: VerdictDto[] = [];
+  let anyLegThrew = false;
+  for (const a of realActions) {
+    const action = (a as { body: unknown }).body;
+    const meta = (a as { meta?: unknown }).meta;
+    try {
+      // Per-child fan-out: evaluate this body and (if a multicall) each inner
+      // child. No `recordSimulationOnServer` on the sig path (it never recorded).
+      verdicts.push(
+        ...(await evaluateBodyTree(
+          action,
+          meta,
+          tx,
+          bundles,
+          manifests,
+          policyRpcUrl,
+          message.requestId,
+        )),
+      );
+    } catch (err) {
+      // A plan/dispatch/evaluate throw makes THIS leg unevaluable. Record the
+      // fault but KEEP aggregating siblings — the old early-return discarded
+      // every already-computed verdict and demoted a sibling leg's computed Fail
+      // to an approvable warn (WASM-1). Resolution below honours deny-overrides.
+      console.warn("[Scopeball] typed-sig-verdict leg threw", {
+        requestId: message.requestId,
+        chainId: message.data.chainId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      anyLegThrew = true;
+    }
+  }
+
+  // Deny-overrides with a fault floor (mirrors tryV2VerdictPath): a real `fail`
+  // from any leg outranks a sibling fault; otherwise a fault with no computed
+  // deny warn-closes (preserving the fail_closed labeling); otherwise the real
+  // pass/warn aggregate stands.
+  const aggregate = aggregateV2Verdicts(verdicts);
+  if (aggregate.kind !== "fail" && anyLegThrew) {
+    return {
+      verdict: noDecoderVerdict(),
+      verdictSource: "fail_closed",
+      declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
+    };
+  }
+  console.info("[Scopeball] typed-sig-verdict", {
+    requestId: message.requestId,
+    verdictSource: "declarative-v2",
+    verdict: aggregate.kind,
+    decoderId: routed.decoderId,
+    matched:
+      aggregate.matched?.map((m) => ({
+        id: m.policy_id,
+        severity: m.severity,
+      })) ?? [],
+  });
+  return { verdict: aggregate, verdictSource: "declarative-v2", declarativeV3 };
+}
+
 /** Synthetic deny verdict for the venue-order deny-closed paths. */
 function venueDenyVerdict(reason: string): VerdictDto {
   return {
@@ -792,15 +1091,99 @@ function venueDenyVerdict(reason: string): VerdictDto {
   };
 }
 
+/**
+ * Evaluate one decoded `ActionBody` against the installed v2 bundles, then — if
+ * it is a `Multicall` — recurse into each inner child as its own evaluate
+ * envelope. Returns the FLAT list of per-position verdicts (this body's, then
+ * each descendant's) for the caller to aggregate by deny-overrides.
+ *
+ * This is the SW half of the multicall per-child fan-out (mirrors the Rust
+ * `sync::actions::walk::walk_body` recursion). The WASM `evaluate_action_v2`
+ * scope gate decides which bundles fire at each position: `Outer`-scoped
+ * policies fire on the multicall batch here; `Inner`-scoped (default) policies
+ * fire when this function re-enters with each child. Without the recursion an
+ * `Inner` slippage/recipient policy would never see a UR-`execute`-wrapped swap.
+ *
+ * An `unknown`-domain body is skipped (NOT fail-closed) so one undecodable child
+ * never blocks its siblings or the outer batch; the top-level all-unknown case
+ * is still fail-closed by each caller's `realActions` guard. Children share the
+ * parent `meta` (the decoded `Multicall` carries no per-child meta).
+ * `recordSimulationOnServer` is intentionally NOT called here — recording stays
+ * at the top-level caller so its granularity is unchanged.
+ *
+ * Throws only what `planActionRpcV2` / `dispatchCallsV2` throw; the caller's
+ * try/catch turns that into a fail-closed verdict.
+ */
+async function evaluateBodyTree(
+  body: unknown,
+  meta: unknown,
+  tx: ActionTxInputDto,
+  bundles: readonly ActionBundleInputDto[],
+  manifests: readonly unknown[],
+  policyRpcUrl: string,
+  requestId: string,
+): Promise<VerdictDto[]> {
+  const verdicts: VerdictDto[] = [];
+  const domain =
+    typeof body === "object" && body !== null
+      ? (body as { domain?: unknown }).domain
+      : undefined;
+
+  if (domain !== undefined && domain !== "unknown") {
+    // PLAN → DISPATCH (only when something is planned; a shared results map
+    // would clobber since `call_id` repeats across siblings) → EVALUATE.
+    const planned = await planActionRpcV2({ manifests, action: body, meta, tx });
+    const results =
+      planned.length > 0 ? await dispatchCallsV2(planned, policyRpcUrl) : {};
+    verdicts.push(
+      await evaluateActionV2({ action: body, meta, tx, bundles, results }),
+    );
+  } else if (domain === "unknown") {
+    // N2: a nested batch position that decoded to NOTHING — the WASM decoder
+    // surfaces an all-empty nested opcode stream as an `Unknown` child (rather
+    // than an empty Multicall that would PASS). Contribute a warn so the parent
+    // batch cannot aggregate to PASS on its legible siblings alone; a sibling
+    // DENY still outranks this warn via deny-overrides. (A single dropped opcode
+    // in an otherwise-decoded stream is NOT surfaced — registry `warn`=skip
+    // intent — so this fires only for the all-empty case.)
+    console.debug("[Scopeball] per-child unknown leg → partial-decode warn", {
+      requestId,
+    });
+    verdicts.push(partialDecodeVerdict());
+  }
+
+  // Recurse into multicall children — each its own envelope, parent meta shared.
+  // A nested multicall is evaluated as a batch (Outer policies) AND recursed.
+  if (domain === "multicall") {
+    const children = (body as { actions?: unknown }).actions;
+    if (Array.isArray(children)) {
+      for (const child of children) {
+        verdicts.push(
+          ...(await evaluateBodyTree(
+            child,
+            meta,
+            tx,
+            bundles,
+            manifests,
+            policyRpcUrl,
+            requestId,
+          )),
+        );
+      }
+    }
+  }
+
+  return verdicts;
+}
+
 async function tryV2VerdictPath(
   message: Message,
   actions: Record<string, unknown>[],
 ): Promise<VerdictDto | undefined> {
   if (!isTransaction(message)) return undefined;
 
-  // Skip `Unknown` bodies — the 4B stub emits exactly one of these, so the
-  // path stays dormant until the registry-v2 decoder (Phase 4D) lands and
-  // begins emitting real `ActionBody` variants.
+  // Skip `Unknown` bodies. They mean the v3 decoder could not produce a real
+  // ActionBody, so the request must fall through to fail-closed handling.
   const realActions = actions.filter((a) => {
     const body = (a as { body?: unknown }).body;
     return (
@@ -811,6 +1194,11 @@ async function tryV2VerdictPath(
   });
   if (realActions.length === 0) return undefined;
 
+  // Warm the v2 bundle cache (idempotent) before reading it — closes the
+  // post-SW-restart boot race where a tx arriving early sees [] and degrades an
+  // enforced deny to an approvable warn (F1-1). Mirrors the venue + typed-sig
+  // paths, which already await the loader.
+  await loadDefaultPolicySetV2();
   const bundles = getDefaultPolicyBundlesV2();
   if (bundles.length === 0) return undefined;
   // The plan phase MUST see the identical manifest set the bundles carry —
@@ -828,45 +1216,61 @@ async function tryV2VerdictPath(
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   const verdicts: VerdictDto[] = [];
+  let anyLegThrew = false;
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
     const meta = (a as { meta?: unknown }).meta;
     try {
-      // PLAN: lower the action + plan its v2 policy-RPC calls.
-      const planned = await planActionRpcV2({ manifests, action, meta, tx });
-      // DISPATCH: fresh per-action results map (shared map would clobber:
-      // `call_id` repeats across action elements).
-      const results = await dispatchCallsV2(planned, policyRpcUrl);
-      // EVALUATE: never throws for policy/system faults (always Fail inside).
-      const verdict = await evaluateActionV2({
-        action,
-        meta,
-        tx,
-        bundles,
-        results,
-      });
-      verdicts.push(verdict);
+      // Per-child fan-out: evaluate this action AND, if it is a multicall, each
+      // inner child as its own envelope. The WASM scope gate (A1) decides which
+      // bundles fire at the batch vs the child positions; this supplies both.
+      // `evaluateActionV2` never throws for policy/system faults (Fail inside) —
+      // only plan/dispatch can throw.
+      verdicts.push(
+        ...(await evaluateBodyTree(
+          action,
+          meta,
+          tx,
+          bundles,
+          manifests,
+          policyRpcUrl,
+          message.requestId,
+        )),
+      );
 
-      // RECORD (Phase 8B): replay the simulation against the Scopeball
-      // server so the action + state-delta land in the authenticated
-      // user's server-side state. Best-effort — the verdict above is the source of
+      // RECORD (Phase 8B): replay the simulation against the Scopeball server
+      // so the action + state-delta land in the authenticated user's
+      // server-side state. Best-effort — the verdict above is the source of
       // truth for fail-closed decisions; recording is purely for the
-      // dashboard's history view. Skipped silently when the user isn't
-      // signed in to Scopeball.
+      // dashboard's history view. Skipped silently when the user isn't signed
+      // in to Scopeball. Recorded per TOP-LEVEL action (granularity unchanged).
       void recordSimulationOnServer({ action, meta, tx });
     } catch (err) {
-      // A plan/dispatch throw is a fault, NOT a verdict — the caller fails
-      // closed (a flaky WASM/RPC call must not waive a tx through).
-      console.warn("[Scopeball] declarative-verdict-v2 threw", {
+      // A plan/dispatch throw makes THIS leg unevaluable. Record the fault but
+      // KEEP evaluating siblings — the old `return undefined` here discarded
+      // every already-computed verdict and dropped the whole tx into the warn
+      // tail, silently demoting a sibling leg's computed Fail to an approvable
+      // warn (WASM-1). Resolution below honours deny-overrides.
+      console.warn("[Scopeball] declarative-verdict-v2 leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
       });
-      return undefined;
+      anyLegThrew = true;
     }
   }
 
-  return aggregateV2Verdicts(verdicts);
+  // Deny-overrides resolution with a fault floor:
+  //   - a real `fail` from ANY leg outranks the fault → return it (never let a
+  //     sibling fault demote a computed deny — WASM-1),
+  //   - otherwise a fault with no computed deny falls through to the caller's
+  //     fail-closed WARN tail (`undefined`), preserving the prior fail_closed
+  //     semantics/labeling for a pure plan/dispatch fault,
+  //   - otherwise the real pass/warn aggregate stands.
+  const aggregate = aggregateV2Verdicts(verdicts);
+  if (aggregate.kind === "fail") return aggregate;
+  if (anyLegThrew) return undefined;
+  return aggregate;
 }
 
 /**
@@ -949,12 +1353,10 @@ function redactEnvelope(message: Message): unknown {
     };
   }
   if (isTypedSignature(message)) {
+    const typedData = normalizeTypedDataPayload(message.data.typedData);
     return {
-      primaryType: (message.data.typedData as { primaryType?: string })
-        ?.primaryType,
-      verifyingContract: (
-        message.data.typedData as { domain?: { verifyingContract?: string } }
-      )?.domain?.verifyingContract,
+      primaryType: typedData?.primaryType,
+      verifyingContract: typedData?.domain.verifyingContract,
     };
   }
   if (isVenueOrder(message)) {
@@ -1009,13 +1411,34 @@ function unsupportedUntypedSignatureVerdict(): VerdictDto {
  * Phase 1 / P3 — FAIL-CLOSED verdict for a request no decoder could evaluate.
  *
  * Emitted by the `runLifecycle` tail when the v3 route missed/faulted, decoded
- * only `Unknown` bodies, found no v2 bundles, or the v2 pipeline threw — and
- * for every typed signature (no v3 route exists for it until the SignAdapter
- * lands). `kind: "warn"` so `decideInner` opens the verdict window and requires
+ * only `Unknown` bodies, found no v2 bundles, the v2 pipeline threw, or typed /
+ * untyped signature routing could not produce an evaluable result. `kind: "warn"`
+ * so `decideInner` opens the verdict window and requires
  * the user to explicitly proceed (mirrors `unsupportedUntypedSignatureVerdict`),
- * rather than silently waiving the request through as the deleted v1 static
- * `evaluateWithPolicyRpc` fallback would have.
+   * rather than silently waiving the request through as the deleted legacy
+   * `evaluateWithPolicyRpc` fallback would have.
  */
+/**
+ * N2/N3 — floor for a decoded batch carrying a leg the decoder could not map
+ * (surfaced by the WASM decoder as an `Unknown` child rather than dropped). A
+ * partially-decoded batch must not PASS on its legible siblings alone, so this
+ * warn floors the aggregate; a sibling DENY still outranks it (deny-overrides).
+ */
+function partialDecodeVerdict(): VerdictDto {
+  return {
+    kind: "warn",
+    matched: [
+      {
+        policy_id: "__engine::partial_decode",
+        reason:
+          "Part of this batch could not be decoded — review before signing",
+        severity: "warn",
+        origin: "engine_error",
+      },
+    ],
+  };
+}
+
 function noDecoderVerdict(): VerdictDto {
   return {
     kind: "warn",

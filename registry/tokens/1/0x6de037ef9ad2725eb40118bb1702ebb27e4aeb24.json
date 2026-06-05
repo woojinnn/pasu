@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x6de037ef9ad2725eb40118bb1702ebb27e4aeb24",
-  "symbol": "RNDR",
-  "decimals": 18,
-  "name": "Render Token"
-}

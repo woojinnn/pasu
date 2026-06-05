@@ -1,0 +1,102 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-erc4626Withdraw@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 ERC-4626 erc4626Withdraw leg (reached via Bundler3 multicall(Call[])). venue=metamorpho{vault=$args.vault} (the vault is a runtime ARG, not the call target); asset=vault underlying, resolved from $derived.metamorpho_underlying (committed mainnet vault→underlying snapshot — NOT in calldata). amount=assets asset-denominated (legible). live_inputs=skeleton (§4d enrichment deferred). Vault arg may be any listed mainnet MetaMorpho vault.",
+  "match": {
+    "selector": "0xc9565706",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "erc4626Withdraw",
+    "abi": {
+      "name": "erc4626Withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "vault",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minSharePriceE27",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "metamorpho",
+            "chain": "$chain",
+            "vault": "$args.vault"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$derived.metamorpho_underlying"
+            }
+          },
+          "amount": "$args.assets",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_reserve_state_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_available_to_withdraw_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_user_state_skeleton"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

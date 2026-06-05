@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc2327746d0da4183f77c813b76450a17852a38ef",
+  "symbol": "VAYAcrvUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Vaya/crvUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xc2327746d0da4183f77c813b76450a17852a38ef"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xc9a3e2b3064c1c0546d3d0edc0a748e9f93cf18d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "contract": "BalancerV3BatchRouter",
+  "chainId": 1,
+  "address": "0x136f1efcc3f8f88516b9e94110d56fdbfb1778d1",
+  "snapshot": "v3-batchrouter-mainnet.abi.json",
+  "note": "Balancer V3 BatchRouter user pre-sign surface. Covered: swapExactIn (aggregate Amm::Swap via balancer_v3_swap_path_field), permitBatchAndCall (multicall_recurse, the dominant entry), multicall. swapExactOut deferred (0 recent tx). Source: balancer/balancer-deployments v3 20241205-v3-batch-router.",
+  "functions": {
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "exclude",
+      "reason": "multicall(bytes[]) of BatchRouter self-calls \u2014 0 recent direct tx (users bundle via permitBatchAndCall); decodable via multicall_recurse, excluded for now."
+    },
+    "0x19c6989f": {
+      "name": "permitBatchAndCall",
+      "decision": "cover",
+      "reason": "user wrapper: Permit2 batch + multicall of BatchRouter self-calls (chiefly swapExactIn). Decoded via multicall_recurse. ~68% of recent direct BatchRouter tx."
+    },
+    "0xe3b5dff4": {
+      "name": "querySwapExactIn",
+      "decision": "exclude",
+      "reason": "non-user / hook / settlement-callback (not a wallet-facing user action)."
+    },
+    "0x8a12a08c": {
+      "name": "querySwapExactInHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / settlement-callback (not a wallet-facing user action)."
+    },
+    "0x2950286e": {
+      "name": "querySwapExactOut",
+      "decision": "exclude",
+      "reason": "non-user / hook / settlement-callback (not a wallet-facing user action)."
+    },
+    "0x5a3c3987": {
+      "name": "querySwapExactOutHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / settlement-callback (not a wallet-facing user action)."
+    },
+    "0x286f580d": {
+      "name": "swapExactIn",
+      "decision": "cover",
+      "reason": "user AMM action: V3 BatchRouter multi-hop exact-in swap. Decoded to aggregate Amm::Swap via balancer_v3_swap_path_field (tokenIn + last step tokenOut from calldata; no baked map). ~32% of recent direct BatchRouter tx."
+    },
+    "0x08a465f6": {
+      "name": "swapExactInHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / settlement-callback (not a wallet-facing user action)."
+    },
+    "0x8eb1b65e": {
+      "name": "swapExactOut",
+      "decision": "exclude",
+      "reason": "V3 BatchRouter multi-hop exact-out swap \u2014 decodable with balancer_v3_swap_path_field (same SwapPath structure) but 0 recent direct tx (1st-party Etherscan ~42d); excluded for now, trivial follow-up if traffic appears."
+    },
+    "0x945ed33f": {
+      "name": "swapExactOutHook",
+      "decision": "exclude",
+      "reason": "non-user / hook / settlement-callback (not a wallet-facing user action)."
+    }
+  },
+  "signed_structs": {}
+}

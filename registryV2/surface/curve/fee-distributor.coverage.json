@@ -1,0 +1,22 @@
+{
+  "contract": "Curve-FeeDistributor",
+  "chainId": 1,
+  "addresses": [
+    "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+    "0xd16d5ec345dd86fb63c6a9c43c517210f1027914"
+  ],
+  "snapshot": "fee-distributor.abi.json",
+  "functions": {
+    "0x4e71d92d": { "name": "claim()", "decision": "cover", "reason": "user fee claim: msg.sender's accrued veCRV fee share" },
+    "0x1e83409a": { "name": "claim(address)", "decision": "cover", "reason": "user fee claim for a specific account (on_behalf_of)" },
+    "0x7b935a23": { "name": "claim_many(address[20])", "decision": "exclude", "reason": "batch keeper claim for up to 20 accounts — beneficiary list not modeled by ClaimRewards; claim()/claim(address) cover the user surface" },
+    "0x811a40fe": { "name": "checkpoint_token()", "decision": "exclude", "reason": "keeper maintenance (fee accounting checkpoint), not a pre-sign value/permission action" },
+    "0xb21ed502": { "name": "checkpoint_total_supply()", "decision": "exclude", "reason": "keeper maintenance (veCRV supply checkpoint)" },
+    "0x89afcb44": { "name": "burn(address)", "decision": "exclude", "reason": "deposit fees into the distributor (integration/admin), not an end-user claim" },
+    "0xb1d3db75": { "name": "commit_admin(address)", "decision": "exclude", "reason": "governance (admin transfer)" },
+    "0xc0e991a6": { "name": "apply_admin()", "decision": "exclude", "reason": "governance (admin transfer apply)" },
+    "0x2121bfc3": { "name": "toggle_allow_checkpoint_token()", "decision": "exclude", "reason": "admin config toggle" },
+    "0xe3698853": { "name": "kill_me()", "decision": "exclude", "reason": "admin emergency kill" },
+    "0xdb2f5f79": { "name": "recover_balance(address)", "decision": "exclude", "reason": "admin token recovery" }
+  }
+}

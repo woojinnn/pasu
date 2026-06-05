@@ -1,7 +1,7 @@
 //! `hl_update_leverage` reducer — upsert a per-asset leverage setting.
 
-use simulation_state::position::{HlAccount, HlLeverageSetting, PositionKind};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::{HlAccount, HlLeverageSetting, PositionKind};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::hyperliquid_core::HlUpdateLeverageAction;
 use crate::error::ReducerResult;
@@ -55,11 +55,11 @@ fn upsert_setting(settings: &mut Vec<HlLeverageSetting>, new: HlLeverageSetting)
 mod tests {
     use super::*;
 
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::position::{HlAccount, HlLeverageSetting, Position, PositionKind};
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::wallet::{WalletId, WalletState};
-    use simulation_state::PositionChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::position::{HlAccount, HlLeverageSetting, Position, PositionKind};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::wallet::{WalletId, WalletState};
+    use policy_state::PositionChange;
 
     use super::super::common::HL_ACCOUNT_ID;
 
@@ -95,7 +95,7 @@ mod tests {
                 ..HlAccount::default()
             }),
             primitives_synced_at: Time::from_unix(1),
-            primitives_source: simulation_state::live_field::DataSource::UserSupplied,
+            primitives_source: policy_state::live_field::DataSource::UserSupplied,
         });
         s
     }

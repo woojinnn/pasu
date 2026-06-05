@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x4a220e6096b25eadb88358cb44068a3248254675",
-  "symbol": "QNT",
-  "decimals": 18,
-  "name": "Quant"
-}

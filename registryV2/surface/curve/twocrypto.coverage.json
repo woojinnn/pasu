@@ -1,0 +1,138 @@
+{
+  "contract": "Curve-Twocrypto-NG",
+  "chainId": 1,
+  "addresses": [
+    "0x862cb4e988fb66e72f128d1183829f8c05b6c6a0",
+    "0x83f24023d15d835a213df24fd309c47dab5beb32",
+    "0x6e5492f8ea2370844ee098a56dd88e1717e4a9c2",
+    "0x656341ef90b622c6634e0573772ffb7f3669b9f3",
+    "0x313698667d7fdd6789a9bc70821309ff891e729a",
+    "0xd9ff8396554a0d18b2cfbec53e1979b7ecce8373",
+    "0x4f52c3a81e33521e5a9a47fd9d3be475d2279c2e",
+    "0xf1f435b05d255a5dbde37333c0f61da6f69c6127"
+  ],
+  "snapshot": "twocrypto.abi.json",
+  "note": "Curve Twocrypto-NG (CurveTwocryptoOptimized, 2-coin volatile) mainnet pools. All 8 are factory-deployed by the Curve Twocrypto-NG factory (0x98ee851a00abee0d95d08cf4ca2bdce32aeaaf7f, verified via each pool's factory()), so they are genuine Curve twocrypto contracts; the pool name()s read 'Yield Basis …' because the Yield Basis product deployed + uses them (crvUSD/BTC & crvUSD/ETH, 4 collaterals × 2 generations). These are the highest-TVL twocrypto-ng pools on mainnet (~$250M); the non-Yield-Basis twocrypto pools are all sub-$1M exotic-token pairs. Decode is curve_v2 swap/add/remove (0 core code; AmmVenue::CurveV2 reused from cryptoswap). 3 pools (cbBTC/WBTC/tBTC gen) carry the donation/policy/allowlist impl (86 fns); the WETH-gen pools are the base impl (82 fns) — a strict subset for the 8 user-facing functions, which are identical. Snapshot is the 86-fn superset (crvUSD/cbBTC pool). ScopeBall is a pre-sign INTENT decoder: a policy/allowlist gate is an execution detail, not a decode concern. 8 cover (exchange/add_liquidity/remove_liquidity/remove_liquidity_one_coin + receiver variants) · 16 exclude (2 exchange_received router-opt, 1 donation add_liquidity overload, 2 remove_liquidity_fixed_out, 3 erc20 LP, 8 admin).",
+  "functions": {
+    "0x5b41b908": {
+      "name": "exchange(uint256,uint256,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user exchange on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xa64833a0": {
+      "name": "exchange(uint256,uint256,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user exchange on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x0b4c7e4d": {
+      "name": "add_liquidity(uint256[2],uint256)",
+      "decision": "cover",
+      "reason": "user add_liquidity on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x0c3e4b54": {
+      "name": "add_liquidity(uint256[2],uint256,address)",
+      "decision": "cover",
+      "reason": "user add_liquidity on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x5b36389c": {
+      "name": "remove_liquidity(uint256,uint256[2])",
+      "decision": "cover",
+      "reason": "user remove_liquidity on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x3eb1719f": {
+      "name": "remove_liquidity(uint256,uint256[2],address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0xf1dc3cc9": {
+      "name": "remove_liquidity_one_coin(uint256,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x0fbcee6e": {
+      "name": "remove_liquidity_one_coin(uint256,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user remove_liquidity_one_coin on CurveV2 twocrypto — 2-coin index value-map (swap/one_coin) or baked coins (add/remove); recipient = receiver arg if present else tx.from."
+    },
+    "0x29b244bb": {
+      "name": "exchange_received(uint256,uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "router-only pre-funded swap optimization (tokens pre-transferred to the pool, no token-pull at this call); the swap intent is covered by exchange. NOT a new permission grant."
+    },
+    "0x767691e7": {
+      "name": "exchange_received(uint256,uint256,uint256,uint256,address)",
+      "decision": "exclude",
+      "reason": "router-only pre-funded swap optimization (tokens pre-transferred to the pool, no token-pull at this call); the swap intent is covered by exchange. NOT a new permission grant."
+    },
+    "0x86514738": {
+      "name": "add_liquidity(uint256[2],uint256,address,bool)",
+      "decision": "exclude",
+      "reason": "donation-variant overload (4th bool arg = donation opt-in); the add_liquidity intent is covered by the 2-arg/3-arg overloads. The donation flag is a non-permission preference and only exists on the donation-variant pools."
+    },
+    "0x512d6365": {
+      "name": "remove_liquidity_fixed_out(uint256,uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "niche fixed-output single-sided withdrawal; the remove-liquidity intent is covered by remove_liquidity / remove_liquidity_one_coin."
+    },
+    "0xb2f9173e": {
+      "name": "remove_liquidity_fixed_out(uint256,uint256,uint256,uint256,address)",
+      "decision": "exclude",
+      "reason": "niche fixed-output single-sided withdrawal; the remove-liquidity intent is covered by remove_liquidity / remove_liquidity_one_coin."
+    },
+    "0x23b872dd": {
+      "name": "transferFrom(address,address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (Twocrypto pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0xa9059cbb": {
+      "name": "transfer(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (Twocrypto pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x095ea7b3": {
+      "name": "approve(address,uint256)",
+      "decision": "exclude",
+      "reason": "standard ERC20 on the pool-as-LP-token (Twocrypto pool == LP) — analyzed by the erc20 standard adapter (pool registered in tokens/1/ as erc20). The permission grant IS covered by the generic adapter."
+    },
+    "0x5e248072": {
+      "name": "ramp_A_gamma(uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x244c7c2e": {
+      "name": "stop_ramp_A_gamma()",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0x6dbcf350": {
+      "name": "apply_new_parameters(uint256,uint256,uint256,uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0xd48d3a45": {
+      "name": "set_fee_parameters(uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin/keeper (owner-only A/gamma ramp + fee/parameter management) — not a user-wallet action."
+    },
+    "0xefb238b9": {
+      "name": "set_donation_parameters(uint256,uint256,uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin config on the Yield-Basis donation-variant impl (donation/policy/allowlist) — owner-only, not a user-wallet action."
+    },
+    "0xaab884cd": {
+      "name": "set_policy_contract(address)",
+      "decision": "exclude",
+      "reason": "admin config on the Yield-Basis donation-variant impl (donation/policy/allowlist) — owner-only, not a user-wallet action."
+    },
+    "0xed52803b": {
+      "name": "change_allowlist(address[],address[])",
+      "decision": "exclude",
+      "reason": "admin config on the Yield-Basis donation-variant impl (donation/policy/allowlist) — owner-only, not a user-wallet action."
+    },
+    "0x71931d35": {
+      "name": "initialize(uint256,uint256,address,uint256,address[])",
+      "decision": "exclude",
+      "reason": "factory-only one-time pool init — not callable post-deployment by a user wallet."
+    }
+  }
+}

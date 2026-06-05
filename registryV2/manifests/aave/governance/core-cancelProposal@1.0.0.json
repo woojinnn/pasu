@@ -1,0 +1,48 @@
+{
+  "type": "adapter_action",
+  "id": "aave/governance/core/cancelProposal@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Governance V3 proposal cancellation.",
+  "match": {
+    "selector": "0xe0a8f6f5",
+    "chain_to_addresses": {
+      "1": [
+        "0x9aee0b04504cef83a65ac3f0e838d0593bcb2bc7"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cancelProposal",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "cancelProposal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "governance",
+      "governance": {
+        "action": "cancel",
+        "cancel": {
+          "venue": {
+            "name": "aave_governance_v3",
+            "chain": "$chain",
+            "governance": "$to"
+          },
+          "proposal_id": "$args.proposalId"
+        }
+      }
+    }
+  }
+}

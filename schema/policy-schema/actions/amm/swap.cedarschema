@@ -52,8 +52,10 @@ namespace Amm {
     venue: AmmVenue,
     // Token being sold.
     tokenIn: Core::TokenRef,
-    // Token being bought.
-    tokenOut: Core::TokenRef,
+    // Token being bought. Absent for pool-read-required swaps (e.g. 1inch
+    // unoswap), where token_out is the pool's other token and is not statically
+    // known from calldata.
+    tokenOut?: Core::TokenRef,
     // Exact-in / exact-out direction and limits.
     direction: SwapDirection,
     // Recipient of the output tokens (Address).

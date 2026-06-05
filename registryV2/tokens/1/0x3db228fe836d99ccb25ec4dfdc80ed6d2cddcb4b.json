@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3db228fe836d99ccb25ec4dfdc80ed6d2cddcb4b",
+  "symbol": "ynUSDx",
+  "decimals": 18,
+  "name": "ynUSD Max",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

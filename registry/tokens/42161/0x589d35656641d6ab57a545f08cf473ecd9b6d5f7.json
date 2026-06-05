@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x589d35656641d6ab57a545f08cf473ecd9b6d5f7",
-  "symbol": "GYEN",
-  "decimals": 6,
-  "name": "GYEN"
-}

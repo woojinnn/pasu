@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x594be6816ff2eeae7db4f3ea8f9e81f0ccc94444",
+  "symbol": "cylscrvUSD",
+  "decimals": 18,
+  "name": "CurveYield scrvUSD Lending",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

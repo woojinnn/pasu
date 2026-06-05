@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xca72827a3d211cfd8f6b00ac98824872b72cab49",
+  "symbol": "cgUSD",
+  "decimals": 6,
+  "name": "Cygnus Global USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

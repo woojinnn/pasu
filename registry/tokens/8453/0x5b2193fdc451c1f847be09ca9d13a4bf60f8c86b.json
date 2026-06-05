@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x5b2193fdc451c1f847be09ca9d13a4bf60f8c86b",
-  "symbol": "UP",
-  "decimals": 18,
-  "name": "Superform"
-}

@@ -1,0 +1,118 @@
+{
+  "contract": "Aave Umbrella RewardsController",
+  "chainId": 1,
+  "address": "0x4655ce3d625a63d30ba704087e52b4c31e38188b",
+  "snapshot": "umbrella-rewards-controller-mainnet.abi.json",
+  "functions": {
+    "0x7e9dc742": {
+      "name": "claimAllRewards",
+      "decision": "cover",
+      "reason": "user-facing Aave claimAllRewards action covered by registry manifest"
+    },
+    "0xbb492bf5": {
+      "name": "claimAllRewards",
+      "decision": "cover",
+      "reason": "user-facing Aave claimAllRewards action covered by registry manifest"
+    },
+    "0x9ff55db9": {
+      "name": "claimAllRewardsOnBehalf",
+      "decision": "cover",
+      "reason": "user-facing Aave claimAllRewardsOnBehalf action covered by registry manifest"
+    },
+    "0xd2d63464": {
+      "name": "claimAllRewardsOnBehalf",
+      "decision": "cover",
+      "reason": "user-facing Aave claimAllRewardsOnBehalf action covered by registry manifest"
+    },
+    "0x88585296": {
+      "name": "claimAllRewardsPermit",
+      "decision": "cover",
+      "reason": "user-facing Aave claimAllRewardsPermit action covered by registry manifest"
+    },
+    "0x54375c45": {
+      "name": "claimSelectedRewards",
+      "decision": "cover",
+      "reason": "user-facing Aave claimSelectedRewards action covered by registry manifest"
+    },
+    "0xb4314d07": {
+      "name": "claimSelectedRewards",
+      "decision": "cover",
+      "reason": "user-facing Aave claimSelectedRewards action covered by registry manifest"
+    },
+    "0x5310f841": {
+      "name": "claimSelectedRewardsOnBehalf",
+      "decision": "cover",
+      "reason": "user-facing Aave claimSelectedRewardsOnBehalf action covered by registry manifest"
+    },
+    "0x8b28cba9": {
+      "name": "claimSelectedRewardsOnBehalf",
+      "decision": "cover",
+      "reason": "user-facing Aave claimSelectedRewardsOnBehalf action covered by registry manifest"
+    },
+    "0xd6976b40": {
+      "name": "claimSelectedRewardsPermit",
+      "decision": "cover",
+      "reason": "user-facing Aave claimSelectedRewardsPermit action covered by registry manifest"
+    },
+    "0x5129351c": {
+      "name": "configureAssetWithRewards",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x745ff635": {
+      "name": "configureRewards",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xeed88b8d": {
+      "name": "emergencyEtherTransfer",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xa3d5b255": {
+      "name": "emergencyTokenTransfer",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x2f2ff15d": {
+      "name": "grantRole",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x5d4654ec": {
+      "name": "handleAction",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xc4d66de8": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x36568abe": {
+      "name": "renounceRole",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xd547741f": {
+      "name": "revokeRole",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x3d4c415a": {
+      "name": "setClaimer",
+      "decision": "cover",
+      "reason": "user-facing Aave setClaimer action covered by registry manifest"
+    },
+    "0x7f3bfff8": {
+      "name": "setClaimer",
+      "decision": "cover",
+      "reason": "user-facing Aave setClaimer action covered by registry manifest"
+    },
+    "0xf141b52b": {
+      "name": "updateAsset",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    }
+  }
+}

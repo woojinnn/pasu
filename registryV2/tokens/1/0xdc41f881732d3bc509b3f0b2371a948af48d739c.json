@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdc41f881732d3bc509b3f0b2371a948af48d739c",
+  "symbol": "scrvBONDS",
+  "decimals": 18,
+  "name": "Staked crvBONDS",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

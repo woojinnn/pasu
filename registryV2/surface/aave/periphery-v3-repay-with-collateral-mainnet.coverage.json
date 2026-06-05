@@ -1,0 +1,33 @@
+{
+  "contract": "Aave V3 RepayWithCollateralAdapter",
+  "chainId": 1,
+  "address": "0x35bb522b102326ea3f1141661df4626c87000e3e",
+  "snapshot": "periphery-v3-repay-with-collateral-mainnet.abi.json",
+  "functions": {
+    "0x1b11d0ff": {
+      "name": "executeOperation",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x00ae3bf8": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x4db9dc97": {
+      "name": "swapAndRepay",
+      "decision": "cover",
+      "reason": "user-facing Aave swapAndRepay action covered by registry manifest"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/spot-send@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) `HyperliquidTransaction:SpotSend` — an OFF-CHAIN L1 action authorized by an eth_signTypedData_v4 signature (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0, chainId=signatureChainId). Decoded to the `hyperliquid_core::hl_spot_send` ActionBody (the HL-native thin off-chain action domain, reused from the /exchange Flow-3 path) so a single policy fires for BOTH the typed-sig pre-sign moment and the /exchange POST. Amounts are decimal strings (fractional-safe Decimal) and addresses are L1 identifier strings — both map losslessly. SUPERSEDES the prior `domain:unknown` mapping (the off-chain-exchange ActionBody variant the old note deferred now exists).",
+  "match": {
+    "selector": "0x00000002",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:SpotSend",
+      "types": {
+        "HyperliquidTransaction:SpotSend": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "destination", "type": "string" },
+          { "name": "token", "type": "string" },
+          { "name": "amount", "type": "string" },
+          { "name": "time", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "spotSend",
+    "abi": {
+      "name": "spotSend",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "spotSend",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "destination", "type": "string" },
+            { "name": "token", "type": "string" },
+            { "name": "amount", "type": "string" },
+            { "name": "time", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "hyperliquid_core",
+      "hyperliquid_core": {
+        "action": "hl_spot_send",
+        "hl_spot_send": {
+          "destination": "$args.spotSend.destination",
+          "token": "$args.spotSend.token",
+          "amount": "$args.spotSend.amount"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8155e1abdac8f93349c7e5ec6ce2a4dda5257436",
+  "symbol": "DgP/CRV/ms",
+  "decimals": 18,
+  "name": "Degen Stables",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x8155e1abdac8f93349c7e5ec6ce2a4dda5257436"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x2fc7641f6a569d0e678c473b95c2fc56a88adf75"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x0d877dc7c8fa3ad980dfdb18b48ec9f8768359c4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x526728dbc96689597f85ae4cd716d4f7fccbae9d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

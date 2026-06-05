@@ -1,0 +1,73 @@
+{
+  "contract": "Aave Umbrella BatchHelper",
+  "chainId": 1,
+  "address": "0xce6ced23118edeb23054e06118a702797b13fc2f",
+  "snapshot": "umbrella-batch-helper-mainnet.abi.json",
+  "functions": {
+    "0xa5fbb680": {
+      "name": "claimRewardsPermit",
+      "decision": "cover",
+      "reason": "user-facing Aave claimRewardsPermit action covered by registry manifest"
+    },
+    "0x51d3bf6d": {
+      "name": "cooldownPermit",
+      "decision": "cover",
+      "reason": "user-facing Aave cooldownPermit action covered by registry manifest"
+    },
+    "0x0f198b30": {
+      "name": "deposit",
+      "decision": "cover",
+      "reason": "user-facing Aave deposit action covered by registry manifest"
+    },
+    "0xeed88b8d": {
+      "name": "emergencyEtherTransfer",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xa3d5b255": {
+      "name": "emergencyTokenTransfer",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xad89eb1e": {
+      "name": "initializePath",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "user-facing Aave multicall action covered by registry manifest"
+    },
+    "0x8456cb59": {
+      "name": "pause",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xc531de40": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "standard ERC-20/2612 method; erc20 standard adapter auto-enumerates via tokens:erc20 (umbrella stake-token = ERC4626 share, transferable)"
+    },
+    "0x38957dd9": {
+      "name": "redeem",
+      "decision": "cover",
+      "reason": "user-facing Aave redeem action covered by registry manifest"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x3f4ba83a": {
+      "name": "unpause",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    }
+  }
+}

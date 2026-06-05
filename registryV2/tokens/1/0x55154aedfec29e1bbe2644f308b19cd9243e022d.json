@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x55154aedfec29e1bbe2644f308b19cd9243e022d",
+  "symbol": "WEBTC-gauge",
+  "decimals": 18,
+  "name": "Curve.fi WEBTC Gauge Deposit",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

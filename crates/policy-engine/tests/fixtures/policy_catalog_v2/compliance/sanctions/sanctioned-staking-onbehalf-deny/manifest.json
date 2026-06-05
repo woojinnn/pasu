@@ -1,0 +1,13 @@
+{
+  "id": "sanctioned-staking-onbehalf-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "increase_lock_amount" } } },
+  "policy_rpc": [{
+    "id": "onbehalf-sanctions",
+    "method": "address.sanctions",
+    "params": { "address": "$.action.onBehalfOf" },
+    "outputs": [{ "kind": "context", "field": "sanctioned", "type": "Bool", "from": "$.result.sanctioned", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "sanctioned": "Bool" } }
+}

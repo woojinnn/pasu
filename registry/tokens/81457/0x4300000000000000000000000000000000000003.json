@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 81457,
-  "address": "0x4300000000000000000000000000000000000003",
-  "symbol": "USDB",
-  "decimals": 18,
-  "name": "USDB"
-}

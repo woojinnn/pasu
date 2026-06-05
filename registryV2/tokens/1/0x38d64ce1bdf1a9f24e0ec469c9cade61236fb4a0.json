@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x38d64ce1bdf1a9f24e0ec469c9cade61236fb4a0",
+  "symbol": "vETH",
+  "decimals": 18,
+  "name": "Vector ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

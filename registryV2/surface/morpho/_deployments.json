@@ -1,0 +1,135 @@
+{
+  "protocol": "morpho",
+  "source": "docs.morpho.org/get-started/resources/addresses + github.com/morpho-org/sdks (packages/blue-sdk/src/addresses.ts, chain-keyed)",
+  "url": "https://docs.morpho.org/get-started/resources/addresses/",
+  "fetchedAt": "2026-06-02",
+  "note": "I0 contract-inventory ground truth for Morpho on Ethereum mainnet (1) only (representative chain; Base/other chains = separate multichain framework, explicit defer). User pre-sign surface = Morpho Blue singleton (cover; supply/borrow/repay/withdraw/collateral/setAuthorization + off-chain Authorization). MetaMorpho VAULTS are the other user surface but are factory CHILDREN (not in a static deployment list) — the factories are exclude here; the covered vault batch + full universe live in metamorpho-*.coverage.json + _address_universe.json. Bundler3 + adapters are user-facing routers but DEFERRED this round (nested multicall-adapter decode is a large separate effort) — marked exclude with a DEFERRED reason, tracked as a known coverage gap (evidence.md). Everything else = governance / keeper / oracle / IRM / V2 factory / registry infra. Honest floor: as complete as docs.morpho.org/addresses + blue-sdk; MORPHO token disposition flagged (two contracts) and verified on Etherscan (0x58d9..=ERC1967Proxy wrapper, 0x9994..=MorphoToken original).",
+  "contracts": [
+    {
+      "name": "Morpho Blue (singleton)",
+      "chainId": 1,
+      "address": "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
+      "decision": "cover",
+      "reason": "core lending singleton — supply/withdraw/borrow/repay/supplyCollateral/withdrawCollateral/setAuthorization + off-chain Authorization (morpho-blue.coverage.json)"
+    },
+    {
+      "name": "MetaMorpho Factory V1.1",
+      "chainId": 1,
+      "address": "0x1897a8997241c1cd4bd0698647e4eb7213535c24",
+      "decision": "exclude",
+      "reason": "vault-deployment factory (createMetaMorpho) — only vault creators call it; the vault INSTANCES are the user surface (metamorpho-mainnet.coverage.json + _address_universe.json)"
+    },
+    {
+      "name": "MetaMorpho Factory V1.0 [OLD]",
+      "chainId": 1,
+      "address": "0xa9c3d3a366466fa809d1ae982fb2c46e5fc41101",
+      "decision": "exclude",
+      "reason": "superseded vault factory; instances are the user surface"
+    },
+    {
+      "name": "Bundler3",
+      "chainId": 1,
+      "address": "0x6566194141eefa99af43bb5aa71460ca2dc90245",
+      "decision": "cover",
+      "reason": "user-facing multicall router. MEASURED 1st-party (Dune, 30d): Bundler3 carries ~84% of Morpho-NATIVE MetaMorpho vault deposits (direct-to-vault 193 tx vs Bundler3 1038 tx) and ~14.5% of ALL vault-touching txs — the single highest-value entrypoint. COVERED (Q2): bundler3.coverage.json — multicall(Call[]) cover (decoded per-leg-to via the multicall_call_array strategy → GeneralAdapter1 position legs), reenter(Call[]) exclude (reenterHash-guarded). Nested-reenter callbacks inside an adapter leg's `data` = documented follow-up."
+    },
+    {
+      "name": "GeneralAdapter1",
+      "chainId": 1,
+      "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
+      "decision": "cover",
+      "reason": "the adapter Bundler3 multicall(Call[]) legs target; encodes the actual supply/borrow/erc4626 legs inside a bundle. general-adapter1.coverage.json triages all 26 mutating selectors: 19 cover (10 position legs → metamorpho/morpho_blue + 6 funding/plumbing → token/erc20_transfer + 3 Lido staking → liquid_staking), 7 exclude (onMorpho* callbacks + morphoFlashLoan — their reenter(Call[]) payload is decoded via D-C, not as a direct leg — + MORPHO governance wrapper). (Also the operator users grant via Morpho Blue setAuthorization — that grant IS covered.)"
+    },
+    {
+      "name": "ParaswapAdapter",
+      "chainId": 1,
+      "address": "0x03b5259bd204bfd4a616e5b79b0b786d90c6c38f",
+      "decision": "exclude",
+      "reason": "DEFERRED (swap adapter reached via Bundler3 re-enter). Measured 0.49% of Bundler3 multicalls (462/95019, Dune 120d). sell/buy DO expose srcToken+destToken as explicit calldata args (NOT a token $fn gap), but the swap AMOUNTS (amount_in/min_out for sell, max_in for buy) live in the OPAQUE Augustus `bytes callData` blob, not top-level args — and amm SwapAction's SwapDirection requires concrete non-Option amounts. So a faithful swap decode needs an Augustus-callData parser (separate effort); a 0x-amount placeholder would be misleading. The swap-router approve (the actual risk) is gated separately. Path when revisited: keccak256(bytes) $fn for AggregatorRoute.route_hash + Augustus amount/offsets decode. GA1's own Lido staking legs ARE now covered."
+    },
+    {
+      "name": "PublicAllocator",
+      "chainId": 1,
+      "address": "0xfd32fa2ca22c76dd6e550706ad913fc6ce91c75d",
+      "decision": "exclude",
+      "reason": "keeper/curator liquidity-reallocation across vault markets; not a wallet-owner position action"
+    },
+    {
+      "name": "AdaptiveCurveIRM",
+      "chainId": 1,
+      "address": "0x870ac11d48b15db9a138cf899d20f13f79ba00bc",
+      "decision": "exclude",
+      "reason": "interest-rate model read by Morpho Blue; no direct user calls"
+    },
+    {
+      "name": "ChainlinkOracleV2 Factory",
+      "chainId": 1,
+      "address": "0x3a7bb36ee3f3ee32a60e9f2b33c1e5f2e83ad766",
+      "decision": "exclude",
+      "reason": "oracle-deployment factory; infra, not user pre-sign"
+    },
+    {
+      "name": "PreLiquidation Factory",
+      "chainId": 1,
+      "address": "0x6ff33615e792e35ed1026ea7caccf42d9bf83476",
+      "decision": "exclude",
+      "reason": "deploys pre-liquidation contracts (keeper/curator config); not a standing wallet position"
+    },
+    {
+      "name": "VaultV2 Factory",
+      "chainId": 1,
+      "address": "0xa1d94f746defa1928926b84fb2596c06926c0405",
+      "decision": "exclude",
+      "reason": "Morpho Vault V2 deployment factory; V2 vault instances (newer generation) are a separate user surface, deferred to a V2 follow-up"
+    },
+    {
+      "name": "MorphoMarketV1AdapterFactory (V2)",
+      "chainId": 1,
+      "address": "0xb049465969ac6355127cdf9e88dee63d25204d5d",
+      "decision": "exclude",
+      "reason": "Vault-V2 adapter factory infra"
+    },
+    {
+      "name": "MorphoMarketV1AdapterV2Factory",
+      "chainId": 1,
+      "address": "0x32bb1c0d48d8b1b3363e86eeb9a0300bad61ccc1",
+      "decision": "exclude",
+      "reason": "Vault-V2 adapter factory infra"
+    },
+    {
+      "name": "MorphoVaultV1AdapterFactory (V2)",
+      "chainId": 1,
+      "address": "0xd1b8e2dee25c2b89dcd2f98448a7ce87d6f63394",
+      "decision": "exclude",
+      "reason": "Vault-V2 adapter factory infra"
+    },
+    {
+      "name": "MorphoRegistry (registryList)",
+      "chainId": 1,
+      "address": "0x3696c5eae4a7ffd04ea163564571e9cd8ed9364e",
+      "decision": "exclude",
+      "reason": "V2 registry; governance/read, not user pre-sign"
+    },
+    {
+      "name": "Universal Rewards Distributor Factory",
+      "chainId": 1,
+      "address": "0x9baa51245cdd28d8d74afe8b3959b616e9ee7c8d",
+      "decision": "exclude",
+      "reason": "DEFERRED (not infra): URD-deployment factory; the URD INSTANCES expose user claim(address,address,uint256,bytes32[]). claim maps to AirdropAction::Claim but instances are per-rewards-program (many) — deferred to a rewards-claim follow-up (enumerate instances via factory CreateUrd events / rewards API)."
+    },
+    {
+      "name": "MORPHO token (MorphoTokenEthereum, transferable wrapper, ERC1967Proxy)",
+      "chainId": 1,
+      "address": "0x58d97b57bb95320f9a05dc918aef65434969c2b2",
+      "decision": "exclude",
+      "reason": "standard ERC-20 governance token (approve/transfer/permit/delegate) — analyzed by the tokens:erc20 standard adapter; registered in token-surface as token_kind=governance. Not a Morpho-specific pre-sign manifest. Verified ContractName=ERC1967Proxy (Etherscan)."
+    },
+    {
+      "name": "MORPHO token (MorphoToken, original/legacy)",
+      "chainId": 1,
+      "address": "0x9994e35db50125e0df82e4c2dde62496ce330999",
+      "decision": "exclude",
+      "reason": "legacy/original MORPHO (blue-sdk morphoToken key); standard ERC-20 — tokens:erc20 adapter. Verified ContractName=MorphoToken (Etherscan). The app-canonical transferable token is 0x58d97b..; both tracked."
+    }
+  ]
+}

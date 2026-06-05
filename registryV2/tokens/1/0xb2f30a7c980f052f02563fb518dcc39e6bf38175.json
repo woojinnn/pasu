@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb2f30a7c980f052f02563fb518dcc39e6bf38175",
+  "symbol": "sUSD",
+  "decimals": 18,
+  "name": "Synthetic USD Token v3",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

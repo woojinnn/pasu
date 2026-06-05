@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4e52cfc80679f402d10f7766fa3f85351a7c2530",
+  "symbol": "BTCpx/sbtcCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory BTC Metapool: BTCpx",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x4e52cfc80679f402d10f7766fa3f85351a7c2530"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9c32185b81766a051e08de671207b34466dd1021"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x075b1bb99792c9e1041ba13afef80c91a1e70fb3"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

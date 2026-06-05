@@ -1,8 +1,6 @@
 //! `SignIntentOrderAction` / `CancelIntentOrderAction` reducers —
 //! EIP-712 intent flows (`UniswapX` / `CowSwap` / `1inch Fusion` / `Bebop`).
-//!
 //! ## Off-chain sig handling
-//!
 //! Intent orders are signed off-chain (EIP-712 typed-data signatures). They do
 //! not move funds at the moment of signing — only when a filler/solver presents
 //! them at the venue's settlement contract. We model the signing event as a
@@ -10,13 +8,10 @@
 //! <reactor or settlement>, max_out: sell_amount }` so the wallet's `committed`
 //! accounting (PDF §6.1) reflects the spend cap that the signature has
 //! authorised, even though no on-chain allowance has been set yet.
-//!
 //! This mirrors the `Erc20Permit` / `Permit2Sign` pattern in `effect/token.rs`
 //! and lets the policy layer reason about intent-order spend caps with the
 //! same `cap_for` aggregation that's already wired for permits.
-//!
 //! ## Venue address binding
-//!
 //! `IntentVenue` carries the reactor / settlement contract on each variant
 //! (`UniswapX` reactor, `CowSwap` `GPv2` settlement, `1inch Fusion` + `Bebop`
 //! are chain-bound but the actual filler is dynamic). For `OneInchFusion` and
@@ -25,9 +20,6 @@
 //! relevant against any spender. Policy can match on the `VenueRef.name`
 //! field of the `PendingTx.kind.OffchainLimitOrder.venue` slot to whitelist
 //! fillers by venue family.
-//!
-//! ## 1차 출처
-//!
 //! * `UniswapX` — <https://github.com/Uniswap/UniswapX>
 //!   * `src/base/ReactorStructs.sol::OrderInfo`
 //!   * `src/reactors/V2DutchOrderReactor.sol::execute`
@@ -37,18 +29,19 @@
 //! * 1inch Fusion — <https://docs.1inch.io/docs/fusion-swap/introduction>
 //! * Bebop — <https://docs.bebop.xyz/>
 
-use simulation_state::pending::{
+use policy_state::pending::{
     AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
 };
-use simulation_state::primitives::{Address, VenueRef};
-use simulation_state::{DataSource, EvalContext, PendingChange, StateDelta, WalletState};
+use policy_state::primitives::{Address, VenueRef};
+use policy_state::{DataSource, EvalContext, PendingChange, StateDelta, WalletState};
 
 use crate::action::amm::{
-    CancelIntentOrderAction, IntentOrderKind, IntentVenue, SignIntentOrderAction,
+    CancelIntentOrderAction, IntentOrderKind, IntentVenue, PreSignIntentOrderAction,
+    SettleIntentOrderAction, SignIntentOrderAction,
 };
 use crate::apply::Reducer;
 use crate::error::ReducerResult;
-use simulation_state::delta::PendingRemoveReason;
+use policy_state::delta::PendingRemoveReason;
 
 /// Map the action-side `IntentOrderKind` to the state-side `OrderKind`. Both
 /// enums carry the same `Dutch` / `Limit` / `Rfq` variants but live in
@@ -96,6 +89,18 @@ fn project_venue(venue: &IntentVenue) -> (VenueRef, Address) {
                 chain: Some(chain.clone()),
             },
             Address::ZERO,
+        ),
+        // 1inch LOP v4: the embedding AggregationRouterV6 (verifying contract)
+        // pulls `sell` from the maker on fill, so it is the spender.
+        IntentVenue::OneInchLimitOrder {
+            chain,
+            verifying_contract,
+        } => (
+            VenueRef {
+                name: "one_inch_limit_order".into(),
+                chain: Some(chain.clone()),
+            },
+            *verifying_contract,
         ),
     }
 }
@@ -163,6 +168,7 @@ impl Reducer for SignIntentOrderAction {
                 // not the wallet's Permit2 / EIP-2612 namespaces.
                 nonce: None,
                 on_chain_tx: None,
+                raw_status: None,
             },
             sync: DataSource::UserSupplied,
             signed_at: ctx.now,
@@ -173,6 +179,16 @@ impl Reducer for SignIntentOrderAction {
             pending: Box::new(pending),
         });
         Ok(delta)
+    }
+}
+
+impl Reducer for SettleIntentOrderAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        // Settlement can be submitted by a third-party filler, while the order's
+        // swapper may be a different wallet. The semantic action is policy
+        // visible, but wallet-state balance deltas require execution traces or
+        // venue callback simulation. Do not invent a submitter debit here.
+        Ok(StateDelta::new())
     }
 }
 
@@ -192,6 +208,28 @@ impl Reducer for CancelIntentOrderAction {
     }
 }
 
+impl Reducer for PreSignIntentOrderAction {
+    fn apply(&self, _state: &WalletState, _ctx: &EvalContext) -> ReducerResult<StateDelta> {
+        let mut delta = StateDelta::new();
+        // `setPreSignature(orderUid, signed)`:
+        //   * signed=false → revoke a prior pre-signature; release any spend cap
+        //     held under this order id (mirrors `CancelIntentOrder`).
+        //   * signed=true  → mark the order tradable. The economic terms
+        //     (sell/buy/amounts) are NOT in calldata — they live in the
+        //     off-chain order keyed by the digest — so no `PermitCap` can be
+        //     modelled here. Recording the intent is policy-visible (the lowered
+        //     Cedar context carries `signed`); wallet-state balance deltas need
+        //     the enriched order, so emit no state change rather than invent one.
+        if !self.signed {
+            delta.pending_changes.push(PendingChange::Remove {
+                id: self.order_hash.clone(),
+                reason: PendingRemoveReason::Cancelled,
+            });
+        }
+        Ok(delta)
+    }
+}
+
 // ===========================================================================
 // Inline tests.
 // ===========================================================================
@@ -200,11 +238,11 @@ impl Reducer for CancelIntentOrderAction {
 mod tests {
     use super::*;
     use crate::action::amm::{IntentOrderKind, IntentVenue, SignIntentOrderLiveInputs};
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Price, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::WalletId;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Price, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {
@@ -466,5 +504,48 @@ mod tests {
             }
             other => panic!("expected Remove, got {other:?}"),
         }
+    }
+
+    /// `setPreSignature(signed=false)` revokes → `PendingChange::Remove` with
+    /// the `order_hash` + `Cancelled` reason (mirrors `CancelIntentOrder`).
+    #[test]
+    fn presign_signed_false_emits_remove() {
+        let state = empty_state();
+        let action = PreSignIntentOrderAction {
+            venue: IntentVenue::CowSwap {
+                chain: ChainId::ethereum_mainnet(),
+                settlement: cow_settlement(),
+            },
+            order_hash: format!("0x{}", "cd".repeat(28)),
+            signed: false,
+        };
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert!(delta.token_changes.is_empty());
+        assert_eq!(delta.pending_changes.len(), 1);
+        match &delta.pending_changes[0] {
+            PendingChange::Remove { id, reason } => {
+                assert_eq!(*id, format!("0x{}", "cd".repeat(28)));
+                assert_eq!(*reason, PendingRemoveReason::Cancelled);
+            }
+            other => panic!("expected Remove, got {other:?}"),
+        }
+    }
+
+    /// `setPreSignature(signed=true)` commits to an order whose terms are NOT
+    /// in calldata → no state delta (we do not fabricate a spend cap).
+    #[test]
+    fn presign_signed_true_emits_no_state_change() {
+        let state = empty_state();
+        let action = PreSignIntentOrderAction {
+            venue: IntentVenue::CowSwap {
+                chain: ChainId::ethereum_mainnet(),
+                settlement: cow_settlement(),
+            },
+            order_hash: format!("0x{}", "ef".repeat(28)),
+            signed: true,
+        };
+        let delta = action.apply(&state, &ctx()).unwrap();
+        assert!(delta.token_changes.is_empty());
+        assert!(delta.pending_changes.is_empty());
     }
 }

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x68edffb662f91bebce399eeb8ad478058ebd98aa",
+  "symbol": "PERL",
+  "decimals": 18,
+  "name": "Perlevescava",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

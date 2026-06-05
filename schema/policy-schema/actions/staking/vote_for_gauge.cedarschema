@@ -1,0 +1,26 @@
+// Staking::VoteForGauge — allocate vote-escrow weight to a gauge (Curve
+// `GaugeController.vote_for_gauge_weights(address _gauge_addr, uint256 _user_weight)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/vote_for_gauge.rs`
+// (`VoteForGaugeAction`). No LiveInputs. Moves no funds — reallocates the
+// caller's existing veCRV vote weight.
+
+namespace Staking {
+  type VoteForGaugeContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // Gauge receiving the weight allocation (`_gauge_addr`), hex address.
+    gauge: String,
+    // Weight in basis points 0–10000 (`_user_weight`), U256 hex.
+    weightBp: String,
+    custom?: VoteForGaugeCustomContext,
+  };
+
+  type VoteForGaugeCustomContext = {};
+
+  action "VoteForGauge" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: VoteForGaugeContext,
+  };
+}

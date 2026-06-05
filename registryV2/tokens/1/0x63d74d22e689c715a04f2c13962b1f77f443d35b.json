@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x63d74d22e689c715a04f2c13962b1f77f443d35b",
+  "symbol": "DUSD",
+  "decimals": 18,
+  "name": "DUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

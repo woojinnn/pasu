@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb6b64698a098bafd70ce1eb9a49ef3376caad288",
+  "symbol": "fETH/SILO-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: fETH/SILO",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc1bf385575e5ffc81e476d2346f050f139ee9e38"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6f80310ca7f2c654691d1383149fa1a57d8ab1f8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x53805a76e1f5ebbfe7115f16f9c87c2f7e633726"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

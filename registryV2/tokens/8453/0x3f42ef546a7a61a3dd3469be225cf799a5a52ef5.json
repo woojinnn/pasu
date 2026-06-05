@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x3f42ef546a7a61a3dd3469be225cf799a5a52ef5",
+  "symbol": "AKITA V5-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: What the fuck did you just fucki",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xb5a7d8ab56d5d3d8026b81b0984b1d362f9fd6d8"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xa5e9fa870c50f4fd352a82ffe16a63646864686d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x5144635314d16805e933a93dd0e7a630979bb33a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

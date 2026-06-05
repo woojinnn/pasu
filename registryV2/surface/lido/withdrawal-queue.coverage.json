@@ -1,0 +1,34 @@
+{
+  "contract": "Lido WithdrawalQueueERC721 (unstETH)",
+  "chainId": 1,
+  "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+  "snapshot": "withdrawal-queue.abi.json",
+  "note": "Surface-completeness triage for the unstETH WithdrawalQueueERC721 implementation (called via the OssifiableProxy 0x889edc..f9b1). Lido-specific surface = requestWithdrawals(+WstETH/+WithPermit) (unstake: burn stETH/wstETH, mint NFT) and claimWithdrawal(s)(To) (claim finalized ETH). ERC721 NFT funcs are exclude — generic ERC721 covered by the erc721 standard adapter (unstETH to be registered in tokens/1 as erc721 in P1).",
+  "functions": {
+    "0xd6681042": { "name": "requestWithdrawals",                "decision": "cover",   "reason": "LIQUID-STAKING unstake request — burns stETH (amounts[]) and mints withdrawal-request NFTs to owner; enters the withdrawal queue. New liquid_staking domain (Tier 3)." },
+    "0x19aa6257": { "name": "requestWithdrawalsWstETH",          "decision": "cover",   "reason": "unstake request denominated in wstETH (amounts[]) -> NFTs to owner." },
+    "0xacf41e4d": { "name": "requestWithdrawalsWithPermit",      "decision": "cover",   "reason": "unstake request with an embedded EIP-2612 permit (stETH) in calldata; same intent as requestWithdrawals plus an allowance grant." },
+    "0x7951b76f": { "name": "requestWithdrawalsWstETHWithPermit","decision": "cover",   "reason": "wstETH unstake request with embedded EIP-2612 permit in calldata." },
+    "0xf8444436": { "name": "claimWithdrawal",                   "decision": "cover",   "reason": "claim finalized ETH for one withdrawal-request NFT (requestId)." },
+    "0xe3afe0a3": { "name": "claimWithdrawals",                  "decision": "cover",   "reason": "batch-claim finalized ETH for multiple requestIds (with finalization hints)." },
+    "0x5e7eead9": { "name": "claimWithdrawalsTo",                "decision": "cover",   "reason": "batch-claim finalized ETH to an explicit recipient." },
+
+    "0x095ea7b3": { "name": "approve",                          "decision": "exclude", "reason": "standard ERC721 approve (NFT) — covered by the erc721 standard adapter; generic, not Lido-specific." },
+    "0xa22cb465": { "name": "setApprovalForAll",                "decision": "exclude", "reason": "standard ERC721 operator approval (NFT) — generic ERC721 covered by the erc721 standard adapter; not a Lido-specific permission primitive." },
+    "0x23b872dd": { "name": "transferFrom",                     "decision": "exclude", "reason": "standard ERC721 transferFrom (NFT) — erc721 standard adapter." },
+    "0x42842e0e": { "name": "safeTransferFrom",                 "decision": "exclude", "reason": "standard ERC721 safeTransferFrom (NFT) — erc721 standard adapter." },
+    "0xb88d4fde": { "name": "safeTransferFrom",                 "decision": "exclude", "reason": "standard ERC721 safeTransferFrom-with-data (NFT) — erc721 standard adapter." },
+
+    "0xb6013cef": { "name": "finalize",                         "decision": "exclude", "reason": "keeper/core — only Lido core finalizes the queue (payable); not a user call." },
+    "0x96992fed": { "name": "onOracleReport",                   "decision": "exclude", "reason": "oracle — AccountingOracle callback." },
+    "0x2f2ff15d": { "name": "grantRole",                        "decision": "exclude", "reason": "governance — AccessControl role grant (DAO/admin)." },
+    "0xd547741f": { "name": "revokeRole",                       "decision": "exclude", "reason": "governance — AccessControl role revoke (DAO/admin)." },
+    "0x36568abe": { "name": "renounceRole",                     "decision": "exclude", "reason": "governance — AccessControl role renounce." },
+    "0xf3f449c7": { "name": "pauseFor",                         "decision": "exclude", "reason": "governance — PauseRole pauses for a duration." },
+    "0xabe9cfc8": { "name": "pauseUntil",                       "decision": "exclude", "reason": "governance — PauseRole pauses until a timestamp." },
+    "0x046f7da2": { "name": "resume",                           "decision": "exclude", "reason": "governance — ResumeRole resumes the queue." },
+    "0xc4d66de8": { "name": "initialize",                       "decision": "exclude", "reason": "infra — proxy initializer." },
+    "0x55f804b3": { "name": "setBaseURI",                       "decision": "exclude", "reason": "admin — MANAGE_TOKEN_URI_ROLE sets the NFT base URI." },
+    "0x92b18a47": { "name": "setNFTDescriptorAddress",          "decision": "exclude", "reason": "admin — MANAGE_TOKEN_URI_ROLE sets the NFT descriptor." }
+  }
+}

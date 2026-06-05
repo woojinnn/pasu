@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd6ac1cb9019137a896343da59dde6d097f710538",
+  "symbol": "ibGBP+sGBP-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: ibGBP/sGBP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd6ac1cb9019137a896343da59dde6d097f710538"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x69681f8fde45345c3870bcd5eaf4a05a60e7d227"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x97fe22e7341a0cd8db6f6c021a24dc8f4dad855f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

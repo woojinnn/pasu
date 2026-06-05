@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x13fe2c4504f3aa18708561250e2f20e4e7d7caa2",
-  "symbol": "PSTAKE",
-  "decimals": 18,
-  "name": "pSTAKE Finance"
-}

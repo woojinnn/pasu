@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbdc7c08592ee4aa51d06c27ee23d5087d65adbcd",
+  "symbol": "USDL",
+  "decimals": 18,
+  "name": "Lift Dollar - Deprecated",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,141 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-morphoRepay@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 morphoRepay leg (reached via Bundler3 multicall(Call[])) → same Morpho Blue repay body as a direct call (venue=morpho_blue, market_id=$derived.morpho_market_id from $args.marketParams, asset=marketParams token). live_inputs=skeleton (enrichment deferred). Decoded as a per-leg-to multicall child.",
+  "match": {
+    "selector": "0x4d5fcf68",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "morphoRepay",
+    "abi": {
+      "name": "morphoRepay",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "loanToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "collateralToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "oracle",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "irm",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "lltv",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct MarketParams",
+          "name": "marketParams",
+          "type": "tuple"
+        },
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxSharePriceE27",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "onBehalf",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "reenter_callback_arg": "data",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": {
+            "name": "morpho_blue",
+            "chain": "$chain",
+            "market_id": "$derived.morpho_market_id"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.marketParams[0]"
+            }
+          },
+          "amount": "$args.assets",
+          "rate_mode": "variable",
+          "on_behalf_of": "$args.onBehalf",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "market(bytes32)",
+          "decoder_id": "morpho_blue_market"
+        },
+        "ttl_s": 30
+      },
+      "current_debt": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "morpho_blue_current_debt"
+        },
+        "ttl_s": 12
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "position(bytes32,address)",
+          "decoder_id": "morpho_blue_position"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

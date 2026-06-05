@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 43114,
-  "address": "0xb8d7710f7d8349a506b75dd184f05777c82dad0c",
-  "symbol": "ARENA",
-  "decimals": 18,
-  "name": "ArenaToken"
-}

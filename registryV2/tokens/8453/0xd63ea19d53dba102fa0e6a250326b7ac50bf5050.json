@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd63ea19d53dba102fa0e6a250326b7ac50bf5050",
+  "symbol": "usBTC",
+  "decimals": 8,
+  "name": "usBTC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

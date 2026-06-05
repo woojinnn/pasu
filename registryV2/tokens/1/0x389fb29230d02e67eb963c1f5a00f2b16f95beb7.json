@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x389fb29230d02e67eb963c1f5a00f2b16f95beb7",
+  "symbol": "lpxCvx",
+  "decimals": 18,
+  "name": "LP Pirex CVX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

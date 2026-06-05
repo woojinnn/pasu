@@ -1,0 +1,19 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x417ac0e078398c154edfadd9ef675d30be60af93",
+  "symbol": "crvUSD",
+  "decimals": 18,
+  "name": "Curve.Fi USD Stablecoin",
+  "source": "https://basescan.org/token/0x417ac0e078398c154edfadd9ef675d30be60af93",
+  "token_kind": {
+    "kind": "base",
+    "category": {
+      "kind": "stable"
+    },
+    "peg_to": {
+      "kind": "fiat",
+      "value": "usd"
+    }
+  }
+}

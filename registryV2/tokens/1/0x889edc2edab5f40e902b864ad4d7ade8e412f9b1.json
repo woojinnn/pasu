@@ -1,0 +1,15 @@
+{
+  "erc_kind": "erc721",
+  "chainId": 1,
+  "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+  "collection_name": "Lido: stETH Withdrawal NFT",
+  "symbol": "unstETH",
+  "source": "https://docs.lido.fi/contracts/withdrawal-queue-erc721",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "lido", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "native", "chain": "eip155:1" }
+    }
+  }
+}

@@ -1,7 +1,5 @@
 //! `BorrowAction` reducer — borrow an asset against existing collateral.
-//!
 //! Flow (PDF §6.3):
-//!
 //! 1. Validate `live_inputs.reserve_state` — reject paused / frozen.
 //!    Frozen reserves block new borrows on Aave V3 (unlike withdraws).
 //! 2. Reject when `available_liquidity < amount` (the pool doesn't have
@@ -14,9 +12,9 @@
 //!    account on entry).
 //! 7. `balance::credit` the borrowed asset to the wallet.
 
-use simulation_state::position::PositionKind;
-use simulation_state::primitives::Decimal;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::primitives::Decimal;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::BorrowAction;
 use crate::apply::Reducer;
@@ -129,18 +127,18 @@ fn hf_is_safe(hf: &Decimal) -> ReducerResult<bool> {
 mod tests {
     use super::*;
     use crate::action::lending::{BorrowLiveInputs, LendingVenue, ReserveState, UserLendingState};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{LendingAccount, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{LendingAccount, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, MarketRef, Price, ProtocolRef, Time, VenueRef, U256,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, RateMode, TokenHolding, TokenKey,
         TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

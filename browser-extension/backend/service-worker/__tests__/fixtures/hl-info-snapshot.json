@@ -1,0 +1,204 @@
+{
+  "_comment": "Trimmed snapshot of the Hyperliquid public info API (POST https://api.hyperliquid.xyz/info, no auth), fetched 2026-06-01. Provides VALID asset_index<->symbol pairs (meta.universe; assetIndex = array position) and spot tokens (spotMeta.tokens; spotSend token = `${name}:${tokenId}`) for the /exchange fuzz generator. CI is offline by design; regenerate with: curl -s -X POST https://api.hyperliquid.xyz/info -H \"Content-Type: application/json\" -d '{\"type\":\"meta\"}'  (and {\"type\":\"spotMeta\"}).",
+  "_source": {
+    "perpUniverseLen": 230,
+    "spotTokensLen": 464,
+    "fetchedAt": "2026-06-01"
+  },
+  "perps": [
+    {
+      "assetIndex": 0,
+      "symbol": "BTC",
+      "szDecimals": 5
+    },
+    {
+      "assetIndex": 1,
+      "symbol": "ETH",
+      "szDecimals": 4
+    },
+    {
+      "assetIndex": 2,
+      "symbol": "ATOM",
+      "szDecimals": 2
+    },
+    {
+      "assetIndex": 3,
+      "symbol": "MATIC",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 4,
+      "symbol": "DYDX",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 5,
+      "symbol": "SOL",
+      "szDecimals": 2
+    },
+    {
+      "assetIndex": 6,
+      "symbol": "AVAX",
+      "szDecimals": 2
+    },
+    {
+      "assetIndex": 7,
+      "symbol": "BNB",
+      "szDecimals": 3
+    },
+    {
+      "assetIndex": 8,
+      "symbol": "APE",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 9,
+      "symbol": "OP",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 10,
+      "symbol": "LTC",
+      "szDecimals": 2
+    },
+    {
+      "assetIndex": 11,
+      "symbol": "ARB",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 12,
+      "symbol": "DOGE",
+      "szDecimals": 0
+    },
+    {
+      "assetIndex": 13,
+      "symbol": "INJ",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 14,
+      "symbol": "SUI",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 15,
+      "symbol": "kPEPE",
+      "szDecimals": 0
+    },
+    {
+      "assetIndex": 16,
+      "symbol": "CRV",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 17,
+      "symbol": "LDO",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 18,
+      "symbol": "LINK",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 19,
+      "symbol": "STX",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 20,
+      "symbol": "RNDR",
+      "szDecimals": 1
+    },
+    {
+      "assetIndex": 21,
+      "symbol": "CFX",
+      "szDecimals": 0
+    },
+    {
+      "assetIndex": 22,
+      "symbol": "FTM",
+      "szDecimals": 0
+    },
+    {
+      "assetIndex": 23,
+      "symbol": "GMX",
+      "szDecimals": 2
+    }
+  ],
+  "spotTokens": [
+    {
+      "name": "USDC",
+      "tokenId": "0x6d1e7cde53ba9467b783cb7c530ce054",
+      "index": 0,
+      "szDecimals": 8
+    },
+    {
+      "name": "PURR",
+      "tokenId": "0xc1fb593aeffbeb02f85e0308e9956a90",
+      "index": 1,
+      "szDecimals": 0
+    },
+    {
+      "name": "HFUN",
+      "tokenId": "0xbaf265ef389da684513d98d68edf4eae",
+      "index": 2,
+      "szDecimals": 2
+    },
+    {
+      "name": "LICK",
+      "tokenId": "0xba3aaf468f793d9b42fd3328e24f1de9",
+      "index": 3,
+      "szDecimals": 0
+    },
+    {
+      "name": "MANLET",
+      "tokenId": "0xe9ced9225d2a69ccc8d6a5b224524b99",
+      "index": 4,
+      "szDecimals": 0
+    },
+    {
+      "name": "JEFF",
+      "tokenId": "0xfcf28885456bf7e7cbe5b7a25407c5bc",
+      "index": 5,
+      "szDecimals": 0
+    },
+    {
+      "name": "SIX",
+      "tokenId": "0x50a9391b4a40caffbe8b16303b95a0c1",
+      "index": 6,
+      "szDecimals": 2
+    },
+    {
+      "name": "WAGMI",
+      "tokenId": "0x649efea44690cf88d464f512bc7e2818",
+      "index": 7,
+      "szDecimals": 2
+    },
+    {
+      "name": "CAPPY",
+      "tokenId": "0x3f8abf62220007cc7ab6d33ef2963d88",
+      "index": 8,
+      "szDecimals": 0
+    },
+    {
+      "name": "POINTS",
+      "tokenId": "0xbb03842e1f71ed27ed8fa012b29affd4",
+      "index": 9,
+      "szDecimals": 0
+    },
+    {
+      "name": "TRUMP",
+      "tokenId": "0x368cb581f0d51e21aa19996d38ffdf6f",
+      "index": 10,
+      "szDecimals": 2
+    },
+    {
+      "name": "GMEOW",
+      "tokenId": "0x07615193eaa63d1da6feda6e0ac9e014",
+      "index": 11,
+      "szDecimals": 0
+    }
+  ]
+}

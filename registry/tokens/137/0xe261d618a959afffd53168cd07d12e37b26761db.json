@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xe261d618a959afffd53168cd07d12e37b26761db",
-  "symbol": "DIMO",
-  "decimals": 18,
-  "name": "Dimo"
-}

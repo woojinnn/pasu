@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x77e06c9eccf2e797fd462a92b6d7642ef85b0a44",
+  "symbol": "wTAO",
+  "decimals": 9,
+  "name": "Wrapped TAO",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

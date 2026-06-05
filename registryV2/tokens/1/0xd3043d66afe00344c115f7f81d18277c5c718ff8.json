@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd3043d66afe00344c115f7f81d18277c5c718ff8",
+  "symbol": "omUSD",
+  "decimals": 6,
+  "name": "OpenMoney USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

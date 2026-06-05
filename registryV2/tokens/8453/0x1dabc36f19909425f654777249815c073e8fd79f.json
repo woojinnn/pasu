@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x1dabc36f19909425f654777249815c073e8fd79f",
+  "symbol": "variableDebtBascbETH",
+  "decimals": 18,
+  "name": "Aave Base Variable Debt cbETH",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L159",
+  "token_kind": {
+    "kind": "debt_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:8453" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:8453", "address": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22" }
+    },
+    "rate_mode": "variable"
+  }
+}

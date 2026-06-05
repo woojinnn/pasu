@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xe9185ee218cae427af7b9764a011bb89fea761b4",
+  "symbol": "BRZ",
+  "decimals": 18,
+  "name": "BRZ Token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,74 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/batch/redeem@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Umbrella batch helper redeem tuple mapped to staking redeem.",
+  "match": {
+    "selector": "0x38957dd9",
+    "chain_to_addresses": {
+      "1": [
+        "0xce6ced23118edeb23054e06118a702797b13fc2f"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "redeem",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "contract IStakeToken",
+              "name": "stakeToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "edgeToken",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct IUmbrellaBatchHelper.IOData",
+          "name": "io",
+          "type": "tuple"
+        }
+      ],
+      "name": "redeem",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "redeem",
+        "redeem": {
+          "venue": {
+            "name": "aave_umbrella_stake_token",
+            "chain": "$chain",
+            "stake_token": "$args.stakeToken"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.edgeToken"
+            }
+          },
+          "amount": "$args.value",
+          "recipient": null,
+          "owner": null
+        }
+      }
+    }
+  }
+}

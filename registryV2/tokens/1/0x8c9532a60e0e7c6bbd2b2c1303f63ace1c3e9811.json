@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8c9532a60e0e7c6bbd2b2c1303f63ace1c3e9811",
+  "symbol": "pzETH",
+  "decimals": 18,
+  "name": "Renzo Restaked LST ",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

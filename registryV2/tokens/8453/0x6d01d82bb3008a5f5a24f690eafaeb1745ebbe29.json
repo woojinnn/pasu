@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x6d01d82bb3008a5f5a24f690eafaeb1745ebbe29",
+  "symbol": "USTB",
+  "decimals": 18,
+  "name": "USTEBO",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

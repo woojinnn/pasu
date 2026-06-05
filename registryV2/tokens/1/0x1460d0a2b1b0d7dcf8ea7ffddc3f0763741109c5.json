@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1460d0a2b1b0d7dcf8ea7ffddc3f0763741109c5",
+  "symbol": "wsLYRA-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: Curve.fi LYRA/wsLYRA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xca6cf273ab17073248654363aa00b102540aa5ea"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x01ba67aac7f75f647d94220cc98fb30fcc5105bf"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8d8802c567e70ccadaf730263aecc60a91ac163d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

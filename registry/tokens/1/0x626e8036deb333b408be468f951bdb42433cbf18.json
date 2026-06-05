@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x626e8036deb333b408be468f951bdb42433cbf18",
-  "symbol": "AIOZ",
-  "decimals": 18,
-  "name": "AIOZ Network"
-}

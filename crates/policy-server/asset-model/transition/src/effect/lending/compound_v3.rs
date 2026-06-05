@@ -1,36 +1,27 @@
 //! Compound V3 (`Comet`) venue math — single base asset per market.
-//!
 //! Pure functions called from per-action reducers (`supply.rs`, `borrow.rs`, ...)
 //! after dispatch on `LendingVenue::CompoundV3`. Not a `Reducer` impl.
-//!
 //! In Compound V3 each market has a single base asset; suppliers earn interest
 //! on the base while collateral assets do not. Both supply and borrow balances
 //! are tracked as principal amounts that accrue via per-market indices.
-//!
 //! ## Principal / present value
-//!
 //! `Comet.sol` carries two indices — `baseSupplyIndex` and `baseBorrowIndex`,
 //! both `BASE_INDEX_SCALE = 1e15`-denominated. The conversion is:
-//!
 //! ```text
 //!   presentValueSupply = (principal * baseSupplyIndex) / BASE_INDEX_SCALE
 //!   principalValueSupply = (present  * BASE_INDEX_SCALE) / baseSupplyIndex
 //! ```
-//!
 //! With borrow as the mirror. `ReserveState` does not yet carry the indices,
 //! so we approximate them at 1 (i.e. `principal == present`). When the sync
 //! orchestrator feeds explicit indices the body switches to the closed form.
-//!
 //! ## Rate model
-//!
 //! Two-slope per-second model. We surface the per-year APR `Decimal` for
 //! consistency with every other venue; per-second arithmetic is left to the
 //! sync orchestrator. Defaults track mainnet `cUSDCv3`.
 
-// Phase 2 stubs: per-action wiring lands in a later commit in the same batch.
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, U256};
+use policy_state::primitives::{Decimal, U256};
 
 use crate::action::lending::ReserveState;
 use crate::error::{ReducerError, ReducerResult};

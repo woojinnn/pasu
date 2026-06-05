@@ -1,0 +1,43 @@
+{
+  "contract": "Aave V3 DebtSwapAdapter",
+  "chainId": 1,
+  "address": "0xd7852e139a7097e119623de0751ae53a61efb442",
+  "snapshot": "periphery-v3-debt-swap-mainnet.abi.json",
+  "functions": {
+    "0x920f5c84": {
+      "name": "executeOperation",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x23e30c8b": {
+      "name": "onFlashLoan",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x0a036351": {
+      "name": "renewAllowance",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x00ae3bf8": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xb8bd1c6b": {
+      "name": "swapDebt",
+      "decision": "cover",
+      "reason": "user-facing Aave swapDebt action covered by registry manifest"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    }
+  }
+}

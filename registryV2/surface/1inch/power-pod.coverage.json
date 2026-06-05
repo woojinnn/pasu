@@ -1,0 +1,29 @@
+{
+  "contract": "PowerPod (Delegate Resolver)",
+  "chainId": 1,
+  "address": "0xaccfac2339e16dc80c50d2fa81b5c2b049b4f947",
+  "snapshot": "power-pod.abi.json",
+  "note": "delegate=cover (Permission::ProtocolAuthorization, kind delegate \u2014 staker delegates Unicorn Power; ScopeBall-core permission primitive). register/setDefaultFarm/updateBalances=exclude (delegatee share-token creation / admin / internal pod callback).",
+  "functions": {
+    "0x5c19a95c": {
+      "name": "delegate",
+      "decision": "cover",
+      "reason": "staker delegates Unicorn Power to delegatee -> Permission::ProtocolAuthorization{protocol_name=one_inch_power_pod, permission=delegate, authorized=delegatee, is_authorized=true}. single_emit. C-audit gap closed."
+    },
+    "0x3ffbd47f": {
+      "name": "register",
+      "decision": "exclude",
+      "reason": "creates a delegatee share-token (name,symbol) \u2014 an operator/delegatee-setup action, not a regular staker's pre-sign delegation. Operator-side."
+    },
+    "0x3c3f3c23": {
+      "name": "setDefaultFarm",
+      "decision": "exclude",
+      "reason": "admin \u2014 sets the default farm pod."
+    },
+    "0x7a1f1aa9": {
+      "name": "updateBalances",
+      "decision": "exclude",
+      "reason": "internal pod balance callback (called by the staking contract on stake/unstake), not a user pre-sign action."
+    }
+  }
+}

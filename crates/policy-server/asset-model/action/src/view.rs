@@ -15,7 +15,6 @@ pub struct ActionView<'a> {
 
 impl ActionBody {
     /// Project the trigger-relevant fields. Cheap, borrow-only.
-    ///
     /// The returned `domain` / `action_tag` / `venue_name` strings are exactly
     /// the `serde` discriminants the corresponding JSON would carry, so a policy
     /// trigger can match them against raw field values without re-serializing.
@@ -52,6 +51,36 @@ impl ActionBody {
                 action_tag: Some(a.action_tag()),
                 venue_name: a.venue_name(),
             },
+            Self::LiquidStaking(a) => ActionView {
+                domain: "liquid_staking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Permission(a) => ActionView {
+                domain: "permission",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Yield(a) => ActionView {
+                domain: "yield",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Restaking(a) => ActionView {
+                domain: "restaking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Staking(a) => ActionView {
+                domain: "staking",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
+            Self::Governance(a) => ActionView {
+                domain: "governance",
+                action_tag: Some(a.action_tag()),
+                venue_name: a.venue_name(),
+            },
             Self::HyperliquidCore(a) => ActionView {
                 domain: "hyperliquid_core",
                 action_tag: Some(a.action_tag()),
@@ -75,18 +104,18 @@ impl ActionBody {
 #[allow(clippy::too_many_lines)]
 mod tests {
     use super::*;
-    use crate::{amm, lending, perp, token, AirdropAction, LaunchpadAction};
+    use crate::{amm, lending, permission, perp, token, AirdropAction, LaunchpadAction};
 
-    use simulation_state::primitives::{Address, ChainId, U256};
-    use simulation_state::token::TokenKey;
+    use policy_state::primitives::{Address, ChainId, U256};
+    use policy_state::token::TokenKey;
     use std::str::FromStr;
 
     fn addr(hex: &str) -> Address {
         Address::from_str(hex).unwrap()
     }
 
-    fn token_ref() -> simulation_state::token::TokenRef {
-        simulation_state::token::TokenRef {
+    fn token_ref() -> policy_state::token::TokenRef {
+        policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: ChainId::ethereum_mainnet(),
                 address: addr("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
@@ -108,7 +137,7 @@ mod tests {
     fn view_amm_swap_uniswap_v3() {
         let chain = ChainId::ethereum_mainnet();
         let usdc = token_ref();
-        let weth = simulation_state::token::TokenRef {
+        let weth = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: addr("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
@@ -119,13 +148,13 @@ mod tests {
             pool: addr("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"),
             fee_tier_bp: 500,
         };
-        let pool_source = simulation_state::live_field::DataSource::OnchainView {
+        let pool_source = policy_state::live_field::DataSource::OnchainView {
             chain,
             contract: addr("0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"),
             function: "slot0()".into(),
             decoder_id: "uniswap_v3_slot0".into(),
         };
-        let now = simulation_state::primitives::Time::from_unix(1_738_000_000);
+        let now = policy_state::primitives::Time::from_unix(1_738_000_000);
         let route = amm::SwapRoute {
             paths: vec![],
             aggregator: None,
@@ -134,7 +163,7 @@ mod tests {
             venue: v3,
             params: amm::SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: amm::SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),
@@ -143,14 +172,14 @@ mod tests {
                 slippage_bp: 50,
             },
             live_inputs: amm::SwapLiveInputs {
-                route: simulation_state::LiveField::new(route, pool_source.clone(), now),
-                expected_amount_out: simulation_state::LiveField::new(
+                route: policy_state::LiveField::new(route, pool_source.clone(), now),
+                expected_amount_out: policy_state::LiveField::new(
                     U256::from(305_000_000_000_000_000u64),
                     pool_source.clone(),
                     now,
                 ),
-                price_impact_bp: simulation_state::LiveField::new(12u32, pool_source.clone(), now),
-                gas_estimate: simulation_state::LiveField::new(
+                price_impact_bp: policy_state::LiveField::new(12u32, pool_source.clone(), now),
+                gas_estimate: policy_state::LiveField::new(
                     U256::from(180_000u64),
                     pool_source,
                     now,
@@ -176,6 +205,48 @@ mod tests {
     }
 
     #[test]
+    fn view_yield_pt_swap_pendle_v2() {
+        use crate::yield_;
+        let market_src = policy_state::live_field::DataSource::OnchainView {
+            chain: ChainId::ethereum_mainnet(),
+            contract: addr("0xcfd848b9f6fef552204014ac67901223ad6bf679"),
+            function: "readTokens()".into(),
+            decoder_id: "pendle_market_tokens".into(),
+        };
+        let now = policy_state::primitives::Time::from_unix(1_738_000_000);
+        let zero = addr("0x0000000000000000000000000000000000000000");
+        let body = ActionBody::Yield(yield_::YieldAction::PtSwap(yield_::PtSwapAction {
+            venue: yield_::YieldVenue::PendleV2 {
+                chain: ChainId::ethereum_mainnet(),
+            },
+            market: addr("0xcfd848b9f6fef552204014ac67901223ad6bf679"),
+            direction: yield_::PtSwapDirection::TokenForPt,
+            external_token: Some(token_ref()),
+            exact_amount_in: U256::from(1_000_000_000u64),
+            min_amount_out: U256::from(990_000_000u64),
+            recipient: addr("0x000000000000000000000000000000000000a01c"),
+            live_inputs: yield_::MarketTokensLiveInputs {
+                sy: policy_state::LiveField::new(zero, market_src.clone(), now),
+                pt: policy_state::LiveField::new(zero, market_src.clone(), now),
+                yt: policy_state::LiveField::new(zero, market_src.clone(), now),
+                maturity: policy_state::LiveField::new(U256::ZERO, market_src, now),
+            },
+        }));
+        let view = body.view();
+        assert_eq!(view.domain, "yield");
+        assert_eq!(view.action_tag, Some("pt_swap"));
+        assert_eq!(view.venue_name, Some("pendle_v2"));
+        // serde `domain` tag is the source of truth — must equal VALID_DOMAINS entry.
+        let json = serde_json::to_value(&body).unwrap();
+        assert_eq!(
+            json.get("domain").and_then(serde_json::Value::as_str),
+            Some("yield"),
+            "ActionBody::Yield must serialize domain tag `yield`"
+        );
+        assert_action_tag(&body);
+    }
+
+    #[test]
     fn view_unknown() {
         let body = ActionBody::Unknown {
             target: addr("0xfeed000000000000000000000000000000000001"),
@@ -193,25 +264,25 @@ mod tests {
     fn view_lending_borrow_aave_v3() {
         let chain = ChainId::new("eip155:10");
         let pool = addr("0x794a61358d6845594f94dc1db02a252b5b4814ad");
-        let usdc = simulation_state::token::TokenRef {
+        let usdc = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: addr("0x0b2c639c533813f4aa9d7837caf62653d097ff85"),
             },
         };
-        let reserve_source = simulation_state::live_field::DataSource::OnchainView {
+        let reserve_source = policy_state::live_field::DataSource::OnchainView {
             chain: chain.clone(),
             contract: pool,
             function: "getReserveData(address)".into(),
             decoder_id: "aave_v3_reserve_data".into(),
         };
-        let user_source = simulation_state::live_field::DataSource::OnchainView {
+        let user_source = policy_state::live_field::DataSource::OnchainView {
             chain: chain.clone(),
             contract: pool,
             function: "getUserAccountData(address)".into(),
             decoder_id: "aave_v3_user_account_data".into(),
         };
-        let now = simulation_state::primitives::Time::from_unix(1_738_000_000);
+        let now = policy_state::primitives::Time::from_unix(1_738_000_000);
         let borrow = lending::LendingAction::Borrow(lending::BorrowAction {
             venue: lending::LendingVenue::AaveV3 {
                 chain,
@@ -220,10 +291,10 @@ mod tests {
             },
             asset: usdc,
             amount: U256::from(500_000_000u64),
-            rate_mode: simulation_state::token::RateMode::Variable,
+            rate_mode: policy_state::token::RateMode::Variable,
             on_behalf_of: None,
             live_inputs: lending::BorrowLiveInputs {
-                reserve_state: simulation_state::LiveField::new(
+                reserve_state: policy_state::LiveField::new(
                     lending::ReserveState {
                         total_supply: U256::from(50_000_000_000_000u64),
                         total_borrow: U256::from(30_000_000_000_000u64),
@@ -240,9 +311,9 @@ mod tests {
                     reserve_source.clone(),
                     now,
                 ),
-                user_state_before: simulation_state::LiveField::new(
+                user_state_before: policy_state::LiveField::new(
                     lending::UserLendingState {
-                        health_factor: simulation_state::primitives::Decimal::new("2.4"),
+                        health_factor: policy_state::primitives::Decimal::new("2.4"),
                         total_collat_usd: U256::from(10_000u64),
                         total_debt_usd: U256::from(4_000u64),
                         available_borrow_usd: U256::from(3_500u64),
@@ -250,17 +321,17 @@ mod tests {
                     user_source,
                     now,
                 ),
-                asset_price_usd: simulation_state::LiveField::new(
-                    simulation_state::primitives::Decimal::new("1.0"),
+                asset_price_usd: policy_state::LiveField::new(
+                    policy_state::primitives::Decimal::new("1.0"),
                     reserve_source.clone(),
                     now,
                 ),
-                current_borrow_rate: simulation_state::LiveField::new(
-                    simulation_state::primitives::Decimal::new("0.045"),
+                current_borrow_rate: policy_state::LiveField::new(
+                    policy_state::primitives::Decimal::new("0.045"),
                     reserve_source.clone(),
                     now,
                 ),
-                available_liquidity: simulation_state::LiveField::new(
+                available_liquidity: policy_state::LiveField::new(
                     U256::from(12_000_000_000_000u64),
                     reserve_source,
                     now,
@@ -411,11 +482,12 @@ mod tests {
                 chain: eth.clone(),
                 router: any,
                 route_hash: "0x00".into(),
+                executor: None,
             },
             "aggregator_route",
         );
 
-        // ---- IntentVenue: all 4 variants ----
+        // ---- IntentVenue: all 5 variants ----
         assert_venue!(
             amm::IntentVenue::UniswapX {
                 chain: eth.clone(),
@@ -435,6 +507,13 @@ mod tests {
             "one_inch_fusion",
         );
         assert_venue!(amm::IntentVenue::Bebop { chain: eth.clone() }, "bebop");
+        assert_venue!(
+            amm::IntentVenue::OneInchLimitOrder {
+                chain: eth.clone(),
+                verifying_contract: any,
+            },
+            "one_inch_limit_order",
+        );
 
         // ---- LendingVenue: all 8 variants ----
         assert_venue!(
@@ -495,6 +574,13 @@ mod tests {
             },
             "fluid",
         );
+        assert_venue!(
+            lending::LendingVenue::MetaMorpho {
+                chain: eth.clone(),
+                vault: any,
+            },
+            "metamorpho",
+        );
 
         // ---- PerpVenue: all 9 variants ----
         assert_venue!(
@@ -535,13 +621,13 @@ mod tests {
         ));
 
         // Lending `SetEMode` — serde emits `set_e_mode`, NOT `set_emode`.
-        let ds = simulation_state::live_field::DataSource::OnchainView {
+        let ds = policy_state::live_field::DataSource::OnchainView {
             chain: eth.clone(),
             contract: any,
             function: "getUserEMode(address)".into(),
             decoder_id: "aave_v3_user_emode".into(),
         };
-        let now = simulation_state::primitives::Time::from_unix(1_738_000_000);
+        let now = policy_state::primitives::Time::from_unix(1_738_000_000);
         let set_emode =
             ActionBody::Lending(lending::LendingAction::SetEMode(lending::SetEModeAction {
                 venue: lending::LendingVenue::AaveV3 {
@@ -550,8 +636,9 @@ mod tests {
                     market_id: None,
                 },
                 category_id: 1,
+                on_behalf_of: None,
                 live_inputs: lending::SetEModeLiveInputs {
-                    category_config: simulation_state::LiveField::new(
+                    category_config: policy_state::LiveField::new(
                         lending::EModeConfig {
                             ltv_bp: 9000,
                             liquidation_threshold_bp: 9300,
@@ -563,9 +650,9 @@ mod tests {
                         ds.clone(),
                         now,
                     ),
-                    user_state_before: simulation_state::LiveField::new(
+                    user_state_before: policy_state::LiveField::new(
                         lending::UserLendingState {
-                            health_factor: simulation_state::primitives::Decimal::new("2.0"),
+                            health_factor: policy_state::primitives::Decimal::new("2.0"),
                             total_collat_usd: U256::from(10u64),
                             total_debt_usd: U256::from(1u64),
                             available_borrow_usd: U256::from(5u64),
@@ -584,6 +671,26 @@ mod tests {
             "serde must emit set_e_mode (underscore before E and M)"
         );
         assert_action_tag(&set_emode);
+
+        let permission =
+            ActionBody::Permission(permission::PermissionAction::ProtocolAuthorization(
+                permission::ProtocolAuthorizationAction {
+                    chain: ChainId::ethereum_mainnet(),
+                    protocol: any,
+                    protocol_name: "balancer_v2".into(),
+                    permission: permission::ProtocolPermissionKind::Relayer,
+                    permission_label: None,
+                    permission_limit: None,
+                    authorizer: Some(any),
+                    authorized: any,
+                    is_authorized: true,
+                },
+            ));
+        let permission_view = permission.view();
+        assert_eq!(permission_view.domain, "permission");
+        assert_eq!(permission_view.action_tag, Some("protocol_authorization"));
+        assert_eq!(permission_view.venue_name, Some("balancer_v2"));
+        assert_action_tag(&permission);
 
         // Airdrop / Launchpad tags are single-boundary; the accessor is trivially
         // correct, but reference the methods so the imports stay honest.

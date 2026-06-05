@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0000000000085d4780b73119b644ae5ecd22b376",
+  "symbol": "TUSD",
+  "decimals": 18,
+  "name": "TrueUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

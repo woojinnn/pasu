@@ -1,0 +1,110 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v3/router-swap-single-token-exact-out@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V3 Router.swapSingleTokenExactOut. Source: balancer/balancer-deployments v3/tasks/20250307-v3-router-v2 Router artifact. The pool argument is the Balancer V3 pool address; ActionBody carries it as BalancerV3.pool_id so existing lowering/reducer paths can treat the leading 20 bytes as the pool/LP address.",
+  "match": {
+    "selector": "0x94e86ef8",
+    "chain_to_addresses": {
+      "1":    ["0xAE563E3f8219521950555F5962419C8919758Ea2"],
+      "8453": ["0x3f170631ed9821Ca51A59D996aB095162438DC10"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapSingleTokenExactOut",
+    "abi": {
+      "name": "swapSingleTokenExactOut",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "pool",           "type": "address" },
+        { "name": "tokenIn",        "type": "address" },
+        { "name": "tokenOut",       "type": "address" },
+        { "name": "exactAmountOut", "type": "uint256" },
+        { "name": "maxAmountIn",    "type": "uint256" },
+        { "name": "deadline",       "type": "uint256" },
+        { "name": "wethIsEth",      "type": "bool" },
+        { "name": "userData",       "type": "bytes" }
+      ],
+      "outputs": [
+        { "name": "amountIn", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "balancer_v3",
+            "chain": "$chain",
+            "pool_id": "$args.pool",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "token_in":  { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.tokenIn" } },
+            "token_out": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.tokenOut" } },
+            "direction": {
+              "kind": "exact_output",
+              "amount_out": "$args.exactAmountOut",
+              "max_amount_in": "$args.maxAmountIn"
+            },
+            "recipient": "$tx.from",
+            "slippage_bp": 50
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "registry_api",
+                "endpoint": "https://registry-api-v2-891268973493.asia-northeast3.run.app",
+                "resource": {
+                  "kind": "pool_meta",
+                  "chain": "$chain",
+                  "pool_addr": "$args.pool"
+                },
+                "version": "3"
+              },
+              "ttl_s": 86400
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "querySwapSingleTokenExactOut(address,address,address,uint256,address,bytes)",
+                "decoder_id": "balancer_v3_query_swap_exact_out"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [],
+                "calc_id": "balancer_v3_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": ["registry:pool_meta"],
+    "extension": ">=0.1.0"
+  }
+}

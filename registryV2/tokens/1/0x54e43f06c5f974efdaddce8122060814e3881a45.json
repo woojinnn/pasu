@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x54e43f06c5f974efdaddce8122060814e3881a45",
+  "symbol": "USDX",
+  "decimals": 18,
+  "name": "Whiterock USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

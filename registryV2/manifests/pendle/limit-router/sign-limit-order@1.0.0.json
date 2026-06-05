@@ -1,0 +1,188 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/limit-router/sign-limit-order@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "note": "Off-chain EIP-712 maker-sign of a Pendle limit Order. domain=\"Pendle Limit Order Protocol\" v1, verifying_contract=PendleLimitRouter 0x000000000000c9b3e2c3ec88b1b4c0cd853f4321 (mainnet+Base, identical proxy), primary_type=Order. selector 0x00000001 is a sign-only placeholder (no on-chain call); routing is by (verifying_contract, primary_type) via the typed-data bridge. Order type = pendle-core-v2-public LimitRouterBase ORDER_TYPEHASH. orderType uint8 enum 0..3 mapped via value-map.",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": [
+        "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321"
+      ],
+      "8453": [
+        "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "Pendle Limit Order Protocol",
+      "verifying_contract": "0x000000000000c9b3e2c3ec88b1b4c0cd853f4321",
+      "primary_type": "Order",
+      "types": {
+        "Order": [
+          {
+            "name": "salt",
+            "type": "uint256"
+          },
+          {
+            "name": "expiry",
+            "type": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "orderType",
+            "type": "uint8"
+          },
+          {
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "name": "YT",
+            "type": "address"
+          },
+          {
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "name": "receiver",
+            "type": "address"
+          },
+          {
+            "name": "makingAmount",
+            "type": "uint256"
+          },
+          {
+            "name": "lnImpliedRate",
+            "type": "uint256"
+          },
+          {
+            "name": "failSafeRate",
+            "type": "uint256"
+          },
+          {
+            "name": "permit",
+            "type": "bytes"
+          }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "signLimitOrder",
+    "abi": {
+      "name": "signLimitOrder",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "order",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "salt",
+              "type": "uint256"
+            },
+            {
+              "name": "expiry",
+              "type": "uint256"
+            },
+            {
+              "name": "nonce",
+              "type": "uint256"
+            },
+            {
+              "name": "orderType",
+              "type": "uint8"
+            },
+            {
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "name": "YT",
+              "type": "address"
+            },
+            {
+              "name": "maker",
+              "type": "address"
+            },
+            {
+              "name": "receiver",
+              "type": "address"
+            },
+            {
+              "name": "makingAmount",
+              "type": "uint256"
+            },
+            {
+              "name": "lnImpliedRate",
+              "type": "uint256"
+            },
+            {
+              "name": "failSafeRate",
+              "type": "uint256"
+            },
+            {
+              "name": "permit",
+              "type": "bytes"
+            }
+          ]
+        },
+        {
+          "name": "signature",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "sign_limit_order",
+        "sign_limit_order": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "order_type": {
+            "$match": "$args.order.orderType",
+            "$cases": {
+              "0": "sy_for_pt",
+              "1": "pt_for_sy",
+              "2": "sy_for_yt",
+              "3": "yt_for_sy"
+            }
+          },
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.order.token"
+            }
+          },
+          "yt": "$args.order.YT",
+          "maker": "$args.order.maker",
+          "receiver": "$args.order.receiver",
+          "making_amount": "$args.order.makingAmount",
+          "expiry": "$args.order.expiry"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

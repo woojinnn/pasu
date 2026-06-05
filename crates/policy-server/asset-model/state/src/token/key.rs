@@ -1,4 +1,4 @@
-//! `TokenKey` — identifier for a fungibility unit.
+//! Identifier for a fungibility unit.
 //!
 //! All units within the same ERC20 contract are fungible, so the key is
 //! determined by `(chain, address)` alone. For ERC721 / ERC1155, tokens in the

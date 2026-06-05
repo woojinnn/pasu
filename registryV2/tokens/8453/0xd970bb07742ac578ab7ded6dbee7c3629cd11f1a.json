@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd970bb07742ac578ab7ded6dbee7c3629cd11f1a",
+  "symbol": "BALD",
+  "decimals": 18,
+  "name": "BALD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

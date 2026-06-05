@@ -58,7 +58,7 @@ export interface TokenRegistryClientOptions {
 }
 
 const DEFAULT_BASE_URL =
-  typeof process !== "undefined" && process.env?.REGISTRY_BASE_URL
+  typeof process !== "undefined" && process.env && process.env.REGISTRY_BASE_URL
     ? process.env.REGISTRY_BASE_URL
     : "http://localhost:8000";
 const DEFAULT_TIMEOUT_MS = 2000;
@@ -258,8 +258,8 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
     // Round 2 audit (P1) — refuse new fetches when the inflight slot is
     // saturated. A hostile dapp could otherwise pump unique addresses to
     // hold 100K concurrent Promises in memory. Returning `null` matches
-    // the "registry hiccup" path, which `enrichEnvelopeAssets` already
-    // treats as a skip.
+    // the "registry hiccup" path, which downstream consumers treat as a
+    // metadata skip (degrade gracefully without crashing the SW).
     if (this.inflight.size >= MAX_TOKEN_INFLIGHT_ENTRIES) {
       return null;
     }

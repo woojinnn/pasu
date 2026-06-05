@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x252aed361046a57ac082e0b93ac090ac0451c581",
+  "symbol": "pcyCRV",
+  "decimals": 18,
+  "name": "CurveYield CRV",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

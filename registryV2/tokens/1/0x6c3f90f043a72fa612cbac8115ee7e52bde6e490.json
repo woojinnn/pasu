@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6c3f90f043a72fa612cbac8115ee7e52bde6e490",
+  "symbol": "3Crv",
+  "decimals": 18,
+  "name": "Curve.fi DAI/USDC/USDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

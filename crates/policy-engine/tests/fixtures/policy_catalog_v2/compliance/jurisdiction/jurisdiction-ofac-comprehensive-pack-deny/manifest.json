@@ -1,0 +1,5 @@
+{
+  "id": "jurisdiction-ofac-comprehensive-pack-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.domain": { "eq": "unknown" } } }
+}

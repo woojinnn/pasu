@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x6d52c82a4740a6c6553d90a60ed5f7fa99cb808c",
+  "symbol": "wusBTCd",
+  "decimals": 18,
+  "name": "Wrapped usBTCd",
+  "source": "https://api.curve.fi/api/getPools/base/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x6d52c82a4740a6c6553d90a60ed5f7fa99cb808c"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xd63ea19d53dba102fa0e6a250326b7ac50bf5050"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xbdb9300b7cde636d9cd4aff00f6f009ffbbc8ee6"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xe07adc4bad16be3e4f6f7511a3e0b0219c73672b"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

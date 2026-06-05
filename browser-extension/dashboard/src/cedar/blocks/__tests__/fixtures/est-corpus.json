@@ -1,0 +1,1320 @@
+[
+  {
+    "name": "nesting_bool",
+    "category": "recursion",
+    "text": "permit(principal, action, resource) when { ((context.a && context.b) || (context.c && context.d)) && (context.e || context.f) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "||": {
+                  "left": {
+                    "&&": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "a"
+                        }
+                      },
+                      "right": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "b"
+                        }
+                      }
+                    }
+                  },
+                  "right": {
+                    "&&": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "c"
+                        }
+                      },
+                      "right": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "d"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "||": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "e"
+                    }
+                  },
+                  "right": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "f"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "chained_attr",
+    "category": "recursion",
+    "text": "permit(principal, action, resource) when { context.a.b.c.d == 1 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                ".": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "a"
+                            }
+                          },
+                          "attr": "b"
+                        }
+                      },
+                      "attr": "c"
+                    }
+                  },
+                  "attr": "d"
+                }
+              },
+              "right": {
+                "Value": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "assoc_sub",
+    "category": "recursion",
+    "text": "permit(principal, action, resource) when { context.a - context.b - context.c == 0 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                "-": {
+                  "left": {
+                    "-": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "a"
+                        }
+                      },
+                      "right": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "b"
+                        }
+                      }
+                    }
+                  },
+                  "right": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "c"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "Value": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "repeated_field",
+    "category": "same-name",
+    "text": "permit(principal, action, resource) when { (context.custom.inputAmount > 30 && context.custom.inputAmount < 60) || (context.custom.inputAmount > 90 && context.custom.inputAmount < 120) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "||": {
+              "left": {
+                "&&": {
+                  "left": {
+                    ">": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "custom"
+                            }
+                          },
+                          "attr": "inputAmount"
+                        }
+                      },
+                      "right": {
+                        "Value": 30
+                      }
+                    }
+                  },
+                  "right": {
+                    "<": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "custom"
+                            }
+                          },
+                          "attr": "inputAmount"
+                        }
+                      },
+                      "right": {
+                        "Value": 60
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "&&": {
+                  "left": {
+                    ">": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "custom"
+                            }
+                          },
+                          "attr": "inputAmount"
+                        }
+                      },
+                      "right": {
+                        "Value": 90
+                      }
+                    }
+                  },
+                  "right": {
+                    "<": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "custom"
+                            }
+                          },
+                          "attr": "inputAmount"
+                        }
+                      },
+                      "right": {
+                        "Value": 120
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "repeated_dup",
+    "category": "same-name",
+    "text": "permit(principal, action, resource) when { context.x > 30 || context.x > 30 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "||": {
+              "left": {
+                ">": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "x"
+                    }
+                  },
+                  "right": {
+                    "Value": 30
+                  }
+                }
+              },
+              "right": {
+                ">": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "x"
+                    }
+                  },
+                  "right": {
+                    "Value": 30
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "precedence",
+    "category": "precedence",
+    "text": "permit(principal, action, resource) when { context.a || context.b && context.c };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "||": {
+              "left": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "a"
+                }
+              },
+              "right": {
+                "&&": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "b"
+                    }
+                  },
+                  "right": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "c"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "neg_vs_sub",
+    "category": "precedence",
+    "text": "permit(principal, action, resource) when { context.a - 5 == -5 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                "-": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "a"
+                    }
+                  },
+                  "right": {
+                    "Value": 5
+                  }
+                }
+              },
+              "right": {
+                "Value": -5
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "has_single",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { context has x };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "has": {
+              "left": {
+                "Var": "context"
+              },
+              "attr": "x"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "has_path",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { context has a.b.c };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "&&": {
+                  "left": {
+                    "has": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "a"
+                    }
+                  },
+                  "right": {
+                    "has": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "a"
+                        }
+                      },
+                      "attr": "b"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "has": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "a"
+                        }
+                      },
+                      "attr": "b"
+                    }
+                  },
+                  "attr": "c"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "like_escape",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource.name like \"foo*bar\\*baz\" };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "like": {
+              "left": {
+                ".": {
+                  "left": {
+                    "Var": "resource"
+                  },
+                  "attr": "name"
+                }
+              },
+              "pattern": [
+                {
+                  "Literal": "f"
+                },
+                {
+                  "Literal": "o"
+                },
+                {
+                  "Literal": "o"
+                },
+                "Wildcard",
+                {
+                  "Literal": "b"
+                },
+                {
+                  "Literal": "a"
+                },
+                {
+                  "Literal": "r"
+                },
+                {
+                  "Literal": "*"
+                },
+                {
+                  "Literal": "b"
+                },
+                {
+                  "Literal": "a"
+                },
+                {
+                  "Literal": "z"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "is_in",
+    "category": "operators",
+    "text": "permit(principal is User in Group::\"admins\", action, resource);",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "is",
+        "entity_type": "User",
+        "in": {
+          "entity": {
+            "type": "Group",
+            "id": "admins"
+          }
+        }
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": []
+    }
+  },
+  {
+    "name": "contains_ops",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { context.tags.contains(\"x\") && [1,2,3].containsAll([1,2]) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "contains": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "tags"
+                    }
+                  },
+                  "right": {
+                    "Value": "x"
+                  }
+                }
+              },
+              "right": {
+                "containsAll": {
+                  "left": {
+                    "Set": [
+                      {
+                        "Value": 1
+                      },
+                      {
+                        "Value": 2
+                      },
+                      {
+                        "Value": 3
+                      }
+                    ]
+                  },
+                  "right": {
+                    "Set": [
+                      {
+                        "Value": 1
+                      },
+                      {
+                        "Value": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "if_then_else",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { (if context.a then 1 else 2) == 1 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                "if-then-else": {
+                  "if": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "a"
+                    }
+                  },
+                  "then": {
+                    "Value": 1
+                  },
+                  "else": {
+                    "Value": 2
+                  }
+                }
+              },
+              "right": {
+                "Value": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "ext_decimal",
+    "category": "ext",
+    "text": "permit(principal, action, resource) when { context.rate.lessThan(decimal(\"0.10\")) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "lessThan": [
+              {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "rate"
+                }
+              },
+              {
+                "decimal": [
+                  {
+                    "Value": "0.10"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "ext_ip",
+    "category": "ext",
+    "text": "permit(principal, action, resource) when { context.src.isInRange(ip(\"10.0.0.0/24\")) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "isInRange": [
+              {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "src"
+                }
+              },
+              {
+                "ip": [
+                  {
+                    "Value": "10.0.0.0/24"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "literals",
+    "category": "literals",
+    "text": "permit(principal, action, resource) when { context.n == 9223372036854775807 && context.s == \"a\\\"b\\\\c\" && context.set == [] && context.rec == {} };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "&&": {
+                  "left": {
+                    "&&": {
+                      "left": {
+                        "==": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "n"
+                            }
+                          },
+                          "right": {
+                            "Value": 9223372036854775807
+                          }
+                        }
+                      },
+                      "right": {
+                        "==": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "s"
+                            }
+                          },
+                          "right": {
+                            "Value": "a\"b\\c"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "right": {
+                    "==": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "set"
+                        }
+                      },
+                      "right": {
+                        "Set": []
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "==": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "rec"
+                    }
+                  },
+                  "right": {
+                    "Record": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "entity_uid",
+    "category": "literals",
+    "text": "permit(principal == My::Name::Space::User::\"al ice\", action, resource);",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "==",
+        "entity": {
+          "type": "My::Name::Space::User",
+          "id": "al ice"
+        }
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": []
+    }
+  },
+  {
+    "name": "scope_forbid",
+    "category": "scope",
+    "text": "forbid(principal, action == Action::\"Swap\", resource is Vault);",
+    "est": {
+      "effect": "forbid",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "==",
+        "entity": {
+          "type": "Action",
+          "id": "Swap"
+        }
+      },
+      "resource": {
+        "op": "is",
+        "entity_type": "Vault"
+      },
+      "conditions": []
+    }
+  },
+  {
+    "name": "action_set",
+    "category": "scope",
+    "text": "permit(principal, action in [Action::\"a\", Action::\"b\"], resource);",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "in",
+        "entities": [
+          {
+            "type": "Action",
+            "id": "a"
+          },
+          {
+            "type": "Action",
+            "id": "b"
+          }
+        ]
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": []
+    }
+  },
+  {
+    "name": "annotations",
+    "category": "annotations",
+    "text": "@id(\"p1\") @severity(\"warn\")\npermit(principal, action, resource);",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [],
+      "annotations": {
+        "id": "p1",
+        "severity": "warn"
+      }
+    }
+  },
+  {
+    "name": "when_unless",
+    "category": "conditions",
+    "text": "permit(principal, action, resource) when { context.a } unless { context.b };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            ".": {
+              "left": {
+                "Var": "context"
+              },
+              "attr": "a"
+            }
+          }
+        },
+        {
+          "kind": "unless",
+          "body": {
+            ".": {
+              "left": {
+                "Var": "context"
+              },
+              "attr": "b"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "no_conditions",
+    "category": "conditions",
+    "text": "permit(principal, action, resource);",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": []
+    }
+  },
+  {
+    "name": "expr_is",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource is Vault };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "is": {
+              "left": {
+                "Var": "resource"
+              },
+              "entity_type": "Vault"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "unary_not",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { !(context.flag) };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "!": {
+              "arg": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "flag"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "is_empty",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { context.tags.isEmpty() };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "isEmpty": {
+              "arg": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "tags"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "has_tag",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource.hasTag(\"admin\") };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "hasTag": {
+              "left": {
+                "Var": "resource"
+              },
+              "right": {
+                "Value": "admin"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "get_tag",
+    "category": "operators",
+    "text": "permit(principal, action, resource) when { resource.getTag(\"level\") == 1 };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                "getTag": {
+                  "left": {
+                    "Var": "resource"
+                  },
+                  "right": {
+                    "Value": "level"
+                  }
+                }
+              },
+              "right": {
+                "Value": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "entity_literal",
+    "category": "literals",
+    "text": "permit(principal, action, resource) when { context.owner == User::\"alice\" };",
+    "est": {
+      "effect": "permit",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "All"
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "==": {
+              "left": {
+                ".": {
+                  "left": {
+                    "Var": "context"
+                  },
+                  "attr": "owner"
+                }
+              },
+              "right": {
+                "Value": {
+                  "__entity": {
+                    "type": "User",
+                    "id": "alice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]

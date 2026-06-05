@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x98f6fd72d68d4b550c89a7096ed28f090a1a49fc",
+  "symbol": "PPUSDCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: PYUSD/crvUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x98f6fd72d68d4b550c89a7096ed28f090a1a49fc"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x5fd0787a5a66d24c5a868c2e6a296ca2b1452558"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

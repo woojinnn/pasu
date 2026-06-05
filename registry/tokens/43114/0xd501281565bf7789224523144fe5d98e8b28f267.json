@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 43114,
-  "address": "0xd501281565bf7789224523144fe5d98e8b28f267",
-  "symbol": "1INCH",
-  "decimals": 18,
-  "name": "1inch"
-}

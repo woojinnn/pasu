@@ -1,0 +1,28 @@
+// Staking::Cooldown — start the safety-module unstake cooldown window (Aave
+// StakedTokenV3 `cooldown()`). No arguments; marks the caller's whole staked
+// balance as cooling down. `{ meta, venue }` only.
+//
+// Rust source: crates/policy-server/asset-model/action/src/staking/cooldown.rs
+// (`CooldownAction`). No LiveInputs. `StakeVenue` is in core.cedarschema (Staking).
+
+namespace Staking {
+  type CooldownContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Staking venue (safety module or Umbrella stake token).
+    venue: StakeVenue,
+    // Account whose stake is cooling down (Umbrella). Absent ⇒ submitter.
+    account?: String,
+    // Manifest-extensible slot.
+    custom?: CooldownCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type CooldownCustomContext = {};
+
+  action "Cooldown" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: CooldownContext,
+  };
+}

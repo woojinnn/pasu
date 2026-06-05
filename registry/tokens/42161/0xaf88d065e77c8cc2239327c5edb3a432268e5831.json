@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
-  "symbol": "USDC",
-  "decimals": 6,
-  "name": "USDCoin"
-}

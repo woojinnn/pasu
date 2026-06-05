@@ -1,0 +1,38 @@
+{
+  "_comment": "Hand-assembled boundary cases (NOT from a chain) — the synthetic-fuzz source authored by hand for inputs the random sweep is unlikely to hit deterministically. `expect`/`expect_domain` pinned from observed harness output (v3-harness corpus). Routed against in-index USDC (mainnet) callkeys: approve 0x095ea7b3, transfer 0xa9059cbb. See README.md §'A. synthetic fuzz' → hand-assembled edges.",
+  "transactions": [
+    {
+      "intent": "approve(spender, MAX_UINT256) — upper boundary (infinite allowance)",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": { "params": [ {
+        "to": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value": "0",
+        "data": "0x095ea7b30000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      } ] }
+    },
+    {
+      "intent": "transfer(to, 0) — zero-amount lower boundary",
+      "expect": "pass",
+      "expect_domain": "token",
+      "chain_id": 1,
+      "rpc": { "params": [ {
+        "to": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value": "0",
+        "data": "0xa9059cbb000000000000000000000000b1b2d032aa2f52347fbcfd08e5c3cc55216e84040000000000000000000000000000000000000000000000000000000000000000"
+      } ] }
+    },
+    {
+      "intent": "approve selector with NO args — truncated calldata must be rejected, not mis-decoded",
+      "expect": "error",
+      "expect_error": "decode_failed",
+      "chain_id": 1,
+      "rpc": { "params": [ {
+        "to": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "value": "0",
+        "data": "0x095ea7b3"
+      } ] }
+    }
+  ]
+}

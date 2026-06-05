@@ -1,14 +1,11 @@
 //! `GET /events/stream` — Server-Sent Events feed for the dashboard.
-//!
 //! Subscribes to the [`EventBus`], filters by the authenticated `user_id`,
 //! and streams matching events as SSE messages. Browser `EventSource`
 //! auto-reconnects via `Last-Event-ID` (we re-emit the broadcast id as
 //! the SSE id).
-//!
 //! Auth: standard `Authorization: Bearer …` header. `EventSource` cannot
 //! set custom headers, so dashboard clients use a tiny polyfill (or pass
 //! the token via `?token=` and let the middleware accept either) — see
-//! the dashboard hook in Phase 7. For now we trust the middleware.
 
 use std::convert::Infallible;
 use std::time::Duration;
@@ -23,7 +20,6 @@ use crate::auth::AuthUser;
 use crate::events::bus::EventBus;
 
 /// `GET /events/stream` — long-lived SSE response.
-///
 /// Emits one SSE block per matching event. The `event:` field is the
 /// `Event::kind()` discriminator so the client can `addEventListener` to
 /// individual types. Comments (`: keepalive`) are sent every 30s by the

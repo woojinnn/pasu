@@ -1,0 +1,100 @@
+{
+  "type": "adapter_action",
+  "id": "curve/llamalend/susde/repay@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x371fd8e6",
+    "chain_to_addresses": {
+      "1": [
+        "0xb536fea3a01c95dd09932440ec802a75410139d6"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "repay",
+    "abi": {
+      "name": "repay",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_d_debt",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": {
+            "name": "llama_lend",
+            "chain": "$chain",
+            "controller": "$to",
+            "collateral": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+              }
+            }
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e"
+            }
+          },
+          "amount": "$args._d_debt",
+          "rate_mode": "variable",
+          "on_behalf_of": "$tx.from",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "amm()",
+          "decoder_id": "llamalend_controller_state"
+        },
+        "ttl_s": 30
+      },
+      "current_debt": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "llamalend_current_debt"
+        },
+        "ttl_s": 12
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "user_state(address)",
+          "decoder_id": "llamalend_user_state"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

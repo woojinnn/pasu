@@ -1,19 +1,13 @@
-//! 단순 JSON-RPC HTTP provider — publicnode, cloudflare-eth 같은 무인증 endpoint.
-//!
-//! 인증이나 특수 헤더가 필요한 provider (alchemy, infura) 도 거의 같은 구조라
-//! 추후 같은 패턴으로 추가하면 된다.
-
 use alloy_primitives::{Address, U256};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use simulation_state::ChainId;
+use policy_state::ChainId;
 
 use super::super::{BlockTag, EthCallRequest, RpcProvider};
 use crate::error::SyncError;
 
-/// 인증 없는 HTTP JSON-RPC provider.
 #[derive(Debug, Clone)]
 pub struct PublicRpcProvider {
     name: String,
@@ -150,8 +144,6 @@ impl RpcProvider for PublicRpcProvider {
         &self,
         tx_hash: &str,
     ) -> Result<Option<super::super::TxReceipt>, SyncError> {
-        // call_method 는 result: null 을 에러로 본다. 멤풀 tx 의 receipt 는
-        // 정상적으로 null 이므로 raw 파싱.
         let req = JsonRpcRequest {
             jsonrpc: "2.0",
             method: "eth_getTransactionReceipt",
@@ -210,7 +202,6 @@ impl RpcProvider for PublicRpcProvider {
     }
 }
 
-/// `eth_getTransactionReceipt` 의 raw response — 우리가 필요한 필드만.
 #[derive(Deserialize)]
 struct RawReceipt {
     #[serde(rename = "blockNumber")]

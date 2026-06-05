@@ -1,7 +1,7 @@
 //! M1 — `declarative_action_builder`
 //!
 //! Convert a v3 registry manifest's `emit.body` (nested-twice DSL with `$`
-//! placeholders) into a typed [`ActionBody`] from the `simulation-reducer`
+//! placeholders) into a typed [`ActionBody`] from the `policy-transition`
 //! crate. The translation has four stages:
 //!
 //! 1. **placeholder substitution** — recursively rewrite every string in the
@@ -15,7 +15,7 @@
 //! 3. **live_inputs injection** — for each `live_inputs.<field>` of the
 //!    target variant, substitute placeholders inside the `source` descriptor
 //!    and wrap it with a default `value` plus the host-provided `synced_at`,
-//!    matching the [`simulation_state::LiveField`] serde shape. Default values
+//!    matching the [`policy_state::LiveField`] serde shape. Default values
 //!    are looked up from a small per-`(domain, action, field)` catalog.
 //! 4. **deserialize** — `serde_json::from_value::<ActionBody>(_)` produces the
 //!    fully typed value.
@@ -31,9 +31,9 @@
 
 use std::collections::BTreeMap;
 
+use policy_state::primitives::{Address, ChainId, Time, U256};
+use policy_transition::action::ActionBody;
 use serde_json::{Map as JsonMap, Value as JsonValue};
-use simulation_reducer::action::ActionBody;
-use simulation_state::primitives::{Address, ChainId, Time, U256};
 
 /// Errors surfaced by the v3 builder.
 #[derive(thiserror::Error, Debug)]
@@ -65,6 +65,120 @@ pub enum V3BuildError {
         /// Policy that triggered the error.
         policy: UnknownOpcodePolicy,
     },
+    /// A `$resolved.<k>` / `$derived.<k>` placeholder name is not in the
+    /// fallback type catalog. Fail-loud so manifest authors notice when they
+    /// introduce a new placeholder that hasn't been wired into
+    /// [`placeholder_type_lookup`].
+    #[error("unknown placeholder (no fallback type registered): {0}")]
+    UnknownPlaceholder(String),
+    /// `array_emit`'s `array_source` placeholder resolved to a non-array JSON
+    /// value (object / string / number / bool / null). The strategy can only
+    /// iterate a homogeneous array, so this is fail-loud — the manifest's
+    /// `emit.array_source` points at the wrong field.
+    #[error("array_emit array_source did not resolve to an array: {0}")]
+    ArraySourceNotArray(String),
+    /// `array_emit.parallel_sources.<name>` resolved to a non-array JSON value.
+    #[error("array_emit parallel_sources.{name} did not resolve to an array: {placeholder}")]
+    ParallelSourceNotArray {
+        /// Parallel source key.
+        name: String,
+        /// Placeholder that was resolved.
+        placeholder: String,
+    },
+    /// A parallel source length differed from `array_source` length.
+    #[error(
+        "array_emit parallel_sources.{name} length mismatch: array_source has {array_len}, parallel source has {parallel_len}"
+    )]
+    ParallelSourceLengthMismatch {
+        /// Parallel source key.
+        name: String,
+        /// Primary array length.
+        array_len: usize,
+        /// Parallel array length.
+        parallel_len: usize,
+    },
+    /// A discriminant value-map (`{ $match, $cases, $default? }`) resolved its
+    /// `$match` to a key that is absent from `$cases` and the map declares no
+    /// `$default`. Fail-loud — the manifest author missed an on-chain enum
+    /// value (e.g. an `InterestRateMode` the `$cases` table doesn't list).
+    #[error("value-map: no case for matched key '{matched}' and no $default")]
+    ValueMapNoMatch {
+        /// The lookup key the `$match` value resolved to.
+        matched: String,
+    },
+    /// A discriminant value-map is structurally invalid: `$cases` missing or
+    /// not a JSON object, or the `$match` value resolved to a type that has no
+    /// canonical key form (anything other than String / Number / Bool).
+    #[error("value-map malformed: {0}")]
+    ValueMapMalformed(String),
+    /// A `$fn` call object (`{ $fn, $args }`) referenced an unknown function,
+    /// had a malformed shape (non-string `$fn`, non-array `$args`, stray key),
+    /// or its executor rejected the substituted arguments. Fail-loud — a
+    /// manifest author used a non-whitelisted `$fn` or wired bad args.
+    #[error("$fn '{function}' failed: {reason}")]
+    FnCall {
+        /// The `$fn` name (or a sentinel when the name itself was malformed).
+        function: String,
+        /// Human-readable cause from the shape check / executor.
+        reason: String,
+    },
+}
+
+/// Fallback type for unresolved `$resolved.<k>` / `$derived.<k>` placeholders.
+///
+/// Plan §M9 — Sync orchestrator (별 plan) 가 실체화 전까지 narrow scope
+/// ("value 비어있는 상태") 를 유지하려면 placeholder 의 expected type 에 맞는
+/// zero value 를 채워야 함. ABI Address 자리에는 `0x0...0` (20 byte), u32 자리
+/// 에는 0, U256 자리에는 `"0"`, bytes32 자리에는 `0x0...0` (32 byte).
+#[derive(Copy, Clone, Debug)]
+enum FallbackType {
+    Address,
+    U32,
+    U256,
+    Bytes32,
+}
+
+/// Plan §M9 — 25 manifest 의 placeholder 16종 → FallbackType 매핑.
+///
+/// match-based const evaluation. 새 placeholder 추가 시 본 함수에 arm 추가
+/// (안 하면 [`V3BuildError::UnknownPlaceholder`] fail-loud).
+fn placeholder_type_lookup(rest: &str) -> Option<FallbackType> {
+    use FallbackType::*;
+    match rest {
+        "weth"
+        | "factory"
+        | "pool"
+        | "pool_manager"
+        | "v3_path_first_token"
+        | "v3_path_last_token"
+        | "v4_token_in"
+        | "v4_token_out"
+        | "v4_hooks"
+        | "v4_recipient"
+        // GeneralAdapter1 erc4626* leg underlying — injected by
+        // `maybe_inject_metamorpho_underlying` for a KNOWN listed vault; a synthetic
+        // fuzz arg (random vault) is value-gated out, so it falls back to a zero
+        // address. (Unlike `morpho_market_id`, which is always keccak-computable.)
+        | "metamorpho_underlying" => Some(Address),
+        "fee_tier_bp" | "slippage_bp" => Some(U32),
+        "v4_amount_in" | "v4_amount_out_min" | "min_lp_out" => Some(U256),
+        "v4_pool_id" => Some(Bytes32),
+        _ => None,
+    }
+}
+
+/// Type-aware zero value for [`FallbackType`].
+fn zero_value_for(t: FallbackType) -> JsonValue {
+    match t {
+        FallbackType::Address => {
+            JsonValue::String("0x0000000000000000000000000000000000000000".to_owned())
+        }
+        FallbackType::U32 => JsonValue::Number(serde_json::Number::from(0u32)),
+        FallbackType::U256 => JsonValue::String("0".to_owned()),
+        FallbackType::Bytes32 => JsonValue::String(
+            "0x0000000000000000000000000000000000000000000000000000000000000000".to_owned(),
+        ),
+    }
 }
 
 /// How [`build_multicall_from_opcode_stream`] reacts to an unknown opcode.
@@ -94,10 +208,16 @@ pub struct V3MapContext<'a> {
     /// `tx.value` — native value attached to the call.
     pub value: U256,
     /// Host-supplied wall-clock at submission time (drives `synced_at` of
-    /// every freshly built [`LiveField`](simulation_state::LiveField)).
+    /// every freshly built [`LiveField`](policy_state::LiveField)).
     pub submitted_at: Time,
     /// Decoded calldata args as a JSON object keyed by ABI argument name.
     pub args_json: &'a JsonValue,
+    /// Raw transaction calldata as a `"0x"`-prefixed hex string. Referenced by
+    /// the bare `$calldata` placeholder so an [`ActionBody::Unknown`] body can
+    /// PRESERVE the full calldata (its whole purpose for a scope analyzer)
+    /// instead of emitting a `"0x"` sentinel. Empty (`""`) on the off-chain
+    /// typed-data route, which has no calldata.
+    pub raw_calldata: &'a str,
     /// `$resolved.<k>` lookups (filled by upstream resolvers — pool address,
     /// fee tier, etc.). May be empty in M1.
     pub resolved: BTreeMap<String, JsonValue>,
@@ -121,11 +241,36 @@ pub struct V3MapContext<'a> {
 /// Strings without a `$` prefix and all non-string values pass through
 /// unchanged. Containers are walked depth-first.
 ///
+/// ## Discriminant value-map (`$match` / `$cases` / `$default`)
+///
+/// A JSON **object** that carries the reserved key `"$match"` is NOT walked
+/// field-by-field; it is resolved as a *value-map* by [`resolve_value_map`].
+/// This maps a discriminant `uint` / `bool` arg onto an enum-variant value or a
+/// whole sub-action object (something a bare `$args.x` substitution cannot do,
+/// because it would inject the raw number):
+///
+/// ```jsonc
+/// { "$match": "<placeholder|literal>",
+///   "$cases": { "<key>": <value>, ... },
+///   "$default": <value>           // optional
+/// }
+/// ```
+///
+/// `$match`, `$cases`, and `$default` are RESERVED object keys — an object that
+/// happens to contain `$match` is always interpreted as a value-map, and any
+/// OTHER key present is rejected fail-loud (a typo'd `$default` must not
+/// silently degrade to a no-match). The matched-against value and the selected
+/// case value are both run back through `substitute_placeholders`, so cases may
+/// themselves embed placeholders or nested structures (field-level AND
+/// action-tag-level switches compose).
+///
 /// # Errors
 ///
 /// Returns [`V3BuildError::UnresolvedPlaceholder`] when a `$resolved.x` /
-/// `$derived.x` / `$inputs.*` lookup is empty, and
-/// [`V3BuildError::InvalidArgPath`] when a `$args.*` JSONPath walk fails.
+/// `$derived.x` / `$inputs.*` lookup is empty, [`V3BuildError::InvalidArgPath`]
+/// when a `$args.*` JSONPath walk fails, and
+/// [`V3BuildError::ValueMapNoMatch`] / [`V3BuildError::ValueMapMalformed`] for
+/// value-map resolution failures.
 pub fn substitute_placeholders(
     ctx: &V3MapContext<'_>,
     template: &JsonValue,
@@ -140,6 +285,18 @@ pub fn substitute_placeholders(
             Ok(JsonValue::Array(out))
         }
         JsonValue::Object(map) => {
+            // A `$match` key turns this object into a discriminant value-map
+            // (resolved instead of walked field-by-field).
+            if map.contains_key("$match") {
+                return resolve_value_map(ctx, map);
+            }
+            // A `$fn` key turns this object into a WhitelistedFn call (a value
+            // that a single `$args.x` / value-map cannot express, e.g. Curve
+            // Router NG's variable-hop output token). Additive reserved key —
+            // existing single_emit manifests carry no `$fn`, so unaffected.
+            if map.contains_key("$fn") {
+                return resolve_fn_call(ctx, map);
+            }
             let mut out = JsonMap::with_capacity(map.len());
             for (k, v) in map {
                 out.insert(k.clone(), substitute_placeholders(ctx, v)?);
@@ -151,18 +308,150 @@ pub fn substitute_placeholders(
     }
 }
 
+/// Resolve a discriminant value-map object `{ $match, $cases, $default? }`.
+///
+/// 1. `$match` is run through [`substitute_placeholders`] (so it may itself be
+///    `$args.rateMode`, a literal, or any placeholder).
+/// 2. The resolved value is collapsed to a lookup-key string: JSON String →
+///    as-is; JSON Number → `to_string()` (integer `1` → `"1"`); JSON Bool →
+///    `"true"` / `"false"`. Any other type → [`V3BuildError::ValueMapMalformed`].
+///    Numbers are assumed integer-valued (on-chain `uint` discriminants); a
+///    fractional JSON number (e.g. `1.0`) stringifies to `"1.0"` and would NOT
+///    match an integer case key `"1"`.
+/// 3. The key is looked up in `$cases` (which must be a JSON object). On a hit
+///    the case value is returned, recursively substituted. On a miss `$default`
+///    is used (also recursively substituted) if present, else
+///    [`V3BuildError::ValueMapNoMatch`].
+fn resolve_value_map(
+    ctx: &V3MapContext<'_>,
+    map: &JsonMap<String, JsonValue>,
+) -> Result<JsonValue, V3BuildError> {
+    // 0. Reject any stray / typo'd key. Without this a misspelled reserved key
+    //    (e.g. `$dafault`) would silently degrade to a ValueMapNoMatch instead
+    //    of a clear "you typo'd a reserved key" error. Fail-loud, naming the
+    //    offending key (mirrors how other V3BuildError paths name their input).
+    for k in map.keys() {
+        if !matches!(k.as_str(), "$match" | "$cases" | "$default") {
+            return Err(V3BuildError::ValueMapMalformed(format!(
+                "unexpected key '{k}' in value-map (allowed: $match, $cases, $default)"
+            )));
+        }
+    }
+
+    // 1. Resolve the matched-against value.
+    let match_template = map
+        .get("$match")
+        .ok_or_else(|| V3BuildError::ValueMapMalformed("$match key missing".into()))?;
+    let matched = substitute_placeholders(ctx, match_template)?;
+
+    // 2. Collapse to a canonical lookup key. uint256 args arrive as decimal
+    //    strings (Fix B: width > 64 → string), smaller uints as numbers, bools
+    //    as bools — handle all three.
+    let key = match &matched {
+        JsonValue::String(s) => s.clone(),
+        JsonValue::Number(n) => n.to_string(),
+        JsonValue::Bool(b) => b.to_string(),
+        other => {
+            return Err(V3BuildError::ValueMapMalformed(format!(
+                "$match resolved to a non-keyable type: {other}"
+            )));
+        }
+    };
+
+    // 3. Look up the case (then $default) and recursively substitute.
+    let cases = map
+        .get("$cases")
+        .and_then(JsonValue::as_object)
+        .ok_or_else(|| {
+            V3BuildError::ValueMapMalformed("$cases missing or not a JSON object".into())
+        })?;
+    if let Some(case_value) = cases.get(&key) {
+        substitute_placeholders(ctx, case_value)
+    } else if let Some(default_value) = map.get("$default") {
+        substitute_placeholders(ctx, default_value)
+    } else {
+        Err(V3BuildError::ValueMapNoMatch { matched: key })
+    }
+}
+
+/// Resolve a `$fn` call object `{ "$fn": "<name>", "$args": [<arg templates>] }`.
+///
+/// Each entry of `$args` is run back through [`substitute_placeholders`] (so an
+/// arg may itself be `$args._route`, a literal, or a nested value-map), then the
+/// resolved JSON args are dispatched to the named WhitelistedFn executor
+/// ([`super::builtin_fn::dispatch`]). `$fn` and `$args` are the ONLY allowed
+/// keys; any other is rejected fail-loud (mirrors the value-map key guard). A
+/// missing `$args` is treated as an empty arg list.
+fn resolve_fn_call(
+    ctx: &V3MapContext<'_>,
+    map: &JsonMap<String, JsonValue>,
+) -> Result<JsonValue, V3BuildError> {
+    for k in map.keys() {
+        if !matches!(k.as_str(), "$fn" | "$args") {
+            return Err(V3BuildError::FnCall {
+                function: "<malformed>".to_owned(),
+                reason: format!("unexpected key '{k}' in $fn call (allowed: $fn, $args)"),
+            });
+        }
+    }
+    let name = map
+        .get("$fn")
+        .and_then(JsonValue::as_str)
+        .ok_or_else(|| V3BuildError::FnCall {
+            function: "<malformed>".to_owned(),
+            reason: "$fn must be a string function name".to_owned(),
+        })?;
+    let arg_templates: &[JsonValue] = match map.get("$args") {
+        Some(JsonValue::Array(a)) => a,
+        None => &[],
+        Some(_) => {
+            return Err(V3BuildError::FnCall {
+                function: name.to_owned(),
+                reason: "$args must be a JSON array".to_owned(),
+            });
+        }
+    };
+    let mut resolved_args = Vec::with_capacity(arg_templates.len());
+    for tpl in arg_templates {
+        resolved_args.push(substitute_placeholders(ctx, tpl)?);
+    }
+    super::builtin_fn::dispatch(name, &resolved_args).map_err(|reason| V3BuildError::FnCall {
+        function: name.to_owned(),
+        reason,
+    })
+}
+
 /// Resolve a single `$<root>` / `$<root>.<rest>` placeholder string.
 fn resolve_placeholder(ctx: &V3MapContext<'_>, raw: &str) -> Result<JsonValue, V3BuildError> {
-    // Strip the leading `$`. Split on the first `.` to identify the root.
+    // Strip the leading `$`. The root token ends at the first `.` OR `[`.
+    // A `.` separator is dropped from `rest` (`$args.x` → root `args`, rest
+    // `x`); a `[` is KEPT (`$inputs[0]` → root `inputs`, rest `[0]`) so the
+    // index segment survives into `walk_json_path`. This lets a tuple/tuple[]
+    // element be indexed POSITIONALLY straight off a root — the calldata
+    // convention for nested tuples (Permit2 `PermitDetails`, V4
+    // `modifyLiquidities` params) where decoded tuples are positional arrays.
     let body = &raw[1..];
-    let (root, rest) = match body.find('.') {
-        Some(idx) => (&body[..idx], &body[idx + 1..]),
-        None => (body, ""),
+    let dot = body.find('.');
+    let bracket = body.find('[');
+    let (root, rest) = match (dot, bracket) {
+        // `[` present and not after a `.` → keep the bracket in `rest`.
+        (None, Some(b)) => (&body[..b], &body[b..]),
+        (Some(d), Some(b)) if b < d => (&body[..b], &body[b..]),
+        // `.` separator → drop it.
+        (Some(d), _) => (&body[..d], &body[d + 1..]),
+        (None, None) => (body, ""),
     };
 
     match root {
         "chain" => Ok(JsonValue::String(ctx.chain.as_str().to_owned())),
         "to" => Ok(JsonValue::String(format!("{:#x}", ctx.tx_to))),
+        // Bare `$calldata` → the raw tx calldata hex. It is a ROOT-ONLY token
+        // (no `.<path>` / `[idx]` suffix — calldata is opaque bytes); any suffix
+        // is a manifest authoring error, surfaced fail-loud.
+        "calldata" if rest.is_empty() => Ok(JsonValue::String(ctx.raw_calldata.to_owned())),
+        "calldata" => Err(V3BuildError::UnresolvedPlaceholder(format!(
+            "$calldata takes no path suffix (got {raw:?})"
+        ))),
         "tx" => match rest {
             "from" => Ok(JsonValue::String(format!("{:#x}", ctx.tx_from))),
             "to" => Ok(JsonValue::String(format!("{:#x}", ctx.tx_to))),
@@ -179,16 +468,28 @@ fn resolve_placeholder(ctx: &V3MapContext<'_>, raw: &str) -> Result<JsonValue, V
                 args: format!("{e}: {}", ctx.args_json),
             })
         }
-        "resolved" => ctx
-            .resolved
-            .get(rest)
-            .cloned()
-            .ok_or_else(|| V3BuildError::UnresolvedPlaceholder(raw.to_owned())),
-        "derived" => ctx
-            .derived
-            .get(rest)
-            .cloned()
-            .ok_or_else(|| V3BuildError::UnresolvedPlaceholder(raw.to_owned())),
+        // Plan §M9 — `$resolved.<k>` / `$derived.<k>` 는 Sync orchestrator
+        // (별 plan) 가 채우는 영역. 본 plan narrow scope 안에서 ctx.resolved /
+        // ctx.derived 는 비어있을 수 있으므로, placeholder name 에 따라
+        // type-aware zero value 로 fallback (Address / U32 / U256 / Bytes32).
+        // 카탈로그에 없는 placeholder 는 UnknownPlaceholder 로 fail-loud —
+        // manifest 작성자가 새 placeholder 도입 시 placeholder_type_lookup
+        // 갱신 강제. 75b05d1 commit 의 Address zero hex 일괄 fallback 이
+        // u32/bytes32 자리에서 serde mismatch 를 일으킨 부작용 fix.
+        "resolved" | "derived" => {
+            let map = if root == "resolved" {
+                &ctx.resolved
+            } else {
+                &ctx.derived
+            };
+            if let Some(v) = map.get(rest).cloned() {
+                Ok(v)
+            } else if let Some(ty) = placeholder_type_lookup(rest) {
+                Ok(zero_value_for(ty))
+            } else {
+                Err(V3BuildError::UnknownPlaceholder(format!("{root}.{rest}")))
+            }
+        }
         "inputs" => {
             let inputs = ctx
                 .inputs
@@ -337,6 +638,7 @@ pub fn build_action_body(
                             action.as_deref(),
                             field_name,
                             src_payload,
+                            None,
                         );
                         live_obj.insert(field_name.clone(), wrapped);
                     }
@@ -344,12 +646,14 @@ pub fn build_action_body(
                 }
                 LiveInputLayout::Inline => {
                     for (field_name, src_payload) in map {
+                        let default_override = flat.get(field_name);
                         let wrapped = wrap_live_field(
                             ctx,
                             domain.as_deref(),
                             action.as_deref(),
                             field_name,
                             src_payload,
+                            default_override,
                         );
                         flat.insert(field_name.clone(), wrapped);
                     }
@@ -358,10 +662,32 @@ pub fn build_action_body(
         }
     }
 
+    coerce_time_like_fields(&mut flat);
+
     // Stage 4 — typed decode.
     Ok(serde_json::from_value::<ActionBody>(JsonValue::Object(
         flat,
     ))?)
+}
+
+fn coerce_time_like_fields(flat: &mut JsonMap<String, JsonValue>) {
+    for field in ["deadline", "expires_at", "sig_deadline", "valid_until"] {
+        if let Some(value) = flat.get_mut(field) {
+            coerce_decimal_string_to_u64(value);
+        }
+    }
+}
+
+fn coerce_decimal_string_to_u64(value: &mut JsonValue) {
+    let JsonValue::String(s) = value else {
+        return;
+    };
+    let trimmed = s.trim();
+    if trimmed.is_empty() || !trimmed.bytes().all(|b| b.is_ascii_digit()) {
+        return;
+    }
+    let parsed = trimmed.parse::<u64>().unwrap_or(u64::MAX);
+    *value = JsonValue::Number(parsed.into());
 }
 
 /// Strip the `<domain>.<action>.live_inputs` sub-object (if any) from a body
@@ -414,9 +740,11 @@ enum LiveInputLayout {
 /// `deny_unknown_fields`-free variants.
 fn live_input_layout(domain: Option<&str>, action: Option<&str>) -> LiveInputLayout {
     match (domain, action) {
-        (Some("token"), Some("erc20_permit")) | (Some("token"), Some("permit2_sign_allowance")) => {
-            LiveInputLayout::Inline
-        }
+        (Some("token"), Some("erc20_permit"))
+        | (
+            Some("token"),
+            Some("permit2_sign_allowance" | "permit2_sign_transfer" | "permit2_transfer_from"),
+        ) => LiveInputLayout::Inline,
         _ => LiveInputLayout::Nested,
     }
 }
@@ -514,11 +842,11 @@ fn extract_tags(flat: &JsonMap<String, JsonValue>) -> (Option<String>, Option<St
 }
 
 /// Wrap a placeholder-substituted `source` descriptor into the full
-/// [`LiveField`](simulation_state::LiveField) JSON shape with a default value
+/// [`LiveField`](policy_state::LiveField) JSON shape with a default value
 /// drawn from [`live_input_default`] and `synced_at = ctx.submitted_at`.
 ///
 /// If the manifest entry carries `ttl_s` (the v3 convention) the value is
-/// converted into a `ttl` JSON number — [`simulation_state::primitives::Duration`]
+/// converted into a `ttl` JSON number — [`policy_state::primitives::Duration`]
 /// is `#[serde(transparent)]` over a `u64`.
 fn wrap_live_field(
     ctx: &V3MapContext<'_>,
@@ -526,11 +854,12 @@ fn wrap_live_field(
     action: Option<&str>,
     field_name: &str,
     src_payload: &JsonValue,
+    default_override: Option<&JsonValue>,
 ) -> JsonValue {
     let mut out = JsonMap::new();
     out.insert(
         "value".into(),
-        live_input_default(domain, action, field_name),
+        live_input_default_with_override(domain, action, field_name, default_override),
     );
     if let Some(obj) = src_payload.as_object() {
         if let Some(src) = obj.get("source") {
@@ -551,16 +880,104 @@ fn wrap_live_field(
     JsonValue::Object(out)
 }
 
+fn live_input_default_with_override(
+    domain: Option<&str>,
+    action: Option<&str>,
+    field_name: &str,
+    default_override: Option<&JsonValue>,
+) -> JsonValue {
+    let Some(value) = default_override else {
+        return live_input_default(domain, action, field_name);
+    };
+    match (domain, action, field_name) {
+        (
+            Some("token"),
+            Some("permit2_sign_allowance" | "permit2_sign_transfer" | "permit2_transfer_from"),
+            "nonce",
+        ) => permit2_nonce_tuple_default(value)
+            .unwrap_or_else(|| live_input_default(domain, action, field_name)),
+        _ => value.clone(),
+    }
+}
+
+fn permit2_nonce_tuple_default(value: &JsonValue) -> Option<JsonValue> {
+    let nonce = u256_from_json(value)?;
+    let word = nonce / U256::from(256u64);
+    let bit = nonce.to_be_bytes::<32>()[31];
+    Some(serde_json::json!([word.to_string(), bit]))
+}
+
+fn u256_from_json(value: &JsonValue) -> Option<U256> {
+    match value {
+        JsonValue::String(s) => U256::from_str_radix(s, 10).ok(),
+        JsonValue::Number(n) => U256::from_str_radix(&n.to_string(), 10).ok(),
+        _ => None,
+    }
+}
+
+/// Deserializable zero skeleton for `policy_transition::action::lending::ReserveState`.
+///
+/// `U256` fields (`total_supply` / `total_borrow`) are decimal strings (alloy
+/// serde), the `*_bp` / `utilization_bp` / `reserve_factor_bp` fields are
+/// `u32` numbers, and the optional `supply_cap` / `borrow_cap` are omitted
+/// (their `#[serde(default, skip_serializing_if = "Option::is_none")]` makes
+/// absence == `None`).
+fn lending_reserve_state_skeleton() -> JsonValue {
+    serde_json::json!({
+        "total_supply": "0",
+        "total_borrow": "0",
+        "utilization_bp": 0,
+        "ltv_bp": 0,
+        "liquidation_threshold_bp": 0,
+        "liquidation_bonus_bp": 0,
+        "reserve_factor_bp": 0,
+        "is_frozen": false,
+        "is_paused": false,
+    })
+}
+
+/// Deserializable zero skeleton for `lending::UserLendingState`.
+///
+/// `health_factor` is a `Decimal` (`#[serde(transparent)]` over `String`) so it
+/// is the string `"0"`; the three USD aggregates (`total_collat_usd` /
+/// `total_debt_usd` / `available_borrow_usd`) are `U256` decimal strings.
+fn lending_user_state_skeleton() -> JsonValue {
+    serde_json::json!({
+        "health_factor": "0",
+        "total_collat_usd": "0",
+        "total_debt_usd": "0",
+        "available_borrow_usd": "0",
+    })
+}
+
+/// Deserializable zero skeleton for `lending::set_emode::EModeConfig`.
+///
+/// The three `*_bp` fields are `u32` numbers; `price_source` (`Option<Address>`)
+/// and `category` (`Option<EModeCategory>`) are omitted (both skip-if-none);
+/// `assets_in_category` is an empty `Vec<TokenRef>`.
+fn lending_emode_config_skeleton() -> JsonValue {
+    serde_json::json!({
+        "ltv_bp": 0,
+        "liquidation_threshold_bp": 0,
+        "liquidation_bonus_bp": 0,
+        "assets_in_category": [],
+    })
+}
+
 /// Per-`(domain, action, field)` default `value` for the `LiveField` wrap.
 ///
 /// Each entry encodes the minimal `serde_json` shape needed for
-/// `simulation_state::LiveField<T>` to deserialize successfully — typically
-/// `"0"` for `U256`, `0` for `u32`, and a hand-rolled object skeleton for the
-/// richer state types (`SwapRoute`, `PoolState`, `Vec<(TokenRef, U256)>`).
+/// `policy_state::LiveField<T>` to deserialize successfully: typically `"0"`
+/// for `U256` / `Decimal` / `Price`, `0` for `u32`, `false` for `bool`,
+/// `["0","0"]` for 2-tuples, and object skeletons for richer state types
+/// (`SwapRoute`, `PoolState`, `Vec<(TokenRef, U256)>`, `ReserveState`,
+/// `UserLendingState`, `EModeConfig`).
 ///
 /// Extending the catalog when a new `live_inputs.<field>` lands in registry
 /// V2 is a one-line edit — the test suite covers what's currently emitted by
-/// the 25 v3 manifests.
+/// the v3 manifests. (Filling these with REAL fetched values is a separate
+/// orchestrator task — here we only need a deserializable zero so the typed
+/// `ActionBody` decode succeeds.)
 fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -> JsonValue {
     match (domain, action, field) {
         // -------- AMM --------
@@ -590,14 +1007,129 @@ fn live_input_default(domain: Option<&str>, action: Option<&str>, field: &str) -
             JsonValue::String("0".into())
         }
         (Some("amm"), Some("sign_intent_order"), "competing_orders") => JsonValue::Number(0.into()),
+        // -------- Airdrop (Claim) --------
+        //
+        // `ClaimAirdropLiveInputs` (action/airdrop/claim.rs): `is_still_claimable`
+        // (`LiveField<bool>`), `actual_amount` (`LiveField<U256>`), `claim_token`
+        // (`LiveField<TokenRef>`), `claim_window` (`LiveField<Option<(Time,Time)>>`).
+        // Without a default `value` each `LiveField` serialises `null`; the three
+        // non-Option fields reject `null` (bool / U256 / TokenRef) →
+        // `build_action_body_failed`. `claim_window` is an `Option` so it takes the
+        // `_ => Null` fallback below (= `None`). `claim_token` needs a concrete
+        // `TokenRef { key }` skeleton — a zero ERC20 stands in until the Sync
+        // orchestrator fills the real ZRO token (the real claim token is always
+        // ZRO). The chain in the skeleton is a neutral placeholder.
+        (Some("airdrop"), Some("claim"), "is_still_claimable") => JsonValue::Bool(false),
+        (Some("airdrop"), Some("claim"), "actual_amount") => JsonValue::String("0".into()),
+        (Some("airdrop"), Some("claim"), "claim_token") => serde_json::json!({
+            "key": {
+                "standard": "erc20",
+                "chain": "eip155:1",
+                "address": "0x0000000000000000000000000000000000000000"
+            }
+        }),
+        // -------- Airdrop (Delegate) --------
+        //
+        // `DelegateLiveInputs` (action/airdrop/delegate.rs): `current_delegate`
+        // (`LiveField<Option<Address>>` → takes the `_ => Null` fallback = `None`)
+        // and `voting_power` (`LiveField<U256>`, rejects `null`). Default the
+        // U256 to "0" until the Sync orchestrator fills the delegator's real
+        // voting power (Compound/UNI/ENS governance delegation).
+        (Some("airdrop"), Some("delegate"), "voting_power") => JsonValue::String("0".into()),
         // -------- Token --------
         (Some("token"), Some("erc20_permit"), "nonce")
         | (Some("token"), Some("permit2_approve"), "nonce") => JsonValue::String("0".into()),
-        (Some("token"), Some("permit2_sign_allowance"), "nonce") => {
+        (
+            Some("token"),
+            Some("permit2_sign_allowance" | "permit2_sign_transfer" | "permit2_transfer_from"),
+            "nonce",
+        ) => {
             // `LiveField<(U256, u8)>` — JSON encodes a 2-tuple as a 2-element
             // array. Default: bitmap word 0, bit 0.
             serde_json::json!(["0", 0])
         }
+        // -------- Lending (Aave V3 family) --------
+        //
+        // Every lending action wraps its on-chain / derived reads in
+        // `LiveField<T>`; without a default `value` here each `LiveField`
+        // serialises `null`, and the richer `T`s (`ReserveState`,
+        // `UserLendingState`, `EModeConfig`, the 2-tuples) reject `null` →
+        // `build_action_body_failed`. The `action` keys below are the serde
+        // `LendingAction` tags (snake_case), NOT the source file names — note
+        // `set_e_mode` (SetEMode), `enable_collateral` / `disable_collateral`
+        // (both SetCollateralAction).
+        //
+        // Supply (SupplyLiveInputs).
+        (Some("lending"), Some("supply"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("supply"), "supply_apy") => JsonValue::String("0".into()),
+        (Some("lending"), Some("supply"), "a_token_price_usd") => JsonValue::String("0".into()),
+        (Some("lending"), Some("supply"), "eligible_as_collat") => JsonValue::Bool(false),
+        (Some("lending"), Some("supply"), "user_state_before") => lending_user_state_skeleton(),
+        // Borrow (BorrowLiveInputs).
+        (Some("lending"), Some("borrow"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("borrow"), "user_state_before") => lending_user_state_skeleton(),
+        (Some("lending"), Some("borrow"), "asset_price_usd") => JsonValue::String("0".into()),
+        (Some("lending"), Some("borrow"), "current_borrow_rate") => JsonValue::String("0".into()),
+        (Some("lending"), Some("borrow"), "available_liquidity") => JsonValue::String("0".into()),
+        // Withdraw (WithdrawLiveInputs).
+        (Some("lending"), Some("withdraw"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("withdraw"), "available_to_withdraw") => {
+            JsonValue::String("0".into())
+        }
+        (Some("lending"), Some("withdraw"), "user_state_before") => lending_user_state_skeleton(),
+        // Repay (RepayLiveInputs).
+        (Some("lending"), Some("repay"), "reserve_state") => lending_reserve_state_skeleton(),
+        (Some("lending"), Some("repay"), "current_debt") => JsonValue::String("0".into()),
+        (Some("lending"), Some("repay"), "user_state_before") => lending_user_state_skeleton(),
+        // Liquidate (LiquidateLiveInputs). `liquidation_bonus` is a `u32`.
+        (Some("lending"), Some("liquidate"), "victim_state") => lending_user_state_skeleton(),
+        (Some("lending"), Some("liquidate"), "liquidation_bonus") => JsonValue::Number(0.into()),
+        (Some("lending"), Some("liquidate"), "debt_asset_price") => JsonValue::String("0".into()),
+        (Some("lending"), Some("liquidate"), "collat_asset_price") => JsonValue::String("0".into()),
+        // SetEMode (SetEModeLiveInputs) — serde tag `set_e_mode`.
+        (Some("lending"), Some("set_e_mode"), "category_config") => lending_emode_config_skeleton(),
+        (Some("lending"), Some("set_e_mode"), "user_state_before") => lending_user_state_skeleton(),
+        // SwapRateMode (SwapRateModeLiveInputs) — `(U256,U256)` / `(Decimal,Decimal)`
+        // both encode as 2-element JSON arrays of decimal strings.
+        (Some("lending"), Some("swap_rate_mode"), "current_debts") => serde_json::json!(["0", "0"]),
+        (Some("lending"), Some("swap_rate_mode"), "rates") => serde_json::json!(["0", "0"]),
+        // SetCollateral (SetCollateralLiveInputs) — used by BOTH the
+        // `enable_collateral` and `disable_collateral` tags.
+        (Some("lending"), Some("enable_collateral"), "reserve_state")
+        | (Some("lending"), Some("disable_collateral"), "reserve_state") => {
+            lending_reserve_state_skeleton()
+        }
+        (Some("lending"), Some("enable_collateral"), "user_state_before")
+        | (Some("lending"), Some("disable_collateral"), "user_state_before") => {
+            lending_user_state_skeleton()
+        }
+        // -------- Liquid Staking (Lido) --------
+        //
+        // Single-`uint256` exchange-rate views. Each `LiveField<U256>` rejects
+        // `null` (the `U256` deserialiser); the host fills the real value at
+        // sync time, so the skeleton is a `"0"` placeholder.
+        (Some("liquid_staking"), Some("wrap"), "expected_wsteth") => JsonValue::String("0".into()),
+        (Some("liquid_staking"), Some("unwrap"), "expected_steth") => JsonValue::String("0".into()),
+        (Some("liquid_staking"), Some("transfer_shares"), "pooled_eth") => {
+            JsonValue::String("0".into())
+        }
+        // -------- Yield (Pendle market enrichment) --------
+        //
+        // The four market-based actions carry `MarketTokensLiveInputs`: SY/PT/YT
+        // from `IPMarket.readTokens()` and maturity from `IPMarket.expiry()`,
+        // sourced from the `$args.market` address. Each `LiveField<Address>` /
+        // `LiveField<U256>` rejects a `null` value, so the skeleton is a
+        // zero-address / `"0"` until the host fills the real instruments at sync.
+        (
+            Some("yield"),
+            Some("pt_swap" | "yt_swap" | "add_market_liquidity" | "remove_market_liquidity"),
+            "sy" | "pt" | "yt",
+        ) => JsonValue::String("0x0000000000000000000000000000000000000000".into()),
+        (
+            Some("yield"),
+            Some("pt_swap" | "yt_swap" | "add_market_liquidity" | "remove_market_liquidity"),
+            "maturity",
+        ) => JsonValue::String("0".into()),
         // Fallback — null lets the per-field type's `Option<T>` (if any) take
         // over; for stricter types serde reports a clear error pointing at the
         // missing catalog entry.
@@ -667,6 +1199,7 @@ pub fn build_multicall_from_opcode_stream(
             value: ctx.value,
             submitted_at: ctx.submitted_at,
             args_json: ctx.args_json,
+            raw_calldata: ctx.raw_calldata,
             resolved: ctx.resolved.clone(),
             derived: ctx.derived.clone(),
             inputs: inputs_for_this,
@@ -680,14 +1213,126 @@ pub fn build_multicall_from_opcode_stream(
 }
 
 // ===========================================================================
+// build_array_emit — homogeneous array → Multicall
+// ===========================================================================
+
+/// Translate a homogeneous args/message array into `ActionBody::Multicall`.
+///
+/// `array_source` is a `$args.<path>` / `$inputs.<path>` placeholder that MUST
+/// resolve to a JSON array. Each element becomes the `inputs` of a fresh
+/// child [`V3MapContext`], and `per_item_body` is built against it — so the
+/// per-item template references the element via `$inputs.<field>`.
+/// If `parallel_sources` is present, each named placeholder must resolve to an
+/// array of the same length. The per-item `$inputs` becomes an object:
+/// `{ "element": <array_source[i]>, "<name>": <parallel_sources[name][i]> }`.
+/// This models ABI shapes such as Permit2 batch signature transfer where
+/// `permit.permitted[]` and `transferDetails[]` advance in lock-step.
+///
+/// This REUSES the exact `$inputs` mechanism
+/// [`build_multicall_from_opcode_stream`] uses: per iteration we clone the
+/// parent context and set `inputs: Some(element)`. No new placeholder root.
+///
+/// An empty array yields `ActionBody::Multicall { actions: [] }` (valid, no
+/// error). `array_source` resolving to a non-array surfaces
+/// [`V3BuildError::ArraySourceNotArray`].
+///
+/// # Errors
+///
+/// * [`V3BuildError::ArraySourceNotArray`] — `array_source` did not resolve to
+///   a JSON array.
+/// * Any placeholder / JSONPath / serde error propagated from
+///   [`resolve_placeholder`] or the inner [`build_action_body`] calls.
+pub fn build_array_emit(
+    ctx: &V3MapContext<'_>,
+    array_source: &str,
+    parallel_sources: Option<&JsonValue>,
+    per_item_body: &JsonValue,
+    per_item_live_inputs: Option<&JsonValue>,
+) -> Result<ActionBody, V3BuildError> {
+    // `resolve_placeholder` returns an OWNED value; bind it locally so the
+    // `&element` borrows below live through the whole loop.
+    let array_val = resolve_placeholder(ctx, array_source)?;
+    let arr = array_val
+        .as_array()
+        .ok_or_else(|| V3BuildError::ArraySourceNotArray(array_source.to_owned()))?;
+
+    let mut parallels: Vec<(String, Vec<JsonValue>)> = Vec::new();
+    if let Some(parallel_sources) = parallel_sources {
+        let sources = parallel_sources.as_object().ok_or_else(|| {
+            V3BuildError::UnresolvedPlaceholder(
+                "array_emit.parallel_sources must be an object".into(),
+            )
+        })?;
+        for (name, source_value) in sources {
+            let source = source_value.as_str().ok_or_else(|| {
+                V3BuildError::UnresolvedPlaceholder(format!(
+                    "array_emit.parallel_sources.{name} must be a placeholder string"
+                ))
+            })?;
+            let parallel_val = resolve_placeholder(ctx, source)?;
+            let parallel_arr =
+                parallel_val
+                    .as_array()
+                    .ok_or_else(|| V3BuildError::ParallelSourceNotArray {
+                        name: name.clone(),
+                        placeholder: source.to_owned(),
+                    })?;
+            if parallel_arr.len() != arr.len() {
+                return Err(V3BuildError::ParallelSourceLengthMismatch {
+                    name: name.clone(),
+                    array_len: arr.len(),
+                    parallel_len: parallel_arr.len(),
+                });
+            }
+            parallels.push((name.clone(), parallel_arr.clone()));
+        }
+    }
+
+    let mut actions = Vec::with_capacity(arr.len());
+    for (index, element) in arr.iter().enumerate() {
+        let child_inputs;
+        let inputs = if parallels.is_empty() {
+            element
+        } else {
+            let mut object = JsonMap::new();
+            object.insert("element".into(), element.clone());
+            for (name, values) in &parallels {
+                object.insert(name.clone(), values[index].clone());
+            }
+            child_inputs = JsonValue::Object(object);
+            &child_inputs
+        };
+        let child_ctx = V3MapContext {
+            chain: ctx.chain.clone(),
+            tx_to: ctx.tx_to,
+            tx_from: ctx.tx_from,
+            value: ctx.value,
+            submitted_at: ctx.submitted_at,
+            args_json: ctx.args_json,
+            raw_calldata: ctx.raw_calldata,
+            resolved: ctx.resolved.clone(),
+            derived: ctx.derived.clone(),
+            inputs: Some(inputs),
+        };
+        actions.push(build_action_body(
+            &child_ctx,
+            per_item_body,
+            per_item_live_inputs,
+        )?);
+    }
+
+    Ok(ActionBody::Multicall { actions })
+}
+
+// ===========================================================================
 // Inline unit tests (11) — see `## 11 inline unit test` in the M1 plan.
 // ===========================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use policy_transition::action::{amm::AmmAction, token::TokenAction};
     use serde_json::json;
-    use simulation_reducer::action::{amm::AmmAction, token::TokenAction};
     use std::str::FromStr;
 
     fn addr(hex: &str) -> Address {
@@ -702,6 +1347,7 @@ mod tests {
             value: U256::ZERO,
             submitted_at: Time::from_unix(1_738_000_000),
             args_json: args,
+            raw_calldata: "0xdeadbeef",
             resolved: BTreeMap::new(),
             derived: BTreeMap::new(),
             inputs: None,
@@ -861,11 +1507,9 @@ mod tests {
 
     // 6. Permit2 approve (onchain) → ActionBody::Token(Permit2Approve)
     //
-    // `expires_at` deserializes into a `Time` (transparent over `u64`), so
-    // the test feeds it as a raw JSON number. The on-chain ABI decoder
-    // produces decimal strings, but a numeric coercion shim is out of M1
-    // scope — when M2 wires the decoder we'll add a numeric-string -> number
-    // pass keyed by the destination's serde shape.
+    // `expires_at` deserializes into a `Time` (transparent over `u64`).
+    // The builder accepts ABI-decoded decimal strings for time-like fields and
+    // normalizes them before the final typed decode.
     #[test]
     fn t6_permit2_approve() {
         let args = json!({
@@ -892,6 +1536,49 @@ mod tests {
             action,
             ActionBody::Token(TokenAction::Permit2Approve(_))
         ));
+    }
+
+    #[test]
+    fn t6b_erc20_permit_onchain_deadline_string_and_live_nonce() {
+        let args = json!({
+            "owner": "0x000000000000000000000000000000000000a01c",
+            "spender": "0x00000000000000000000000000000000deadbeef",
+            "value": "999",
+            "deadline": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+        });
+        let ctx = mk_ctx(&args);
+        let body = json!({
+            "domain": "token",
+            "token": {
+                "action": "erc20_permit",
+                "erc20_permit": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$tx.to" } },
+                    "spender": "$args.spender",
+                    "amount": "$args.value",
+                    "deadline": "$args.deadline"
+                }
+            }
+        });
+        let live_inputs = json!({
+            "nonce": {
+                "source": {
+                    "kind": "onchain_view",
+                    "chain": "$chain",
+                    "contract": "$tx.to",
+                    "function": "nonces(address)",
+                    "decoder_id": "erc20_permit_nonce"
+                },
+                "ttl_s": 12
+            }
+        });
+        let action = build_action_body(&ctx, &body, Some(&live_inputs)).unwrap();
+        match action {
+            ActionBody::Token(TokenAction::Erc20Permit(a)) => {
+                assert_eq!(a.deadline.as_unix(), u64::MAX);
+                assert_eq!(a.nonce.value, U256::ZERO);
+            }
+            other => panic!("expected Erc20Permit, got {other:?}"),
+        }
     }
 
     // 7. Permit2 PermitSingle → ActionBody::Token(Permit2SignAllowance)
@@ -1266,5 +1953,354 @@ mod tests {
         let ctx = mk_ctx(&args);
         let v = resolve_placeholder(&ctx, "$args.path[-1]").unwrap();
         assert_eq!(v, json!("0xcccc"));
+    }
+
+    // Plan §M9 — type-aware placeholder fallback (Sync orchestrator 별 plan).
+
+    #[test]
+    fn m9_resolved_address_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$resolved.weth").unwrap();
+        assert_eq!(v, json!("0x0000000000000000000000000000000000000000"));
+    }
+
+    #[test]
+    fn m9_derived_u32_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$derived.fee_tier_bp").unwrap();
+        assert_eq!(v, json!(0u32));
+    }
+
+    #[test]
+    fn m9_derived_u256_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$derived.v4_amount_in").unwrap();
+        assert_eq!(v, json!("0"));
+    }
+
+    #[test]
+    fn m9_derived_bytes32_fallback() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let v = resolve_placeholder(&ctx, "$derived.v4_pool_id").unwrap();
+        assert_eq!(
+            v,
+            json!("0x0000000000000000000000000000000000000000000000000000000000000000")
+        );
+    }
+
+    #[test]
+    fn m9_unknown_placeholder_fail_loud() {
+        let args = json!({});
+        let ctx = mk_ctx(&args);
+        let err = resolve_placeholder(&ctx, "$derived.nonexistent_field").unwrap_err();
+        match err {
+            V3BuildError::UnknownPlaceholder(s) => {
+                assert_eq!(s, "derived.nonexistent_field");
+            }
+            other => panic!("expected UnknownPlaceholder, got {other:?}"),
+        }
+    }
+
+    // ── Phase A.2 — build_array_emit (homogeneous array → Multicall) ────────
+
+    // array_emit over a 2-element `$args.transfers` array. Each element binds
+    // as `$inputs.<field>` for its own erc20_transfer body — element-0 and
+    // element-1 differ, proving per-element context binding.
+    #[test]
+    fn array_emit_calldata_two_transfers_per_element_binding() {
+        let args = json!({
+            "transfers": [
+                {
+                    "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                    "recipient": "0x00000000000000000000000000000000deadbeef",
+                    "amount": "1000"
+                },
+                {
+                    "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+                    "recipient": "0x00000000000000000000000000000000cafef00d",
+                    "amount": "2000"
+                }
+            ]
+        });
+        let ctx = mk_ctx(&args);
+        let per_item_body = json!({
+            "domain": "token",
+            "token": {
+                "action": "erc20_transfer",
+                "erc20_transfer": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.token" } },
+                    "recipient": "$inputs.recipient",
+                    "amount": "$inputs.amount"
+                }
+            }
+        });
+
+        let action = build_array_emit(&ctx, "$args.transfers", None, &per_item_body, None).unwrap();
+        match action {
+            ActionBody::Multicall { actions } => {
+                assert_eq!(actions.len(), 2);
+                // element-0
+                match &actions[0] {
+                    ActionBody::Token(TokenAction::Erc20Transfer(a)) => {
+                        assert_eq!(a.amount, U256::from(1000u64));
+                        assert_eq!(
+                            a.recipient,
+                            addr("0x00000000000000000000000000000000deadbeef")
+                        );
+                        assert_eq!(
+                            a.token.key.contract(),
+                            Some(&addr("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))
+                        );
+                    }
+                    other => panic!("expected Erc20Transfer at 0, got {other:?}"),
+                }
+                // element-1 — DIFFERENT fields prove per-element binding.
+                match &actions[1] {
+                    ActionBody::Token(TokenAction::Erc20Transfer(a)) => {
+                        assert_eq!(a.amount, U256::from(2000u64));
+                        assert_eq!(
+                            a.recipient,
+                            addr("0x00000000000000000000000000000000cafef00d")
+                        );
+                        assert_eq!(
+                            a.token.key.contract(),
+                            Some(&addr("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"))
+                        );
+                    }
+                    other => panic!("expected Erc20Transfer at 1, got {other:?}"),
+                }
+            }
+            other => panic!("expected Multicall, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn array_emit_parallel_sources_bind_same_index() {
+        let args = json!({
+            "owner": "0x0000000000000000000000000000000000000a01",
+            "nonce": "513",
+            "deadline": "1738002000",
+            "permitted": [
+                ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "1000"],
+                ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "2000"]
+            ],
+            "transferDetails": [
+                ["0x00000000000000000000000000000000deadbeef", "900"],
+                ["0x00000000000000000000000000000000cafef00d", "1800"]
+            ]
+        });
+        let ctx = mk_ctx(&args);
+        let per_item_body = json!({
+            "domain": "token",
+            "token": {
+                "action": "permit2_transfer_from",
+                "permit2_transfer_from": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.element[0]" } },
+                    "owner": "$args.owner",
+                    "spender": "$tx.from",
+                    "recipient": "$inputs.detail[0]",
+                    "amount": "$inputs.detail[1]",
+                    "permitted_amount": "$inputs.element[1]",
+                    "nonce": "$args.nonce",
+                    "sig_deadline": "$args.deadline"
+                }
+            }
+        });
+        let parallel_sources = json!({ "detail": "$args.transferDetails" });
+        let live_inputs = json!({
+            "nonce": {
+                "source": { "kind": "user_supplied" },
+                "ttl_s": 12
+            }
+        });
+        let action = build_array_emit(
+            &ctx,
+            "$args.permitted",
+            Some(&parallel_sources),
+            &per_item_body,
+            Some(&live_inputs),
+        )
+        .unwrap();
+
+        let ActionBody::Multicall { actions } = action else {
+            panic!("expected Multicall");
+        };
+        assert_eq!(actions.len(), 2);
+        let ActionBody::Token(TokenAction::Permit2TransferFrom(first)) = &actions[0] else {
+            panic!("expected Permit2TransferFrom at 0");
+        };
+        assert_eq!(first.amount, U256::from(900u64));
+        assert_eq!(first.permitted_amount, U256::from(1000u64));
+        assert_eq!(
+            first.recipient,
+            addr("0x00000000000000000000000000000000deadbeef")
+        );
+        assert_eq!(first.nonce.value, (U256::from(2u64), 1u8));
+
+        let ActionBody::Token(TokenAction::Permit2TransferFrom(second)) = &actions[1] else {
+            panic!("expected Permit2TransferFrom at 1");
+        };
+        assert_eq!(second.amount, U256::from(1800u64));
+        assert_eq!(second.permitted_amount, U256::from(2000u64));
+        assert_eq!(
+            second.recipient,
+            addr("0x00000000000000000000000000000000cafef00d")
+        );
+        assert_eq!(second.nonce.value, (U256::from(2u64), 1u8));
+    }
+
+    // Empty array → empty Multicall (valid, no error).
+    #[test]
+    fn array_emit_empty_array_empty_multicall() {
+        let args = json!({ "transfers": [] });
+        let ctx = mk_ctx(&args);
+        let per_item_body = json!({
+            "domain": "token",
+            "token": {
+                "action": "erc20_transfer",
+                "erc20_transfer": {
+                    "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$inputs.token" } },
+                    "recipient": "$inputs.recipient",
+                    "amount": "$inputs.amount"
+                }
+            }
+        });
+        let action = build_array_emit(&ctx, "$args.transfers", None, &per_item_body, None).unwrap();
+        match action {
+            ActionBody::Multicall { actions } => assert!(actions.is_empty()),
+            other => panic!("expected empty Multicall, got {other:?}"),
+        }
+    }
+
+    // array_source resolving to a non-array → ArraySourceNotArray.
+    #[test]
+    fn array_emit_non_array_source_errors() {
+        let args = json!({ "transfers": "not-an-array" });
+        let ctx = mk_ctx(&args);
+        let per_item_body = json!({
+            "domain": "token",
+            "token": { "action": "erc20_transfer", "erc20_transfer": {} }
+        });
+        let err =
+            build_array_emit(&ctx, "$args.transfers", None, &per_item_body, None).unwrap_err();
+        match err {
+            V3BuildError::ArraySourceNotArray(s) => assert_eq!(s, "$args.transfers"),
+            other => panic!("expected ArraySourceNotArray, got {other:?}"),
+        }
+    }
+
+    // ── B.2-infra — discriminant value-map ($match / $cases / $default) ──────
+
+    // (a) Field-level value-map on a uint256 arg. uint256 args arrive as a
+    // decimal STRING (Fix B coercion: width > 64 → string), so the match key
+    // is `"2"` and the case lookup yields the RateMode serde value `"variable"`.
+    #[test]
+    fn value_map_field_number_string_match() {
+        let args = json!({ "rateMode": "2" });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.rateMode",
+            "$cases": { "1": "stable", "2": "variable" }
+        });
+        let out = substitute_placeholders(&ctx, &template).unwrap();
+        assert_eq!(out, json!("variable"));
+    }
+
+    // (b) Bool match selecting a whole object case (action-tag-level switch).
+    // `useAsCollateral` is a `bool` arg → JSON `true`, key `"true"`. The chosen
+    // case is an object that ITSELF contains a placeholder (`$args.asset`),
+    // proving the recursive substitution of the selected case value.
+    #[test]
+    fn value_map_bool_object_case_recursive() {
+        let args = json!({ "useAsCollateral": false, "asset": "0xabc" });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.useAsCollateral",
+            "$cases": {
+                "true":  { "action": "enable_collateral",  "tag_asset": "$args.asset" },
+                "false": { "action": "disable_collateral", "tag_asset": "$args.asset" }
+            }
+        });
+        let out = substitute_placeholders(&ctx, &template).unwrap();
+        assert_eq!(
+            out,
+            json!({ "action": "disable_collateral", "tag_asset": "0xabc" })
+        );
+    }
+
+    // (c) No matching case → fall back to `$default` (also recursively
+    // substituted).
+    #[test]
+    fn value_map_no_match_uses_default() {
+        let args = json!({ "rateMode": "0" });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.rateMode",
+            "$cases": { "1": "stable", "2": "variable" },
+            "$default": "fixed"
+        });
+        let out = substitute_placeholders(&ctx, &template).unwrap();
+        assert_eq!(out, json!("fixed"));
+    }
+
+    // (d) No matching case AND no `$default` → fail-loud ValueMapNoMatch.
+    #[test]
+    fn value_map_no_match_no_default_errors() {
+        let args = json!({ "rateMode": "0" });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.rateMode",
+            "$cases": { "1": "stable", "2": "variable" }
+        });
+        let err = substitute_placeholders(&ctx, &template).unwrap_err();
+        match err {
+            V3BuildError::ValueMapNoMatch { matched } => assert_eq!(matched, "0"),
+            other => panic!("expected ValueMapNoMatch, got {other:?}"),
+        }
+    }
+
+    // (e) Malformed value-map (`$cases` not an object) → ValueMapMalformed.
+    #[test]
+    fn value_map_malformed_cases_errors() {
+        let args = json!({ "rateMode": "1" });
+        let ctx = mk_ctx(&args);
+        let template = json!({ "$match": "$args.rateMode", "$cases": "not-an-object" });
+        let err = substitute_placeholders(&ctx, &template).unwrap_err();
+        assert!(matches!(err, V3BuildError::ValueMapMalformed(_)));
+    }
+
+    // (f) `$match` resolving to a non-keyable JSON type (here an object via an
+    // `$args.<path>` that points at a nested object) → ValueMapMalformed. Only
+    // String / Number / Bool collapse to a lookup key.
+    #[test]
+    fn value_map_non_keyable_match_errors() {
+        let args = json!({ "permit": { "spender": "0xabc", "amount": "1" } });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.permit",
+            "$cases": { "1": "stable", "2": "variable" }
+        });
+        let err = substitute_placeholders(&ctx, &template).unwrap_err();
+        assert!(matches!(err, V3BuildError::ValueMapMalformed(_)));
+    }
+
+    // (g) A stray / typo'd reserved key (`$dafault` instead of `$default`) →
+    // fail-loud ValueMapMalformed naming the offending key, instead of silently
+    // degrading to ValueMapNoMatch.
+    #[test]
+    fn value_map_stray_key_errors() {
+        let args = json!({ "rateMode": "0" });
+        let ctx = mk_ctx(&args);
+        let template = json!({
+            "$match": "$args.rateMode",
+            "$cases": { "1": "stable", "2": "variable" },
+            "$dafault": "fixed"
+        });
+        let err = substitute_placeholders(&ctx, &template).unwrap_err();
+        assert!(matches!(err, V3BuildError::ValueMapMalformed(_)));
     }
 }

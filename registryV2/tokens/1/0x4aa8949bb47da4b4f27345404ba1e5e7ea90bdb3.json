@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4aa8949bb47da4b4f27345404ba1e5e7ea90bdb3",
+  "symbol": "sJUSD",
+  "decimals": 18,
+  "name": "Staked JUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

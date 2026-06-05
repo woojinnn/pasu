@@ -1,0 +1,99 @@
+{
+  "type": "adapter_action",
+  "id": "1inch/native-order-factory/create@1.0.0",
+  "publisher": "1inch.io",
+  "schema_version": "3",
+  "note": "On-chain commit of a 1inch native limit order. NativeOrderFactory.create((uint256x8)=IOrderMixin.Order) (selector 0x8c72b608, NativeOrderFactory 0xe12e0f117d23a5ccc57f8935cd8c4e80cd91ff01) — the on-chain twin of the off-chain order-sign@1.0.0 (same LOP v4 Order struct). The maker (msg.sender) opens an order selling makerAsset (always WETH for native orders; the clone wraps the user's ETH, msg.value==makingAmount) for takerAsset, deploying a per-order NativeOrderImpl CREATE2 clone. Calldata declares maker/receiver/makerAsset/takerAsset as AddressLib-packed uint256 (low 160 bits = address) so each resolves via address_from_uint256 (the typed-data sign path had address-typed fields and did NOT need it). recipient via coalesce_address(receiver, maker) (receiver!=0 enforced on-chain, but kept for parity). valid_until via maker_traits_expiry(makerTraits) (bits 80..120 uint40, 0=never -> max sentinel). Maps to Amm::SignIntentOrder on OneInchLimitOrder venue, order_kind=limit, OnchainTx nature. The clone's maker cancelOrder/withdraw live at non-fixed CREATE2 addresses (child universe) -> deferred, not in this manifest.",
+  "match": {
+    "selector": "0x8c72b608",
+    "chain_to_addresses": {
+      "1": [
+        "0xe12e0f117d23a5ccc57f8935cd8c4e80cd91ff01"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "create",
+    "abi": {
+      "name": "create",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "makerOrder",
+          "type": "tuple",
+          "components": [
+            { "name": "salt", "type": "uint256" },
+            { "name": "maker", "type": "uint256" },
+            { "name": "receiver", "type": "uint256" },
+            { "name": "makerAsset", "type": "uint256" },
+            { "name": "takerAsset", "type": "uint256" },
+            { "name": "makingAmount", "type": "uint256" },
+            { "name": "takingAmount", "type": "uint256" },
+            { "name": "makerTraits", "type": "uint256" }
+          ]
+        }
+      ],
+      "outputs": [
+        { "name": "clone", "type": "address" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "sign_intent_order",
+        "sign_intent_order": {
+          "venue": {
+            "name": "one_inch_limit_order",
+            "chain": "$chain",
+            "verifying_contract": "0x111111125421ca6dc452d289314280a0f8842a65"
+          },
+          "sell": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": { "$fn": "address_from_uint256", "$args": ["$args.makerAsset"] }
+            }
+          },
+          "buy": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": { "$fn": "address_from_uint256", "$args": ["$args.takerAsset"] }
+            }
+          },
+          "sell_amount": "$args.makingAmount",
+          "buy_min": "$args.takingAmount",
+          "order_kind": "limit",
+          "recipient": {
+            "$fn": "coalesce_address",
+            "$args": [
+              { "$fn": "address_from_uint256", "$args": ["$args.receiver"] },
+              { "$fn": "address_from_uint256", "$args": ["$args.maker"] }
+            ]
+          },
+          "valid_until": { "$fn": "maker_traits_expiry", "$args": ["$args.makerTraits"] }
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_fill_price": {
+        "source": { "kind": "venue_api", "endpoint": "https://api.1inch.dev/orderbook/v4.0/1", "parser_id": "oneinch_lop_quote" },
+        "ttl_s": 6
+      },
+      "competing_orders": {
+        "source": { "kind": "venue_api", "endpoint": "https://api.1inch.dev/orderbook/v4.0/1", "parser_id": "oneinch_lop_open_orders" },
+        "ttl_s": 6
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

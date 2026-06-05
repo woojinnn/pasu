@@ -1,0 +1,99 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v4-pool-manager/initialize@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Direct PoolManager.initialize is a low-level V4 pool initialization call. No first-class initialize-pool ActionBody exists yet, so it routes as Unknown and fail-closed policy can warn.",
+  "match": {
+    "selector": "0x6276cbbe",
+    "chain_to_addresses": {
+      "1": [
+        "0x000000000004444c5dc75cB358380D2e3dE08A90"
+      ],
+      "10": [
+        "0x9a13F98Cb987694C9F086b1F5eB990EeA8264Ec3"
+      ],
+      "8453": [
+        "0x498581fF718922c3f8e6A244956aF099B2652b2b"
+      ],
+      "42161": [
+        "0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "initialize",
+    "abi": {
+      "type": "function",
+      "name": "initialize",
+      "inputs": [
+        {
+          "name": "key",
+          "type": "tuple",
+          "internalType": "struct PoolKey",
+          "components": [
+            {
+              "name": "currency0",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "currency1",
+              "type": "address",
+              "internalType": "Currency"
+            },
+            {
+              "name": "fee",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "tickSpacing",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "hooks",
+              "type": "address",
+              "internalType": "contract IHooks"
+            }
+          ]
+        },
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata",
+      "v4_pool_resolver"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-morphoFlashLoan@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 morphoFlashLoan leg (reached via Bundler3 multicall(Call[])). Borrows `assets` of `token` via a Morpho Blue flash loan; the borrowed funds are used AND repaid INSIDE the reenter(Call[]) callback carried in `data` — that callback IS the leverage intent (swap, re-supply, borrow). The flash loan itself is net-neutral, so the leg emits NO own body (strategy=reenter_only); only the callback legs recurse, via emit.reenter_callback_arg. Per-leg-to multicall child.",
+  "match": {
+    "selector": "0xe2975912",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "morphoFlashLoan",
+    "abi": {
+      "name": "morphoFlashLoan",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "address", "name": "token", "type": "address" },
+        { "internalType": "uint256", "name": "assets", "type": "uint256" },
+        { "internalType": "bytes", "name": "data", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "reenter_only",
+    "reenter_callback_arg": "data"
+  },
+  "requires": {}
+}

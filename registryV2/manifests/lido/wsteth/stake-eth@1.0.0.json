@@ -1,0 +1,36 @@
+{
+  "type": "adapter_action",
+  "id": "lido/wsteth/stake-eth@1.0.0",
+  "publisher": "lido.eth",
+  "schema_version": "3",
+  "note": "B.3 selector-less bare-ETH stake. Sending ETH with EMPTY calldata + value > 0 to wstETH hits its payable receive(), which stakes the ETH via Lido AND wraps the resulting stETH to wstETH in one step, minting wstETH to the sender. It has NO 4-byte function selector, so it is keyed under the reserved sentinel selector 0x00000000 (the all-zero word; the WASM route substitutes it ONLY for empty calldata, so it cannot collide with a real dispatch). Decoded as liquid_staking.stake with amount=$tx.value (the staked ETH) — the primary intent is staking ETH; the wstETH-vs-stETH output token is a wrap refinement not represented in StakeAction.",
+  "match": {
+    "selector": "0x00000000",
+    "chain_to_addresses": {
+      "1": ["0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "receive",
+    "abi": {
+      "name": "receive",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "stake",
+        "stake": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "amount": "$tx.value"
+        }
+      }
+    },
+    "live_inputs": {}
+  }
+}

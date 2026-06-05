@@ -1,0 +1,27 @@
+{
+  "contract": "Gsm (USDC)",
+  "chainId": 1,
+  "address": "0x3a3868898305f04bec7fea77becff04c13444112",
+  "snapshot": "gsm-usdc-mainnet.abi.json",
+  "functions": {
+    "0x40fb07a0": { "name": "buyAsset", "decision": "cover", "reason": "user GSM swap: buy underlying (USDC) with GHO at fixed price; minAmount = min underlying out. Maps to amm::GsmSwap (side=buy_asset)." },
+    "0xaa443ac0": { "name": "sellAsset", "decision": "cover", "reason": "user GSM swap: sell underlying (USDC) for GHO at fixed price; maxAmount = max underlying in. Maps to amm::GsmSwap (side=sell_asset)." },
+    "0x954c1c0d": { "name": "buyAssetWithSig", "decision": "exclude", "reason": "relayer-submit: on-chain consumer of an off-chain EIP-712 BuyAsset signature (originator,deadline,sig). Signer risk captured at the off-chain sign; deferred typed-data follow-up. Mirrors metaDelegate / setAuthorizationWithSig EXCLUDE." },
+    "0xf493ca70": { "name": "sellAssetWithSig", "decision": "exclude", "reason": "relayer-submit: on-chain consumer of an off-chain EIP-712 SellAsset signature; deferred typed-data follow-up." },
+    "0x9b5c9261": { "name": "backWithGho", "decision": "exclude", "reason": "keeper/governance: inject GHO backing to restore GSM solvency, not a user pre-sign action." },
+    "0xc350de6c": { "name": "backWithUnderlying", "decision": "exclude", "reason": "keeper/governance: inject underlying backing, not user pre-sign." },
+    "0x5921c8e0": { "name": "burnAfterSeize", "decision": "exclude", "reason": "admin/emergency: post-seize GHO burn (SEIZER_ROLE)." },
+    "0xdc49a07b": { "name": "distributeFeesToTreasury", "decision": "exclude", "reason": "keeper: permissionless fee sweep to treasury, no user funds at risk." },
+    "0x2f2ff15d": { "name": "grantRole", "decision": "exclude", "reason": "admin: AccessControl role management." },
+    "0x36568abe": { "name": "renounceRole", "decision": "exclude", "reason": "admin: AccessControl role management." },
+    "0xd547741f": { "name": "revokeRole", "decision": "exclude", "reason": "admin: AccessControl role management." },
+    "0xcea9d26f": { "name": "rescueTokens", "decision": "exclude", "reason": "admin: rescue stuck tokens (RESCUER_ROLE)." },
+    "0x605297e1": { "name": "seize", "decision": "exclude", "reason": "admin/emergency: seize GSM funds (SEIZER_ROLE)." },
+    "0xcab46bc6": { "name": "setSwapFreeze", "decision": "exclude", "reason": "admin: freeze/unfreeze swaps (SWAP_FREEZER_ROLE)." },
+    "0x430b0952": { "name": "updateExposureCap", "decision": "exclude", "reason": "admin/risk: exposure cap configuration (CONFIGURATOR_ROLE)." },
+    "0xc876a2a7": { "name": "updateFeeStrategy", "decision": "exclude", "reason": "admin: fee-strategy configuration (CONFIGURATOR_ROLE)." },
+    "0x8dbf6c81": { "name": "updateGhoReserve", "decision": "exclude", "reason": "admin: GHO reserve configuration (CONFIGURATOR_ROLE)." },
+    "0x1fde40bb": { "name": "updateGhoTreasury", "decision": "exclude", "reason": "admin: GHO treasury configuration (CONFIGURATOR_ROLE)." },
+    "0x91362b87": { "name": "initialize", "decision": "exclude", "reason": "one-time proxy initialization, deployment-time only." }
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 480,
-  "address": "0xd76f5faf6888e24d9f04bf92a0c8b921fe4390e0",
-  "symbol": "wBRL",
-  "decimals": 18,
-  "name": "Real Brasileno"
-}

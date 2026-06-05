@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc272b96bccdaf1bf98f2197d355066da3c15982a",
+  "symbol": "mwstETH-WPUNKS:40",
+  "decimals": 18,
+  "name": "MetaStreet V2 Deposit: WPUNKS-wstETH:40",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

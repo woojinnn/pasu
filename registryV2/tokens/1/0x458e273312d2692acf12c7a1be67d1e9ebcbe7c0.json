@@ -1,0 +1,81 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x458e273312d2692acf12c7a1be67d1e9ebcbe7c0",
+  "symbol": "7Synth",
+  "decimals": 18,
+  "name": "7Synth",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x458e273312d2692acf12c7a1be67d1e9ebcbe7c0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x57ab1ec28d129707052df4df418d58a2d46d5f51"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd71ecff9342a5ced620049e616c5035f1db98620"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf6b1c627e95bfc3c1b4c9b825a032ff0fbf3e07d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf48e200eaf9906362bb1442fca31e0835773b8b4"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x97fe22e7341a0cd8db6f6c021a24dc8f4dad855f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0f83287ff768d1c1e17a42f44d644d7f22e8ee1d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x269895a3df4d73b077fc823dd6da1b95f72aaf9b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

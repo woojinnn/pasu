@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x098697ba3fee4ea76294c5d6a466a4e3b3e95fe6",
+  "symbol": "USP",
+  "decimals": 18,
+  "name": "USP Yield Optimized Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

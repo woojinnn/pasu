@@ -26,9 +26,9 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::{Decimal, U256};
-use simulation_state::token::holding::TokenHolding;
-use simulation_state::token::TokenKey;
+use policy_state::primitives::{Decimal, U256};
+use policy_state::token::holding::TokenHolding;
+use policy_state::token::TokenKey;
 
 use super::params::{
     over_balance_4dp, param_asset_contract, param_chain_id, param_u256, OVER_BALANCE_SENTINEL,
@@ -306,11 +306,11 @@ mod tests {
 
     use serde_json::json;
 
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Price, Time};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{BaseCategory, TokenKind};
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Price, Time};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{BaseCategory, TokenKind};
+    use policy_state::{WalletId, WalletState};
 
     const USDC: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 

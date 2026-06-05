@@ -1,27 +1,6 @@
-//! Primitives sync — `LiveField` 가 아닌 "사실" 필드들의 RPC 갱신.
-//!
-//! `TokenHolding.balance`, `approvals_erc20`, `block_heights` 는 `LiveField` 가
-//! 아니라 plain 필드라 walker 가 못 잡는다. 이들은 별도 경로로 sync 한다:
-//!
-//! - `block_heights` : `eth_blockNumber` (chain 별)
-//! - native balance: `eth_getBalance` (chain 별, Native holding)
-//! - ERC20 balance : balanceOf(owner) (Multicall3 로 chain 별 묶음)
-//! - approvals     : allowance(owner, spender) (이미 알고있는 entry 만 refresh)
-//!
-//! 새 approval / 새 토큰 발견 (event log indexing) 은 본 모듈 범위 밖 — subscription
-//! 또는 indexer 의 일.
-//!
-//! 설계상 완전히 통일된 표현은 아직 아니다. `LiveField<T>` 는 "필드 하나가
-//! stale 인지 판단하고 갱신"하는 모델이고, 이 모듈은 "wallet primitive snapshot
-//! 전체를 authoritative source 에서 재작성"하는 모델이다. 공통분모는
-//! [`simulation_state::DataSource`] 이지만, balance/approval/block-height 자체는
-//! 아직 `LiveField` 를 들고 있지 않다. 나중에 완전 통일을 하려면 이 모듈의
-//! hard-coded loop 를 `PrimitiveFetchRequest` 같은 planned request 로 낮춘 뒤
-//! `live::batcher` 와 같은 batch/dispatch 경로를 태우면 된다.
-
 use alloy_primitives::U256;
 
-use simulation_state::{Address, Balance, BlockHeight, ChainId, Time, TokenKey, WalletState};
+use policy_state::{Address, Balance, BlockHeight, ChainId, Time, TokenKey, WalletState};
 
 use crate::error::SyncError;
 use crate::fetchers::decoder::{encode_address, function_selector};
@@ -135,7 +114,6 @@ pub fn plan_primitive_fetches(state: &WalletState) -> PrimitiveFetchPlan {
 }
 
 impl Orchestrator {
-    /// `LiveField` 가 아닌 primitive 필드들을 RPC 로 갱신.
     pub async fn sync_primitives(
         &self,
         state: &mut WalletState,
@@ -337,7 +315,7 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
-    use simulation_state::{
+    use policy_state::{
         Address, BaseCategory, ChainId, DataSource, FiatCurrency, LiveField, OracleProvider,
         PegTarget, Price, TokenHolding, TokenKind, WalletId, WalletState,
     };
@@ -440,7 +418,7 @@ mod tests {
             .or_default()
             .insert(
                 spender,
-                simulation_state::AllowanceSpec::new(U256::from(1), Time::from_unix(0)),
+                policy_state::AllowanceSpec::new(U256::from(1), Time::from_unix(0)),
             );
 
         let plan = plan_primitive_fetches(&state);
@@ -470,7 +448,6 @@ mod tests {
 
     #[tokio::test]
     async fn sync_primitives_no_router_reports_error() {
-        // router 없는 orchestrator → graceful error
         let onchain_router = {
             let toml = r#"
 [chains."eip155:1"]
@@ -483,7 +460,6 @@ priority = 1
             let cfg = crate::RpcConfig::load_str(toml).unwrap();
             std::sync::Arc::new(crate::RpcRouter::from_config(cfg).unwrap())
         };
-        // new() 는 router None → sync_primitives 가 error report
         let orch = Orchestrator::new(crate::fetchers::OnchainViewFetcher::new(onchain_router));
         let mut state =
             WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));

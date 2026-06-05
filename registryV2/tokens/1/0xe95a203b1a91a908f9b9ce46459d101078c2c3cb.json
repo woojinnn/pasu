@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe95a203b1a91a908f9b9ce46459d101078c2c3cb",
+  "symbol": "ankrETH",
+  "decimals": 18,
+  "name": "Ankr Staked ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

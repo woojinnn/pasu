@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc794c6a95f30d0ebf7b3bbe85e8a0a95c9e411c1",
+  "symbol": "hyUSDeUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: hyUSD/eUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8a8434a5952ac2cf4927bbea3ace255c6dd165cd"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xacdf0dba4b9839b96221a8487e9ca660a48212be"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

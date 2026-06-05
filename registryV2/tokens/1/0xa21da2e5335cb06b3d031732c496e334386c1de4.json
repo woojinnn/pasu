@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa21da2e5335cb06b3d031732c496e334386c1de4",
+  "symbol": "ALUSDBNT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: ALUSD/BNT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6b234f354eda8fae082be20dcf790fd886b42340"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbc6da0fe9ad5f3b0d58160288917aa56653660e9"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

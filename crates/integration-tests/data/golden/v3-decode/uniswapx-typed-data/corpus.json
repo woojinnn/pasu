@@ -1,0 +1,335 @@
+{
+  "_comment": "UniswapX EIP-712 signing corpus. These are hand fixtures because signed orders are off-chain Permit2 permitWitnessTransferFrom payloads and do not appear in Etherscan transaction input. Mainnet covers ExclusiveDutchOrder, V2DutchOrder, and V3DutchOrder; PriorityOrder is Base-only per UniswapX deployments.",
+  "transactions": [
+    {
+      "intent": "UniswapX ExclusiveDutchOrder sign (mainnet Permit2 typed-data)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+        "primary_type": "PermitWitnessTransferFrom",
+        "witness_type": "ExclusiveDutchOrder",
+        "domain_name": "Permit2",
+        "message": {
+          "permitted": {
+            "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "amount": "1000000000000000000"
+          },
+          "spender": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+          "nonce": "1",
+          "deadline": "2000000000",
+          "witness": {
+            "info": {
+              "reactor": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4",
+              "swapper": "0x1111111111111111111111111111111111111111",
+              "nonce": "1",
+              "deadline": "2000000000",
+              "additionalValidationContract": "0x0000000000000000000000000000000000000000",
+              "additionalValidationData": "0x"
+            },
+            "decayStartTime": "1999999900",
+            "decayEndTime": "2000000000",
+            "exclusiveFiller": "0x2222222222222222222222222222222222222222",
+            "exclusivityOverrideBps": "0",
+            "inputToken": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "inputStartAmount": "1000000000000000000",
+            "inputEndAmount": "995000000000000000",
+            "outputs": [
+              {
+                "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "startAmount": "3000000000",
+                "endAmount": "2950000000",
+                "recipient": "0x3333333333333333333333333333333333333333"
+              }
+            ]
+          }
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "sign_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "uniswap_x"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.reactor",
+          "op": "hex_eq",
+          "value": "0x6000da47483062a0d734ba3dc7576ce6a0b645c4"
+        },
+        {
+          "path": "$.data.actions[0].body.sell.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.buy.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.order_kind",
+          "op": "equals",
+          "value": "dutch"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x3333333333333333333333333333333333333333"
+        }
+      ]
+    },
+    {
+      "intent": "UniswapX V2DutchOrder sign (mainnet Permit2 typed-data)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+        "primary_type": "PermitWitnessTransferFrom",
+        "witness_type": "V2DutchOrder",
+        "domain_name": "Permit2",
+        "message": {
+          "permitted": {
+            "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "amount": "2000000000000000000"
+          },
+          "spender": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+          "nonce": "2",
+          "deadline": "2000000100",
+          "witness": {
+            "info": {
+              "reactor": "0x00000011f84b9aa48e5f8aa8b9897600006289be",
+              "swapper": "0x1111111111111111111111111111111111111111",
+              "nonce": "2",
+              "deadline": "2000000100",
+              "additionalValidationContract": "0x0000000000000000000000000000000000000000",
+              "additionalValidationData": "0x"
+            },
+            "cosigner": "0x4444444444444444444444444444444444444444",
+            "baseInputToken": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "baseInputStartAmount": "2000000000000000000",
+            "baseInputEndAmount": "1985000000000000000",
+            "baseOutputs": [
+              {
+                "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "startAmount": "6100000000",
+                "endAmount": "6000000000",
+                "recipient": "0x3333333333333333333333333333333333333333"
+              }
+            ]
+          }
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "sign_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.reactor",
+          "op": "hex_eq",
+          "value": "0x00000011f84b9aa48e5f8aa8b9897600006289be"
+        },
+        {
+          "path": "$.data.actions[0].body.sell_amount",
+          "op": "u256_hex_eq",
+          "value": "2000000000000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.buy_min",
+          "op": "u256_hex_eq",
+          "value": "6000000000"
+        },
+        {
+          "path": "$.data.actions[0].body.order_kind",
+          "op": "equals",
+          "value": "dutch"
+        }
+      ]
+    },
+    {
+      "intent": "UniswapX V3DutchOrder sign (mainnet Permit2 typed-data)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 1,
+      "typed_data": {
+        "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+        "primary_type": "PermitWitnessTransferFrom",
+        "witness_type": "V3DutchOrder",
+        "domain_name": "Permit2",
+        "message": {
+          "permitted": {
+            "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "amount": "1500000000000000000"
+          },
+          "spender": "0x0000000015757c461808ea25eb309638b62681cf",
+          "nonce": "3",
+          "deadline": "2000000200",
+          "witness": {
+            "info": {
+              "reactor": "0x0000000015757c461808ea25eb309638b62681cf",
+              "swapper": "0x1111111111111111111111111111111111111111",
+              "nonce": "3",
+              "deadline": "2000000200",
+              "additionalValidationContract": "0x0000000000000000000000000000000000000000",
+              "additionalValidationData": "0x"
+            },
+            "cosigner": "0x4444444444444444444444444444444444444444",
+            "startingBaseFee": "15000000000",
+            "baseInput": {
+              "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+              "startAmount": "1500000000000000000",
+              "curve": {
+                "relativeBlocks": "12",
+                "relativeAmounts": ["0", "-5000000000000000"]
+              },
+              "maxAmount": "1510000000000000000",
+              "adjustmentPerGweiBaseFee": "0"
+            },
+            "baseOutputs": [
+              {
+                "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "startAmount": "4550000000",
+                "curve": {
+                  "relativeBlocks": "12",
+                  "relativeAmounts": ["0", "-10000000"]
+                },
+                "recipient": "0x3333333333333333333333333333333333333333",
+                "minAmount": "4500000000",
+                "adjustmentPerGweiBaseFee": "0"
+              }
+            ]
+          }
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "sign_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.reactor",
+          "op": "hex_eq",
+          "value": "0x0000000015757c461808ea25eb309638b62681cf"
+        },
+        {
+          "path": "$.data.actions[0].body.sell.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.buy.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.buy_min",
+          "op": "u256_hex_eq",
+          "value": "4500000000"
+        },
+        {
+          "path": "$.data.actions[0].body.valid_until",
+          "op": "equals",
+          "value": 2000000200
+        }
+      ]
+    },
+    {
+      "intent": "UniswapX PriorityOrder sign (Base Permit2 typed-data)",
+      "expect": "pass",
+      "expect_domain": "amm",
+      "chain_id": 8453,
+      "typed_data": {
+        "verifying_contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+        "primary_type": "PermitWitnessTransferFrom",
+        "witness_type": "PriorityOrder",
+        "domain_name": "Permit2",
+        "message": {
+          "permitted": {
+            "token": "0x4200000000000000000000000000000000000006",
+            "amount": "100000000000000000"
+          },
+          "spender": "0x000000001ec5656dcdb24d90dfa42742738de729",
+          "nonce": "4",
+          "deadline": "2000000300",
+          "witness": {
+            "info": {
+              "reactor": "0x000000001ec5656dcdb24d90dfa42742738de729",
+              "swapper": "0x1111111111111111111111111111111111111111",
+              "nonce": "4",
+              "deadline": "2000000300",
+              "additionalValidationContract": "0x0000000000000000000000000000000000000000",
+              "additionalValidationData": "0x"
+            },
+            "cosigner": "0x4444444444444444444444444444444444444444",
+            "auctionStartBlock": "30000000",
+            "baselinePriorityFeeWei": "1000000",
+            "input": {
+              "token": "0x4200000000000000000000000000000000000006",
+              "amount": "100000000000000000",
+              "mpsPerPriorityFeeWei": "0"
+            },
+            "outputs": [
+              {
+                "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "amount": "300000000",
+                "mpsPerPriorityFeeWei": "0",
+                "recipient": "0x3333333333333333333333333333333333333333"
+              }
+            ]
+          }
+        }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "sign_intent_order"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.reactor",
+          "op": "hex_eq",
+          "value": "0x000000001ec5656dcdb24d90dfa42742738de729"
+        },
+        {
+          "path": "$.data.actions[0].body.order_kind",
+          "op": "equals",
+          "value": "limit"
+        },
+        {
+          "path": "$.data.actions[0].body.buy_min",
+          "op": "u256_hex_eq",
+          "value": "300000000"
+        }
+      ]
+    }
+  ]
+}

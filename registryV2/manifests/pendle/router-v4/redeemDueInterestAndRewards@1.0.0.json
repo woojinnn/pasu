@@ -1,0 +1,74 @@
+{
+  "type": "adapter_action",
+  "id": "pendle/router-v4/redeemDueInterestAndRewards@1.0.0",
+  "publisher": "pendle",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xf7e375e8",
+    "chain_to_addresses": {
+      "1": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ],
+      "8453": [
+        "0x888888888889758F76e7103c6CbF23ABbF58F946"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "redeemDueInterestAndRewards",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "address[]",
+          "name": "sys",
+          "type": "address[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "yts",
+          "type": "address[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "markets",
+          "type": "address[]"
+        }
+      ],
+      "name": "redeemDueInterestAndRewards",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "yield",
+      "yield": {
+        "action": "claim_yield",
+        "claim_yield": {
+          "venue": {
+            "name": "pendle_v2",
+            "chain": "$chain"
+          },
+          "user": "$args.user",
+          "sys": "$args.sys",
+          "yts": "$args.yts",
+          "markets": "$args.markets"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

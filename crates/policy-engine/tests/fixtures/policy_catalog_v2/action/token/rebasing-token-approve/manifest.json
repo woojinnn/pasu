@@ -1,0 +1,13 @@
+{
+  "id": "rebasing-token-approve",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+  "policy_rpc": [{
+    "id": "token-meta",
+    "method": "token.metadata",
+    "params": { "chain_id": "$.root.chain_id", "asset": "$.action.token" },
+    "outputs": [{ "kind": "context", "field": "isRebasing", "type": "Bool", "from": "$.result.isRebasing", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "isRebasing": "Bool" } }
+}

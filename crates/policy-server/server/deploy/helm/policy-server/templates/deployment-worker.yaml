@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "policy-server.fullname" . }}-worker
+  labels:
+    {{- include "policy-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      {{- include "policy-server.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "policy-server.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ include "policy-server.serviceAccountName" . }}
+      containers:
+        - name: worker
+          image: {{ include "policy-server.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["scopeball-sync-worker"]
+          env:
+            - name: SCOPEBALL_SYNC_CONFIG
+              value: /app/scopeball-sync.toml
+            - name: REQUIRE_SYNC_CONFIG
+              value: {{ .Values.runtime.requireSyncConfig | quote }}
+            - name: RUN_MIGRATIONS_ON_STARTUP
+              value: {{ .Values.runtime.runMigrationsOnStartup | quote }}
+            - name: SYNC_WORKER_TICK_SECS
+              value: {{ .Values.worker.tickSeconds | quote }}
+            - name: SYNC_LOCK_TTL_SECS
+              value: {{ .Values.worker.lockTtlSeconds | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.runtime.rustLog | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: REDIS_URL
+                  optional: true
+            - name: ETHERSCAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: ETHERSCAN_API_KEY
+                  optional: true
+            - name: COINGECKO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: COINGECKO_API_KEY
+                  optional: true
+          volumeMounts:
+            - name: sync-config
+              mountPath: /app/scopeball-sync.toml
+              subPath: scopeball-sync.toml
+              readOnly: true
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+      volumes:
+        - name: sync-config
+          configMap:
+            name: {{ include "policy-server.fullname" . }}-sync

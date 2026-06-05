@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb6919ef2ee4afc163bc954c5678e2bb570c2d103",
+  "symbol": "UUSD",
+  "decimals": 18,
+  "name": "Ubiquity Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

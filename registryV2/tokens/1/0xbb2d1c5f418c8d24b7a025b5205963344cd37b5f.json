@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbb2d1c5f418c8d24b7a025b5205963344cd37b5f",
+  "symbol": "ybBTCBONDS",
+  "decimals": 18,
+  "name": "crvBONDS/yb-WBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xbb2d1c5f418c8d24b7a025b5205963344cd37b5f"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9a2747cae03f37ec4266b460ebb5ee2ce7d1575c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xfbf3c16676055776ab9b286492d8f13e30e2e763"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

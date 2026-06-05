@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x660d8f561527cbf7376b413c8f93b8ce2a15314c",
+  "symbol": "ALLBTC-gauge",
+  "decimals": 18,
+  "name": "Curve.fi ALLBTC Gauge Deposit",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

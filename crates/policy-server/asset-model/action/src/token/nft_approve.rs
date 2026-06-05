@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::Address;
-use simulation_state::token::TokenKey;
+use policy_state::primitives::Address;
+use policy_state::token::TokenKey;
 
 /// `ERC721`/`ERC1155` single-token `approve` — grants `spender` rights to a single NFT.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

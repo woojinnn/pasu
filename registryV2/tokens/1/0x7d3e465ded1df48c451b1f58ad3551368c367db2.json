@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7d3e465ded1df48c451b1f58ad3551368c367db2",
+  "symbol": "CSP",
+  "decimals": 18,
+  "name": "CreditScoreProtocol",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

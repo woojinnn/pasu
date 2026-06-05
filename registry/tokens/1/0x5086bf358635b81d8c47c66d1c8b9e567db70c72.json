@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x5086bf358635b81d8c47c66d1c8b9e567db70c72",
-  "symbol": "reUSD",
-  "decimals": 18,
-  "name": "Re Protocol Deposit Token"
-}

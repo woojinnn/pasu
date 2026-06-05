@@ -1,7 +1,6 @@
 //! `WithdrawAction` reducer — withdraw a previously supplied asset.
 //!
 //! Flow (PDF §6.2):
-//!
 //! 1. Validate `live_inputs.reserve_state` — reject when paused. (Frozen
 //!    reserves still permit withdrawals, matching Aave V3 governance
 //!    convention.)
@@ -19,9 +18,9 @@
 //! as a follow-up pass; surfacing it inline would require building the
 //! per-token price tables which `WithdrawLiveInputs` does not yet carry.
 
-use simulation_state::position::PositionKind;
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::WithdrawAction;
 use crate::apply::Reducer;
@@ -103,18 +102,18 @@ mod tests {
     use crate::action::lending::{
         LendingVenue, ReserveState, UserLendingState, WithdrawLiveInputs,
     };
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{LendingAccount, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{LendingAccount, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, Time, VenueRef,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
-    use simulation_state::PositionChange;
+    use policy_state::wallet::WalletId;
+    use policy_state::PositionChange;
     use std::str::FromStr;
 
     fn now() -> Time {

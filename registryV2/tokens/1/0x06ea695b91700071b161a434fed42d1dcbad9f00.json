@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x06ea695b91700071b161a434fed42d1dcbad9f00",
+  "symbol": "hemiBTC",
+  "decimals": 8,
+  "name": "Hemi Bitcoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

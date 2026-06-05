@@ -1,0 +1,81 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/repay-eth@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xbcc3c255",
+    "chain_to_addresses": {
+      "1":     ["0xd01607c3c5ecaba394d8be377a08590149325722"],
+      "10":    ["0x5f2508cae9923b02316254026cd43d7902866725"],
+      "8453":  ["0xa0d9c1e9e48ca30c8d8c3b5d69ff5dc1f6dffc24"],
+      "42161": ["0x5283beced7adf6d003225c13896e536f2d4264ff"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "repayETH",
+    "abi": {
+      "name": "repayETH",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "pool",       "type": "address" },
+        { "name": "amount",     "type": "uint256" },
+        { "name": "onBehalfOf", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "repay",
+        "repay": {
+          "venue": {
+            "name":      "aave_v3",
+            "chain":     "$chain",
+            "pool":      "$resolved.pool",
+            "market_id": null
+          },
+          "asset":        { "key": { "standard": "erc20", "chain": "$chain", "address": "$resolved.weth" } },
+          "amount":       "$args.amount",
+          "rate_mode":    "variable",
+          "on_behalf_of": "$args.onBehalfOf",
+          "use_a_tokens": false
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$resolved.pool",
+          "function":   "getReserveData(address)",
+          "decoder_id": "aave_v3_reserve_data"
+        },
+        "ttl_s": 30
+      },
+      "current_debt": {
+        "source": {
+          "kind":    "derived_from",
+          "inputs":  [],
+          "calc_id": "aave_v3_current_debt"
+        },
+        "ttl_s": 12
+      },
+      "user_state_before": {
+        "source": {
+          "kind":       "onchain_view",
+          "chain":      "$chain",
+          "contract":   "$resolved.pool",
+          "function":   "getUserAccountData(address)",
+          "decoder_id": "aave_v3_user_account_data"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

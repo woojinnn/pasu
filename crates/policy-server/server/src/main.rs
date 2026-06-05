@@ -1,35 +1,38 @@
-//! `simulation-server` binary entry point.
+//! `policy-server` binary entry point.
 //!
 //! Starts the axum HTTP service: initializes tracing, connects to PostgreSQL,
 //! prepares the per-user store router, wires the sync orchestrator
 //! (RPC/oracle/venue fetchers from `scopeball-sync.toml`),
-//! and serves on `SIMULATION_SERVER_ADDR` (default `127.0.0.1:8788`).
+//! and serves on `POLICY_SERVER_ADDR` (default `127.0.0.1:8788`).
 //!
 //! Environment variables:
-//! - `SIMULATION_SERVER_ADDR` — bind address (default `127.0.0.1:8788`).
+//! - `POLICY_SERVER_ADDR` — bind address (default `127.0.0.1:8788`).
 //! - `DATABASE_URL` — PostgreSQL connection URL (required).
 //! - `SCOPEBALL_SYNC_CONFIG` — path to the sync TOML (default
 //!   `./scopeball-sync.toml`). Required for any RPC/price fetching.
 //! - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`,
 //!   `JWT_SECRET`, `DASHBOARD_URL` — auth config (see `.env.example`).
 //!
-//! The background `Scheduler` from `simulation-sync` is not wired here yet —
-//! sync runs on-demand via `POST /wallets/:addr/sync`. A multi-user-aware
-//! periodic ticker that walks every user's wallets is follow-up work.
+//! Periodic sync is handled by the standalone `sync_worker` binary. The API
+//! process also supports on-demand sync via `POST /wallets/:addr/sync`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use tracing_subscriber::EnvFilter;
 
-use simulation_server::app::{build_router_with_config, AppState};
-use simulation_server::config::ServerConfig;
-use simulation_server::events::{EventBus, LocalEventPublisher};
-use simulation_server::storage::StorageBackend;
-use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
+use policy_server::app::{build_router_with_config, AppState};
+use policy_server::config::ServerConfig;
+use policy_server::coordination::build_coordinator;
+use policy_server::events::{
+    spawn_redis_event_forwarder, EventBus, EventPublisher, LocalEventPublisher, RedisEventPublisher,
+};
+use policy_server::storage::StorageBackend;
+use policy_sync::{CoinGeckoClient, EtherscanClient, Orchestrator, SyncConfig};
 
 /// Default sync config path. Lives next to the workspace root so the dev
-/// loop is one command (`cargo run -p simulation-server`).
+/// loop is one command (`cargo run -p policy-server`).
 const DEFAULT_SYNC_CONFIG: &str = "./scopeball-sync.toml";
 
 #[tokio::main]
@@ -41,13 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,simulation_server=debug")),
+                .unwrap_or_else(|_| EnvFilter::new("info,policy_server=debug")),
         )
         .init();
 
     let config = ServerConfig::from_env();
     tracing::info!("opening PostgreSQL policy-server storage");
     let storage = StorageBackend::open(&config).await?;
+    let coordinator = build_coordinator(&config).await?;
 
     // Sync orchestrator. Load the TOML config; if the file is missing we
     // boot with an empty config (no RPC providers) — endpoints that
@@ -88,16 +92,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("CoinGecko token metadata client ready");
 
     let event_bus = EventBus::new();
+    let publisher: Arc<dyn EventPublisher> = match config.redis_url.as_deref() {
+        Some(url) if !url.trim().is_empty() => {
+            let channel = config.redis_events_channel.clone();
+            let _forwarder =
+                spawn_redis_event_forwarder(url, channel.clone(), event_bus.clone()).await?;
+            tracing::info!(channel, "Redis event fanout enabled");
+            Arc::new(RedisEventPublisher::connect(url, config.redis_events_channel.clone()).await?)
+        }
+        _ => Arc::new(LocalEventPublisher::new(event_bus.clone())),
+    };
     let state = AppState {
         multi_user: storage.multi_user(),
         global_db: storage.global_db(),
         event_bus: event_bus.clone(),
-        publisher: Arc::new(LocalEventPublisher::new(event_bus)),
+        publisher,
         orchestrator,
         etherscan,
         coingecko,
+        coordinator,
+        sync_lock_ttl: Duration::from_secs(config.sync_lock_ttl_secs),
     };
-    let router = build_router_with_config(state, config.clone());
+    let router = build_router_with_config(state, &config);
 
     let listener = tokio::net::TcpListener::bind(&config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "policy-server listening");

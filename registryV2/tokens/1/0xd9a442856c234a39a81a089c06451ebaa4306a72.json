@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd9a442856c234a39a81a089c06451ebaa4306a72",
+  "symbol": "pufETH",
+  "decimals": 18,
+  "name": "pufETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

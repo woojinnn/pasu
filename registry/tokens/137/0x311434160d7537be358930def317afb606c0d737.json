@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x311434160d7537be358930def317afb606c0d737",
-  "symbol": "NAKA",
-  "decimals": 18,
-  "name": "Nakamoto.Games"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x965f527d9159dce6288a2219db51fc6eef120dd1",
-  "symbol": "BSW",
-  "decimals": 18,
-  "name": "Biswap"
-}

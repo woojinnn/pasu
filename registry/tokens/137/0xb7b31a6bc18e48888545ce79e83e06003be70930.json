@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xb7b31a6bc18e48888545ce79e83e06003be70930",
-  "symbol": "APE",
-  "decimals": 18,
-  "name": "ApeCoin (PoS)"
-}

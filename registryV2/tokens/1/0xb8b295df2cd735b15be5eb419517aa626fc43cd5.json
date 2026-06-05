@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb8b295df2cd735b15be5eb419517aa626fc43cd5",
+  "symbol": "stLINK",
+  "decimals": 18,
+  "name": "Staked LINK",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

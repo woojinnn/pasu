@@ -1,0 +1,13 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+  "symbol": "COMP",
+  "decimals": 18,
+  "name": "Compound",
+  "source": "https://docs.compound.finance/",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "governance", "protocol": { "name": "compound" } }
+  }
+}

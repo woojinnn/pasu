@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x046eee2cc3188071c02bfc1745a6b17c656e3f3d",
-  "symbol": "RLB",
-  "decimals": 18,
-  "name": "Rollbit Coin"
-}

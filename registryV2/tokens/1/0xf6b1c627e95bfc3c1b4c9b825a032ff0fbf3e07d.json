@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf6b1c627e95bfc3c1b4c9b825a032ff0fbf3e07d",
+  "symbol": "sJPY",
+  "decimals": 18,
+  "name": "Synth sJPY",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

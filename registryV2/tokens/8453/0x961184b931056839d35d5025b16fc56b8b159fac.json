@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x961184b931056839d35d5025b16fc56b8b159fac",
+  "symbol": "coSATS",
+  "decimals": 18,
+  "name": "Cokelimit SATS",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

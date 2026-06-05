@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xbbad0ec61b8b095f2c871c9f4677b4cef96df7a8",
+  "symbol": "XLT",
+  "decimals": 0,
+  "name": "Launchpad Texas 2040",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

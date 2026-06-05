@@ -1,10 +1,7 @@
 //! `LiquidateAction` reducer — liquidate an unhealthy borrower position.
-//!
 //! Liquidations are normally initiated by third-party keepers (the wallet
 //! owner is the **liquidator**, not the victim). Modelled for completeness.
-//!
 //! Flow (PDF §6.5):
-//!
 //! 1. Validate the victim's `health_factor < 1` — only unhealthy positions
 //!    can be liquidated. Uses the supplied `victim_state.health_factor`.
 //! 2. Compute the maximum debt the liquidator can cover (Aave V3: up to
@@ -18,11 +15,10 @@
 //!    repay victim's loan).
 //! 5. `balance::credit` the seized collateral asset to the liquidator.
 //!    When `receive_a_token = true` the credit would target the aToken key
-//!    instead — under Phase 2 1:1 we record the underlying credit and tag
 //!    the option in the diagnostic message.
 
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::LiquidateAction;
 use crate::apply::Reducer;
@@ -52,7 +48,7 @@ impl Reducer for LiquidateAction {
             10,
         )
         .ok();
-        let _ = total_debt_usd; // Phase 2: cap reasoning surfaced via per-call check below.
+        let _ = total_debt_usd;
 
         // Compute collateral seized: in USD terms.
         // collat_usd_equivalent = debt_to_cover * (1 + bonus/10000)
@@ -94,9 +90,7 @@ impl Reducer for LiquidateAction {
 }
 
 /// Parse a `Decimal` (String newtype) into `rust_decimal::Decimal`.
-fn parse_decimal(
-    d: &simulation_state::primitives::Decimal,
-) -> ReducerResult<rust_decimal::Decimal> {
+fn parse_decimal(d: &policy_state::primitives::Decimal) -> ReducerResult<rust_decimal::Decimal> {
     use std::str::FromStr;
     rust_decimal::Decimal::from_str(d.as_str())
         .map_err(|e| ReducerError::Invariant(format!("liquidate: HF parse: {e}")))
@@ -105,8 +99,7 @@ fn parse_decimal(
 /// Parse a price `Decimal` into `U256` units (1 USD = `1_000_000` micro-USD,
 /// 6 decimals). Best-effort: simple values like `"1"` / `"3000"` work
 /// exactly; fractional values are truncated to integer USD before
-/// scaling. Sufficient for the Phase 2 approximation.
-fn parse_price_to_u256(price: &simulation_state::primitives::Decimal) -> ReducerResult<U256> {
+fn parse_price_to_u256(price: &policy_state::primitives::Decimal) -> ReducerResult<U256> {
     use std::str::FromStr;
     let parsed = rust_decimal::Decimal::from_str(price.as_str())
         .map_err(|e| ReducerError::Invariant(format!("liquidate: price parse: {e}")))?;
@@ -127,14 +120,14 @@ fn parse_price_to_u256(price: &simulation_state::primitives::Decimal) -> Reducer
 mod tests {
     use super::*;
     use crate::action::lending::{LendingVenue, LiquidateLiveInputs, UserLendingState};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Decimal, Price, Time, U256};
-    use simulation_state::token::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Decimal, Price, Time, U256};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

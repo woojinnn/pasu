@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa27ec0006e59f245217ff08cd52a7e8b169e62d2",
+  "symbol": "AZTEC",
+  "decimals": 18,
+  "name": "AZTEC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

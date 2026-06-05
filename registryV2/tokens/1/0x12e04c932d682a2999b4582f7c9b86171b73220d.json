@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x12e04c932d682a2999b4582f7c9b86171b73220d",
+  "symbol": "xPRISM",
+  "decimals": 18,
+  "name": "Staked Portfolio of Risk-adjusted Investment Strategy Mix",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf958d21c1a59ba6c477636231067af5c265ecd72",
+  "symbol": "V",
+  "decimals": 18,
+  "name": "Vain",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,42 @@
+// LiquidStaking::RequestWithdrawal — enter the withdrawal queue: burn the
+// staking token and mint withdrawal-request NFTs to `owner`. Models Lido
+// `requestWithdrawals` / `requestWithdrawalsWstETH` (+ `…WithPermit` variants,
+// whose embedded EIP-2612 allowance grant to the queue is surfaced as
+// `embedded_permit`).
+//
+// Rust source: `crates/policy-server/asset-model/action/src/liquid_staking/request_withdrawal.rs`
+// (`RequestWithdrawalAction`, `EmbeddedPermit`). No LiveInputs.
+
+namespace LiquidStaking {
+  // EIP-2612 permit embedded in a `…WithPermit` request — the allowance the user
+  // grants the WithdrawalQueue (implicit spender) over their stETH/wstETH so the
+  // queue can pull the tokens in the same tx.
+  type EmbeddedPermit = {
+    // Allowance granted to the queue (EIP-2612 `value`), U256 hex.
+    value: String,
+    // Permit expiry (EIP-2612 `deadline`, unix seconds), U256 hex.
+    deadline: String,
+  };
+
+  type RequestWithdrawalContext = {
+    meta: Core::ActionMeta,
+    venue: StakingVenue,
+    // Token being queued for withdrawal (stETH or wstETH).
+    token: Core::TokenRef,
+    // Per-request amounts (one withdrawal NFT per element), each U256 hex.
+    amounts: Set<String>,
+    // Owner of the minted withdrawal-request NFTs.
+    owner: String,
+    // Embedded EIP-2612 allowance grant — present only on the `…WithPermit` variants.
+    embedded_permit?: EmbeddedPermit,
+    custom?: RequestWithdrawalCustomContext,
+  };
+
+  type RequestWithdrawalCustomContext = {};
+
+  action "RequestWithdrawal" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RequestWithdrawalContext,
+  };
+}

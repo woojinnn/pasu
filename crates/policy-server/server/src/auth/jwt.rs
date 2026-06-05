@@ -1,10 +1,8 @@
 //! Stateless JWT issuance and verification (HS256).
-//!
 //! Tokens carry `(sub = user_id, email, iat, exp)`. The signing key is read
 //! from the `JWT_SECRET` env var on first use and cached for the process
 //! lifetime; rotating the secret requires a restart and invalidates every
 //! outstanding token (intentional — there is no revocation list).
-//!
 //! Defaults: access tokens live 1 hour, refresh tokens live 30 days. Both
 //! ride the same secret + algorithm; only the `typ` claim differs so an
 //! access token can't be replayed as a refresh.

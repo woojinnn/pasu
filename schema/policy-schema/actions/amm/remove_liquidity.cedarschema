@@ -1,8 +1,12 @@
-// Amm::RemoveLiquidity — withdraw liquidity from an AMM pool. Three variants
+// Amm::RemoveLiquidity — withdraw liquidity from an AMM pool. Five variants
 // covered by the `params.kind` discriminator:
 //
 //   - "pooled_burn"            Uniswap V2 / Curve / Balancer-style burn of an
 //                              LP token, redeems underlying tokens.
+//   - "pooled_burn_one_coin"   Curve StableSwap-NG remove_liquidity_one_coin —
+//                              burn LP for a single underlying coin.
+//   - "pooled_burn_imbalance"  Curve StableSwap-NG remove_liquidity_imbalance —
+//                              withdraw exact per-coin amounts, capped LP burn.
 //   - "concentrated_decrease"  Uniswap V3 — decrease liquidity on an existing
 //                              position NFT.
 //   - "concentrated_burn"      Uniswap V3 — burn an empty position NFT (caller
@@ -21,6 +25,8 @@ namespace Amm {
   // presence per variant:
   //
   //   - "pooled_burn":           lpToken, lpAmount, minOut, recipient
+  //   - "pooled_burn_one_coin":  lpToken, lpAmount, tokenOut, minOutOne, recipient
+  //   - "pooled_burn_imbalance": lpToken, maxLpBurn, amountsOut, recipient
   //   - "concentrated_decrease": nftKey, liquidityBurn, amountMin
   //   - "concentrated_burn":     nftKey
   // -------------------------------------------------------------------------
@@ -44,6 +50,15 @@ namespace Amm {
     // Minimum acceptable amounts (slippage floor). U256 hex.
     // ConcentratedDecrease.
     amountMin?: { a: String, b: String },
+    // The single underlying coin withdrawn. PooledBurnOneCoin.
+    tokenOut?: Core::TokenRef,
+    // Minimum acceptable output of the single coin (U256 hex). PooledBurnOneCoin.
+    // Distinct from `minOut` (a Set) — this is a scalar floor.
+    minOutOne?: String,
+    // Max LP the user will burn (U256 hex). PooledBurnImbalance.
+    maxLpBurn?: String,
+    // Exact per-coin amounts out (set-like; order lost). PooledBurnImbalance.
+    amountsOut?: Set<{ token: Core::TokenRef, amount: String }>,
   };
 
   type RemoveLiquidityContext = {

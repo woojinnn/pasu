@@ -1,0 +1,23 @@
+// Governance::Delegate — delegate voting/proposition power.
+
+namespace Governance {
+  type DelegateContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    token: Core::TokenRef,
+    delegatee: String,
+    delegationKind: String,
+    rawDelegationType?: Long,
+    currentDelegate?: String,
+    governancePower: String,
+    custom?: DelegateCustomContext,
+  };
+
+  type DelegateCustomContext = {};
+
+  action "Delegate" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: DelegateContext,
+  };
+}

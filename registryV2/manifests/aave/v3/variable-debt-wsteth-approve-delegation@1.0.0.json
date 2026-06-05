@@ -1,0 +1,61 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/variableDebtwstETH/approveDelegation@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3 mainnet variableDebtwstETH approveDelegation(delegatee,amount). Source: Sourcify verified VariableDebtTokenInstance implementation and registryV2 token metadata sourced from bgd-labs/aave-address-book AaveV3Ethereum.sol.",
+  "match": {
+    "selector": "0xc04a8a10",
+    "chain_to_addresses": {
+      "1": [
+        "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "approveDelegation",
+    "abi": {
+      "name": "approveDelegation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "delegatee",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "delegate_borrow",
+        "delegate_borrow": {
+          "venue": {
+            "name": "aave_v3",
+            "chain": "$chain",
+            "pool": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "market_id": null
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+            }
+          },
+          "delegatee": "$args.delegatee",
+          "amount": "$args.amount",
+          "rate_mode": "variable"
+        }
+      }
+    }
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x75231f58b43240c9718dd58b4967c5114342a86c",
-  "symbol": "OKB",
-  "decimals": 18,
-  "name": "OKB"
-}

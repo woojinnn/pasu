@@ -25,7 +25,7 @@
 
 use serde_json::Value;
 
-use simulation_state::primitives::{Address, ChainId, U256};
+use policy_state::primitives::{Address, ChainId, U256};
 
 use super::FactError;
 

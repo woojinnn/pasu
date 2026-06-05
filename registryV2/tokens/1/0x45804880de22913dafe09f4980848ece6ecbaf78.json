@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x45804880de22913dafe09f4980848ece6ecbaf78",
+  "symbol": "PAXG",
+  "decimals": 18,
+  "name": "Paxos Gold",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

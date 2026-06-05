@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd0e24cb3e766581952dbf258b78e89c63a37f5fb",
+  "symbol": "tclevCVX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: TCLever test",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd0e24cb3e766581952dbf258b78e89c63a37f5fb"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1ee4de3cd1505ddb2e60c20651a4ab7ffabdc8f6"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x246be97fda42375c39e21377ad80d8290afdb994"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

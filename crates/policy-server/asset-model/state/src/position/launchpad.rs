@@ -1,5 +1,4 @@
-//! `LaunchpadAllocation` — unified representation of a launchpad
-//! subscription plus vesting (e.g. Binance Launchpad, DAO Maker, Buidlpad).
+//! `LaunchpadAllocation` combines subscription and vesting state.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -8,27 +7,26 @@ use super::vesting::VestSchedule;
 use crate::primitives::{ProtocolRef, U256};
 use crate::token::TokenRef;
 
+/// Subscription and vesting state for a launchpad or IDO allocation.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
-/// A token allocation obtained through a launchpad sale, tracking what was
-/// paid in, what was allocated out, and the vesting/claim progress.
 pub struct LaunchpadAllocation {
-    /// Launchpad platform that hosted the sale.
+    /// Launchpad protocol that hosted this allocation.
     pub platform: ProtocolRef,
-    /// Identifier of the specific sale on the platform.
+    /// Platform-local sale identifier.
     pub sale_id: String,
-    /// Assets spent to subscribe to the sale (e.g. `(USDC, 1000)`, `(BNB, 5)`).
+    /// Assets paid into the allocation.
     #[tsify(type = "Array<[TokenRef, string]>")]
     pub paid: Vec<(TokenRef, U256)>,
-    /// Token and total amount allocated to be received from the sale.
+    /// Asset allocated to the user.
     #[tsify(type = "[TokenRef, string]")]
     pub allocated: (TokenRef, U256),
-    /// Vesting schedule governing how the allocated token unlocks over time.
+    /// Vesting schedule for this allocation.
     pub vest: VestSchedule,
-    /// Amount of the allocated token already claimed (raw on-chain units).
+    /// Cumulative claimed amount.
     #[tsify(type = "string")]
     pub claimed: U256,
-    /// Amount currently unlocked and available to claim (raw on-chain units).
+    /// Amount currently claimable.
     #[tsify(type = "string")]
     pub claimable_now: U256,
 }

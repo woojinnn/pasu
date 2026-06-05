@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x646a737b9b6024e49f5908762b3ff73e65b5160c",
+  "symbol": "scrvUSD",
+  "decimals": 18,
+  "name": "Savings crvUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x091d80c13e9ea84e5863161150f1d95cac12b01b",
+  "symbol": "BTCSPANK-gauge",
+  "decimals": 18,
+  "name": "Curve.fi BTCSPANK Gauge Deposit",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

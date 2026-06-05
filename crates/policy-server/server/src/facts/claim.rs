@@ -26,8 +26,8 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::{Address, ChainId, U256};
-use simulation_state::token::TokenKey;
+use policy_state::primitives::{Address, ChainId, U256};
+use policy_state::token::TokenKey;
 
 use super::params::{param_action, param_str};
 use super::FactCtx;
@@ -165,7 +165,7 @@ fn source_held_state(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> 
         ctx.state.positions.iter().any(|p| {
             matches!(
                 &p.kind,
-                simulation_state::position::PositionKind::AirdropClaim(a)
+                policy_state::position::PositionKind::AirdropClaim(a)
                     if a.source.name == name
             )
         })
@@ -273,13 +273,13 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::position::{AirdropClaim, ClaimStatus, Position, PositionKind};
-    use simulation_state::primitives::{ProtocolRef, Time};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{BaseCategory, TokenKind};
-    use simulation_state::token::TokenRef;
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::position::{AirdropClaim, ClaimStatus, Position, PositionKind};
+    use policy_state::primitives::{ProtocolRef, Time};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{BaseCategory, TokenKind};
+    use policy_state::token::TokenRef;
+    use policy_state::{WalletId, WalletState};
 
     const CLAIM_TOKEN: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
     const OWNER: &str = "0x000000000000000000000000000000000000a01c";

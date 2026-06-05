@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xac11e93d1e7bc8c2b5d0b7c728869d9f302bc70c",
+  "symbol": "xRDCTD",
+  "decimals": 18,
+  "name": "Staked RDCTD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

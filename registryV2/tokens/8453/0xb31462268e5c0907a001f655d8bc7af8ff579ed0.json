@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb31462268e5c0907a001f655d8bc7af8ff579ed0",
+  "symbol": "XET-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: Risky Ethereum",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xc3d776ccf70478eb27a60ed16f6b438abd91f3e5"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xcf3d55c10db69f28fd1a75bd73f3d8a2d9c595ad"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

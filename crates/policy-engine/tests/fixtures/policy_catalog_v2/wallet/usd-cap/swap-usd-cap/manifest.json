@@ -1,0 +1,17 @@
+{
+  "id": "swap-usd-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "swap-in-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.inputToken.asset",
+      "amount": "$.action.inputToken.amount.value"
+    },
+    "outputs": [{ "kind": "context", "field": "swapUsd", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "swapUsd": "decimal" } }
+}

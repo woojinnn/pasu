@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2b95a1dcc3d405535f9ed33c219ab38e8d7e0884",
+  "symbol": "aCRV",
+  "decimals": 18,
+  "name": "Aladdin cvxCRV",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5ca0313d44551e32e0d7a298ec024321c4bc59b4",
+  "symbol": "bLUSDLUSD3-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: bLUSD_LUSD3CRV",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x74ed5d42203806c8cdcf2f04ca5f60dc777b901c"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb9d7dddca9a4ac480991865efef82e01273f79c3"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xed279fdd11ca84beef15af5d39bb4d4bee23f0ca"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

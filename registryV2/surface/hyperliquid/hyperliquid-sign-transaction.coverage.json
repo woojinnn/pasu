@@ -1,0 +1,58 @@
+{
+  "contract": "HyperliquidSignTransaction (EIP-712 user-signed L1 actions, verifyingContract=0x0)",
+  "chainId": 42161,
+  "address": "0x0000000000000000000000000000000000000000",
+  "snapshot": "hyperliquid-sign-transaction.abi.json",
+  "note": "HyperLiquid Mode B (UserSigned) EIP-712 typed-data surface. domain.name=HyperliquidSignTransaction, verifyingContract=0x0 (sentinel \u2014 there is NO on-chain contract; the signature authorizes an off-chain L1 action). chainId is the cosmetic signatureChainId (mainnet routing on 42161; testnet 421614 manifests exist but are NOT enforced here = representative chain). NO abi.json (no contract ABI for an off-chain sentinel) \u2014 functions is empty; the surface is the 12 signed_structs. All 12 HyperliquidTransaction:* primaryTypes are covered (6 structured hl_* + 2 permission + 4 HL-attributed hl_unknown). Decode field-pinned by the typed-data corpus (v3-harness corpus --filter hyperliquid --require-expect-body).",
+  "functions": {},
+  "signed_structs": {
+    "HyperliquidTransaction:UsdSend": {
+      "decision": "cover",
+      "reason": "structured hyperliquid_core::hl_usd_send (decimal-string amount + address map losslessly from the EIP-712 message)."
+    },
+    "HyperliquidTransaction:Withdraw": {
+      "decision": "cover",
+      "reason": "structured hyperliquid_core::hl_withdraw (decimal-string amount + address map losslessly from the EIP-712 message)."
+    },
+    "HyperliquidTransaction:SpotSend": {
+      "decision": "cover",
+      "reason": "structured hyperliquid_core::hl_spot_send (decimal-string amount + address map losslessly from the EIP-712 message)."
+    },
+    "HyperliquidTransaction:UsdClassTransfer": {
+      "decision": "cover",
+      "reason": "structured hyperliquid_core::hl_usd_class_transfer (decimal-string amount + address map losslessly from the EIP-712 message)."
+    },
+    "HyperliquidTransaction:SendAsset": {
+      "decision": "cover",
+      "reason": "structured hyperliquid_core::hl_send_asset (decimal-string amount + address map losslessly from the EIP-712 message)."
+    },
+    "HyperliquidTransaction:TokenDelegate": {
+      "decision": "cover",
+      "reason": "structured hyperliquid_core::hl_token_delegate (decimal-string amount + address map losslessly from the EIP-712 message)."
+    },
+    "HyperliquidTransaction:ApproveAgent": {
+      "decision": "cover",
+      "reason": "permission::protocol_authorization (agent-wallet authorization; richer cross-protocol permission model)."
+    },
+    "HyperliquidTransaction:ApproveBuilderFee": {
+      "decision": "cover",
+      "reason": "permission::protocol_authorization (builder-fee authorization)."
+    },
+    "HyperliquidTransaction:ConvertToMultiSigUser": {
+      "decision": "cover",
+      "reason": "hyperliquid_core::hl_unknown{action_type:convertToMultiSigUser} \u2014 HL-attributed (opaque signers field; HIGH-risk account-authority change gateable by name)."
+    },
+    "HyperliquidTransaction:SendMultiSig": {
+      "decision": "cover",
+      "reason": "hyperliquid_core::hl_unknown{action_type:sendMultiSig} \u2014 inner action is opaque (only its hash is signed)."
+    },
+    "HyperliquidTransaction:UserDexAbstraction": {
+      "decision": "cover",
+      "reason": "hyperliquid_core::hl_unknown{action_type:userDexAbstraction} \u2014 admin config, no fund movement."
+    },
+    "HyperliquidTransaction:UserSetAbstraction": {
+      "decision": "cover",
+      "reason": "hyperliquid_core::hl_unknown{action_type:userSetAbstraction} \u2014 admin config, no fund movement."
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "type": "adapter_action",
+  "id": "aave/aave-token/meta-delegate@1.0.0",
+  "publisher": "aave.eth",
+  "note": "AAVE off-chain EIP-712 Delegate (consumed on-chain by metaDelegate). Delegate(address delegator,address delegatee,uint256 nonce,uint256 deadline). DELEGATE_TYPEHASH 0xd46e8b93.. on-chain-verified; domain name 'Aave Token' (name() on-chain-verified). Routes on verifying_contract + primary_type Delegate. Delegates BOTH powers. This is the off-chain phishing surface (sign a Delegate blob -> attacker gets voting power).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": ["0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"]
+    },
+    "typed_data": {
+      "domain_name": "Aave Token",
+      "verifying_contract": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+      "primary_type": "Delegate",
+      "types": {
+        "Delegate": [
+          { "name": "delegator", "type": "address" },
+          { "name": "delegatee", "type": "address" },
+          { "name": "nonce", "type": "uint256" },
+          { "name": "deadline", "type": "uint256" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "Delegate",
+    "abi": {
+      "name": "Delegate",
+      "type": "function",
+      "inputs": [
+        { "name": "delegator", "type": "address" },
+        { "name": "delegatee", "type": "address" },
+        { "name": "nonce", "type": "uint256" },
+        { "name": "deadline", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "delegate",
+        "delegate": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$to" } },
+          "delegatee": "$args.delegatee",
+          "power_type": "voting_and_proposition"
+        }
+      }
+    },
+    "live_inputs": {
+      "current_delegate": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_token_current_delegate" }, "ttl_s": 60 },
+      "voting_power": { "source": { "kind": "derived_from", "inputs": [], "calc_id": "aave_token_voting_power" }, "ttl_s": 60 }
+    }
+  },
+  "requires": { "imperative": [], "adapter_capabilities": ["token_metadata"], "host_capabilities": [], "extension": ">=0.1.0" }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0x9995cc8f20db5896943afc8ee0ba463259c931ed",
-  "symbol": "ETHIX",
-  "decimals": 18,
-  "name": "Ethix"
-}

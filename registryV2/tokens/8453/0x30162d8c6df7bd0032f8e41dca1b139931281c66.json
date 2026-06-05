@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x30162d8c6df7bd0032f8e41dca1b139931281c66",
+  "symbol": "NPR-PT/9SETHcore@3/3/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/9Summits WETH Core 1.1@3/3/2025",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x30162d8c6df7bd0032f8e41dca1b139931281c66"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x5496b42ad0decebfab0db944d83260e60d54f667"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x1708780aee0bc3a34222b8858effb659af1aa03b"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

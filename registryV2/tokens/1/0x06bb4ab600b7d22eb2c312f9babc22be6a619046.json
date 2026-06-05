@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x06bb4ab600b7d22eb2c312f9babc22be6a619046",
+  "symbol": "PRISM",
+  "decimals": 18,
+  "name": "Portfolio of Risk-adjusted Investment Strategy Mix",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

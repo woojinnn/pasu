@@ -1,0 +1,91 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/ceth/mint@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 cETH mint(): supply ETH via msg.value, receive cETH (Lending::Supply; payable, amount from $tx.value).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x1249c58b",
+    "chain_to_addresses": {
+      "1": [
+        "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint",
+    "abi": {
+      "name": "mint",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "supply",
+        "supply": {
+          "venue": {
+            "name": "compound_v2",
+            "chain": "$chain",
+            "comptroller": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b"
+          },
+          "asset": {
+            "key": {
+              "standard": "native",
+              "chain": "$chain",
+              "address": "0x0000000000000000000000000000000000000000"
+            }
+          },
+          "amount": "$tx.value"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_reserve_state"
+        },
+        "ttl_s": 30
+      },
+      "supply_apy": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_supply_apy"
+        },
+        "ttl_s": 60
+      },
+      "a_token_price_usd": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_a_token_price_usd"
+        },
+        "ttl_s": 60
+      },
+      "eligible_as_collat": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_eligible_as_collat"
+        },
+        "ttl_s": 60
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_user_state_before"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+// Amm::GsmSwap — Aave GHO Stability Module (GSM) fixed-price swap (GHO ↔
+// USDC/USDT). Unlike Amm::Swap there is no route/PoolState/slippage: a GSM is
+// not an AMM pool, so this is a faithful static decode of the signed intent
+// (direction + a single min/max bound + receiver). `venue.name = "aave_gsm"`
+// carries the GSM contract; `asset` is the non-GHO side.
+//
+// Policies typically guard recipient whitelisting and the per-direction asset
+// (e.g. cap how much GHO a wallet may mint by selling collateral).
+//
+// Rust source: crates/policy-server/asset-model/action/src/amm/gsm_swap.rs
+// (`GsmSwapAction`). No LiveInputs. `AmmVenue` is in core.cedarschema (Amm).
+
+namespace Amm {
+  type GsmSwapContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // GSM venue (name = "aave_gsm"; carries the GSM contract address).
+    venue: AmmVenue,
+    // The GSM's non-GHO asset (USDC / USDT).
+    asset: Core::TokenRef,
+    // GHO token (the other side of every GSM swap).
+    gho: Core::TokenRef,
+    // Direction: "buy_asset" (GHO→asset) | "sell_asset" (asset→GHO).
+    side: String,
+    // User-signed bound (`minAmount` on buy / `maxAmount` on sell), U256 hex.
+    amount: String,
+    // Recipient of the bought asset / received GHO (Address).
+    recipient: String,
+    // Manifest-extensible slot.
+    custom?: GsmSwapCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type GsmSwapCustomContext = {};
+
+  action "GsmSwap" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: GsmSwapContext,
+  };
+}

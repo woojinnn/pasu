@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+  "symbol": "cbBTC",
+  "decimals": 8,
+  "name": "Coinbase Wrapped BTC",
+  "source": "https://basescan.org/token/0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+  "token_kind": {
+    "kind": "wrapped",
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" }
+    },
+    "peg_kind": "hard_peg"
+  }
+}

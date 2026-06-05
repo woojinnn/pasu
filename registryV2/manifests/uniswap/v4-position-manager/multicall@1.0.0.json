@@ -1,0 +1,37 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v4-position-manager/multicall@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xac9650d8",
+    "chain_to_addresses": {
+      "1":     ["0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e"],
+      "10":    ["0x3c3ea4b57a46241e54610e5f022e5c45859a1017"],
+      "42161": ["0xd88f38f930b7952f2db2432cb002e7abbf3dd869"],
+      "8453":  ["0x7c5f5a4bbd8fd63184577525326123b519429bdc"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "multicall",
+    "abi": {
+      "name": "multicall",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "data", "type": "bytes[]" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "multicall_recurse",
+    "recurse_rule_id": "self_array_bytes_last_arg",
+    "max_depth": 3
+  },
+  "requires": {
+    "imperative": ["multicall-recurse@^1.0"],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

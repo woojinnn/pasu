@@ -15,9 +15,9 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::U256;
-use simulation_state::token::holding::TokenHolding;
-use simulation_state::token::kind::{BaseCategory, FiatCurrency, PegTarget, TokenKind};
+use policy_state::primitives::U256;
+use policy_state::token::holding::TokenHolding;
+use policy_state::token::kind::{BaseCategory, FiatCurrency, PegTarget, TokenKind};
 
 use super::params::{over_balance_4dp, param_chain_id, param_str};
 use super::FactCtx;
@@ -235,12 +235,12 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Price, Time};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{BaseCategory, FiatCurrency, PegTarget, TokenKind};
-    use simulation_state::token::TokenKey;
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Price, Time};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{BaseCategory, FiatCurrency, PegTarget, TokenKind};
+    use policy_state::token::TokenKey;
+    use policy_state::{WalletId, WalletState};
 
     use serde_json::json;
 
@@ -289,7 +289,7 @@ mod tests {
                 price_usd: Some(LiveField::new(
                     Price::new(price.to_owned()),
                     DataSource::OracleFeed {
-                        provider: simulation_state::live_field::OracleProvider::Pyth,
+                        provider: policy_state::live_field::OracleProvider::Pyth,
                         feed_id: "test".into(),
                     },
                     Time::from_unix(1_700_000_000),

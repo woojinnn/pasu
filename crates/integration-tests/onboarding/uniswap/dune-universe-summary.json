@@ -1,0 +1,45 @@
+{
+  "date": "2026-06-01",
+  "usage_baseline": {
+    "tool": "mcp__dune.getUsage",
+    "billingPeriodStart": "2026-05-05T00:00:00.000Z",
+    "billingPeriodEnd": "2026-06-05T00:00:00.000Z",
+    "subscriptionPlanName": "community_fluid_engine_v2",
+    "creditsUsedBefore": 378.167,
+    "creditsQuota": 2500,
+    "afterQueryUsageCheck": "blocked: mcp__dune.getUsage returned socket hang up"
+  },
+  "count_query": {
+    "query_id": 7629549,
+    "execution_id": "01KT1NFPG3SM99GZXYCXGZ2359",
+    "url": "https://dune.com/queries/7629549",
+    "executionCostCredits": "0.843",
+    "rows": [
+      { "chain": "arbitrum", "universe": "v2_pair", "count": 8661 },
+      { "chain": "base", "universe": "v2_pair", "count": 3008517 },
+      { "chain": "ethereum", "universe": "v2_pair", "count": 510661 },
+      { "chain": "optimism", "universe": "v2_pair", "count": 5227 },
+      { "chain": "arbitrum", "universe": "v3_pool", "count": 25837 },
+      { "chain": "base", "universe": "v3_pool", "count": 1866761 },
+      { "chain": "ethereum", "universe": "v3_pool", "count": 60801 },
+      { "chain": "optimism", "universe": "v3_pool", "count": 27973 },
+      { "chain": "base", "universe": "v4_pool_id", "count": 14806203 },
+      { "chain": "ethereum", "universe": "v4_pool_id", "count": 88547 },
+      { "chain": "optimism", "universe": "v4_pool_id", "count": 3643 }
+    ],
+    "partition_filters": [
+      "uniswap_v2_multichain.uniswapv2factory_evt_paircreated evt_block_date >= DATE '2018-01-01'",
+      "uniswap_v3_multichain.uniswapv3factory_evt_poolcreated evt_block_date >= DATE '2018-01-01'",
+      "uniswap_v4_* poolmanager_evt_initialize evt_block_date >= DATE '2024-01-01'"
+    ]
+  },
+  "sample_query": {
+    "query_id": 7629586,
+    "execution_id": "01KT1NTJHZGHECYA1T8281GS51",
+    "url": "https://dune.com/queries/7629586",
+    "executionCostCredits": "0.061",
+    "rows_returned": 8,
+    "note": "Latest representative V2/V3 child addresses only; not a complete materialized universe."
+  },
+  "disposition": "Counts establish a nonzero pool/factory universe for P0. Full V2 pair and V3 pool materialization, direct pool/pair manifests, and full LP token inventory remain deferred/blocking items."
+}

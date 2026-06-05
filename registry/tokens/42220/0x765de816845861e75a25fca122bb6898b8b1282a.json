@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0x765de816845861e75a25fca122bb6898b8b1282a",
-  "symbol": "USDm",
-  "decimals": 18,
-  "name": "Mento Dollar"
-}

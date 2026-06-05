@@ -1,0 +1,52 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-wrapStEth@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 wrapStEth plumbing leg (reached via Bundler3 multicall(Call[])). GA1 wraps `amount` of stETH into wstETH for `receiver`. Modeled as liquid_staking/wrap (venue=lido) — mirrors lido/wsteth/wrap. live_inputs=derived_from skeleton ($to is GA1, not the wstETH view contract; enrichment deferred).",
+  "match": {
+    "selector": "0x5a18a7d0",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "wrapStEth",
+    "abi": {
+      "name": "wrapStEth",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "uint256", "name": "amount", "type": "uint256" },
+        { "internalType": "address", "name": "receiver", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "wrap",
+        "wrap": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_wsteth": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "ga1_wrap_steth_skeleton"
+        },
+        "ttl_s": 30
+      }
+    }
+  },
+  "requires": {}
+}

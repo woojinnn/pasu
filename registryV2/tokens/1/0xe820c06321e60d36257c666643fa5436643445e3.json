@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe820c06321e60d36257c666643fa5436643445e3",
+  "symbol": "USDKG",
+  "decimals": 6,
+  "name": "USDKG",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

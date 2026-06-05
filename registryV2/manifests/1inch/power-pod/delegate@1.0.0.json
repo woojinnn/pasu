@@ -1,0 +1,52 @@
+{
+  "type": "adapter_action",
+  "id": "1inch/power-pod/delegate@1.0.0",
+  "publisher": "1inch.io",
+  "schema_version": "3",
+  "note": "1inch PowerPod (Delegate Resolver, 0xaccfac2339e16dc80c50d2fa81b5c2b049b4f947) delegate(delegatee) — a staker delegates their Unicorn Power (st1INCH-staked 1INCH voting/resolver weight) to a delegatee. Permission-delegation primitive (ScopeBall core surface). Maps to Permission::ProtocolAuthorization{permission=delegate, authorized=delegatee, is_authorized=true}. delegatee=0x0 means undelegate (authorized resolves to the zero address; a policy can gate on that). C-audit-discovered gap (was absent from the prior version-axis _deployments enumeration).",
+  "match": {
+    "selector": "0x5c19a95c",
+    "chain_to_addresses": {
+      "1": [
+        "0xaccfac2339e16dc80c50d2fa81b5c2b049b4f947"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "delegate",
+    "abi": {
+      "name": "delegate",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "delegatee", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "one_inch_power_pod",
+          "authorized": "$args.delegatee",
+          "is_authorized": true,
+          "permission": "delegate",
+          "permission_label": "unicorn_power_delegation"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

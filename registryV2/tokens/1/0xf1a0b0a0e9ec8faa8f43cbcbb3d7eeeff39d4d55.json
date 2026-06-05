@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf1a0b0a0e9ec8faa8f43cbcbb3d7eeeff39d4d55",
+  "symbol": "SMKL/SMKLs-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: Schmeckle^2",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x1628e0a42682570c815da52480734a8c2a2ca2dd"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xcdd12a15df22faaa77d3678eda2236b1fa3800eb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x28a7190805c3646f7bf63b00c569f7bf06145268"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

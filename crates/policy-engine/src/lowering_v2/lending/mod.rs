@@ -3,21 +3,24 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::{
+use policy_state::token::RateMode;
+use policy_transition::action::lending::{
     LendingAction, LendingVenue, ReserveState, SetCollateralAction, UserLendingState,
 };
-use simulation_state::token::RateMode;
 
 use super::common::cedar::{addr, u256_hex};
 use super::common::token::lower_token_ref;
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
 mod borrow;
+mod buy_collateral;
 mod delegate_borrow;
 mod disable_collateral;
 mod enable_collateral;
 mod liquidate;
+mod periphery_operation;
 mod repay;
+mod set_authorization;
 mod set_e_mode;
 mod supply;
 mod swap_rate_mode;
@@ -37,6 +40,7 @@ pub(crate) fn lower(
         LendingAction::Supply(a) => supply::lower(a, ctx),
         LendingAction::Withdraw(a) => withdraw::lower(a, ctx),
         LendingAction::Borrow(a) => borrow::lower(a, ctx),
+        LendingAction::BuyCollateral(a) => buy_collateral::lower(a, ctx),
         LendingAction::Repay(a) => repay::lower(a, ctx),
         LendingAction::SwapRateMode(a) => swap_rate_mode::lower(a, ctx),
         LendingAction::SetEMode(a) => set_e_mode::lower(a, ctx),
@@ -44,6 +48,8 @@ pub(crate) fn lower(
         LendingAction::DisableCollateral(a) => disable_collateral::lower(a, ctx),
         LendingAction::DelegateBorrow(a) => delegate_borrow::lower(a, ctx),
         LendingAction::Liquidate(a) => liquidate::lower(a, ctx),
+        LendingAction::SetAuthorization(a) => set_authorization::lower(a, ctx),
+        LendingAction::PeripheryOperation(a) => periphery_operation::lower(a, ctx),
     }
 }
 
@@ -88,10 +94,31 @@ pub(crate) fn lower_lending_venue(venue: &LendingVenue) -> Value {
             // Morpho Blue's market id is a 32-byte hex string → `marketIdStr`.
             m.insert("marketIdStr".into(), Value::String(market_id.clone()));
         }
-        // MorphoOptimizer and Fluid both expose only `{ chain, vault }`.
-        LendingVenue::MorphoOptimizer { chain, vault } | LendingVenue::Fluid { chain, vault } => {
+        // MorphoOptimizer, Fluid, and MetaMorpho all expose only `{ chain, vault }`
+        // (the discriminating `name` is already set above), so they share one arm.
+        LendingVenue::MorphoOptimizer { chain, vault }
+        | LendingVenue::Fluid { chain, vault }
+        | LendingVenue::MetaMorpho { chain, vault } => {
             m.insert("chain".into(), Value::String(chain.to_string()));
             m.insert("vault".into(), Value::String(addr(vault)));
+        }
+        // crvUSD / LlamaLend: the per-market `Controller` is the venue's pool.
+        // The collateral token is carried on the Rust venue for the reducer but
+        // is not needed by Cedar policies (the controller address identifies the
+        // market), so only `{ chain, pool }` is lowered.
+        LendingVenue::CrvUsd {
+            chain, controller, ..
+        }
+        | LendingVenue::LlamaLend {
+            chain, controller, ..
+        } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("pool".into(), Value::String(addr(controller)));
+        }
+        // Aave V3 periphery adapter — carries the adapter address under `adapter`.
+        LendingVenue::AaveV3Periphery { chain, adapter } => {
+            m.insert("chain".into(), Value::String(chain.to_string()));
+            m.insert("adapter".into(), Value::String(addr(adapter)));
         }
     }
     Value::Object(m)
@@ -171,6 +198,9 @@ pub(crate) fn lower_set_collateral_context(
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_lending_venue(&action.venue));
     m.insert("asset".into(), lower_token_ref(&action.asset));
+    if let Some(on_behalf_of) = &action.on_behalf_of {
+        m.insert("onBehalfOf".into(), Value::String(addr(on_behalf_of)));
+    }
     m.insert(
         "reserveState".into(),
         lower_reserve_state(&action.live_inputs.reserve_state.value),
@@ -201,8 +231,8 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, ChainId};
-    use simulation_state::token::{TokenKey, TokenRef};
+    use policy_state::primitives::{Address, ChainId};
+    use policy_state::token::{TokenKey, TokenRef};
 
     /// `AaveV3` emits `pool` + optional `marketId` (Long); when `market_id` is
     /// `None` the field is omitted. `MorphoBlue` emits `marketIdStr` (String),
@@ -238,6 +268,16 @@ mod tests {
             morpho["marketIdStr"],
             serde_json::json!("0xabc0000000000000000000000000000000000000000000000000000000000000")
         );
+
+        // MetaMorpho shares the `{ name, chain, vault }` arm (ERC-4626 vault).
+        let metamorpho = lower_lending_venue(&LendingVenue::MetaMorpho {
+            chain: ChainId::ethereum_mainnet(),
+            vault: Address::from_str("0xbeef01735c132ada46aa9aa4c54623caa92a64cb").unwrap(),
+        });
+        assert_eq!(metamorpho["name"], serde_json::json!("metamorpho"));
+        assert_eq!(metamorpho["chain"], serde_json::json!("eip155:1"));
+        assert!(metamorpho.get("vault").is_some());
+        assert!(metamorpho.get("marketIdStr").is_none());
     }
 
     /// `CompoundV3` carries a `baseAsset: Core::TokenRef`, lowered via
@@ -286,12 +326,12 @@ mod tests {
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::lending::{LendingVenue, ReserveState, UserLendingState};
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Decimal, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Decimal, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::lending::{LendingVenue, ReserveState, UserLendingState};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::TxMeta;
 

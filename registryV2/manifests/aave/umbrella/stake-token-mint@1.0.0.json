@@ -1,0 +1,71 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/stakeToken/mint@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Umbrella mint(shares,receiver) represented as staking deposit; amount is signed share amount.",
+  "match": {
+    "selector": "0x94bf804d",
+    "chain_to_addresses": {
+      "1": [
+        "0x6bf183243fdd1e306ad2c4450bc7dcf6f0bf8aa6",
+        "0xa484ab92fe32b143aee7019fc1502b1daa522d31",
+        "0xaafd07d53a7365d3e9fb6f3a3b09ec19676b73ce",
+        "0x4f827a63755855cdf3e8f3bcd20265c833f15033"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "name": "mint",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "stake",
+        "stake": {
+          "venue": {
+            "name": "aave_umbrella_stake_token",
+            "chain": "$chain",
+            "stake_token": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "amount": "$args.shares",
+          "on_behalf_of": null,
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  }
+}

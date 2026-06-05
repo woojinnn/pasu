@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9d259ca698746586107c234e9e9461d385ca1041",
+  "symbol": "sdBPTBPT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: sdBPT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9d259ca698746586107c234e9e9461d385ca1041"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x0ec9f76202a7061eb9b3a7d6b59d36215a7e37da"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x825ba129b3ea1ddc265708fcbb9dd660fdd2ef73"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

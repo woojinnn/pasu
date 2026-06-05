@@ -1,0 +1,100 @@
+{
+  "protocol": "1inch",
+  "source": "Etherscan-verified ContractName (chain 1) + portal.1inch.dev/documentation (Aggregation Protocol / contract addresses)",
+  "url": "https://portal.1inch.dev/documentation/apis/swap/introduction",
+  "fetchedAt": "2026-06-03",
+  "note": "I0 contract-inventory for 1inch Ethereum mainnet pre-sign surface. ROUND SCOPE = wallet-facing, mainnet (1) ONLY, AggregationRouterV6 aggregation-swap surface. COVER = AggregationRouterV6 (the single current router; user calls swap/unoswap*/clipperSwap* directly via eth_sendTransaction, and the embedded Limit Order Protocol v4 fillOrder/cancelOrder). Of its 33 external-mutating functions only `swap` (0x07ed2379) is decoded this round (see coverage.json); the rest are DEFER (data-gated, see SCOPE ORACLE in evidence) or EXCLUDE (admin/callback/view). EXCLUDED prior router versions (Etherscan ContractName verified) = version expansion, superseded by v6: see V5/V4 rows. Other deferred families NOT asserted as rows (no user-facing on-chain entrypoint or non-user-facing): 1inch Fusion / FusionPlus settlement (resolver/relayer-side batch settlement \u2014 non-user-facing, EXCLUDE-by-category like a solver settlement; the user side is the off-chain Fusion order SIGNATURE, deferred with the LOP Order in coverage.json signed_structs); SpotPriceAggregator / OffchainOracle (price infra, non-user pre-sign). Multichain deployments of the v6 router on Arbitrum/Base/BSC/Polygon/Optimism share the canonical 0x1111...2a65 address but are a SEPARATE framework (representative chain = mainnet only). | C-AUDIT 2026-06-03 (independent re-derivation, etherscan label-cloud + 1inch repo companion-graph + factory-child check): added NativeOrderFactory (cover), NativeOrderImpl (defer, CREATE2 child), st1INCH staking + PowerPod delegate (cover \u2014 whole staking/delegation category was missing), and explicit exclude rows for 1INCH token / Fusion Settlement / EscrowFactory / SpotPriceAggregator. Prior enumeration was version-axis-only (router V6/V5/V4 + LOP) and missed separate product lines.",
+  "contracts": [
+    {
+      "name": "AggregationRouterV6",
+      "chainId": 1,
+      "address": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "decision": "cover",
+      "reason": "user aggregation-swap entrypoint: swap(executor,SwapDescription,data) decoded this round \u2192 AmmVenue::AggregatorRoute (OneInchV6). unoswap*/clipperSwap*/LOP fillOrder triaged in coverage.json (DEFER/EXCLUDE with reasons)."
+    },
+    {
+      "name": "AggregationRouterV5",
+      "chainId": 1,
+      "address": "0x1111111254eeb25477b68fb85ed929f73a960582",
+      "decision": "exclude",
+      "reason": "superseded prior router version (Etherscan ContractName 'AggregationRouterV5'); version expansion = separate round, not the current pre-sign surface"
+    },
+    {
+      "name": "AggregationRouterV4",
+      "chainId": 1,
+      "address": "0x1111111254fb6c44bac0bed2854e76f90643097d",
+      "decision": "exclude",
+      "reason": "superseded prior router version (Etherscan ContractName 'AggregationRouterV4'); version expansion = separate round, not the current pre-sign surface"
+    },
+    {
+      "name": "LimitOrderProtocol (legacy standalone V2)",
+      "chainId": 1,
+      "address": "0x119c71d3bbac22029622cbaec24854d3d32d2828",
+      "decision": "exclude",
+      "reason": "legacy standalone Limit Order Protocol (Etherscan ContractName 'LimitOrderProtocol', label '1inch: Limit Order Protocol V2'); superseded \u2014 LOP v4 now lives inside AggregationRouterV6. Version expansion = separate round."
+    },
+    {
+      "name": "LimitOrderProtocol (legacy standalone V3-era)",
+      "chainId": 1,
+      "address": "0x3ef51736315f52d568d6d2cf289419b9cfffe782",
+      "decision": "exclude",
+      "reason": "legacy standalone Limit Order Protocol (Etherscan ContractName 'LimitOrderProtocol', Solidity 0.8.4, ~v3-generation by deploy-age \u2014 version number is deploy-age inference, not an explicit on-page tag); superseded by LOP v4 in AggregationRouterV6. Version expansion = separate round."
+    },
+    {
+      "name": "NativeOrderFactory",
+      "chainId": 1,
+      "address": "0xe12e0f117d23a5ccc57f8935cd8c4e80cd91ff01",
+      "decision": "cover",
+      "reason": "maker-facing on-chain native limit-order factory (companion to LOP v4). create((uint256x8)=IOrderMixin.Order) opens an order; the on-chain twin of order-sign -> Amm::SignIntentOrder (OneInchLimitOrder venue, order_kind=limit). The C-audit's named gap that proved the prior version-axis enumeration incomplete. Covered this round."
+    },
+    {
+      "name": "NativeOrderImpl (per-order CREATE2 clone template)",
+      "chainId": 1,
+      "address": "0xf3eaf3c54f1ef887914b9c19e1ab9d3e581557eb",
+      "decision": "exclude",
+      "reason": "DEFER (cover-candidate, separate round): maker cancelOrder/withdraw target per-order CREATE2 clone addresses (child-address universe), not this fixed impl \u2014 needs a clone-address resolver. Marked exclude (gate allows only cover|exclude); reason records the deferral."
+    },
+    {
+      "name": "Staking 1INCH v2 (st1INCH / Governance Staking)",
+      "chainId": 1,
+      "address": "0x9a0c8ff858d273f57072d714bca7411d717501d7",
+      "decision": "exclude",
+      "reason": "DEFER (cover-candidate, separate round): governance-staking deposit/withdraw need a NEW non-Curve StakingVenue (current StakingVenue variants are Curve-only) + addPod/removePod delegation. ABI snapshotted; recommended-next. Marked exclude (gate allows only cover|exclude); reason records the deferral."
+    },
+    {
+      "name": "PowerPod / Delegate Resolver",
+      "chainId": 1,
+      "address": "0xaccfac2339e16dc80c50d2fa81b5c2b049b4f947",
+      "decision": "cover",
+      "reason": "C-audit gap. Stakers call delegate(delegatee) to delegate Unicorn Power to a resolver/governance delegatee \u2014 a permission-delegation action (ScopeBall core surface). Covered this round."
+    },
+    {
+      "name": "1INCH token (ERC-20)",
+      "chainId": 1,
+      "address": "0x111111111117dc0aa78b770fa6a738034120c302",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (approve/permit/transfer) handled by the tokens:erc20 standard adapter \u2014 exclude-with-reason per surface/README, NOT a protocol-specific cover. Listed for inventory completeness (C-audit)."
+    },
+    {
+      "name": "Settlement (1inch Fusion limit-order-settlement)",
+      "chainId": 1,
+      "address": "0xa88800cd213da5ae406ce248380802bd53b47647",
+      "decision": "exclude",
+      "reason": "resolver-side: filled by whitelisted resolvers; the user side is the off-chain Fusion order signature (deferred alongside the LOP Order signed_struct). Promoted from prose to an explicit address row (C-audit inventory completeness)."
+    },
+    {
+      "name": "EscrowFactory (1inch Fusion+ cross-chain-swap)",
+      "chainId": 1,
+      "address": "0x7f3a34991c61963678676f4094596facbf7ea3f6",
+      "decision": "exclude",
+      "reason": "resolver-side: createDstEscrow/postInteraction are resolver-initiated; source escrow created via LOP postInteraction, not a direct user call. User side = off-chain Fusion+ signature. Explicit address row (C-audit)."
+    },
+    {
+      "name": "SpotPriceAggregator / OffchainOracle",
+      "chainId": 1,
+      "address": "0x07d91f5fb9bf7798734c3f606db065549f6893bb",
+      "decision": "exclude",
+      "reason": "price-discovery infra explicitly off-chain-only (must not be used on-chain); no user pre-sign entrypoint. Promoted from prose to explicit address row (C-audit)."
+    }
+  ]
+}

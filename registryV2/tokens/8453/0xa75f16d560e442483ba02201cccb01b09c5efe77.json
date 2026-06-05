@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa75f16d560e442483ba02201cccb01b09c5efe77",
+  "symbol": "bXBT",
+  "decimals": 18,
+  "name": "bXBT",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x7fcd174e80f264448ebee8c88a7c4476aaf58ea6",
+  "symbol": "wsuperOETHb",
+  "decimals": 18,
+  "name": "Wrapped Super OETH",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

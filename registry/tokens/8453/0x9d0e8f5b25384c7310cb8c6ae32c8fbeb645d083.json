@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0x9d0e8f5b25384c7310cb8c6ae32c8fbeb645d083",
-  "symbol": "DRV",
-  "decimals": 18,
-  "name": "Derive"
-}

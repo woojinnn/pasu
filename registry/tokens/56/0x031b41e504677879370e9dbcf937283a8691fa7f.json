@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x031b41e504677879370e9dbcf937283a8691fa7f",
-  "symbol": "FET",
-  "decimals": 18,
-  "name": "Fetch"
-}

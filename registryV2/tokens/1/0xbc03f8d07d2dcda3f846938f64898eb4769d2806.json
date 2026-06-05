@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbc03f8d07d2dcda3f846938f64898eb4769d2806",
+  "symbol": "sBOND",
+  "decimals": 18,
+  "name": "Staked BOND",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

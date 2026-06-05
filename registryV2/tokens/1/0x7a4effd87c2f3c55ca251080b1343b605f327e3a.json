@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7a4effd87c2f3c55ca251080b1343b605f327e3a",
+  "symbol": "rstETH",
+  "decimals": 18,
+  "name": "Restaking Vault ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

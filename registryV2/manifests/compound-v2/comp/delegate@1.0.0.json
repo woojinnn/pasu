@@ -1,0 +1,67 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v2/comp/delegate@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v2 COMP delegate(delegatee): delegate COMP voting power (Airdrop::Delegate, permission-delegation primitive).",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x5c19a95c",
+    "chain_to_addresses": {
+      "1": [
+        "0xc00e94cb662c3520282e6f5717214004a7f26888"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "delegate",
+    "abi": {
+      "name": "delegate",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "delegatee",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "delegate",
+        "delegate": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "delegatee": "$args.delegatee"
+        }
+      }
+    },
+    "live_inputs": {
+      "current_delegate": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_current_delegate"
+        },
+        "ttl_s": 60
+      },
+      "voting_power": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v2_voting_power"
+        },
+        "ttl_s": 60
+      }
+    }
+  }
+}

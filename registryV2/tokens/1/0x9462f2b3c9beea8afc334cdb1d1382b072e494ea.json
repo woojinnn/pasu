@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x9462f2b3c9beea8afc334cdb1d1382b072e494ea",
+  "symbol": "tGAMMA-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tGAMMA/GAMMA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x9462f2b3c9beea8afc334cdb1d1382b072e494ea"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2fc6e9c1b2c07e18632efe51879415a580ad22e1"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6bea7cfef803d1e3d5f7c0103f7ded065644e197"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

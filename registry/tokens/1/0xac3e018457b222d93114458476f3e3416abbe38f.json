@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xac3e018457b222d93114458476f3e3416abbe38f",
-  "symbol": "sfrxETH",
-  "decimals": 18,
-  "name": "Staked Frax Ether"
-}

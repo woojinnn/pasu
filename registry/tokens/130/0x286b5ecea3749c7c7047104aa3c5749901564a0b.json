@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x286b5ecea3749c7c7047104aa3c5749901564a0b",
-  "symbol": "VANRY",
-  "decimals": 18,
-  "name": "VANRY"
-}

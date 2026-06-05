@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xffe0dcdb7085508a3c32931973bd2dc77df30caa",
+  "symbol": "PYUSDCRV-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Paypal PYUSD/crvUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xffe0dcdb7085508a3c32931973bd2dc77df30caa"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x5fd0787a5a66d24c5a868c2e6a296ca2b1452558"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x417ac0e078398c154edfadd9ef675d30be60af93"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

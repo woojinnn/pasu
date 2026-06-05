@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x25f8087ead173b73d6e8b84329989a8eea16cf73",
-  "symbol": "YGG",
-  "decimals": 18,
-  "name": "Yield Guild Games"
-}

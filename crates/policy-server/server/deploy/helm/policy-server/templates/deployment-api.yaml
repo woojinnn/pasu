@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "policy-server.fullname" . }}-api
+  labels:
+    {{- include "policy-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "policy-server.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "policy-server.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: {{ include "policy-server.serviceAccountName" . }}
+      containers:
+        - name: api
+          image: {{ include "policy-server.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["policy-server"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.port }}
+          env:
+            - name: POLICY_SERVER_ADDR
+              value: "0.0.0.0:{{ .Values.api.port }}"
+            - name: PUBLIC_API_URL
+              value: {{ .Values.api.publicApiUrl | quote }}
+            - name: DASHBOARD_URL
+              value: {{ .Values.api.dashboardUrl | quote }}
+            - name: CORS_ALLOWED_ORIGINS
+              value: {{ join "," .Values.api.corsAllowedOrigins | quote }}
+            - name: CORS_ALLOW_PRIVATE_NETWORK
+              value: "false"
+            - name: SCOPEBALL_SYNC_CONFIG
+              value: /app/scopeball-sync.toml
+            - name: REQUIRE_SYNC_CONFIG
+              value: {{ .Values.runtime.requireSyncConfig | quote }}
+            - name: RUN_MIGRATIONS_ON_STARTUP
+              value: {{ .Values.runtime.runMigrationsOnStartup | quote }}
+            - name: REDIS_EVENTS_CHANNEL
+              value: {{ .Values.runtime.redisEventsChannel | quote }}
+            - name: SYNC_WORKER_TICK_SECS
+              value: {{ .Values.worker.tickSeconds | quote }}
+            - name: SYNC_LOCK_TTL_SECS
+              value: {{ .Values.worker.lockTtlSeconds | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.runtime.rustLog | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: REDIS_URL
+                  optional: true
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: GOOGLE_CLIENT_SECRET
+            - name: GOOGLE_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: GOOGLE_REDIRECT_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: JWT_SECRET
+            - name: ETHERSCAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: ETHERSCAN_API_KEY
+                  optional: true
+            - name: COINGECKO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: COINGECKO_API_KEY
+                  optional: true
+          volumeMounts:
+            - name: sync-config
+              mountPath: /app/scopeball-sync.toml
+              subPath: scopeball-sync.toml
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes:
+        - name: sync-config
+          configMap:
+            name: {{ include "policy-server.fullname" . }}-sync

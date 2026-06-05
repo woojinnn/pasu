@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf6c5f01c7f3148891ad0e19df78743d31e390d1f",
+  "symbol": "4poolUSD-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: 4pool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

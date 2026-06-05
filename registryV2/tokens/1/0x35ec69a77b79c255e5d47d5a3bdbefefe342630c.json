@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x35ec69a77b79c255e5d47d5a3bdbefefe342630c",
+  "symbol": "ynLSDe",
+  "decimals": 18,
+  "name": "YieldNest Restaked LSD - Eigenlayer",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

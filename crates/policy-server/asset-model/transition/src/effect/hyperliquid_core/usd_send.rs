@@ -1,7 +1,7 @@
 //! `hl_usd_send` reducer — a USDC transfer to another account. Mechanically an
 //! outflow from the perp account, so it reuses the withdraw outflow body.
 
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::hyperliquid_core::HlUsdSendAction;
 use crate::error::ReducerResult;
@@ -20,11 +20,11 @@ pub(super) fn apply(
 mod tests {
     use super::*;
 
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::position::PositionKind;
-    use simulation_state::primitives::{Address, ChainId, Decimal, Time};
-    use simulation_state::wallet::{WalletId, WalletState};
-    use simulation_state::PositionChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::position::PositionKind;
+    use policy_state::primitives::{Address, ChainId, Decimal, Time};
+    use policy_state::wallet::{WalletId, WalletState};
+    use policy_state::PositionChange;
 
     fn ctx() -> EvalContext {
         EvalContext::new(

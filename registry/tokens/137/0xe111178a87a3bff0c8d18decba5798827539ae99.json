@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xe111178a87a3bff0c8d18decba5798827539ae99",
-  "symbol": "EURS",
-  "decimals": 2,
-  "name": "STASIS EURS Token (PoS)"
-}

@@ -227,7 +227,7 @@
     },
     "scopeball.evaluate_v3": {
       "name": "scopeball.evaluate_v3",
-      "description": "Phase 5D mock — echo (envelopes, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
+      "description": "Phase 5D mock — echo (actions, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
       "readKind": "reducer",
       "server": "sim-server",
       "stateDependency": "whole-wallet state (holdings/approvals/positions) folded through the reducer to produce State₂ (mock today; Phase 6 wires the real reducer)",
@@ -237,15 +237,15 @@
           "required": true,
           "description": "WalletId (address + chains). Carried verbatim by the mock; Phase 6 will key state persistence off this."
         },
-        "envelopes": {
+        "actions": {
           "type": "String",
           "required": true,
-          "description": "List of caller-built Action envelopes (typed PDF FSM ActionBody). The mock echoes these into policyRequest.actions."
+          "description": "List of caller-built Actions (typed PDF FSM ActionBody plus ActionMeta). The mock echoes these into policyRequest.actions."
         },
         "eval_context": {
           "type": "String",
           "required": true,
-          "description": "EvalContext (chain + clock + RequestKind + SimulationMode + envelope_index)."
+          "description": "EvalContext (chain + clock + RequestKind + SimulationMode + action_index)."
         }
       },
       "returns": {

@@ -1,0 +1,48 @@
+// Yield::RemoveMarketLiquidity — remove liquidity from a Pendle market / burn LP
+// (ActionAddRemoveLiqV3 facet, removeLiquidity*).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/remove_market_liquidity.rs`
+// (`RemoveMarketLiquidityAction` + `MarketTokensLiveInputs`). The sy/pt/yt/maturity
+// fields are host-populated live inputs (P1c, §4d); `LiveField<T>` is inlined as `T`.
+
+namespace Yield {
+  type RemoveMarketLiquidityContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // Pendle market the liquidity is removed from (address).
+    market: String,
+    // Remove-liquidity kind discriminant: "dual_token_and_pt" | "dual_sy_and_pt"
+    // | "single_pt" | "single_token" | "single_sy".
+    kind: String,
+    // Plain external token received; present for the *token* kinds.
+    externalToken?: Core::TokenRef,
+    // LP burned (U256 hex).
+    netLpIn: String,
+    // Minimum external-token out (U256 hex; 0 if not a token kind).
+    minTokenOut: String,
+    // Minimum PT out (U256 hex; 0 if PT not returned).
+    minPtOut: String,
+    // Minimum SY out (U256 hex; 0 if SY not returned).
+    minSyOut: String,
+    // Output recipient (address).
+    recipient: String,
+    // Market-derived instruments + maturity (host-populated live fields):
+    // SY/PT/YT from IPMarket.readTokens(), maturity from IPMarket.expiry().
+    sy: String,
+    pt: String,
+    yt: String,
+    maturity: String,
+    // Manifest-extensible slot.
+    custom?: RemoveMarketLiquidityCustomContext,
+  };
+
+  type RemoveMarketLiquidityCustomContext = {};
+
+  action "RemoveMarketLiquidity" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RemoveMarketLiquidityContext,
+  };
+}

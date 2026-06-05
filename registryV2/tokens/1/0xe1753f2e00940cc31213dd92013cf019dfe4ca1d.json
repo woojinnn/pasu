@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d",
+  "symbol": "sGho",
+  "decimals": 18,
+  "name": "sGho",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,76 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/delegateTo@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xeea9064b",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "delegateTo",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "operator",
+          "type": "address"
+        },
+        {
+          "components": [
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "expiry",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct ISignatureUtilsMixinTypes.SignatureWithExpiry",
+          "name": "approverSignatureAndExpiry",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "approverSalt",
+          "type": "bytes32"
+        }
+      ],
+      "name": "delegateTo",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "delegate_to",
+        "delegate_to": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "operator": "$args.operator",
+          "approver_salt": "$args.approverSalt"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

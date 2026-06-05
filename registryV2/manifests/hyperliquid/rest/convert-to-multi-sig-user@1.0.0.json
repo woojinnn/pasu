@@ -1,0 +1,62 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/convert-to-multi-sig-user@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) `HyperliquidTransaction:ConvertToMultiSigUser` — an OFF-CHAIN L1 action signed via eth_signTypedData_v4 (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0). Decoded to hyperliquid_core::hl_unknown carrying action_type='convertToMultiSigUser' so a policy sees an attributed HyperLiquid action (gate on context.actionType) instead of an anonymous domain:unknown. converts the account into a multi-sig user (changes signing authority over the whole account) — HIGH-risk permission op; signers list is opaque so no structured variant. A structured variant is deferred (low/admin usage; opaque or non-fund-moving fields).",
+  "match": {
+    "selector": "0x00000009",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:ConvertToMultiSigUser",
+      "types": {
+        "HyperliquidTransaction:ConvertToMultiSigUser": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "signers", "type": "string" },
+          { "name": "nonce", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "convertToMultiSigUser",
+    "abi": {
+      "name": "convertToMultiSigUser",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "convertToMultiSigUser",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "signers", "type": "string" },
+            { "name": "nonce", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "hyperliquid_core",
+      "hyperliquid_core": {
+        "action": "hl_unknown",
+        "hl_unknown": {
+          "action_type": "convertToMultiSigUser"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

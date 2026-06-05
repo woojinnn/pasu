@@ -1,0 +1,103 @@
+{
+  "contract": "Aave Governance V3 Core",
+  "chainId": 1,
+  "address": "0x9aee0b04504cef83a65ac3f0e838d0593bcb2bc7",
+  "snapshot": "governance-core-mainnet.abi.json",
+  "functions": {
+    "0xf6ead0b9": {
+      "name": "activateVoting",
+      "decision": "cover",
+      "reason": "user-facing Aave activateVoting action covered by registry manifest"
+    },
+    "0xc3b4b661": {
+      "name": "addVotingPortals",
+      "decision": "exclude",
+      "reason": "not selected as a supported user-facing Aave action in this onboarding slice; excluded/fail-closed"
+    },
+    "0xe0a8f6f5": {
+      "name": "cancelProposal",
+      "decision": "cover",
+      "reason": "user-facing Aave cancelProposal action covered by registry manifest"
+    },
+    "0x3bec1bfc": {
+      "name": "createProposal",
+      "decision": "cover",
+      "reason": "user-facing Aave createProposal action covered by registry manifest"
+    },
+    "0x0d61b519": {
+      "name": "executeProposal",
+      "decision": "cover",
+      "reason": "user-facing Aave executeProposal action covered by registry manifest"
+    },
+    "0xb3809b13": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xefe61a2f": {
+      "name": "initializeWithRevision",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x71b32bb1": {
+      "name": "queueProposal",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x9043ffc3": {
+      "name": "redeemCancellationFee",
+      "decision": "cover",
+      "reason": "user-facing Aave redeemCancellationFee action covered by registry manifest"
+    },
+    "0x19ebdc34": {
+      "name": "removeVotingPortals",
+      "decision": "exclude",
+      "reason": "not selected as a supported user-facing Aave action in this onboarding slice; excluded/fail-closed"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x00992745": {
+      "name": "rescueVotingPortal",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x079b1fdd": {
+      "name": "setPowerStrategy",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x4e352319": {
+      "name": "setVotingConfigs",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x1aefa2d1": {
+      "name": "updateCancellationFee",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xf687d12a": {
+      "name": "updateGasLimit",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xfc525395": {
+      "name": "updateGuardian",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x133539ec": {
+      "name": "updateRepresentativesForChain",
+      "decision": "cover",
+      "reason": "user-facing Aave updateRepresentativesForChain action covered by registry manifest"
+    }
+  }
+}

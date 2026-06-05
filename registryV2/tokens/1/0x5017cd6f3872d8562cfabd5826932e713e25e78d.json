@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5017cd6f3872d8562cfabd5826932e713e25e78d",
+  "symbol": "aETH+",
+  "decimals": 18,
+  "name": "Staked Astral Ether",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

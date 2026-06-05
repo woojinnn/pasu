@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x60798c83f91db73fa3648ea8a9bb84a0b0e2aaee",
+  "symbol": "cyUSD",
+  "decimals": 18,
+  "name": "CurveYield USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

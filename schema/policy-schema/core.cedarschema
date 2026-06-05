@@ -105,7 +105,7 @@ namespace Core {
   // ProtocolRef — lightweight identifier for a source protocol (Defillama-style
   // name). Used cross-domain by Airdrop::Claim and Launchpad::{Commit,
   // ClaimAllocation, Refund, WithdrawCommit}. Mirrors
-  // `simulation_state::primitives::ProtocolRef`.
+  // `policy_state::primitives::ProtocolRef`.
   // -------------------------------------------------------------------------
   type ProtocolRef = {
     // Protocol slug, e.g. "optimism", "arbitrum_dao", "coinlist", "fjord".
@@ -139,7 +139,8 @@ namespace Amm {
   //   - "balancer_v3":       poolId, poolType
   //   - "trader_joe_lb":     pair, binStep
   //   - "maverick_v2":       pool
-  //   - "aggregator_route":  router, routeHash
+  //   - "aave_gsm":          gsm  (GHO Stability Module; asset lives in GsmSwapContext)
+  //   - "aggregator_route":  router, routeHash, executor?
   //
   // `poolType` (Balancer V2/V3) values:
   //   "weighted" | "stable" | "composable_stable" | "meta_stable"
@@ -178,6 +179,10 @@ namespace Amm {
     router?: String,
     // 32-byte hex hash of aggregator route calldata.
     routeHash?: String,
+    // Aggregator executor the router delegates to (1inch v6 router/executor split). Optional; present only when the venue carries a distinct executor.
+    executor?: String,
+    // Aave GHO Stability Module contract. Present iff name = "aave_gsm".
+    gsm?: String,
   };
 
   // -------------------------------------------------------------------------
@@ -187,9 +192,10 @@ namespace Amm {
   //   - "cow_swap":       chain, settlement
   //   - "one_inch_fusion":chain
   //   - "bebop":          chain
+  //   - "one_inch_limit_order": chain, verifyingContract
   // -------------------------------------------------------------------------
   type IntentVenue = {
-    // "uniswap_x" | "cow_swap" | "one_inch_fusion" | "bebop"
+    // "uniswap_x" | "cow_swap" | "one_inch_fusion" | "bebop" | "one_inch_limit_order"
     name: String,
     // CAIP-2 chain id.
     chain: String,
@@ -197,6 +203,8 @@ namespace Amm {
     reactor?: String,
     // CowSwap GPv2Settlement contract. Present iff name = "cow_swap".
     settlement?: String,
+    // 1inch LOP v4 EIP-712 verifying contract. Present iff name = "one_inch_limit_order".
+    verifyingContract?: String,
   };
 }
 
@@ -211,9 +219,10 @@ namespace Lending {
   //   - "morpho_optimizer" → `vault`
   //   - "spark"            → `pool`
   //   - "fluid"            → `vault`
+  //   - "metamorpho"       → `vault`  (ERC-4626 curated vault on Morpho Blue)
   // -------------------------------------------------------------------------
   type LendingVenue = {
-    name: String,                // 8 variants discriminated by name
+    name: String,                // venues discriminated by name
     chain: String,               // CAIP-2 id, e.g. "eip155:1"
     pool?: String,               // Aave v2/v3, Spark
     marketId?: Long,             // Aave v3 eMode market id (small int)
@@ -221,7 +230,8 @@ namespace Lending {
     comet?: String,              // Compound V3
     baseAsset?: Core::TokenRef,  // Compound V3
     comptroller?: String,        // Compound V2
-    vault?: String,              // Morpho Optimizer / Fluid
+    vault?: String,              // Morpho Optimizer / Fluid / MetaMorpho
+    adapter?: String,            // aave_v3_periphery adapter
   };
 
   // Reserve-level metadata — supply/borrow caps, LTV, etc.
@@ -249,6 +259,55 @@ namespace Lending {
   };
 }
 
+namespace LiquidStaking {
+  // -------------------------------------------------------------------------
+  // StakingVenue — liquid-staking venue identifier.
+  //   - "lido" → no extra fields (stETH / wstETH / WithdrawalQueue singleton set)
+  // -------------------------------------------------------------------------
+  type StakingVenue = {
+    name: String,                // discriminated by name (currently "lido")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
+namespace Restaking {
+  // -------------------------------------------------------------------------
+  // RestakingVenue — restaking venue identifier.
+  //   - "eigenlayer" → no extra fields (DelegationManager / StrategyManager /
+  //     EigenPodManager singleton set on the chain)
+  // -------------------------------------------------------------------------
+  type RestakingVenue = {
+    name: String,                // discriminated by name (currently "eigenlayer")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
+namespace Staking {
+  // -------------------------------------------------------------------------
+  // StakeVenue — Curve DAO staking / vote-escrow venue identifier. Each variant
+  // is one Curve DAO contract carrying its single contract address.
+  //   - "curve_voting_escrow"    → escrow     (veCRV VotingEscrow)
+  //   - "curve_minter"           → minter     (CRV Minter)
+  //   - "curve_gauge_controller" → controller (GaugeController)
+  //   - "curve_gauge"            → gauge      (per-pool liquidity gauge)
+  //   - "curve_fee_distributor"  → distributor (FeeDistributor, veCRV fee claim)
+  //   - "aave_safety_module"     → module     (StakedAaveV3 / StakedGho)
+  // -------------------------------------------------------------------------
+  type StakeVenue = {
+    name: String,                // discriminated by name
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+    escrow?: String,             // curve_voting_escrow
+    minter?: String,             // curve_minter
+    controller?: String,         // curve_gauge_controller
+    gauge?: String,              // curve_gauge
+    distributor?: String,        // curve_fee_distributor
+    module?: String,             // aave_safety_module
+    stakeToken?: String,         // aave_umbrella_stake_token
+    vault?: String,              // aave_savings_gho (sGHO ERC4626)
+    // aave_umbrella_rewards_controller reuses `controller?` (above).
+  };
+}
+
 namespace Launchpad {
   // Vesting curve (Rust `VestCurve`, serde tag = "kind", rename_all = "snake_case").
   //   - "linear"   : no extra fields.
@@ -266,7 +325,7 @@ namespace Launchpad {
     description?: String,
   };
 
-  // Vesting parameters (Rust `simulation_state::position::VestSchedule`).
+  // Vesting parameters (Rust `policy_state::position::VestSchedule`).
   type VestSchedule = {
     // Vesting start (unix seconds).
     start: Long,
@@ -316,7 +375,7 @@ namespace Perp {
     chain?: String,
   };
 
-  // MarketRef — `{ symbol, venue }` per simulation_state.
+  // MarketRef — `{ symbol, venue }` per policy_state.
   type MarketRef = {
     symbol: String,
     venue: VenueRef,
@@ -344,6 +403,20 @@ namespace Perp {
   };
 }
 
+namespace Yield {
+  // -------------------------------------------------------------------------
+  // YieldVenue — yield-tokenization venue identifier. Carries protocol + chain
+  // identity only; the specific market / YT / SY contract is a per-action field
+  // (the locator varies: market for swaps/liquidity, YT for PY mint/redeem, SY
+  // for SY mint/redeem).
+  //   - "pendle_v2" → no extra fields (Router V4 / markets / SY set on the chain)
+  // -------------------------------------------------------------------------
+  type YieldVenue = {
+    name: String,                // discriminated by name (currently "pendle_v2")
+    chain: String,               // CAIP-2 id, e.g. "eip155:1"
+  };
+}
+
 namespace HyperliquidCore {
   // Shared types for the thin Hyperliquid CORE action model (off-chain L1
   // orders / leverage / fund movement intercepted from `/exchange`). Hoisted
@@ -363,5 +436,21 @@ namespace HyperliquidCore {
   type HlMarket = {
     symbol: String,
     assetIndex: Long,
+  };
+}
+
+namespace Governance {
+  // -------------------------------------------------------------------------
+  // GovernanceVenue — DAO governance contract/token identifier.
+  //   - "aave_governance_v3"  → governance
+  //   - "aave_voting_machine" → votingMachine
+  //   - "governance_token"    → token
+  // -------------------------------------------------------------------------
+  type GovernanceVenue = {
+    name: String,
+    chain: String,
+    governance?: String,
+    votingMachine?: String,
+    token?: Core::TokenRef,
   };
 }

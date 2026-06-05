@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0xc91953e110ebb0039859304a0d1b64f8450763fc",
-  "symbol": "DCI",
-  "decimals": 18,
-  "name": "Dynamic Crypto Index"
-}

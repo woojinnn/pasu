@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x4f2b33840227ddd0e28da8d4185d6fa07adfed87",
-  "symbol": "BASED1",
-  "decimals": 18,
-  "name": "Based one"
-}

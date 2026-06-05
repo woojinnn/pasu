@@ -12,8 +12,8 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::ChainId;
-use simulation_state::token::kind::{TokenKind, UnlockSchedule};
+use policy_state::primitives::ChainId;
+use policy_state::token::kind::{TokenKind, UnlockSchedule};
 
 use super::params::{param_action, param_addr, param_chain_id};
 use super::FactCtx;
@@ -89,7 +89,7 @@ fn unlock_eta(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
     let target = action
         .get("target")
         .and_then(Value::as_str)
-        .and_then(|s| s.parse::<simulation_state::primitives::Address>().ok());
+        .and_then(|s| s.parse::<policy_state::primitives::Address>().ok());
 
     let unlock = locate_stake_unlock(ctx, &chain, target.as_ref());
 
@@ -126,7 +126,7 @@ fn unlock_eta(params: &Value, ctx: &FactCtx) -> Result<Value, FactError> {
 fn locate_stake_unlock<'a>(
     ctx: &FactCtx<'a>,
     chain: &ChainId,
-    target: Option<&simulation_state::primitives::Address>,
+    target: Option<&policy_state::primitives::Address>,
 ) -> Option<&'a UnlockSchedule> {
     let mut on_chain = ctx.state.tokens.iter().filter(|(key, holding)| {
         key.chain() == chain && matches!(holding.kind, TokenKind::StakeReceipt { .. })
@@ -167,12 +167,12 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::live_field::DataSource;
-    use simulation_state::primitives::{Address, ProtocolRef, Time, U256};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::TokenKind;
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::live_field::DataSource;
+    use policy_state::primitives::{Address, ProtocolRef, Time, U256};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::TokenKind;
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{WalletId, WalletState};
 
     const STAKING_TARGET: &str = "0x00000000000000000000000000000000deadbeef";
     const RECEIPT: &str = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409",
+  "symbol": "FDUSD",
+  "decimals": 18,
+  "name": "First Digital USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

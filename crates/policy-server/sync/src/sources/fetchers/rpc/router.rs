@@ -1,16 +1,10 @@
-//! Router — chain 별 provider 목록을 들고 priority 순서로 try, 실패 시
-//! 다음 provider 로 fallback.
-//!
-//! 모든 fetcher (Onchain/Oracle/...) 가 직접 provider 를 안 부르고 router 만
-//! 부른다. 그래서 provider 추가/교체가 호출자 코드 0 변경.
-
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use alloy_primitives::{Address, U256};
 use tokio::sync::RwLock;
 
-use simulation_state::ChainId;
+use policy_state::ChainId;
 
 use super::config::{ProviderConfig, RpcConfig};
 use super::health::HealthTracker;
@@ -18,11 +12,8 @@ use super::providers::PublicRpcProvider;
 use super::{BlockTag, EthCallRequest, RpcProvider};
 use crate::error::SyncError;
 
-/// 한 `RpcRouter` 는 여러 chain × 여러 provider 를 모두 관할.
 pub struct RpcRouter {
-    /// chain → priority 순 provider 목록.
     by_chain: BTreeMap<ChainId, Vec<Arc<dyn RpcProvider>>>,
-    /// chain → multicall3 컨트랙트 (있을 때만).
     multicall: BTreeMap<ChainId, Address>,
     health: Arc<RwLock<HealthTracker>>,
 }
@@ -41,7 +32,6 @@ impl std::fmt::Debug for RpcRouter {
 }
 
 impl RpcRouter {
-    /// Config 에서 provider 인스턴스를 만들고 정렬.
     pub fn from_config(cfg: RpcConfig) -> Result<Self, SyncError> {
         let mut by_chain: BTreeMap<ChainId, Vec<Arc<dyn RpcProvider>>> = BTreeMap::new();
         let mut multicall: BTreeMap<ChainId, Address> = BTreeMap::new();
@@ -74,7 +64,7 @@ impl RpcRouter {
     }
 
     /// Every chain the router has at least one provider for. Stable
-    /// order (BTreeMap). Used by `POST /wallets` to seed the wallet
+    /// order (`BTreeMap`). Used by `POST /wallets` to seed the wallet
     /// against every configured chain when the caller doesn't pin a
     /// `chains` set explicitly.
     pub fn chains(&self) -> impl Iterator<Item = &ChainId> + '_ {
@@ -90,8 +80,6 @@ impl RpcRouter {
         }
     }
 
-    /// 한 chain 의 모든 provider 를 priority 순으로 try.
-    /// 첫 성공 시 즉시 반환, 모두 실패 시 마지막 에러.
     async fn try_all<F, Fut, T>(&self, chain: &ChainId, mut op: F) -> Result<T, SyncError>
     where
         F: FnMut(Arc<dyn RpcProvider>) -> Fut,
@@ -127,8 +115,6 @@ impl RpcRouter {
             reason: format!("all providers failed for chain {chain}"),
         }))
     }
-
-    // ============ public RPC 메서드 ============
 
     pub async fn eth_call(
         &self,
@@ -178,7 +164,6 @@ impl RpcRouter {
         .await
     }
 
-    /// 안 healthy 한 provider 까지 한 번씩 강제 ping. cron 으로 호출.
     pub async fn health_sweep(&self) -> Vec<(String, Result<(), SyncError>)> {
         let mut results = Vec::new();
         for providers in self.by_chain.values() {
@@ -198,7 +183,6 @@ fn instantiate_provider(
 ) -> Result<Arc<dyn RpcProvider>, SyncError> {
     match cfg.kind.as_str() {
         "public" => Ok(Arc::new(PublicRpcProvider::new(cfg.name, chain, cfg.url))),
-        // 향후 추가:
         // "alchemy"   => Ok(Arc::new(AlchemyProvider::new(...))),
         // "infura"    => Ok(Arc::new(InfuraProvider::new(...))),
         // "quicknode" => Ok(Arc::new(QuickNodeProvider::new(...))),

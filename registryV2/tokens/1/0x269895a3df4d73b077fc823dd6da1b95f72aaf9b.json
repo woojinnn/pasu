@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x269895a3df4d73b077fc823dd6da1b95f72aaf9b",
+  "symbol": "sKRW",
+  "decimals": 18,
+  "name": "Synth sKRW",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

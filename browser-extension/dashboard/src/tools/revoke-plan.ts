@@ -1,6 +1,6 @@
 /**
  * `planRevokesLocal` — port of `POST /approvals/revoke-plan`
- * (phase5_handlers.rs).
+ * used by the policy-server revoke planner.
  *
  * Pure ERC-20 `approve(spender, 0)` calldata builder. No external
  * dependency — `selector(4B) + pad(spender, 32B) + 0(32B)`. Used by
@@ -10,7 +10,7 @@
  * Moved off the server because:
  * - it's pure deterministic byte assembly, no DB / RPC needed
  * - it lets the Monitoring page render the revoke modal offline
- * - simulation-server stays DB-only (project's design rule)
+ * - policy-server stays DB-only (project's design rule)
  */
 
 const APPROVE_SELECTOR = "0x095ea7b3"; // keccak256("approve(address,uint256)")[..4]

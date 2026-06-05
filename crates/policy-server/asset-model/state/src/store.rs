@@ -1,9 +1,9 @@
-//! `WalletStore` — wallet-state persistence boundary.
+//! Wallet-state persistence boundary.
 //!
-//! Callers (the simulation server, the sync scheduler, …) operate against
+//! Callers (the policy server, the sync scheduler, and tests) operate against
 //! `&dyn WalletStore` so the actual backend — in-memory for narrow tests,
 //! `PostgreSQL` for production — is interchangeable. The trait lives here in
-//! `simulation-state` (not in `simulation-sync` or `simulation-db`) so both
+//! `policy-state` (not in `policy-sync` or `policy-db`) so both
 //! the DB impl and the consumers (sync, server) can depend on it without
 //! forming a dependency cycle.
 
@@ -13,7 +13,7 @@ use crate::wallet::{WalletId, WalletState};
 
 /// Errors surfaced by [`WalletStore`] implementations.
 ///
-/// Intentionally narrow — backends translate their own errors (`DbError`,
+/// Intentionally narrow: backends translate their own errors (`DbError`,
 /// `io::Error`, …) into one of these variants so callers can pattern-match
 /// generically.
 #[derive(Debug, thiserror::Error)]
@@ -36,7 +36,6 @@ pub enum StoreError {
 /// Three operations, all async because production persistence uses networked
 /// database IO. Implementations must be `Send + Sync` so they can sit behind an
 /// `Arc` in a multi-threaded axum server.
-///
 /// Contract:
 /// - `load` for an unseen wallet returns an empty [`WalletState::new`]
 ///   rather than [`StoreError::NotFound`] — this lets a brand-new wallet
@@ -51,7 +50,7 @@ pub trait WalletStore: Send + Sync {
     async fn list_wallets(&self) -> Result<Vec<WalletId>, StoreError>;
 
     /// Loads the wallet state for `id`. Returns an empty
-    /// [`WalletState::new(id.clone())`] for a wallet the store has never
+    /// [`WalletState::new`] for a wallet the store has never
     /// seen, rather than [`StoreError::NotFound`].
     async fn load(&self, id: &WalletId) -> Result<WalletState, StoreError>;
 

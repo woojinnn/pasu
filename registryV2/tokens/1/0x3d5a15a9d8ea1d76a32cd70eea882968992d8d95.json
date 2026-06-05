@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3d5a15a9d8ea1d76a32cd70eea882968992d8d95",
+  "symbol": "QUINTA",
+  "decimals": 18,
+  "name": "Quinta Eco",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

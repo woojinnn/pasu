@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x79fd640000f8563a866322483524a4b48f1ed702",
+  "symbol": "gtusdtf",
+  "decimals": 18,
+  "name": "Gauntlet USDT Frontier",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x68cea24f675e4f25584607f6c9fefb353f1bbfdc",
-  "symbol": "KEY",
-  "decimals": 18,
-  "name": "SelfKey"
-}

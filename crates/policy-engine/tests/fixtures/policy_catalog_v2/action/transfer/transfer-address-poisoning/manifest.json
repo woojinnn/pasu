@@ -1,0 +1,13 @@
+{
+  "id": "transfer-address-poisoning",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [{
+    "id": "recipient-similarity",
+    "method": "address.similarity",
+    "params": { "chain_id": "$.root.chain_id", "candidate": "$.action.recipient" },
+    "outputs": [{ "kind": "context", "field": "poisonCollision", "type": "Bool", "from": "$.result.poisonCollision", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "poisonCollision": "Bool" } }
+}

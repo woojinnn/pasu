@@ -1,0 +1,5 @@
+{
+  "id": "perp-margin-withdraw-confirm",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "adjust_margin" } } }
+}

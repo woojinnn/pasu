@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::perp::ClaimFundingAction;
+use policy_transition::action::perp::ClaimFundingAction;
 
 use super::super::common::cedar::u256_hex;
 use super::super::common::token::lower_token_ref;
@@ -51,13 +51,11 @@ pub(crate) fn lower(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
 mod tests {
-    use simulation_reducer::action::perp::{
-        ClaimFundingAction, ClaimFundingLiveInputs, PerpAction,
-    };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::U256;
+    use policy_state::primitives::U256;
+    use policy_transition::action::perp::{ClaimFundingAction, ClaimFundingLiveInputs, PerpAction};
+    use policy_transition::action::ActionBody;
 
-    use simulation_state::primitives::MarketRef;
+    use policy_state::primitives::MarketRef;
 
     use super::super::test_support::{
         assert_conforms, live, onchain_meta, sample_market, sample_token, sample_venue,
@@ -75,7 +73,7 @@ mod tests {
         ActionBody::Perp(PerpAction::ClaimFunding(action))
     }
 
-    fn sample() -> (ActionBody, simulation_reducer::action::ActionMeta) {
+    fn sample() -> (ActionBody, policy_transition::action::ActionMeta) {
         // Claim from a single market (exercises the Some arm).
         (build(Some(sample_market())), onchain_meta())
     }

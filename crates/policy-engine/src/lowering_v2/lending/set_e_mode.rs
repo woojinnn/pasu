@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::lending::{EModeConfig, SetEModeAction};
+use policy_transition::action::lending::{EModeConfig, SetEModeAction};
 
 use super::super::common::cedar::addr;
 use super::super::common::token::lower_token_ref;
@@ -27,6 +27,9 @@ pub(crate) fn lower(
         "categoryId".into(),
         Value::from(i64::from(action.category_id)),
     );
+    if let Some(on_behalf_of) = &action.on_behalf_of {
+        m.insert("onBehalfOf".into(), Value::String(addr(on_behalf_of)));
+    }
     m.insert(
         "categoryConfig".into(),
         lower_emode_config(&action.live_inputs.category_config.value),
@@ -80,11 +83,11 @@ fn lower_emode_config(config: &EModeConfig) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::lending::{
+    use policy_state::primitives::Address;
+    use policy_transition::action::lending::{
         EModeConfig, LendingAction, SetEModeAction, SetEModeLiveInputs,
     };
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::primitives::Address;
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{live, onchain_meta, usdc, user_state, venue, weth};
 
@@ -96,6 +99,9 @@ mod tests {
         let action = LendingAction::SetEMode(SetEModeAction {
             venue: venue(),
             category_id: 1,
+            on_behalf_of: Some(
+                Address::from_str("0x000000000000000000000000000000000000b0b0").unwrap(),
+            ),
             live_inputs: SetEModeLiveInputs {
                 category_config: live(EModeConfig {
                     ltv_bp: 9300,
@@ -124,6 +130,7 @@ mod tests {
         let action = LendingAction::SetEMode(SetEModeAction {
             venue: venue(),
             category_id: 0,
+            on_behalf_of: None,
             live_inputs: SetEModeLiveInputs {
                 category_config: live(EModeConfig {
                     ltv_bp: 0,

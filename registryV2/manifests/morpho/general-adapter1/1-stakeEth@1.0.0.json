@@ -1,0 +1,46 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-stakeEth@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 stakeEth plumbing leg (reached via Bundler3 multicall(Call[])). GA1 stakes `amount` of its native ETH into Lido (→ stETH) for `receiver` (a Lido-collateral leverage zap). Modeled as liquid_staking/stake (venue=lido) — mirrors lido/steth/submit. receiver is not modeled (StakeAction has no recipient field); maxSharePriceE27 is a slippage bound.",
+  "match": {
+    "selector": "0x54f09129",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "stakeEth",
+    "abi": {
+      "name": "stakeEth",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "uint256", "name": "amount", "type": "uint256" },
+        { "internalType": "uint256", "name": "maxSharePriceE27", "type": "uint256" },
+        { "internalType": "address", "name": "referral", "type": "address" },
+        { "internalType": "address", "name": "receiver", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "stake",
+        "stake": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "amount": "$args.amount",
+          "referral": "$args.referral"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

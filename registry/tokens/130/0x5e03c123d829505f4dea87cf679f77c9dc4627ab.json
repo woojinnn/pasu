@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x5e03c123d829505f4dea87cf679f77c9dc4627ab",
-  "symbol": "SOCKS",
-  "decimals": 18,
-  "name": "Unisocks"
-}

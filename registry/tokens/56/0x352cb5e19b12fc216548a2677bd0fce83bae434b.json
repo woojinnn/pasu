@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0x352cb5e19b12fc216548a2677bd0fce83bae434b",
-  "symbol": "BTT",
-  "decimals": 18,
-  "name": "BitTorrent"
-}

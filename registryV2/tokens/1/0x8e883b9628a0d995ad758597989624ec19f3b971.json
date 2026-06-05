@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8e883b9628a0d995ad758597989624ec19f3b971",
+  "symbol": "AAVESHIETH-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: AAVE/SHIB/ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x8e883b9628a0d995ad758597989624ec19f3b971"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

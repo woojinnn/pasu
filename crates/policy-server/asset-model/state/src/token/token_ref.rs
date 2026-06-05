@@ -1,4 +1,4 @@
-//! `TokenRef` — a lightweight identifier pointing to another token from within a `TokenKind`.
+//! Lightweight identifier for another token referenced by a `TokenKind`.
 //!
 //! The actual holding lives in the external `tokens` map, so a kind only carries
 //! the key (e.g. `aUSDC.kind = YieldReceipt { underlying: TokenRef(USDC.key) }`).

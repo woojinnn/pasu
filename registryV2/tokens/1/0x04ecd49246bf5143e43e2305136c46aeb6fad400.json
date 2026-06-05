@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x04ecd49246bf5143e43e2305136c46aeb6fad400",
+  "symbol": "DYDXstDYDX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: DYDX/stkDYDX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x04ecd49246bf5143e43e2305136c46aeb6fad400"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x92d6c1e31e14520e676a687f0a93788b716beff5"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x65f7ba4ec257af7c55fd5854e5f6356bbd0fb8ec"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

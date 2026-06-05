@@ -1,0 +1,5 @@
+{
+  "id": "borrow-on-behalf-mismatch",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "borrow" } } }
+}

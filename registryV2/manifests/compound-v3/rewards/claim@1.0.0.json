@@ -1,0 +1,94 @@
+{
+  "type": "adapter_action",
+  "id": "compound-v3/rewards/claim@1.0.0",
+  "publisher": "compound.eth",
+  "note": "Compound v3 CometRewards claim(comet,src,shouldAccrue): claim accrued COMP for src (Airdrop::Claim). Mainnet; multichain deferred.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xb7034f7e",
+    "chain_to_addresses": {
+      "1": [
+        "0x1b0e765f6224c21223aea2af16c1c46e38885a40"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claim",
+    "abi": {
+      "name": "claim",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "comet",
+          "type": "address"
+        },
+        {
+          "name": "src",
+          "type": "address"
+        },
+        {
+          "name": "shouldAccrue",
+          "type": "bool"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "airdrop",
+      "airdrop": {
+        "action": "claim",
+        "claim": {
+          "source": {
+            "name": "compound"
+          },
+          "claim_target": {
+            "kind": "staking_claim",
+            "chain": "$chain",
+            "contract": "$to"
+          },
+          "recipient": "$args.src",
+          "proof": null,
+          "sig": null
+        }
+      }
+    },
+    "live_inputs": {
+      "is_still_claimable": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v3_is_still_claimable"
+        },
+        "ttl_s": 30
+      },
+      "actual_amount": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v3_actual_amount"
+        },
+        "ttl_s": 60
+      },
+      "claim_token": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v3_claim_token"
+        },
+        "ttl_s": 60
+      },
+      "claim_window": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "compound_v3_claim_window"
+        },
+        "ttl_s": 60
+      }
+    }
+  }
+}

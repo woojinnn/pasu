@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x49446a0874197839d15395b908328a74ccc96bc0",
+  "symbol": "mstETH",
+  "decimals": 18,
+  "name": "mstETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

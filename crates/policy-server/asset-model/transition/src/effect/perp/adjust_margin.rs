@@ -1,11 +1,8 @@
 //! `AdjustMarginAction` reducer — add or remove collateral on an isolated position.
-//!
 //! ## Effect
-//!
 //! `self.delta` is `SignedI256` — positive = deposit (debit wallet, add to
 //! position collateral), negative = withdraw (credit wallet, remove from
 //! position collateral).
-//!
 //! Updates `position.collateral[0]` (primary collateral token) and
 //! recomputes `liq_price` would be ideal, but the per-position liq-price
 //! recalc lives in `helpers::derived::recompute_liq_price` (already
@@ -13,16 +10,14 @@
 //! `liq_price` `LiveField` synthetically as `UserSupplied` so the policy
 //! layer can decide whether to trust the stale derived value or wait for
 //! the orchestrator's next venue-API poll.
-//!
 //! ## Free-margin invariant
-//!
 //! On withdraw we verify `free_margin_after >= 0` from the `LiveField` — the
 //! orchestrator pre-computes this as `position.collateral_after_withdraw −
 //! maintenance_margin`. Negative `free_margin_after` would liquidate the
 //! position immediately, so we reject with `Invariant`.
 
-use simulation_state::position::PositionKind;
-use simulation_state::{EvalContext, StateDelta, WalletState, U256};
+use policy_state::position::PositionKind;
+use policy_state::{EvalContext, StateDelta, WalletState, U256};
 
 use crate::action::perp::AdjustMarginAction;
 use crate::apply::Reducer;
@@ -106,16 +101,16 @@ impl Reducer for AdjustMarginAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::{PositionChange, TokenChange};
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::{PositionChange, TokenChange};
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpPosition, PerpSide, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, SignedI256, Time, VenueRef,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{AdjustMarginLiveInputs, PerpPositionLive, PerpVenue};
@@ -125,7 +120,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

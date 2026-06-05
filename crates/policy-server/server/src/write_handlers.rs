@@ -1,10 +1,8 @@
 //! Mutating endpoints — add wallets + trigger sync refresh.
-//!
 //! These are the counterpart to `read_handlers`. They take an
 //! authenticated user, mutate that user's PostgreSQL-backed wallet state, and (where
 //! applicable) trigger the sync orchestrator to fetch live data over
 //! RPC/oracles defined in `scopeball-sync.toml`.
-//!
 //! Sync completion fires a `wallet_synced` event on the per-user SSE
 //! stream so a dashboard or extension subscribed to the activity feed
 //! sees the refresh in real time.
@@ -19,11 +17,11 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 
-use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-use simulation_state::primitives::{Address, ChainId, Duration, Price, Time};
-use simulation_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
-use simulation_state::{WalletId, WalletState, WalletStore};
-use simulation_sync::{discovery, CoinGeckoClient, DiscoveredToken, Orchestrator, RpcRouter};
+use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+use policy_state::primitives::{Address, ChainId, Duration, Price, Time};
+use policy_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
+use policy_state::{WalletId, WalletState, WalletStore};
+use policy_sync::{discovery, CoinGeckoClient, DiscoveredToken, Orchestrator, RpcRouter};
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -35,7 +33,6 @@ pub struct AddWalletReq {
     /// 0x address (case-insensitive — we store lower-cased internally).
     pub address: String,
     /// CAIP-2 chain ids (e.g. `["eip155:1", "eip155:42161"]`).
-    ///
     /// Optional. When omitted or empty the server tracks the wallet
     /// against **every** chain the sync config (`scopeball-sync.toml`)
     /// has an RPC provider for. Multicall keeps the per-chain RPC
@@ -56,7 +53,7 @@ pub struct AddWalletResp {
     /// True when the auto-sync after add succeeded; false if it was
     /// skipped (no orchestrator) or errored (logged in `error`).
     pub synced: bool,
-    /// How many TokenHolding rows were seeded for a brand-new wallet
+    /// How many `TokenHolding` rows were seeded for a brand-new wallet
     /// (0 for an already-tracked wallet, also 0 when discovery fails).
     #[serde(default)]
     pub discovered: usize,
@@ -75,7 +72,7 @@ pub async fn add_wallet(
 ) -> Response {
     let id = match build_wallet_id(&req, &state) {
         Ok(id) => id,
-        Err(e) => return e,
+        Err(e) => return *e,
     };
 
     let store = match state.multi_user.for_user(&user.user_id) {
@@ -130,15 +127,15 @@ pub async fn add_wallet(
     // Best-effort sync. Failures here aren't fatal — the caller can
     // POST /sync later, and stale state is better than no wallet row.
     let (synced, sync_err) = match run_sync(&*store, &id, &state.orchestrator).await {
-        Ok(()) => {
+        Ok(counts) => {
             state
                 .publisher
                 .publish(
                     user.user_id.clone(),
                     Event::WalletSynced(WalletSync {
                         wallet: format!("{:#x}", id.address),
-                        fields_updated: 0, // populated by /sync, not the seed path
-                        fields_failed: 0,
+                        fields_updated: counts.fields_updated,
+                        fields_failed: counts.fields_failed,
                         synced_at: unix_now(),
                     }),
                 )
@@ -349,11 +346,8 @@ fn held_erc20_addresses(state: &WalletState, chain: &ChainId) -> Vec<Address> {
 }
 
 /// Merge discovered non-zero allowances into `state.approvals.erc20`.
-fn seed_approvals(
-    state: &mut WalletState,
-    found: Vec<simulation_sync::DiscoveredApproval>,
-) -> usize {
-    use simulation_state::approval::AllowanceSpec;
+fn seed_approvals(state: &mut WalletState, found: Vec<policy_sync::DiscoveredApproval>) -> usize {
+    use policy_state::approval::AllowanceSpec;
 
     let now = Time::from_unix(unix_now_u64());
     let mut inserted = 0usize;
@@ -372,7 +366,7 @@ fn seed_approvals(
     inserted
 }
 
-/// Hit CoinGecko for every token in the seeded state that lacks
+/// Hit `CoinGecko` for every token in the seeded state that lacks
 /// metadata. Caps at `MAX_METADATA_LOOKUPS` calls per request so the
 /// caller doesn't wait too long on free-tier rate limits (~30 req/min).
 async fn backfill_metadata(state: &mut WalletState, cg: &CoinGeckoClient) {
@@ -482,8 +476,8 @@ pub struct PatchWalletReq {
 mod serde_helpers {
     use serde::{Deserialize, Deserializer};
 
-    /// Distinguishes `{}` (field omitted → Option::None) from `{"label":
-    /// null}` (field present-but-null → Option::Some(None)). PATCH
+    /// Distinguishes `{}` (field omitted → `Option::None`) from `{"label":
+    /// null}` (field present-but-null → `Option::Some(None)`). PATCH
     /// semantics need that distinction.
     #[allow(clippy::option_option)]
     pub fn deserialize_present<'de, D, T>(d: D) -> Result<Option<Option<T>>, D::Error>
@@ -496,7 +490,7 @@ mod serde_helpers {
 }
 
 /// `PATCH /wallets/:address` — update mutable display fields (label,
-/// is_owned). Body is a partial JSON object; absent fields stay put.
+/// `is_owned`). Body is a partial JSON object; absent fields stay put.
 pub async fn patch_wallet(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
@@ -561,6 +555,31 @@ pub async fn sync_wallet(
         Err(e) => return bad_request(&format!("invalid address `{address}`: {e}")),
     };
 
+    let lock_key = format!("sync:user:{}", user.user_id);
+    let lock = match state
+        .coordinator
+        .try_lock(&lock_key, state.sync_lock_ttl)
+        .await
+    {
+        Ok(Some(lock)) => lock,
+        Ok(None) => {
+            return (
+                StatusCode::CONFLICT,
+                "wallet sync already running for this user",
+            )
+                .into_response()
+        }
+        Err(e) => return internal(&format!("sync lock: {e}")),
+    };
+
+    let response = sync_wallet_locked(state.clone(), user, addr).await;
+    if let Err(e) = state.coordinator.release_lock(lock).await {
+        tracing::warn!(error = %e, "failed to release sync lock");
+    }
+    response
+}
+
+async fn sync_wallet_locked(state: AppState, user: AuthUser, addr: Address) -> Response {
     let store = match state.multi_user.for_user(&user.user_id) {
         Ok(s) => s,
         Err(e) => return internal(&format!("open user store: {e}")),
@@ -578,7 +597,6 @@ pub async fn sync_wallet(
     // Re-run discovery if (a) the wallet has no holdings at all, or
     // (b) it has only native gas balances and zero ERC-20s. The latter
     // means the original Etherscan discovery silently bailed out and
-    // the user now expects "지금 동기화" to actually re-attempt.
     let pre = match store.load(&id).await {
         Ok(s) => s,
         Err(e) => return internal(&format!("pre-sync load: {e}")),
@@ -586,7 +604,7 @@ pub async fn sync_wallet(
     let has_any_erc20 = pre
         .tokens
         .keys()
-        .any(|k| matches!(k, simulation_state::TokenKey::Erc20 { .. }));
+        .any(|k| matches!(k, policy_state::TokenKey::Erc20 { .. }));
     if pre.tokens.is_empty() || !has_any_erc20 {
         tracing::info!(
             address = %format!("{:#x}", id.address),
@@ -624,14 +642,9 @@ pub async fn sync_wallet(
     } else {
         tracing::warn!("sync: approval discovery skipped — orchestrator has no RpcRouter");
     }
-    if let Err(e) = run_sync(&*store, &id, &state.orchestrator).await {
-        return internal(&e);
-    }
-    // Re-load to count what changed — the orchestrator's RefreshReport
-    // would be richer but we don't have it surfaced from `run_sync` yet.
-    let _state = match store.load(&id).await {
-        Ok(s) => s,
-        Err(e) => return internal(&format!("post-sync load: {e}")),
+    let counts = match run_sync(&*store, &id, &state.orchestrator).await {
+        Ok(c) => c,
+        Err(e) => return internal(&e),
     };
     state
         .publisher
@@ -639,8 +652,8 @@ pub async fn sync_wallet(
             user.user_id.clone(),
             Event::WalletSynced(WalletSync {
                 wallet: format!("{:#x}", id.address),
-                fields_updated: 0,
-                fields_failed: 0,
+                fields_updated: counts.fields_updated,
+                fields_failed: counts.fields_failed,
                 synced_at: unix_now(),
             }),
         )
@@ -658,24 +671,29 @@ async fn run_sync(
     store: &dyn WalletStore,
     id: &WalletId,
     orchestrator: &Arc<Orchestrator>,
-) -> Result<(), String> {
+) -> Result<SyncCounts, String> {
     let mut state = store
         .load(id)
         .await
         .map_err(|e| format!("load before sync: {e}"))?;
     let now = Time::from_unix(unix_now_u64());
 
-    orchestrator
+    let prim = orchestrator
         .sync_primitives(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.sync_primitives: {e}"))?;
 
-    orchestrator
+    let hl = orchestrator
         .sync_hyperliquid_account(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.sync_hyperliquid_account: {e}"))?;
 
-    orchestrator
+    let intent = orchestrator
+        .sync_intent_orders(&mut state, now)
+        .await
+        .map_err(|e| format!("orchestrator.sync_intent_orders: {e}"))?;
+
+    let refresh = orchestrator
         .refresh(&mut state, now)
         .await
         .map_err(|e| format!("orchestrator.refresh: {e}"))?;
@@ -684,12 +702,36 @@ async fn run_sync(
         .await
         .map_err(|e| format!("save after sync: {e}"))?;
 
-    Ok(())
+    let prim_updated = prim.block_heights_updated
+        + prim.native_balances_updated
+        + prim.erc20_balances_updated
+        + prim.approvals_updated;
+    Ok(SyncCounts {
+        fields_updated: prim_updated
+            + usize::from(hl.account_updated)
+            + intent.orders_updated
+            + refresh.fields_updated,
+        fields_failed: prim.errors.len()
+            + hl.errors.len()
+            + intent.errors.len()
+            + refresh.fields_failed,
+    })
 }
 
-fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Response> {
-    let address = Address::from_str(&req.address)
-        .map_err(|e| bad_request(&format!("invalid address `{}`: {e}", req.address)))?;
+/// Per-wallet refresh counts surfaced from [`run_sync`] so the sync paths can
+/// emit a real `wallet_synced` payload instead of zeros.
+struct SyncCounts {
+    fields_updated: usize,
+    fields_failed: usize,
+}
+
+fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Box<Response>> {
+    let address = Address::from_str(&req.address).map_err(|e| {
+        Box::new(bad_request(&format!(
+            "invalid address `{}`: {e}",
+            req.address
+        )))
+    })?;
     let chains: Vec<ChainId> = if req.chains.is_empty() {
         // Default — every chain the sync config has an RPC for. Better
         // UX than asking the user for CAIP-2 strings, and Multicall
@@ -702,9 +744,9 @@ fn build_wallet_id(req: &AddWalletReq, state: &AppState) -> Result<WalletId, Res
         req.chains.iter().cloned().map(ChainId::new).collect()
     };
     if chains.is_empty() {
-        return Err(bad_request(
+        return Err(Box::new(bad_request(
             "no chains configured on the server — set up scopeball-sync.toml or pass `chains` explicitly",
-        ));
+        )));
     }
     Ok(WalletId::new(address, chains))
 }
@@ -734,7 +776,7 @@ fn unix_now_u64() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::U256;
+    use policy_state::U256;
 
     #[test]
     fn seed_approvals_writes_allowances_to_primitive_state() {
@@ -747,7 +789,7 @@ mod tests {
 
         let inserted = seed_approvals(
             &mut state,
-            vec![simulation_sync::DiscoveredApproval {
+            vec![policy_sync::DiscoveredApproval {
                 chain: chain.clone(),
                 token,
                 spender,
@@ -777,7 +819,7 @@ mod tests {
 
         let inserted = seed_approvals(
             &mut state,
-            vec![simulation_sync::DiscoveredApproval {
+            vec![policy_sync::DiscoveredApproval {
                 chain: chain.clone(),
                 token,
                 spender,

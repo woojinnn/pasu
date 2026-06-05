@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb63ef9bc0d4099a750721f5e90e7b56486e25eeb",
+  "symbol": "cystratUSD",
+  "decimals": 6,
+  "name": "CurveYield stratUSD Merkl Vault",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

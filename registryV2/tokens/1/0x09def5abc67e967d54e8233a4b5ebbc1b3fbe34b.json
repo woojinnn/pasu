@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x09def5abc67e967d54e8233a4b5ebbc1b3fbe34b",
+  "symbol": "waBTC",
+  "decimals": 18,
+  "name": "Wrapped aBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

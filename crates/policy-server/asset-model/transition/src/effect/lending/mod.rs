@@ -1,17 +1,18 @@
 //! `LendingAction` reducers.
-//!
 //! One file per action; one file per venue's math.
 
-// Phase 2 batch: some shared helpers (`merge_debt`, `reduce_debt`,
 // `build_price_tables`, `threshold_to_bp`) are wired in this commit but
 // only consumed by later commits (borrow / repay / liquidate). Keep the
 // allow until those land.
 #![allow(dead_code)]
 
 mod borrow;
+mod buy_collateral;
 mod delegate_borrow;
 mod liquidate;
+mod periphery_operation;
 mod repay;
+mod set_authorization;
 mod set_collateral;
 mod set_emode;
 mod supply;
@@ -29,10 +30,10 @@ mod morpho_optimizer;
 mod shared;
 mod spark;
 
-use simulation_state::position::{LendingAccount, PositionId};
-use simulation_state::primitives::{ChainId, U256};
-use simulation_state::token::{RateMode, TokenRef};
-use simulation_state::{EvalContext, PositionChange, StateDelta, WalletState};
+use policy_state::position::{LendingAccount, PositionId};
+use policy_state::primitives::{ChainId, U256};
+use policy_state::token::{RateMode, TokenRef};
+use policy_state::{EvalContext, PositionChange, StateDelta, WalletState};
 
 use crate::action::lending::{LendingAction, LendingVenue};
 use crate::apply::Reducer;
@@ -44,6 +45,7 @@ impl Reducer for LendingAction {
             Self::Supply(a) => a.apply(state, ctx),
             Self::Withdraw(a) => a.apply(state, ctx),
             Self::Borrow(a) => a.apply(state, ctx),
+            Self::BuyCollateral(a) => a.apply(state, ctx),
             Self::Repay(a) => a.apply(state, ctx),
             Self::SwapRateMode(a) => a.apply(state, ctx),
             Self::SetEMode(a) => a.apply(state, ctx),
@@ -51,6 +53,8 @@ impl Reducer for LendingAction {
             Self::DisableCollateral(a) => set_collateral::apply(a, state, ctx, false),
             Self::DelegateBorrow(a) => a.apply(state, ctx),
             Self::Liquidate(a) => a.apply(state, ctx),
+            Self::SetAuthorization(a) => a.apply(state, ctx),
+            Self::PeripheryOperation(a) => a.apply(state, ctx),
         }
     }
 }
@@ -61,7 +65,7 @@ impl Reducer for LendingAction {
 
 /// Deterministic position-id derivation for lending positions.
 pub(super) mod position_id {
-    use simulation_state::position::PositionId;
+    use policy_state::position::PositionId;
 
     use crate::action::lending::LendingVenue;
 
@@ -100,6 +104,22 @@ pub(super) mod position_id {
             LendingVenue::Fluid { chain, vault } => {
                 format!("fluid:{}:{vault:?}", chain.as_str())
             }
+            LendingVenue::MetaMorpho { chain, vault } => {
+                format!("metamorpho:{}:{vault:?}", chain.as_str())
+            }
+            LendingVenue::CrvUsd {
+                chain, controller, ..
+            } => {
+                format!("crv_usd:{}:{controller:?}", chain.as_str())
+            }
+            LendingVenue::LlamaLend {
+                chain, controller, ..
+            } => {
+                format!("llama_lend:{}:{controller:?}", chain.as_str())
+            }
+            LendingVenue::AaveV3Periphery { chain, adapter } => {
+                format!("aave_v3_periphery:{}:{adapter:?}", chain.as_str())
+            }
         }
     }
 }
@@ -116,6 +136,10 @@ pub(super) const fn venue_tag(venue: &LendingVenue) -> &'static str {
         LendingVenue::MorphoBlue { .. } => "morpho_blue",
         LendingVenue::MorphoOptimizer { .. } => "morpho_optimizer",
         LendingVenue::Fluid { .. } => "fluid",
+        LendingVenue::MetaMorpho { .. } => "metamorpho",
+        LendingVenue::CrvUsd { .. } => "crv_usd",
+        LendingVenue::LlamaLend { .. } => "llama_lend",
+        LendingVenue::AaveV3Periphery { .. } => "aave_v3_periphery",
     }
 }
 
@@ -132,7 +156,11 @@ pub(super) fn venue_chain(venue: &LendingVenue) -> ChainId {
         | LendingVenue::CompoundV2 { chain, .. }
         | LendingVenue::MorphoBlue { chain, .. }
         | LendingVenue::MorphoOptimizer { chain, .. }
-        | LendingVenue::Fluid { chain, .. } => chain.clone(),
+        | LendingVenue::Fluid { chain, .. }
+        | LendingVenue::MetaMorpho { chain, .. }
+        | LendingVenue::CrvUsd { chain, .. }
+        | LendingVenue::LlamaLend { chain, .. }
+        | LendingVenue::AaveV3Periphery { chain, .. } => chain.clone(),
     }
 }
 
@@ -256,8 +284,8 @@ pub(super) fn reduce_debt(
 /// Parallel-slice tables consumed by `helpers::derived::recompute_*`:
 /// `(collateral_prices, debt_prices, liquidation_thresholds_bp)`.
 pub(super) type PriceTables = (
-    Vec<(TokenRef, simulation_state::primitives::Decimal)>,
-    Vec<(TokenRef, simulation_state::primitives::Decimal)>,
+    Vec<(TokenRef, policy_state::primitives::Decimal)>,
+    Vec<(TokenRef, policy_state::primitives::Decimal)>,
     Vec<(TokenRef, u32)>,
 );
 
@@ -266,7 +294,7 @@ pub(super) type PriceTables = (
 /// `borrow.rs` / `withdraw.rs` / `liquidate.rs` to call into the HF helper.
 pub(super) fn build_price_tables(
     account: &LendingAccount,
-    asset_price: &simulation_state::primitives::Price,
+    asset_price: &policy_state::primitives::Price,
     referenced_asset: &TokenRef,
 ) -> PriceTables {
     let mut collat_prices = Vec::new();
@@ -304,7 +332,7 @@ pub(super) fn build_price_tables(
 /// Convert a `Decimal` `LiquidationThreshold` (stored as a 0.x fraction) into
 /// basis points (`u32`). Best-effort string parse; returns `0` on failure
 /// (safer for HF — under-counts collateral rather than over-counts).
-fn threshold_to_bp(value: &simulation_state::primitives::Decimal) -> u32 {
+fn threshold_to_bp(value: &policy_state::primitives::Decimal) -> u32 {
     use std::str::FromStr;
     rust_decimal::Decimal::from_str(value.as_str())
         .ok()

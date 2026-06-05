@@ -1,0 +1,38 @@
+{
+  "type": "adapter_action",
+  "id": "curve/fee-distributor/claim@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x4e71d92d",
+    "chain_to_addresses": {
+      "1": [
+        "0xa464e6dcda8ac41e03616f95f4bc98a13b8922dc",
+        "0xd16d5ec345dd86fb63c6a9c43c517210f1027914"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claim",
+    "abi": { "name": "claim", "type": "function", "stateMutability": "nonpayable", "inputs": [] }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "claim_rewards",
+        "claim_rewards": {
+          "venue": { "name": "curve_fee_distributor", "chain": "$chain", "distributor": "$to" },
+          "gauges": []
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x69000e468f7f6d6f4ed00cf46f368acdac252553",
+  "symbol": "sUSDz",
+  "decimals": 18,
+  "name": "Staked ZAI Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+  "symbol": "crvUSDFRAX-f-gauge",
+  "decimals": 18,
+  "name": "Curve.fi crvUSDFRAX-f Gauge Deposit",
+  "source": "https://etherscan.io/token/0x96424e6b5eaafe0c3b36ca82068d574d44be4e3c",
+  "token_kind": {
+    "kind": "stake_receipt",
+    "protocol": { "name": "curve_gauge", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x0cd6f267b2086bea681e922e19d40512511be538" }
+    }
+  }
+}

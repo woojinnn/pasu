@@ -1,0 +1,99 @@
+{
+  "type": "adapter_action",
+  "id": "aave/governance/core/createProposal@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Governance V3 proposal creation with payload controller extraction.",
+  "match": {
+    "selector": "0x3bec1bfc",
+    "chain_to_addresses": {
+      "1": [
+        "0x9aee0b04504cef83a65ac3f0e838d0593bcb2bc7"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "createProposal",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "chain",
+              "type": "uint256"
+            },
+            {
+              "internalType": "enum PayloadsControllerUtils.AccessControl",
+              "name": "accessLevel",
+              "type": "uint8"
+            },
+            {
+              "internalType": "address",
+              "name": "payloadsController",
+              "type": "address"
+            },
+            {
+              "internalType": "uint40",
+              "name": "payloadId",
+              "type": "uint40"
+            }
+          ],
+          "internalType": "struct PayloadsControllerUtils.Payload[]",
+          "name": "payloads",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "address",
+          "name": "votingPortal",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "ipfsHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "createProposal",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "governance",
+      "governance": {
+        "action": "propose",
+        "propose": {
+          "venue": {
+            "name": "aave_governance_v3",
+            "chain": "$chain",
+            "governance": "$to"
+          },
+          "payload_targets": {
+            "$fn": "tuple_array_field",
+            "$args": [
+              "$args.payloads",
+              2
+            ]
+          },
+          "payload_count": {
+            "$fn": "array_len",
+            "$args": [
+              "$args.payloads"
+            ]
+          },
+          "metadata": "$args.ipfsHash"
+        }
+      }
+    }
+  }
+}

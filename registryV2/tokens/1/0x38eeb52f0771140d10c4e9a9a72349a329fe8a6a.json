@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x38eeb52f0771140d10c4e9a9a72349a329fe8a6a",
+  "symbol": "apyUSD",
+  "decimals": 18,
+  "name": "apyUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,18 @@
+// Governance::ActivateVoting — activate voting for a governance proposal.
+
+namespace Governance {
+  type ActivateVotingContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    proposalId: String,
+    custom?: ActivateVotingCustomContext,
+  };
+
+  type ActivateVotingCustomContext = {};
+
+  action "ActivateVoting" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ActivateVotingContext,
+  };
+}

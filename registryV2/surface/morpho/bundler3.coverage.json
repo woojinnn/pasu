@@ -1,0 +1,19 @@
+{
+  "contract": "Bundler3",
+  "chainId": 1,
+  "address": "0x6566194141eefa99af43bb5aa71460ca2dc90245",
+  "snapshot": "bundler3.abi.json",
+  "note": "Bundler3 — the user pre-sign multicall router on Ethereum mainnet. Both external-mutating selectors triaged. cover = multicall(Call[]) (the user entrypoint; decoded per-leg-to via the multicall_call_array strategy into GeneralAdapter1 position legs). exclude = reenter(Call[]) (reenterHash-guarded; callable only mid-execution by the just-called adapter — NOT a user pre-sign entrypoint).",
+  "functions": {
+    "0x374f435d": {
+      "name": "multicall((address,bytes,uint256,bool,bytes32)[])",
+      "decision": "cover",
+      "reason": "user pre-sign entrypoint — a Call[] bundle, each Call.to a different adapter (e.g. GeneralAdapter1). Decoded per-leg-to (multicall_call_array) → ActionBody::Multicall of the mapped position legs. ~84% of Morpho-native MetaMorpho vault deposits route through here (Q1 FW-2)."
+    },
+    "0x803a7fba": {
+      "name": "reenter((address,bytes,uint256,bool,bytes32)[])",
+      "decision": "exclude",
+      "reason": "reenterHash-guarded callback (callable only mid-execution by the adapter just called from multicall) — not a user pre-sign entrypoint. The reenter legs live inside an adapter leg's `data` arg (nested-reenter decode = documented follow-up)."
+    }
+  }
+}

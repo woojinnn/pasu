@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x067ae75628177fd257c2b1e500993e1a0babcbd1",
+  "symbol": "aBasGHO",
+  "decimals": 18,
+  "name": "Aave Base GHO",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

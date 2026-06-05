@@ -1,0 +1,80 @@
+{
+  "contract": "BalancerV2Vault",
+  "chainId": 42161,
+  "address": "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+  "snapshot": "v2-vault-arbitrum.abi.json",
+  "note": "Balancer V2 Vault user pre-sign surface triage. Current manifests cover single swaps and relayer approval; complex batch/liquidity/internal-balance paths are explicit deferred gaps, not silent omissions.",
+  "functions": {
+    "0x945bcec9": {
+      "name": "batchSwap",
+      "decision": "exclude",
+      "reason": "deferred user swap path: faithful mapping requires cross-array assets[swaps[i].assetInIndex] / assetOutIndex resolution; current manifest DSL cannot express this without a resolver"
+    },
+    "0x7d3aeb96": {
+      "name": "deregisterTokens",
+      "decision": "exclude",
+      "reason": "pool administration / asset-manager maintenance; not a wallet user pre-sign intent"
+    },
+    "0x8bdb3913": {
+      "name": "exitPool",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: requires userData enum decode plus dynamic token/amount array zipping before a faithful remove_liquidity ActionBody can be emitted"
+    },
+    "0x5c38449e": {
+      "name": "flashLoan",
+      "decision": "exclude",
+      "reason": "integrator flash-loan callback primitive; not represented as a retail wallet safety ActionBody in this onboarding pass"
+    },
+    "0xb95cac28": {
+      "name": "joinPool",
+      "decision": "exclude",
+      "reason": "deferred user liquidity path: requires userData enum decode plus dynamic token/amount array zipping before a faithful add_liquidity ActionBody can be emitted"
+    },
+    "0xe6c46092": {
+      "name": "managePoolBalance",
+      "decision": "exclude",
+      "reason": "pool/asset-manager balance management; not a wallet user pre-sign intent"
+    },
+    "0x0e8e3e84": {
+      "name": "manageUserBalance",
+      "decision": "exclude",
+      "reason": "deferred internal-balance bookkeeping path; can deposit/withdraw/internal-transfer assets and needs a dedicated ActionBody instead of pretending it is a simple ERC20 transfer"
+    },
+    "0xf84d066e": {
+      "name": "queryBatchSwap",
+      "decision": "exclude",
+      "reason": "quote helper used as live-input source; nonpayable for revert-based simulation but not a user state-changing intent"
+    },
+    "0x09b2760f": {
+      "name": "registerPool",
+      "decision": "exclude",
+      "reason": "pool registration / factory administration; not a wallet user pre-sign intent"
+    },
+    "0x66a9c7d2": {
+      "name": "registerTokens",
+      "decision": "exclude",
+      "reason": "pool token registration / asset-manager setup; not a wallet user pre-sign intent"
+    },
+    "0x058a628f": {
+      "name": "setAuthorizer",
+      "decision": "exclude",
+      "reason": "governance/admin authorizer replacement; not a retail wallet user action"
+    },
+    "0x16c38b3c": {
+      "name": "setPaused",
+      "decision": "exclude",
+      "reason": "governance/emergency pause control; not a retail wallet user action"
+    },
+    "0xfa6e671d": {
+      "name": "setRelayerApproval",
+      "decision": "cover",
+      "reason": "permission primitive: grants/revokes Balancer V2 relayer authorization for a user"
+    },
+    "0x52bbbe29": {
+      "name": "swap",
+      "decision": "cover",
+      "reason": "user AMM action: Balancer V2 single-pool swap"
+    }
+  },
+  "signed_structs": {}
+}

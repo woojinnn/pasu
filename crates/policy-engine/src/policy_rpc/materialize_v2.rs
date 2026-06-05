@@ -331,20 +331,20 @@ mod tests {
     /// Build the UniswapV3 swap sample (mirrors `amm::swap`'s test fixture, kept
     /// minimal). Returns the `(ActionBody, ActionMeta)` pair.
     fn swap_sample() -> (
-        simulation_reducer::action::ActionBody,
-        simulation_reducer::action::ActionMeta,
+        policy_transition::action::ActionBody,
+        policy_transition::action::ActionMeta,
     ) {
         use std::str::FromStr;
 
-        use simulation_reducer::action::amm::{
+        use policy_state::live_field::{DataSource, OracleProvider};
+        use policy_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::LiveField;
+        use policy_transition::action::amm::{
             AmmAction, AmmVenue, PoolState, RouteHop, RoutePath, SwapAction, SwapDirection,
             SwapLiveInputs, SwapParams, SwapRoute,
         };
-        use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-        use simulation_state::live_field::{DataSource, OracleProvider};
-        use simulation_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
-        use simulation_state::token::{TokenKey, TokenRef};
-        use simulation_state::LiveField;
+        use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
 
         let now = Time::from_unix(1_738_000_000);
         let user = Address::from_str("0x000000000000000000000000000000000000a01c").unwrap();
@@ -398,7 +398,7 @@ mod tests {
             venue: v3,
             params: SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),
@@ -584,19 +584,19 @@ mod tests {
     /// on-chain meta. The token is USDC on Ethereum mainnet.
     fn approve_sample(
         spender: &str,
-        amount: simulation_state::primitives::U256,
+        amount: policy_state::primitives::U256,
     ) -> (
-        simulation_reducer::action::ActionBody,
-        simulation_reducer::action::ActionMeta,
+        policy_transition::action::ActionBody,
+        policy_transition::action::ActionMeta,
     ) {
         use std::str::FromStr;
 
-        use simulation_reducer::action::token::{Erc20ApproveAction, TokenAction};
-        use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature};
-        use simulation_state::live_field::{DataSource, OracleProvider};
-        use simulation_state::primitives::{Address, ChainId, Time, U256};
-        use simulation_state::token::{TokenKey, TokenRef};
-        use simulation_state::LiveField;
+        use policy_transition::action::token::{Erc20ApproveAction, TokenAction};
+        use policy_transition::action::{ActionBody, ActionMeta, ActionNature};
+        use policy_state::live_field::{DataSource, OracleProvider};
+        use policy_state::primitives::{Address, ChainId, Time, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::LiveField;
 
         let now = Time::from_unix(1_738_000_000);
         let user = Address::from_str("0x000000000000000000000000000000000000a01c").unwrap();
@@ -638,7 +638,7 @@ mod tests {
     /// as the `approval-shape` rpc payload. Returns the verdict.
     fn evaluate_gen01(
         spender: &str,
-        amount: simulation_state::primitives::U256,
+        amount: policy_state::primitives::U256,
         mock_result: Value,
     ) -> crate::policy::Verdict {
         use crate::lowering_v2::{lower_action, TxMeta};
@@ -693,7 +693,7 @@ mod tests {
 
     #[test]
     fn gen01_unlimited_approval_to_non_allowlisted_spender_fails() {
-        use simulation_state::primitives::U256;
+        use policy_state::primitives::U256;
 
         // Non-allowlisted spender + enriched isUnlimited=true → deny → Fail.
         let verdict = evaluate_gen01(
@@ -709,7 +709,7 @@ mod tests {
 
     #[test]
     fn gen01_bounded_approval_passes() {
-        use simulation_state::primitives::U256;
+        use policy_state::primitives::U256;
 
         // Negative case A: enriched isUnlimited=false → the deny guard is not
         // met → Pass (no forbid fires).
@@ -726,7 +726,7 @@ mod tests {
 
     #[test]
     fn gen01_unlimited_approval_to_allowlisted_spender_passes() {
-        use simulation_state::primitives::U256;
+        use policy_state::primitives::U256;
 
         // Negative case B: spender == the inlined allowlisted Permit2 contract,
         // so even an unlimited approval is exempt → Pass.

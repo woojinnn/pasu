@@ -1,0 +1,45 @@
+// Permission::ProtocolAuthorization — grant/revoke protocol-level authority.
+//
+// Rust source:
+// `crates/simulation/reducer/src/action/permission/mod.rs`
+// (`ProtocolAuthorizationAction`).
+//
+// Covers primitives such as Balancer Vault `setRelayerApproval`, protocol
+// manager/operator grants, and similar account-control toggles that are not
+// ERC token allowances and are not specific to a lending position.
+
+namespace Permission {
+  type ProtocolAuthorizationContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Chain hosting the protocol.
+    chain: String,
+    // Protocol contract enforcing this permission.
+    protocol: String,
+    // Protocol family label, e.g. "balancer_v2".
+    protocolName: String,
+    // Permission primitive kind: relayer, manager, operator, agent, etc.
+    permission: String,
+    // Optional protocol-native label for the grant, e.g. an API-agent name.
+    permissionLabel?: String,
+    // Optional protocol-native limit, retained as a display/policy string.
+    permissionLimit?: String,
+    // Account granting/revoking permission, when explicit in calldata or
+    // typed data. Absent means the submitter/principal is the authorizer.
+    authorizer?: String,
+    // Address being granted/revoked.
+    authorized: String,
+    // true = grant authorization, false = revoke.
+    isAuthorized: Bool,
+    // Manifest-extensible slot.
+    custom?: ProtocolAuthorizationCustomContext,
+  };
+
+  type ProtocolAuthorizationCustomContext = {};
+
+  action "ProtocolAuthorization" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ProtocolAuthorizationContext,
+  };
+}

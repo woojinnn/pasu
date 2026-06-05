@@ -5,7 +5,12 @@
   "match": {
     "selector": "0xa22cb465",
     "chain_to_addresses_source": "tokens:erc721",
-    "chain_ids": [1]
+    "chain_ids": [
+      1,
+      10,
+      42161,
+      8453
+    ]
   },
   "abi_fragment": {
     "function_name": "setApprovalForAll",
@@ -14,8 +19,14 @@
       "type": "function",
       "stateMutability": "nonpayable",
       "inputs": [
-        { "name": "operator", "type": "address" },
-        { "name": "approved", "type": "bool" }
+        {
+          "name": "operator",
+          "type": "address"
+        },
+        {
+          "name": "approved",
+          "type": "bool"
+        }
       ],
       "outputs": []
     }
@@ -38,7 +49,9 @@
   },
   "requires": {
     "imperative": [],
-    "adapter_capabilities": ["token_metadata"],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
     "host_capabilities": [],
     "extension": ">=0.1.0"
   }

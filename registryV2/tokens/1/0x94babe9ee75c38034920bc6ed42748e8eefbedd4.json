@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x94babe9ee75c38034920bc6ed42748e8eefbedd4",
+  "symbol": "zVLT",
+  "decimals": 18,
+  "name": "Zivoe Vault",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

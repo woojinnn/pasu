@@ -1,0 +1,36 @@
+{
+  "type": "adapter_action",
+  "id": "lido/steth/stake-eth@1.0.0",
+  "publisher": "lido.eth",
+  "schema_version": "3",
+  "note": "B.3 selector-less bare-ETH stake. Sending ETH with EMPTY calldata + value > 0 to stETH hits Lido's payable fallback() (NON_EMPTY_DATA-guarded: require(msg.data.length == 0)), which calls _submit(0) and mints stETH to the sender. It has NO 4-byte function selector, so it is keyed under the reserved sentinel selector 0x00000000 — the all-zero 4-byte word, which still satisfies the '0x' + 8-hex SELECTOR_RE that build-index + the SW bundle parser enforce. The WASM route (declarative_route_request_v3_json) substitutes this sentinel for the lookup key ONLY when calldata is empty, so it can never collide with a real dispatch (a genuine selector requires >= 4 calldata bytes). Decoded as liquid_staking.stake with amount=$tx.value (the staked ETH); referral is absent (the fallback path passes referral=0).",
+  "match": {
+    "selector": "0x00000000",
+    "chain_to_addresses": {
+      "1": ["0xae7ab96520de3a18e5e111b5eaab095312d7fe84"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "fallback",
+    "abi": {
+      "name": "fallback",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "stake",
+        "stake": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "amount": "$tx.value"
+        }
+      }
+    },
+    "live_inputs": {}
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0xd1318eb19dbf2647743c720ed35174efd64e3dac",
-  "symbol": "SAND",
-  "decimals": 18,
-  "name": "The Sandbox"
-}

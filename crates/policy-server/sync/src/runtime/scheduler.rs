@@ -1,18 +1,10 @@
-//! Scheduler — 백그라운드에서 주기적으로 orchestrator.refresh 호출.
-//!
-//! Sync orchestrator 는 stateless 라 wallet 목록과 wallet load/save 는 호출자가
-//! [`WalletStore`] trait 으로 제공. DB 와 직접 결합 회피 — `simulation-db` 가
-//! 그 trait 을 impl 해서 주입.
-//!
-//! tick 마다 `list_wallets()` → 각각 load → refresh → save.
-//! 실패한 wallet 은 errors 에 누적, 전체 루프는 멈추지 않음.
-
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tokio::sync::watch;
 
-use simulation_state::{Time, WalletStore};
+use policy_state::{Time, WalletId, WalletStore};
 
 use crate::error::SyncError;
 use crate::orchestrator::{Orchestrator, RefreshReport};
@@ -20,14 +12,18 @@ use crate::orchestrator::{Orchestrator, RefreshReport};
 #[derive(Clone, Debug)]
 pub struct SchedulerConfig {
     pub tick_interval: Duration,
-    /// 한 tick 안에서 같은 wallet 을 다시 처리하지 않도록 batch size 제한.
     pub max_wallets_per_tick: usize,
     /// Refresh plain facts such as block heights, balances, and allowances.
     pub sync_primitives: bool,
     /// Refresh Hyperliquid account snapshots from the venue API.
     pub sync_hyperliquid_accounts: bool,
+    /// Refresh `UniswapX` (and other intent-venue) order status.
+    pub sync_intent_orders: bool,
     /// Refresh stale `LiveField` values.
     pub refresh_live_fields: bool,
+    /// Run the HL long-tail sync (staking/vaults/borrow-lend/agents) once every
+    /// N ticks; the fast core sync runs every tick. Values below 1 act as 1.
+    pub hl_longtail_every: u64,
 }
 
 impl Default for SchedulerConfig {
@@ -37,9 +33,20 @@ impl Default for SchedulerConfig {
             max_wallets_per_tick: 100,
             sync_primitives: true,
             sync_hyperliquid_accounts: true,
+            sync_intent_orders: true,
             refresh_live_fields: true,
+            hl_longtail_every: 10,
         }
     }
+}
+
+/// Per-wallet refresh summary surfaced from a tick so callers can emit a real
+/// `wallet_synced` payload instead of zeros.
+#[derive(Debug, Clone)]
+pub struct WalletSyncCounts {
+    pub wallet: WalletId,
+    pub fields_updated: usize,
+    pub fields_failed: usize,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -52,14 +59,19 @@ pub struct TickReport {
     pub total_fields_updated: usize,
     pub total_fields_failed: usize,
     pub errors: Vec<String>,
+    /// Per-wallet refresh summaries for wallets persisted this tick. Surfaced
+    /// (beyond the aggregate counters) so the caller can emit one real-time
+    /// `wallet_synced` event per wallet with real counts.
+    pub synced_wallets: Vec<WalletSyncCounts>,
 }
 
 pub struct Scheduler {
     orchestrator: Arc<Orchestrator>,
     store: Arc<dyn WalletStore>,
     config: SchedulerConfig,
-    /// shutdown 신호.
     stop: watch::Sender<bool>,
+    /// Monotonic tick counter for sub-cadence scheduling (e.g. HL long-tail).
+    tick_index: AtomicU64,
 }
 
 impl Scheduler {
@@ -74,15 +86,16 @@ impl Scheduler {
             store,
             config,
             stop,
+            tick_index: AtomicU64::new(0),
         }
     }
 
-    /// 한 tick 만 수동 실행 (테스트 / on-demand 용).
     pub async fn tick_once(&self) -> Result<TickReport, SyncError> {
         let wallets = self.store.list_wallets().await?;
         let mut report = TickReport::default();
         let now = Time::from_unix(unix_now());
         let limit = self.config.max_wallets_per_tick;
+        let tick = self.tick_index.fetch_add(1, Ordering::Relaxed);
 
         for wid in wallets.into_iter().take(limit) {
             let mut state = match self.store.load(&wid).await {
@@ -93,6 +106,9 @@ impl Scheduler {
                 }
             };
 
+            let mut w_updated: usize = 0;
+            let mut w_failed: usize = 0;
+
             if self.config.sync_primitives {
                 match self.orchestrator.sync_primitives(&mut state, now).await {
                     Ok(pr) => {
@@ -101,6 +117,7 @@ impl Scheduler {
                             + pr.erc20_balances_updated
                             + pr.approvals_updated;
                         report.total_primitives_updated += updated;
+                        w_updated += updated;
                         report.total_primitive_errors += pr.errors.len();
                         report.errors.extend(
                             pr.errors
@@ -110,6 +127,7 @@ impl Scheduler {
                     }
                     Err(e) => {
                         report.total_primitive_errors += 1;
+                        w_failed += 1;
                         report
                             .errors
                             .push(format!("primitives {}: {}", wid.address, e));
@@ -118,27 +136,73 @@ impl Scheduler {
             }
 
             if self.config.sync_hyperliquid_accounts {
+                // Core (fast): every tick.
                 match self
                     .orchestrator
-                    .sync_hyperliquid_account(&mut state, now)
+                    .sync_hyperliquid_core(&mut state, now)
                     .await
                 {
                     Ok(hr) => {
                         if hr.account_updated {
                             report.total_hyperliquid_accounts_updated += 1;
+                            w_updated += 1;
                         }
+                        w_failed += hr.errors.len();
                         report.total_hyperliquid_errors += hr.errors.len();
                         report.errors.extend(
                             hr.errors
                                 .into_iter()
-                                .map(|e| format!("hyperliquid {}: {e}", wid.address)),
+                                .map(|e| format!("hyperliquid core {}: {e}", wid.address)),
                         );
                     }
                     Err(e) => {
                         report.total_hyperliquid_errors += 1;
+                        w_failed += 1;
                         report
                             .errors
-                            .push(format!("hyperliquid {}: {}", wid.address, e));
+                            .push(format!("hyperliquid core {}: {}", wid.address, e));
+                    }
+                }
+
+                // Long-tail (slow): every Nth tick (initial tick included).
+                if tick.is_multiple_of(self.config.hl_longtail_every.max(1)) {
+                    match self
+                        .orchestrator
+                        .sync_hyperliquid_longtail(&mut state, now)
+                        .await
+                    {
+                        Ok(hr) => {
+                            report.total_hyperliquid_errors += hr.errors.len();
+                            report.errors.extend(
+                                hr.errors
+                                    .into_iter()
+                                    .map(|e| format!("hyperliquid longtail {}: {e}", wid.address)),
+                            );
+                        }
+                        Err(e) => {
+                            report.total_hyperliquid_errors += 1;
+                            report
+                                .errors
+                                .push(format!("hyperliquid longtail {}: {}", wid.address, e));
+                        }
+                    }
+                }
+            }
+
+            if self.config.sync_intent_orders {
+                match self.orchestrator.sync_intent_orders(&mut state, now).await {
+                    Ok(ir) => {
+                        w_updated += ir.orders_updated;
+                        w_failed += ir.errors.len();
+                        report.errors.extend(
+                            ir.errors
+                                .into_iter()
+                                .map(|e| format!("intent {}: {e}", wid.address)),
+                        );
+                    }
+                    Err(e) => {
+                        w_failed += 1;
+                        report.errors.push(format!("intent {}: {}", wid.address, e));
                     }
                 }
             }
@@ -148,6 +212,8 @@ impl Scheduler {
                     Ok(rr) => {
                         report.total_fields_updated += rr.fields_updated;
                         report.total_fields_failed += rr.fields_failed;
+                        w_updated += rr.fields_updated;
+                        w_failed += rr.fields_failed;
                         report.errors.extend(
                             rr.errors
                                 .into_iter()
@@ -163,6 +229,11 @@ impl Scheduler {
             match self.store.save(&state).await {
                 Ok(()) => {
                     report.wallets_processed += 1;
+                    report.synced_wallets.push(WalletSyncCounts {
+                        wallet: wid,
+                        fields_updated: w_updated,
+                        fields_failed: w_failed,
+                    });
                 }
                 Err(e) => report.errors.push(format!("save {}: {}", wid.address, e)),
             }
@@ -170,13 +241,12 @@ impl Scheduler {
         Ok(report)
     }
 
-    /// 무한 루프. `stop_handle()` 으로 종료 가능.
     pub async fn run_forever(&self) -> Result<(), SyncError> {
         let mut stop_rx = self.stop.subscribe();
         loop {
             tokio::select! {
                 () = tokio::time::sleep(self.config.tick_interval) => {
-                    let _ = self.tick_once().await; // 에러는 tick report 에 누적, 로그 X
+                    let _ = self.tick_once().await;
                 }
                 changed = stop_rx.changed() => {
                     if changed.is_ok() && *stop_rx.borrow() {
@@ -196,11 +266,9 @@ impl Scheduler {
 fn unix_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
+        .map_or(0, |d| d.as_secs())
 }
 
-// `RefreshReport` 가 build 에 안 쓰이는 경고 회피 (export 보존).
 #[allow(dead_code)]
 fn _refresh_report_keep() -> RefreshReport {
     RefreshReport::default()
@@ -213,8 +281,8 @@ mod tests {
     use std::sync::Mutex;
 
     use async_trait::async_trait;
-    use simulation_state::store::StoreError;
-    use simulation_state::{Address, ChainId, WalletId, WalletState};
+    use policy_state::store::StoreError;
+    use policy_state::{Address, ChainId, WalletId, WalletState};
 
     struct MemStore {
         wallets: Mutex<HashMap<WalletId, WalletState>>,
@@ -243,7 +311,6 @@ mod tests {
     }
 
     fn mk_scheduler() -> Scheduler {
-        // dummy orchestrator (in-memory state 만 다루도록 router 는 publicnode)
         let toml = r#"
 [chains."eip155:1"]
 multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
@@ -286,6 +353,19 @@ priority = 1
     }
 
     #[tokio::test]
+    async fn tick_records_synced_wallets() {
+        // The background worker needs to know *which* wallets a tick refreshed
+        // so it can emit one `wallet_synced` event per wallet. The aggregate
+        // counters can't carry that, so the tick surfaces the wallet ids that
+        // were successfully loaded, refreshed, and saved.
+        let s = mk_scheduler();
+        let report = s.tick_once().await.unwrap();
+        assert_eq!(report.wallets_processed, 1);
+        assert_eq!(report.synced_wallets.len(), 1);
+        assert_eq!(report.synced_wallets[0].wallet.address, Address::ZERO);
+    }
+
+    #[tokio::test]
     async fn tick_runs_primitives_and_hyperliquid_sync_before_livefield_refresh() {
         let toml = r#"
 [chains."eip155:1"]
@@ -314,7 +394,8 @@ priority = 1
 
         assert_eq!(report.wallets_processed, 1);
         assert_eq!(report.total_primitive_errors, 1);
-        assert_eq!(report.total_hyperliquid_errors, 1);
+        // Unconfigured HL on tick 0: core + long-tail both report "not configured".
+        assert_eq!(report.total_hyperliquid_errors, 2);
         assert!(report
             .errors
             .iter()

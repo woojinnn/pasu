@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2ed10624315b74a78f11fabedaa1a228c198aefb",
+  "symbol": "gteurcc",
+  "decimals": 18,
+  "name": "Gauntlet EURC Core",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x1abaea1f7c830bd89acc67ec4af516284b1bc33c"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

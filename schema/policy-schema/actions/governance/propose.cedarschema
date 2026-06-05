@@ -1,0 +1,20 @@
+// Governance::Propose — create a governance proposal.
+
+namespace Governance {
+  type ProposeContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    payloadTargets: Set<String>,
+    payloadCount: String,
+    metadata: String,
+    custom?: ProposeCustomContext,
+  };
+
+  type ProposeCustomContext = {};
+
+  action "Propose" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ProposeContext,
+  };
+}

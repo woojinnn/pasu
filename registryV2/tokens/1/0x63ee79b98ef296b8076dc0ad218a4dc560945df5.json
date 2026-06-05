@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x63ee79b98ef296b8076dc0ad218a4dc560945df5",
+  "symbol": "USX",
+  "decimals": 18,
+  "name": "USX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

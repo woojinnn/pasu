@@ -20,8 +20,14 @@ pub mod nft_transfer;
 pub mod permit2_approve;
 /// `Uniswap` `Permit2` signed allowance action.
 pub mod permit2_sign;
+/// `Uniswap` `Permit2` SignatureTransfer actions.
+pub mod permit2_transfer;
 /// Revoke-approval action and its scope enum.
 pub mod revoke;
+/// Native-currency unwrap (`withdraw`) — WETH-style 1:1 wrapper → native.
+pub mod unwrap_native;
+/// Native-currency wrap (`deposit`) — native → WETH-style 1:1 wrapper.
+pub mod wrap_native;
 
 pub use self::erc20_approve::*;
 pub use self::erc20_permit::*;
@@ -31,7 +37,10 @@ pub use self::nft_set_for_all::*;
 pub use self::nft_transfer::*;
 pub use self::permit2_approve::*;
 pub use self::permit2_sign::*;
+pub use self::permit2_transfer::*;
 pub use self::revoke::*;
+pub use self::unwrap_native::*;
+pub use self::wrap_native::*;
 
 /// Domain-agnostic, token-level actions that can occur anywhere.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
@@ -46,6 +55,10 @@ pub enum TokenAction {
     Permit2Approve(Permit2ApproveAction),
     /// `Uniswap` `Permit2` signed allowance (off-chain signature).
     Permit2SignAllowance(Permit2SignAction),
+    /// `Uniswap` `Permit2` signed one-time transfer cap (off-chain signature).
+    Permit2SignTransfer(Permit2SignTransferAction),
+    /// `Uniswap` `Permit2` SignatureTransfer execution.
+    Permit2TransferFrom(Permit2TransferFromAction),
     /// `ERC20` `transfer(recipient, amount)`.
     Erc20Transfer(Erc20TransferAction),
     /// `ERC721`/`ERC1155` single-token `approve`.
@@ -56,11 +69,14 @@ pub enum TokenAction {
     NftTransfer(NftTransferAction),
     /// Revoke a previously granted approval (any scope).
     RevokeApproval(RevokeApprovalAction),
+    /// Native-currency wrap (e.g. WETH `deposit()`) — native → 1:1 ERC20 wrapper.
+    WrapNative(WrapNativeAction),
+    /// Native-currency unwrap (e.g. WETH `withdraw()`) — 1:1 ERC20 wrapper → native.
+    UnwrapNative(UnwrapNativeAction),
 }
 
 impl TokenAction {
     /// The action's `serde` `action` tag (e.g. `"erc20_approve"`, `"nft_set_approval_for_all"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]
@@ -70,11 +86,15 @@ impl TokenAction {
             Self::Erc20Permit(_) => "erc20_permit",
             Self::Permit2Approve(_) => "permit2_approve",
             Self::Permit2SignAllowance(_) => "permit2_sign_allowance",
+            Self::Permit2SignTransfer(_) => "permit2_sign_transfer",
+            Self::Permit2TransferFrom(_) => "permit2_transfer_from",
             Self::Erc20Transfer(_) => "erc20_transfer",
             Self::NftApprove(_) => "nft_approve",
             Self::NftSetApprovalForAll(_) => "nft_set_approval_for_all",
             Self::NftTransfer(_) => "nft_transfer",
             Self::RevokeApproval(_) => "revoke_approval",
+            Self::WrapNative(_) => "wrap_native",
+            Self::UnwrapNative(_) => "unwrap_native",
         }
     }
 

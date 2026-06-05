@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa2abe737f84e18b92185a483fda0075b1ba7e1c1",
+  "symbol": "AAI",
+  "decimals": 18,
+  "name": "Aether AI",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

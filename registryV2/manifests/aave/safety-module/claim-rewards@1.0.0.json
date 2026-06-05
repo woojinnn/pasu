@@ -1,0 +1,50 @@
+{
+  "type": "adapter_action",
+  "id": "aave/safety-module/claim-rewards@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave safety-module claimRewards(address to, uint256 amount) — withdraw accrued AAVE rewards to `to`. Maps to staking::ClaimRewards (reused; venue=aave_safety_module, reward_token=AAVE, gauges=[], recipient=$args.to). The claimed `amount` is not modeled (low-risk own-reward claim; recipient is the policy signal). Covers stkAAVE + stkGHO (both reward AAVE); selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x9a99b4f0",
+    "chain_to_addresses": {
+      "1": [
+        "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+        "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimRewards",
+    "abi": {
+      "name": "claimRewards",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "to", "type": "address" },
+        { "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "claim_rewards",
+        "claim_rewards": {
+          "venue": { "name": "aave_safety_module", "chain": "$chain", "module": "$to" },
+          "reward_token": { "key": { "standard": "erc20", "chain": "$chain", "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9" } },
+          "gauges": [],
+          "recipient": "$args.to"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

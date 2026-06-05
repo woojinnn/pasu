@@ -1,7 +1,5 @@
 //! `IncreasePerpAction` reducer — add size to an existing perpetual position.
-//!
 //! ## Effect
-//!
 //! 1. Resolve the additional `size_base` from the action's `SizeSpec` against
 //!    the `LiveField` mark price.
 //! 2. (Optional) Debit any extra collateral the user posts via
@@ -12,18 +10,15 @@
 //!      (weighted average entry price)
 //!    - `collateral[0].1 += Δcollateral` (if posted)
 //!    - `notional_usd = new_size × mark`
-//!
 //! ## Orderbook vs on-chain
-//!
-//! Phase 2 treats Increase as on-chain only — for orderbook venues
 //! (Hyperliquid / Aevo / `DyDx` V4) the increase is a separate orderbook
 //! signing event that should be modeled by a dedicated
 //! `PlaceLimitOrderAction` (with `reduce_only = false`) and is therefore
 //! out of scope for this reducer. The reducer rejects orderbook venues
 //! with `Invariant`.
 
-use simulation_state::position::PositionKind;
-use simulation_state::{EvalContext, StateDelta, WalletState, U256};
+use policy_state::position::PositionKind;
+use policy_state::{EvalContext, StateDelta, WalletState, U256};
 
 use crate::action::perp::IncreasePerpAction;
 use crate::apply::Reducer;
@@ -118,16 +113,16 @@ impl Reducer for IncreasePerpAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::delta::{PositionChange, TokenChange};
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::position::{MarginMode, PerpPosition, PerpSide, Position};
-    use simulation_state::primitives::{
+    use policy_state::delta::{PositionChange, TokenChange};
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::position::{MarginMode, PerpPosition, PerpSide, Position};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, SignedI256, Time, VenueRef,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     use crate::action::perp::{OpenPerpLiveInputs, PerpAccountState, PerpVenue, SizeSpec};
@@ -141,7 +136,7 @@ mod tests {
     }
 
     fn ctx() -> EvalContext {
-        use simulation_state::eval_context::RequestKind;
+        use policy_state::eval_context::RequestKind;
         EvalContext::new(ChainId::ethereum_mainnet(), now(), RequestKind::Transaction)
     }
 

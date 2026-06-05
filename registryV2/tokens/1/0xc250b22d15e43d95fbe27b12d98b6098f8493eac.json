@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc250b22d15e43d95fbe27b12d98b6098f8493eac",
+  "symbol": "tFOX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Tokemak tFOX/FOX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xc250b22d15e43d95fbe27b12d98b6098f8493eac"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x808d3e6b23516967ceae4f17a5f9038383ed5311"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc770eefad204b5180df6a14ee197d99d808ee52d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

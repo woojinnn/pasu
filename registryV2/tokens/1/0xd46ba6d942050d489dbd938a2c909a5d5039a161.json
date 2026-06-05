@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd46ba6d942050d489dbd938a2c909a5d5039a161",
+  "symbol": "AMPL",
+  "decimals": 9,
+  "name": "Ampleforth",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

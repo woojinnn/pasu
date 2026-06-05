@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xc4c6c3a3043ad5ece5c91290630a7735e125a938",
-  "symbol": "GNO",
-  "decimals": 18,
-  "name": "Gnosis Token"
-}

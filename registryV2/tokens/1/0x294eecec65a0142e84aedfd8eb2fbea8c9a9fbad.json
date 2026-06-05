@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x294eecec65a0142e84aedfd8eb2fbea8c9a9fbad",
+  "symbol": "tacETH",
+  "decimals": 18,
+  "name": "Turtle TAC ETH Vault",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

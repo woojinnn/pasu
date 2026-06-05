@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 56,
-  "address": "0xd55c9fb62e176a8eb6968f32958fefdd0962727e",
-  "symbol": "FHE",
-  "decimals": 18,
-  "name": "MindNetwork FHE Token"
-}

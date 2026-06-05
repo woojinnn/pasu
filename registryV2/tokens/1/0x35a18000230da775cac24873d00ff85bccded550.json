@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x35a18000230da775cac24873d00ff85bccded550",
+  "symbol": "cUNI",
+  "decimals": 8,
+  "name": "Compound Uniswap",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

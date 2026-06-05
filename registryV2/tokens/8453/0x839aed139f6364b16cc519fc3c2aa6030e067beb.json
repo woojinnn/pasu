@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x839aed139f6364b16cc519fc3c2aa6030e067beb",
+  "symbol": "PUSSY",
+  "decimals": 18,
+  "name": "PUSSY token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

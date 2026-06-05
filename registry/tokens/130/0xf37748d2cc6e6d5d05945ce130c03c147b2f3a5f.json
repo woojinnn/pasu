@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xf37748d2cc6e6d5d05945ce130c03c147b2f3a5f",
-  "symbol": "USDQ",
-  "decimals": 6,
-  "name": "Quantoz USDQ"
-}

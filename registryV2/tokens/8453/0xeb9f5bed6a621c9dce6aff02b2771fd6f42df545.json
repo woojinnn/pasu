@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xeb9f5bed6a621c9dce6aff02b2771fd6f42df545",
+  "symbol": "BOLDcdxUSD",
+  "decimals": 18,
+  "name": "BOLD/cdxUSD Pool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xeb9f5bed6a621c9dce6aff02b2771fd6f42df545"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xea12993ef8e7411622ebc0974cfd3f41a1e8f0a8"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xc0d3700000987c99b3c9009069e4f8413fd22330"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

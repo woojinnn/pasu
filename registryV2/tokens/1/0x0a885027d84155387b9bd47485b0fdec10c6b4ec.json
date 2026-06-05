@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0a885027d84155387b9bd47485b0fdec10c6b4ec",
+  "symbol": "sdYND",
+  "decimals": 18,
+  "name": "Stake DAO YieldNest",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

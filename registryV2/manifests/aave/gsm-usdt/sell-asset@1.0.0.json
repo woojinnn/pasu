@@ -1,0 +1,49 @@
+{
+  "type": "adapter_action",
+  "id": "aave/gsm-usdt/sell-asset@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave GSM (USDT) sellAsset(uint256 maxAmount, address receiver) — sell USDT for GHO at the GSM fixed price; maxAmount = maximum USDT in. Maps to amm::GsmSwap (side=sell_asset). Gsm proxy 0x882285e62656b9623af136ce3078c6bdcc33f5e3; selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xaa443ac0",
+    "chain_to_addresses": {
+      "1": ["0x882285e62656b9623af136ce3078c6bdcc33f5e3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "sellAsset",
+    "abi": {
+      "name": "sellAsset",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "maxAmount", "type": "uint256" },
+        { "name": "receiver", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "gsm_swap",
+        "gsm_swap": {
+          "venue": { "name": "aave_gsm", "chain": "$chain", "gsm": "$to" },
+          "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "0xdac17f958d2ee523a2206206994597c13d831ec7" } },
+          "gho": { "key": { "standard": "erc20", "chain": "$chain", "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f" } },
+          "side": "sell_asset",
+          "amount": "$args.maxAmount",
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

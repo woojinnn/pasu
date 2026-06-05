@@ -1,0 +1,19 @@
+{
+  "id": "withdraw-collateral-health-factor",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "withdraw" } } },
+  "policy_rpc": [{
+    "id": "post-withdraw-hf",
+    "method": "lending.health_factor",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "owner": "$.root.from",
+      "venue": "$.action.venue",
+      "asset": "$.action.asset",
+      "amount": "$.action.amount"
+    },
+    "outputs": [{ "kind": "context", "field": "postActionHf", "type": "Decimal", "from": "$.result.postActionHf", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "postActionHf": "decimal" } }
+}

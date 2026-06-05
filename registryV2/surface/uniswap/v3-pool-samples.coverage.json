@@ -1,0 +1,55 @@
+{
+  "contract": "UniswapV3Pool",
+  "chainId": 1,
+  "address": "0x2c40c7b9f106f39a6e2aab6d9f1f29364e7250bc",
+  "snapshot": "v3-pool-samples.abi.json",
+  "note": "Representative mainnet direct V3 pool sample promoted from Track B. swap emits first-class Amm::Swap using source-materialized token0/token1/fee context; callback-settled liquidity/flash/admin entrypoints route explicit Unknown/fail-closed pending deeper direct-pool semantics.",
+  "functions": {
+    "0xf637731d": {
+      "name": "initialize",
+      "decision": "cover",
+      "reason": "direct pool initializer; existing pools should already be initialized, route explicit Unknown/fail-closed instead of registry miss"
+    },
+    "0x3c8a7d8d": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "direct pool liquidity mint is callback-settled and lacks NFPM token context; route explicit Unknown/fail-closed pending callback-aware liquidity modeling"
+    },
+    "0x4f1eb3d8": {
+      "name": "collect",
+      "decision": "cover",
+      "reason": "direct pool collect is keyed by caller/tick range outside the NFPM position token model; route explicit Unknown/fail-closed pending direct pool position semantics"
+    },
+    "0xa34123a7": {
+      "name": "burn",
+      "decision": "cover",
+      "reason": "direct pool burn updates caller/tick-range liquidity outside the NFPM token model; route explicit Unknown/fail-closed pending direct pool position semantics"
+    },
+    "0x128acb08": {
+      "name": "swap",
+      "decision": "cover",
+      "reason": "direct pool swap supports first-class Amm::Swap by deriving token direction and exact-in/exact-out kind from zeroForOne plus signed amountSpecified"
+    },
+    "0x490e6cbc": {
+      "name": "flash",
+      "decision": "cover",
+      "reason": "direct pool flash loan is callback-settled; route explicit Unknown/fail-closed pending callback-aware flash modeling"
+    },
+    "0x32148f67": {
+      "name": "increaseObservationCardinalityNext",
+      "decision": "cover",
+      "reason": "oracle-cardinality maintenance has no direct wallet asset movement but should not be a route miss"
+    },
+    "0x8206a4d1": {
+      "name": "setFeeProtocol",
+      "decision": "cover",
+      "reason": "owner-gated protocol fee admin call; route explicit Unknown/fail-closed instead of registry miss"
+    },
+    "0x85b66729": {
+      "name": "collectProtocol",
+      "decision": "cover",
+      "reason": "owner-gated protocol fee collection; route explicit Unknown/fail-closed instead of registry miss"
+    }
+  },
+  "signed_structs": {}
+}

@@ -72,9 +72,9 @@ fn manifest(tag: &str) -> Value {
 const DENY_SHORT: &str = "\
 @id(\"hl/no-short\")\n\
 @severity(\"deny\")\n\
-@reason(\"Short orders on Hyperliquid are blocked by policy\")\n\
+@reason(\"Opening a new short on Hyperliquid is blocked by policy\")\n\
 forbid(principal, action == HyperliquidCore::Action::\"HlOrder\", resource)\n\
-when { context.venue.name == \"hyperliquid\" && context.side == \"short\" };\n";
+when { context.venue.name == \"hyperliquid\" && context.side == \"short\" && context.positionEffect == \"open\" };\n";
 
 /// Assemble the `EvaluateActionInput` envelope and run it through the entry
 /// point. Returns the parsed output envelope.
@@ -271,5 +271,89 @@ fn shipped_seed_policy_allows_modest_leverage() {
     assert_eq!(
         parsed["data"]["verdict"]["kind"], "pass",
         "10x leverage must PASS the >20x confirm: {parsed}"
+    );
+}
+
+/// A HyperliquidCore `hl_unknown` catch-all action JSON — the
+/// `hl-order-to-action.ts` shape for an `/exchange` action with no explicit
+/// model.
+fn unknown_action(action_type: &str) -> Value {
+    json!({
+        "domain": "hyperliquid_core",
+        "action": "hl_unknown",
+        "action_type": action_type
+    })
+}
+
+/// COVERAGE-GAP PROOF: an `/exchange` action we do not model
+/// (`convertToMultiSigUser`) reaches the engine as `hl_unknown` and a deny rule
+/// BLOCKS it — proving an unmodeled action can be gated, not silently allowed.
+#[test]
+fn unknown_hl_action_can_be_denied() {
+    const DENY_UNKNOWN: &str = "\
+@id(\"hl/deny-unknown\")\n\
+@severity(\"deny\")\n\
+@reason(\"Unrecognized Hyperliquid action blocked by policy\")\n\
+forbid(principal, action == HyperliquidCore::Action::\"HlUnknown\", resource)\n\
+when { context.venue.name == \"hyperliquid\" };\n";
+    let parsed = run(
+        unknown_action("convertToMultiSigUser"),
+        json!([{ "policy": DENY_UNKNOWN, "manifest": manifest("hl_unknown") }]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "fail",
+        "an unmodeled HL action must be DENIABLE via hl_unknown: {parsed}"
+    );
+}
+
+/// FUND-MOVEMENT PROOF: a modeled `sendToEvmWithData` (bridge a token to an
+/// arbitrary EVM recipient with calldata — the highest-risk fund movement) is
+/// DENIED by a policy scoping on the recipient. Proves the P2 fund-movement
+/// surface reaches the engine with its fields intact.
+#[test]
+fn send_to_evm_with_data_can_be_denied_on_recipient() {
+    const DENY_BRIDGE: &str = "\
+@id(\"hl/deny-evm-bridge\")\n\
+@severity(\"deny\")\n\
+@reason(\"Bridging funds to an unapproved EVM recipient is blocked\")\n\
+forbid(principal, action == HyperliquidCore::Action::\"HlSendToEvmWithData\", resource)\n\
+when { context.destinationRecipient == \"0x000000000000000000000000000000000000dead\" };\n";
+    let action = json!({
+        "domain": "hyperliquid_core",
+        "action": "hl_send_to_evm_with_data",
+        "token": "USDC",
+        "amount": "1000",
+        "source_dex": "",
+        "destination_recipient": "0x000000000000000000000000000000000000dead",
+        "data": "0xdeadbeef"
+    });
+    let parsed = run(
+        action,
+        json!([{ "policy": DENY_BRIDGE, "manifest": manifest("hl_send_to_evm_with_data") }]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "fail",
+        "a bridge to the denied recipient must be BLOCKED: {parsed}"
+    );
+}
+
+/// SHIPPED-SEED PROOF: the shipped `hl-confirm-unknown` bundle FLAGS an unmodeled
+/// action for confirmation (`warn`) through the entry point.
+#[test]
+fn shipped_seed_policy_confirms_unknown_hl_action() {
+    let parsed = run(
+        unknown_action("perpDeploy"),
+        json!([seed_bundle("hl-confirm-unknown")]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "warn",
+        "the shipped confirm-unknown policy must WARN: {parsed}"
+    );
+    assert_eq!(
+        parsed["data"]["verdict"]["matched"][0]["policy_id"], "hl-confirm-unknown",
+        "matched policy must be the shipped seed id: {parsed}"
     );
 }

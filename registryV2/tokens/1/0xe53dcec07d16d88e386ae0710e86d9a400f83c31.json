@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe53dcec07d16d88e386ae0710e86d9a400f83c31",
+  "symbol": "BABY",
+  "decimals": 6,
+  "name": "Babylon",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

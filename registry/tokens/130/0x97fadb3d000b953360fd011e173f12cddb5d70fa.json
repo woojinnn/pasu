@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x97fadb3d000b953360fd011e173f12cddb5d70fa",
-  "symbol": "WIF",
-  "decimals": 6,
-  "name": "dogwifhat"
-}

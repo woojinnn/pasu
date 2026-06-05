@@ -31,8 +31,8 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::position::{MarginMode, PerpPosition, PerpSide, PositionKind};
-use simulation_state::primitives::U256;
+use policy_state::position::{MarginMode, PerpPosition, PerpSide, PositionKind};
+use policy_state::primitives::U256;
 
 use super::params::{over_balance_4dp, param_action, param_str};
 use super::FactCtx;
@@ -568,12 +568,12 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::live_field::DataSource;
-    use simulation_state::position::Position;
-    use simulation_state::primitives::{
+    use policy_state::live_field::DataSource;
+    use policy_state::position::Position;
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, Price, ProtocolRef, SignedI256, Time, VenueRef,
     };
-    use simulation_state::{LiveField, WalletId, WalletState};
+    use policy_state::{LiveField, WalletId, WalletState};
 
     fn chain() -> ChainId {
         ChainId::arbitrum()

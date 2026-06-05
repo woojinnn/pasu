@@ -7,7 +7,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::{ActionMeta, ActionNature, Eip712Domain};
+use policy_transition::action::{ActionMeta, ActionNature, Eip712Domain};
 
 use super::cedar::{addr, u256_hex};
 

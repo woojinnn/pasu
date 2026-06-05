@@ -1,0 +1,58 @@
+{
+  "contract": "Aave Governance V3 VotingMachine",
+  "chainId": 1,
+  "address": "0x06a1795a88b82700896583e123f46be43877bfb6",
+  "snapshot": "governance-voting-machine-mainnet.abi.json",
+  "functions": {
+    "0x867b96c2": {
+      "name": "closeAndSendVote",
+      "decision": "cover",
+      "reason": "user-facing Aave closeAndSendVote action covered by registry manifest"
+    },
+    "0x15034cba": {
+      "name": "receiveCrossChainMessage",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xa69d4b28": {
+      "name": "startProposalVote",
+      "decision": "cover",
+      "reason": "user-facing Aave startProposalVote action covered by registry manifest"
+    },
+    "0xa7f8451c": {
+      "name": "submitVote",
+      "decision": "cover",
+      "reason": "user-facing Aave submitVote action covered by registry manifest"
+    },
+    "0xb6b0f0e0": {
+      "name": "submitVoteAsRepresentative",
+      "decision": "cover",
+      "reason": "user-facing Aave submitVoteAsRepresentative action covered by registry manifest"
+    },
+    "0xdbb8f60a": {
+      "name": "submitVoteAsRepresentativeBySignature",
+      "decision": "cover",
+      "reason": "user-facing Aave submitVoteAsRepresentativeBySignature action covered by registry manifest"
+    },
+    "0x3be191df": {
+      "name": "submitVoteBySignature",
+      "decision": "cover",
+      "reason": "user-facing Aave submitVoteBySignature action covered by registry manifest"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xf687d12a": {
+      "name": "updateGasLimit",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    }
+  }
+}

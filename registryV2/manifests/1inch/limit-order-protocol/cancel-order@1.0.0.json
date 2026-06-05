@@ -1,0 +1,51 @@
+{
+  "type": "adapter_action",
+  "id": "1inch/limit-order-protocol/cancel-order@1.0.0",
+  "publisher": "1inch.io",
+  "schema_version": "3",
+  "note": "1inch LOP v4 maker on-chain order cancellation: cancelOrder(uint256 makerTraits, bytes32 orderHash) on AggregationRouterV6 0x111111125421ca6dc452d289314280a0f8842a65 (selector 0xb68fb020). The maker (wallet user) invalidates a previously-signed limit order. Maps to Amm::CancelIntentOrder on the OneInchLimitOrder venue; order_hash = the bytes32 orderHash arg. verifying_contract = $to (the v6 router).",
+  "match": {
+    "selector": "0xb68fb020",
+    "chain_to_addresses": {
+      "1": [
+        "0x111111125421ca6dc452d289314280a0f8842a65"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cancelOrder",
+    "abi": {
+      "name": "cancelOrder",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "makerTraits", "type": "uint256" },
+        { "name": "orderHash", "type": "bytes32" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "cancel_intent_order",
+        "cancel_intent_order": {
+          "venue": {
+            "name": "one_inch_limit_order",
+            "chain": "$chain",
+            "verifying_contract": "$to"
+          },
+          "order_hash": "$args.orderHash"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

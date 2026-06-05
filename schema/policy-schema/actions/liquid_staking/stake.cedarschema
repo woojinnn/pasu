@@ -1,0 +1,30 @@
+// LiquidStaking::Stake — stake native ETH and receive a liquid-staking token
+// (Lido `submit(address _referral)`, payable).
+//
+// Rust source: `crates/simulation/reducer/src/action/liquid_staking/stake.rs`
+// (`StakeAction`). No LiveInputs. `StakingVenue` is defined in core.cedarschema
+// (namespace LiquidStaking).
+
+namespace LiquidStaking {
+  type StakeContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Liquid-staking venue (e.g. Lido on Ethereum).
+    venue: StakingVenue,
+    // Native ETH staked (`msg.value`), U256 hex.
+    amount: String,
+    // Optional referral address.
+    referral?: String,
+    // Manifest-extensible slot.
+    custom?: StakeCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type StakeCustomContext = {};
+
+  action "Stake" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: StakeContext,
+  };
+}

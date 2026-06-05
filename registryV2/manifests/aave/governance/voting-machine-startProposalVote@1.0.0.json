@@ -1,0 +1,54 @@
+{
+  "type": "adapter_action",
+  "id": "aave/governance/votingMachine/startProposalVote@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Governance V3 voting machine start vote.",
+  "match": {
+    "selector": "0xa69d4b28",
+    "chain_to_addresses": {
+      "1": [
+        "0x06a1795a88b82700896583e123f46be43877bfb6"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "startProposalVote",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "startProposalVote",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "governance",
+      "governance": {
+        "action": "start_vote",
+        "start_vote": {
+          "venue": {
+            "name": "aave_voting_machine",
+            "chain": "$chain",
+            "voting_machine": "$to"
+          },
+          "proposal_id": "$args.proposalId"
+        }
+      }
+    }
+  }
+}

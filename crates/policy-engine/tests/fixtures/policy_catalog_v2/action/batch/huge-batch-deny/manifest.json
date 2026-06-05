@@ -1,0 +1,5 @@
+{
+  "id": "huge-batch-deny",
+  "schema_version": 2,
+  "trigger": { "scope": "outer", "where": { "action.domain": { "eq": "multicall" } } }
+}

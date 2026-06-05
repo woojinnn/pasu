@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbeefc1cdafc5b4a649b54d07afc6bf0f75c6f4e2",
+  "symbol": "steakUSDTBethena",
+  "decimals": 18,
+  "name": "Steakhouse Ethena USDtb",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed) + etherscan/basescan verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xc139190f447e929f090edeb554d95abb8b18ac1c"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

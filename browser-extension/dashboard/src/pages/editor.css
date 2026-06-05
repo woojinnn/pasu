@@ -151,3 +151,351 @@
   color: var(--slate-400); text-align: center; padding: 40px;
 }
 .empty-editor strong { display: block; color: var(--slate-700); font-size: 14px; margin-bottom: 6px; }
+
+/* ── meta row (name / severity / template / save) ─────────────────── */
+
+.meta-row {
+  display: flex; gap: 8px; align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+}
+.meta-row .name-input {
+  min-width: 220px; font-weight: 600;
+  padding: 7px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+  color: var(--slate-900); font-size: 13px;
+}
+.meta-row select {
+  padding: 7px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--hairline); background: var(--surface);
+  color: var(--slate-900); font-size: 13px;
+}
+.meta-row .grow { flex: 1; }
+
+.meta-row .btn-primary {
+  padding: 7px 16px; border-radius: var(--r-sm);
+  background: var(--slate-700); color: var(--fog-50);
+  font-size: 12px; font-weight: 600;
+}
+.meta-row .btn-primary:hover:not(:disabled) { background: var(--slate-900); }
+.meta-row .btn-primary:disabled { background: var(--slate-300); cursor: not-allowed; }
+
+.meta-row .btn-danger {
+  padding: 7px 12px; border-radius: var(--r-sm);
+  background: var(--fail-100); color: var(--fail-800);
+  font-size: 12px; font-weight: 600;
+}
+.meta-row .btn-danger:hover:not(:disabled) { background: var(--fail-200); }
+
+/* ── sidebar mode badge ──────────────────────────────────────────── */
+
+.policy-side .pi .mode-badge {
+  display: inline-block;
+  font-size: 12px; margin-right: 4px;
+}
+
+/* ── error banner ────────────────────────────────────────────────── */
+
+.err-banner {
+  background: var(--fail-50);
+  border: 1px solid var(--fail-200);
+  color: var(--fail-800);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--ff-mono);
+}
+
+/* ── single-column editor (new + detail pages) ───────────────────── */
+
+.editor-main-solo {
+  /* Replaces the old grid layout when there's no sidebar. */
+  max-width: 1100px;
+}
+
+.back-link {
+  font-size: 12px;
+  color: var(--slate-500);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--slate-900); }
+
+.new-policy-btn { text-decoration: none; }
+
+/* ── list page (card grid) ───────────────────────────────────────── */
+
+.policy-grid-wrap {
+  padding: 4px 0 24px 0;
+}
+
+.policy-grid-head {
+  margin-bottom: 16px;
+}
+.policy-grid-head h2 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--slate-900);
+}
+.policy-grid-head h2 .cnt {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--slate-400);
+  font-weight: 500;
+  margin-left: 4px;
+}
+.policy-grid-head .hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--slate-500);
+}
+
+.policy-grid-status,
+.policy-grid-empty {
+  background: var(--fog-200);
+  border: 1px dashed var(--hairline);
+  border-radius: var(--r-md);
+  padding: 40px;
+  text-align: center;
+  color: var(--slate-500);
+  font-size: 13px;
+}
+.policy-grid-empty p { margin: 0 0 14px 0; }
+.policy-grid-empty .btn-primary {
+  display: inline-block;
+  padding: 9px 18px;
+  border-radius: var(--r-sm);
+  background: var(--slate-700);
+  color: var(--fog-50);
+  font-weight: 600;
+  text-decoration: none;
+}
+.policy-grid-empty .btn-primary:hover { background: var(--slate-900); }
+
+.policy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.policy-card {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--hairline);
+  border-radius: var(--r-md);
+  transition: border-color .12s ease, transform .08s ease, opacity .12s ease;
+  overflow: hidden;
+}
+.policy-card:hover {
+  border-color: var(--slate-300);
+  transform: translateY(-1px);
+}
+.policy-card.deny { border-left-color: var(--fail-500, var(--fail-800)); }
+.policy-card.warn { border-left-color: var(--warn-500, var(--warn-800)); }
+.policy-card.info { border-left-color: var(--cyan-500, var(--cyan-800)); }
+/* Disabled-looking when the policy isn't currently enforced. */
+.policy-card:not(.is-enabled) .pc-open { opacity: .55; }
+
+/* ── enable/disable checkbox ── */
+.policy-card .pc-check {
+  position: absolute;
+  top: 10px; right: 10px;
+  display: inline-flex; align-items: center;
+  z-index: 2;
+  cursor: pointer;
+  padding: 4px; margin: -4px;     /* expand hit-target without moving the box */
+}
+.policy-card .pc-check input[type="checkbox"] {
+  width: 16px; height: 16px;
+  margin: 0;
+  accent-color: var(--slate-700);
+  cursor: pointer;
+}
+
+/* ── click-to-open body (the rest of the card) ── */
+.policy-card .pc-open {
+  display: flex; flex-direction: column;
+  width: 100%; height: 100%;
+  padding: 14px 44px 14px 16px;   /* right padding leaves room for the checkbox */
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.policy-card .pc-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-bottom: 6px;
+}
+.policy-card .pc-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--slate-900);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.policy-card .pc-head .sev {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-family: var(--ff-mono);
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.policy-card .pc-head .sev.deny { background: var(--fail-100); color: var(--fail-800); }
+.policy-card .pc-head .sev.warn { background: var(--warn-100); color: var(--warn-800); }
+.policy-card .pc-head .sev.info { background: var(--cyan-100); color: var(--cyan-800); }
+
+.policy-card .pc-desc {
+  margin: 0 0 10px 0;
+  font-size: 12.5px;
+  color: var(--slate-600);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.policy-card .pc-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline-soft);
+}
+.policy-card .pc-id {
+  font-family: var(--ff-mono);
+  font-size: 10.5px;
+  color: var(--slate-400);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── Set panel (new/edit set form) ────────────────────────────────────── */
+.set-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.set-panel-head { margin-bottom: 20px; }
+.set-panel-head h2 { margin: 0 0 6px; font-size: 18px; color: var(--slate-800); }
+.set-panel-head .hint { margin: 0; font-size: 13px; color: var(--slate-500); line-height: 1.5; }
+.set-panel-form { display: flex; flex-direction: column; gap: 18px; }
+.set-field { display: flex; flex-direction: column; gap: 6px; }
+.set-field-label {
+  font-size: 12.5px; font-weight: 600; color: var(--slate-700);
+  display: flex; align-items: center; gap: 8px;
+}
+.set-field-counter {
+  font-size: 11px; font-weight: 500; color: var(--slate-500);
+  background: var(--slate-100); padding: 2px 8px; border-radius: 10px;
+}
+.set-field-hint { font-size: 11.5px; color: var(--slate-500); }
+.set-field input[type="text"],
+.set-field textarea {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg-base);
+  color: var(--slate-800);
+}
+.set-field input[type="text"]:focus,
+.set-field textarea:focus {
+  outline: none;
+  border-color: var(--cyan-500);
+  box-shadow: 0 0 0 2px var(--cyan-100);
+}
+.set-member-list {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--bg-base);
+}
+.set-member-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline-soft);
+  cursor: pointer;
+  font-size: 13px;
+}
+.set-member-row:last-child { border-bottom: none; }
+.set-member-row:hover { background: var(--slate-50); }
+.set-member-row.is-checked { background: var(--cyan-50); }
+.set-member-name { flex: 1; color: var(--slate-800); }
+.set-member-id {
+  font-family: var(--ff-mono);
+  font-size: 10.5px;
+  color: var(--slate-400);
+}
+.set-panel-foot {
+  margin-top: 24px;
+  display: flex; align-items: center; gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline-soft);
+}
+.btn-danger {
+  background: var(--fail-100);
+  color: var(--fail-800);
+  border: 1px solid var(--fail-200, transparent);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-danger:hover { background: var(--fail-200, var(--fail-100)); }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.set-error { font-size: 12px; color: var(--fail-700); }
+
+/* ── Set-grouped list view (EditorListPage) ──────────────────────────── */
+.set-group {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--bg-base);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.set-group-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--hairline-soft);
+  background: var(--slate-50);
+}
+.set-group-head .sg-check {
+  display: flex; align-items: center; justify-content: center;
+}
+.set-group-head .sg-name {
+  font-weight: 600; font-size: 14px; color: var(--slate-800);
+}
+.set-group-head .sg-meta {
+  font-size: 11.5px; color: var(--slate-500);
+  margin-left: 4px;
+}
+.set-group-head .sg-counter {
+  margin-left: auto;
+  font-size: 11.5px; color: var(--slate-600);
+  background: var(--slate-100); padding: 3px 10px; border-radius: 10px;
+}
+.set-group-head .sg-edit {
+  font-size: 11.5px; color: var(--slate-500);
+  text-decoration: none;
+  padding: 3px 8px; border-radius: 4px;
+}
+.set-group-head .sg-edit:hover { background: var(--slate-100); color: var(--slate-700); }
+.set-group-body { padding: 8px; display: grid; gap: 8px; }
+.ungrouped-head {
+  margin: 20px 0 8px;
+  font-size: 12.5px; font-weight: 600; color: var(--slate-600);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.new-set-btn {
+  margin-right: 8px;
+}

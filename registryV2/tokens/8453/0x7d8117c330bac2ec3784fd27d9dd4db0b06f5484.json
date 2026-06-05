@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x7d8117c330bac2ec3784fd27d9dd4db0b06f5484",
+  "symbol": "nara.com",
+  "decimals": 18,
+  "name": "nara.com",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

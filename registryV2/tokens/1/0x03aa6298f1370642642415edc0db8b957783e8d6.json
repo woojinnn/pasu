@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x03aa6298f1370642642415edc0db8b957783e8d6",
+  "symbol": "NMT",
+  "decimals": 18,
+  "name": "NetMind Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

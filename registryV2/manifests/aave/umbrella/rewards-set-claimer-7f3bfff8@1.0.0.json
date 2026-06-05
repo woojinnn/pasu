@@ -1,0 +1,60 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/rewards/setClaimer/0x7f3bfff8@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Umbrella claimer permission mapped to protocol authorization.",
+  "match": {
+    "selector": "0x7f3bfff8",
+    "chain_to_addresses": {
+      "1": [
+        "0x4655ce3d625a63d30ba704087e52b4c31e38188b"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "setClaimer",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "claimer",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "flag",
+          "type": "bool"
+        }
+      ],
+      "name": "setClaimer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "permission",
+      "permission": {
+        "action": "protocol_authorization",
+        "protocol_authorization": {
+          "chain": "$chain",
+          "protocol": "$to",
+          "protocol_name": "aave_umbrella",
+          "permission": "delegate",
+          "permission_label": "rewards_claimer",
+          "authorizer": "$args.user",
+          "authorized": "$args.claimer",
+          "is_authorized": "$args.flag"
+        }
+      }
+    }
+  }
+}

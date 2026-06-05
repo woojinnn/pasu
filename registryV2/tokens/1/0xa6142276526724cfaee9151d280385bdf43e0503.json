@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa6142276526724cfaee9151d280385bdf43e0503",
+  "symbol": "loAZND",
+  "decimals": 18,
+  "name": "Locked AZND",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6a0d9403868f17b79c60be3466b3f2adf37b2428",
+  "symbol": "pWETHpcAPE-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: Paraspace Supplied ETH/APE",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x1440ae2288345a78e753d0b1d679880031bce653"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xaa4b6506493582f169c9329ac0da99fff23c2911"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xddde38696fbe5d11497d72d8801f651642d62353"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

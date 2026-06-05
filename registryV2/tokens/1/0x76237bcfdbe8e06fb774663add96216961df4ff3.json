@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x76237bcfdbe8e06fb774663add96216961df4ff3",
+  "symbol": "FXB_20261231",
+  "decimals": 18,
+  "name": "FXB_4_DEC312026",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

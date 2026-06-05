@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x005f893ecd7bf9667195642f7649da8163e23658",
+  "symbol": "dgnETH",
+  "decimals": 18,
+  "name": "Degen ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

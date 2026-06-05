@@ -1,0 +1,57 @@
+{
+  "type": "adapter_action",
+  "id": "curve/gauge/source/withdraw-claim@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x38d07436",
+    "chain_to_addresses_source": "curve:gauges",
+    "chain_ids": [
+      1,
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "name": "withdraw",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_value",
+          "type": "uint256"
+        },
+        {
+          "name": "_claim_rewards",
+          "type": "bool"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "gauge_withdraw",
+        "gauge_withdraw": {
+          "venue": {
+            "name": "curve_gauge",
+            "chain": "$chain",
+            "gauge": "$to"
+          },
+          "amount": "$args._value"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

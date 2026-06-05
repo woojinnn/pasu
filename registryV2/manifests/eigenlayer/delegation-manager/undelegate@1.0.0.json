@@ -1,0 +1,59 @@
+{
+  "type": "adapter_action",
+  "id": "eigenlayer/delegation-manager/undelegate@1.0.0",
+  "publisher": "eigenlayer.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xda8be864",
+    "chain_to_addresses": {
+      "1": [
+        "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "undelegate",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "staker",
+          "type": "address"
+        }
+      ],
+      "name": "undelegate",
+      "outputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "withdrawalRoots",
+          "type": "bytes32[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "restaking",
+      "restaking": {
+        "action": "undelegate",
+        "undelegate": {
+          "venue": {
+            "name": "eigenlayer",
+            "chain": "$chain"
+          },
+          "staker": "$args.staker"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

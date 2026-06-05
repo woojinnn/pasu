@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+  "symbol": "AUSD",
+  "decimals": 6,
+  "name": "AUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,4 +1,4 @@
-/* Home page — portfolio context bar + triage queue + wallet list. */
+/* Home page — portfolio context bar + active-policies card + wallet list. */
 
 .ctx-bar {
   background: var(--sage-50);
@@ -27,54 +27,44 @@
 }
 .ctx-bar .ctx-cta:hover { background: var(--slate-900); }
 
-/* Triage queue (unresolved findings) */
-.triage { margin-bottom: 24px; }
-.triage-head {
-  display: flex; align-items: center; gap: 16px;
-  padding-bottom: 14px; border-bottom: 1px solid var(--hairline-soft);
-  margin-bottom: 12px;
-}
-.triage-head .title {
-  font-size: 15px; font-weight: 700; color: var(--slate-900);
-}
-.triage-head .title .cnt { color: var(--slate-500); font-weight: 500; margin-left: 4px; }
-.triage-head .sev-row { display: flex; gap: 6px; }
-
-.tq-list { display: flex; flex-direction: column; gap: 8px; }
-.tq-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 14px; align-items: center;
-  padding: 12px 14px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-sm);
+/* Active policies card (links to /editor) */
+.policies-card {
+  display: flex; align-items: center; justify-content: space-between;
   background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  text-decoration: none;
+  transition: background 140ms ease, border-color 140ms ease;
 }
-.tq-row.fail { border-left: 3px solid var(--fail-500); }
-.tq-row.warn { border-left: 3px solid var(--warn-500); }
-.tq-row .tq-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--ff-mono); font-size: 11px; font-weight: 700;
-  padding: 4px 9px; border-radius: var(--r-pill);
+.policies-card:hover {
+  background: var(--sage-50);
+  border-color: var(--sage-300);
 }
-.tq-row.fail .tq-pill { background: var(--fail-100); color: var(--fail-800); }
-.tq-row.warn .tq-pill { background: var(--warn-100); color: var(--warn-800); }
-.tq-row .tq-pill .pd { width: 7px; height: 7px; border-radius: 50%; }
-.tq-row.fail .tq-pill .pd { background: var(--fail-500); }
-.tq-row.warn .tq-pill .pd { background: var(--warn-500); }
-
-.tq-row .tq-main { min-width: 0; }
-.tq-row .tq-sum { font-size: 14px; color: var(--slate-900); line-height: 1.4; }
-.tq-row .tq-sum .b { font-weight: 600; }
-.tq-row .tq-meta {
-  font-size: 11.5px; color: var(--slate-400); margin-top: 4px;
-  display: flex; gap: 6px; align-items: center;
+.policies-card .pc-left {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.policies-card .pc-label {
+  font-size: 12px; font-weight: 600; color: var(--slate-500);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.policies-card .pc-count {
+  font-size: 22px; font-weight: 700; color: var(--slate-900);
   font-variant-numeric: tabular-nums;
 }
-.tq-row .tq-meta .dotsep { width: 3px; height: 3px; background: var(--slate-300); border-radius: 50%; }
-.tq-row .tq-meta .wname { color: var(--slate-600); font-weight: 500; }
+.policies-card .pc-total {
+  font-size: 14px; font-weight: 500; color: var(--slate-400);
+  margin-left: 2px;
+}
+.policies-card .pc-right {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--slate-700); font-size: 12.5px; font-weight: 500;
+}
+.policies-card .pc-arrow { width: 14px; height: 14px; }
+.policies-card:hover .pc-right { color: var(--slate-900); }
 
-.tq-row .tq-actions { display: flex; gap: 6px; }
+/* Empty / utility blocks reused by the wallet list */
 .btn {
   font-size: 12px; padding: 6px 12px; border-radius: var(--r-sm);
   border: 1px solid var(--hairline); background: var(--surface);
@@ -90,11 +80,6 @@
   border: 1px dashed var(--hairline); border-radius: var(--r-md);
   color: var(--slate-500);
 }
-.tq-empty .ico {
-  width: 36px; height: 36px; margin: 0 auto 10px;
-  border-radius: 50%; background: var(--pass-100); color: var(--pass-700);
-  display: grid; place-items: center;
-}
 .tq-empty .et { display: block; font-weight: 600; color: var(--slate-700); font-size: 14px; }
 .tq-empty .es { display: block; font-size: 12px; color: var(--slate-400); margin-top: 4px; }
 
@@ -109,6 +94,19 @@
 .wallets-head h2 .submeta {
   font-size: 12px; font-weight: 500; color: var(--slate-400); margin-left: 10px;
 }
+.wallets-head h2 .submeta-chips {
+  display: inline-flex; gap: 6px; margin-left: 10px;
+  font-weight: 500; font-size: 11px;
+  vertical-align: middle;
+}
+.wallets-head h2 .submeta-chips .chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; border-radius: var(--r-pill);
+  font-family: var(--ff-mono);
+}
+.wallets-head h2 .submeta-chips .chip.pass { background: var(--pass-100); color: var(--pass-800); }
+.wallets-head h2 .submeta-chips .chip.warn { background: var(--warn-100); color: var(--warn-800); }
+.wallets-head h2 .submeta-chips .chip.fail { background: var(--fail-100); color: var(--fail-800); }
 
 .wallet-list { display: flex; flex-direction: column; gap: 10px; }
 .wallet-card {
@@ -122,12 +120,10 @@
 .wallet-card.calm { border-left: 3px solid var(--pass-500); }
 .wallet-head {
   display: grid;
-  grid-template-columns: 36px 1fr auto auto;
+  grid-template-columns: 36px 1fr auto auto auto;
   gap: 14px; align-items: center;
   padding: 14px 18px;
-  cursor: pointer;
 }
-.wallet-head:hover { background: var(--fog-200); }
 .wallet-head .w-icon {
   width: 36px; height: 36px; border-radius: 50%;
   background: var(--cyan-200); color: var(--slate-800);
@@ -144,42 +140,6 @@
   font-variant-numeric: tabular-nums;
 }
 .wallet-head .w-stats b { color: var(--slate-900); font-weight: 600; }
-.wallet-head .w-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--ff-mono); font-size: 11px; font-weight: 600;
-  padding: 4px 9px; border-radius: var(--r-pill);
-}
-.wallet-head .w-badge.calm { background: var(--pass-100); color: var(--pass-800); }
-.wallet-head .w-badge.warn { background: var(--warn-100); color: var(--warn-800); }
-.wallet-head .w-badge.fail { background: var(--fail-100); color: var(--fail-800); }
-.wallet-head .w-badge .pd { width: 7px; height: 7px; border-radius: 50%; }
-.wallet-head .w-badge.calm .pd { background: var(--pass-500); }
-.wallet-head .w-badge.warn .pd { background: var(--warn-500); }
-.wallet-head .w-badge.fail .pd { background: var(--fail-500); }
-
-/* wallet card actions row */
-.wallet-actions {
-  display: flex; gap: 6px; padding: 10px 18px 14px 68px;
-  border-top: 1px dashed var(--hairline-soft);
-  background: var(--fog-200);
-}
-.wallet-actions .btn { font-size: 11.5px; padding: 5px 10px; }
-.wallet-actions .btn.danger { color: var(--fail-700); }
-.wallet-actions .btn.danger:hover { background: var(--fail-50); }
-.wallet-actions .sync-result {
-  font-size: 11px; color: var(--slate-400);
-  align-self: center; margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-
-/* wallet card caret + expand/collapse */
-.wallet-head { position: relative; }
-.wallet-head .caret {
-  width: 14px; height: 14px; color: var(--slate-300);
-  flex-shrink: 0;
-  transition: transform 180ms cubic-bezier(0.32, 0.04, 0.2, 1), color 180ms ease;
-}
-.wallet-card.expanded .wallet-head .caret { transform: rotate(90deg); color: var(--slate-700); }
 
 .wallet-head .w-status { display: flex; gap: 6px; align-items: center; }
 .wallet-head .w-pill {
@@ -202,145 +162,19 @@
   background: var(--fog-300); font-variant-numeric: tabular-nums;
 }
 
-/* expanded card layout */
-.wallet-card .wallet-head {
-  grid-template-columns: 14px 36px 1fr auto auto auto;
+/* wallet card actions row */
+.wallet-actions {
+  display: flex; gap: 6px; padding: 10px 18px 14px 68px;
+  border-top: 1px dashed var(--hairline-soft);
+  background: var(--fog-200);
 }
-.wallet-body {
-  display: grid; grid-template-rows: 0fr;
-  transition: grid-template-rows 220ms cubic-bezier(0.32, 0.04, 0.2, 1);
-}
-.wallet-card.expanded .wallet-body { grid-template-rows: 1fr; }
-.wb-inner {
-  overflow: hidden;
-  min-height: 0;
-}
-.wb-content {
-  padding: 16px 22px 18px 68px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-  border-top: 1px solid var(--hairline-soft);
-}
-.wb-content .panel {
-  background: var(--fog-100);
-  border: 1px solid var(--hairline-soft);
-  border-radius: var(--r-sm);
-  padding: 10px 14px;
-}
-.wb-content .panel-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 8px;
-}
-.wb-content .panel-ttl {
-  font-size: 12px; color: var(--slate-700); font-weight: 600;
-}
-.wb-content .panel-ttl b {
-  margin-left: 6px; color: var(--slate-400); font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-.wb-content .panel-meta {
+.wallet-actions .btn { font-size: 11.5px; padding: 5px 10px; }
+.wallet-actions .btn.danger { color: var(--fail-700); }
+.wallet-actions .btn.danger:hover { background: var(--fail-50); }
+.wallet-actions .sync-result {
   font-size: 11px; color: var(--slate-400);
-}
-
-.policy-list, .hist {
-  display: flex; flex-direction: column; gap: 4px;
-  max-height: 200px; overflow: auto;
-}
-.policy-item {
-  display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: center;
-  padding: 5px 4px; border-radius: 4px;
-  font-size: 12.5px;
-}
-.policy-item .pd { width: 6px; height: 6px; border-radius: 50%; background: var(--slate-300); }
-.policy-item.warn .pd { background: var(--warn-500); }
-.policy-item.fail .pd { background: var(--fail-500); }
-.policy-item .nm { color: var(--slate-900); font-weight: 500; }
-.policy-item .id {
-  display: block; font-family: var(--ff-mono); font-size: 10.5px;
-  color: var(--slate-400); font-weight: 400;
-}
-.policy-item .status-pill {
-  font-family: var(--ff-mono); font-size: 10px; font-weight: 700;
-  padding: 2px 6px; border-radius: var(--r-pill);
-}
-.policy-item.warn .status-pill { background: var(--warn-100); color: var(--warn-800); }
-.policy-item.fail .status-pill { background: var(--fail-100); color: var(--fail-800); }
-
-.hist-row {
-  display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center;
-  padding: 5px 4px;
-  font-size: 12px;
-}
-.hist-row .hist-pill {
-  font-family: var(--ff-mono); font-size: 9.5px; font-weight: 700;
-  padding: 2px 6px; border-radius: var(--r-pill);
-  text-align: center;
-}
-.hist-row .hist-pill.pass { background: var(--pass-100); color: var(--pass-800); }
-.hist-row .hist-pill.warn { background: var(--warn-100); color: var(--warn-800); }
-.hist-row .hist-pill.fail { background: var(--fail-100); color: var(--fail-800); }
-.hist-row .hist-pill.info { background: var(--cyan-100); color: var(--cyan-800); }
-.hist-row .h-sum { color: var(--slate-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hist-row .h-time { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); }
-
-.wb-foot-meta {
-  grid-column: 1 / -1;
-  display: flex; gap: 14px; align-items: center;
-  font-size: 11.5px; color: var(--slate-500);
+  align-self: center; margin-left: auto;
   font-variant-numeric: tabular-nums;
-  padding-top: 6px; border-top: 1px dashed var(--hairline-soft);
-}
-.wb-foot-meta .sep { width: 2px; height: 2px; background: var(--slate-300); border-radius: 50%; }
-.wb-foot-meta .live { color: var(--pass-700); font-weight: 500; }
-
-/* toast for max-expand warning */
-.toast {
-  position: fixed; bottom: 24px; left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--slate-800); color: var(--fog-50);
-  padding: 10px 18px; border-radius: var(--r-pill);
-  font-size: 13px; box-shadow: 0 8px 24px rgba(15,23,42,0.18);
-  opacity: 0; pointer-events: none;
-  transition: opacity 180ms ease, transform 180ms ease;
-  z-index: 200;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* wallets-head submeta with PASS/WARN/FAIL chips */
-.wallets-head h2 .submeta-chips {
-  display: inline-flex; gap: 6px; margin-left: 10px;
-  font-weight: 500; font-size: 11px;
-  vertical-align: middle;
-}
-.wallets-head h2 .submeta-chips .chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 7px; border-radius: var(--r-pill);
-  font-family: var(--ff-mono);
-}
-.wallets-head h2 .submeta-chips .chip.pass { background: var(--pass-100); color: var(--pass-800); }
-.wallets-head h2 .submeta-chips .chip.warn { background: var(--warn-100); color: var(--warn-800); }
-.wallets-head h2 .submeta-chips .chip.fail { background: var(--fail-100); color: var(--fail-800); }
-
-/* triage row: extend with rule-id + editor link */
-.tq-row .tq-actions .tq-editor {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 6px 10px; border-radius: var(--r-sm);
-  border: 1px solid var(--hairline);
-  font-size: 11.5px; color: var(--slate-700); font-weight: 500;
-}
-.tq-row .tq-actions .tq-editor:hover {
-  background: var(--sage-50); border-color: var(--sage-300);
-  color: var(--slate-900);
-}
-.tq-row .tq-actions .tq-editor .arrow { width: 12px; height: 12px; }
-.tq-row .tq-meta .rule-id {
-  font-family: var(--ff-mono); color: var(--slate-500);
-}
-
-/* triage / list loading text */
-.tq-loading {
-  padding: 18px 14px; text-align: center;
-  font-size: 13px; color: var(--slate-400);
-  background: var(--fog-100); border-radius: var(--r-sm);
 }
 
 /* loading / error skeletons */

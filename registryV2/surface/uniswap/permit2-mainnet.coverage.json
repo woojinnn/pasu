@@ -1,0 +1,91 @@
+{
+  "contract": "Permit2",
+  "chainId": 1,
+  "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  "snapshot": "permit2-mainnet.abi.json",
+  "note": "Permit2 mainnet surface triage. Permission grant/revoke functions are COVER. Direct AllowanceTransfer transferFrom execution is covered as user-visible fund movement. SignatureTransfer typed-data signatures and relayer execution are both modeled: sign-time as token.permit2_sign_transfer, execution-time as token.permit2_transfer_from.",
+  "functions": {
+    "0x87517c45": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: sets Permit2 allowance for token/spender/amount/expiration"
+    },
+    "0x65d9723c": {
+      "name": "invalidateNonces",
+      "decision": "cover",
+      "reason": "PERMISSION REVOCATION primitive: invalidates ordered allowance nonces for a token/spender pair"
+    },
+    "0x3ff9dcb1": {
+      "name": "invalidateUnorderedNonces",
+      "decision": "cover",
+      "reason": "PERMISSION/ORDER REVOCATION primitive: invalidates Permit2 unordered nonce bits; used by UniswapX order cancellation"
+    },
+    "0xcc53287f": {
+      "name": "lockdown",
+      "decision": "cover",
+      "reason": "PERMISSION REVOCATION primitive: batch revokes Permit2 token/spender approvals"
+    },
+    "0x2a2d80d1": {
+      "name": "permit",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: relayed PermitBatch allowance signature submission"
+    },
+    "0x2b67b570": {
+      "name": "permit",
+      "decision": "cover",
+      "reason": "PERMISSION DELEGATION primitive: relayed PermitSingle allowance signature submission"
+    },
+    "0x30f28b7a": {
+      "name": "permitTransferFrom",
+      "decision": "cover",
+      "reason": "SignatureTransfer single execution; manifest uniswap/permit2/permitTransferFrom emits owner-aware token.permit2_transfer_from"
+    },
+    "0xedd9444b": {
+      "name": "permitTransferFrom",
+      "decision": "cover",
+      "reason": "SignatureTransfer batch execution; manifest uniswap/permit2/permitTransferFromBatch emits per-item owner-aware token.permit2_transfer_from"
+    },
+    "0x137c29fe": {
+      "name": "permitWitnessTransferFrom",
+      "decision": "cover",
+      "reason": "SignatureTransfer witness execution; manifest uniswap/permit2/permitWitnessTransferFrom emits owner-aware token.permit2_transfer_from"
+    },
+    "0xfe8ec1a7": {
+      "name": "permitWitnessTransferFrom",
+      "decision": "cover",
+      "reason": "SignatureTransfer witness batch execution; manifest uniswap/permit2/permitWitnessTransferFromBatch emits per-item owner-aware token.permit2_transfer_from"
+    },
+    "0x36c78516": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "AllowanceTransfer direct fund movement: surfaces moved token, recipient, and amount"
+    },
+    "0x0d58b1db": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "AllowanceTransfer direct batch fund movement: surfaces each moved token, recipient, and amount"
+    }
+  },
+  "signed_structs": {
+    "PermitSingle": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 allowance signature; manifest uniswap/permit2/permitSingle"
+    },
+    "PermitBatch": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 batch allowance signature; manifest uniswap/permit2/permitBatch"
+    },
+    "PermitTransferFrom": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 SignatureTransfer single signature; manifest uniswap/permit2/permitTransferFrom-sign"
+    },
+    "PermitBatchTransferFrom": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 SignatureTransfer batch signature; manifest uniswap/permit2/permitBatchTransferFrom-sign"
+    },
+    "PermitWitnessTransferFrom": {
+      "decision": "cover",
+      "reason": "off-chain Permit2 witness signature used by UniswapX intent orders; manifests under uniswapx/*/sign"
+    }
+  }
+}

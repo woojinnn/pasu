@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x08fe6da64e7cea5163f86eb645132a4ceb19206b",
-  "symbol": "ZAMB",
-  "decimals": 18,
-  "name": "Zambcore"
-}

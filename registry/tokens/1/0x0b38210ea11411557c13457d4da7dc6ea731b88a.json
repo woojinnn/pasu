@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x0b38210ea11411557c13457d4da7dc6ea731b88a",
-  "symbol": "API3",
-  "decimals": 18,
-  "name": "API3"
-}

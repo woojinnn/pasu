@@ -1,21 +1,22 @@
 //! `AmmAction` — `Swap` / `AddLiquidity` / `RemoveLiquidity` / `CollectFees` / `IntentOrder`. Spec §5.
-//!
 //! Venue discriminator pattern: a single `AmmAction::Swap` variant plus an `AmmVenue` enum.
 //! `run_action` then dispatches per-protocol math via a single `match venue { ... }`.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, U128, U256};
+use policy_state::primitives::{Address, ChainId, U128, U256};
 
 pub mod add_liquidity;
 pub mod collect_fees;
+pub mod gsm_swap;
 pub mod intent;
 pub mod remove_liquidity;
 pub mod swap;
 
 pub use self::add_liquidity::*;
 pub use self::collect_fees::*;
+pub use self::gsm_swap::*;
 pub use self::intent::*;
 pub use self::remove_liquidity::*;
 pub use self::swap::*;
@@ -33,6 +34,8 @@ pub use self::swap::*;
 pub enum AmmAction {
     /// Token-for-token swap on a single pool or an aggregator route.
     Swap(SwapAction),
+    /// Aave GHO Stability Module fixed-price swap (GHO ↔ USDC/USDT).
+    GsmSwap(GsmSwapAction),
     /// Deposit liquidity into a pool (`Uniswap V2`/`V3`, `Curve`, `Balancer`, ...).
     AddLiquidity(AddLiquidityAction),
     /// Withdraw liquidity from a pool / burn an LP or position NFT.
@@ -41,24 +44,31 @@ pub enum AmmAction {
     CollectFees(CollectFeesAction),
     /// Sign an EIP-712 intent order (`UniswapX` / `CowSwap` / `1inch Fusion`, ...).
     SignIntentOrder(SignIntentOrderAction),
+    /// Submit an on-chain fill/settlement for a signed intent order.
+    SettleIntentOrder(SettleIntentOrderAction),
     /// Cancel a previously signed intent order.
     CancelIntentOrder(CancelIntentOrderAction),
+    /// Set/revoke an on-chain pre-signature for an intent order (CoW Swap
+    /// `setPreSignature` — the smart-contract-wallet order-placement path).
+    PreSignIntentOrder(PreSignIntentOrderAction),
 }
 
 impl AmmAction {
     /// The action's `serde` `action` tag (e.g. `"swap"`, `"sign_intent_order"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]
     pub const fn action_tag(&self) -> &'static str {
         match self {
             Self::Swap(_) => "swap",
+            Self::GsmSwap(_) => "gsm_swap",
             Self::AddLiquidity(_) => "add_liquidity",
             Self::RemoveLiquidity(_) => "remove_liquidity",
             Self::CollectFees(_) => "collect_fees",
             Self::SignIntentOrder(_) => "sign_intent_order",
+            Self::SettleIntentOrder(_) => "settle_intent_order",
             Self::CancelIntentOrder(_) => "cancel_intent_order",
+            Self::PreSignIntentOrder(_) => "pre_sign_intent_order",
         }
     }
 
@@ -67,11 +77,14 @@ impl AmmAction {
     pub const fn venue_name(&self) -> Option<&'static str> {
         match self {
             Self::Swap(a) => Some(a.venue.name()),
+            Self::GsmSwap(a) => Some(a.venue.name()),
             Self::AddLiquidity(a) => Some(a.venue.name()),
             Self::RemoveLiquidity(a) => Some(a.venue.name()),
             Self::CollectFees(a) => Some(a.venue.name()),
             Self::SignIntentOrder(a) => Some(a.venue.name()),
+            Self::SettleIntentOrder(a) => Some(a.venue.name()),
             Self::CancelIntentOrder(a) => Some(a.venue.name()),
+            Self::PreSignIntentOrder(a) => Some(a.venue.name()),
         }
     }
 }
@@ -187,6 +200,16 @@ pub enum AmmVenue {
         #[tsify(type = "string")]
         pool: Address,
     },
+    /// Aave GHO Stability Module (GSM) — a fixed-price GHO↔asset venue, not an
+    /// AMM pool. Carries the GSM contract address; the non-GHO asset lives in
+    /// [`GsmSwapAction::asset`]. Only used by `AmmAction::GsmSwap`.
+    AaveGsm {
+        /// Chain the GSM lives on.
+        chain: ChainId,
+        /// GSM contract address.
+        #[tsify(type = "string")]
+        gsm: Address,
+    },
     /// Aggregator router (e.g. `1inch`, `0x`, `Paraswap`).
     /// The actual executed route is carried in `SwapLiveInputs.route`.
     AggregatorRoute {
@@ -197,12 +220,18 @@ pub enum AmmVenue {
         router: Address,
         /// 32-byte hex hash of the route calldata.
         route_hash: String,
+        /// Separated executor the router delegates the swap to (e.g. `1inch v6`
+        /// splits router/executor; calldata arg 0). Statically decodable and
+        /// policy-relevant — policies typically whitelist known-safe executors.
+        /// `None` for venues without a distinct executor (e.g. Curve Router NG).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[tsify(optional, type = "string")]
+        executor: Option<Address>,
     },
 }
 
 impl AmmVenue {
     /// The venue's `serde` `name` tag (e.g. `"uniswap_v3"`, `"trader_joe_l_b"`).
-    ///
     /// These strings match the `#[serde(tag = "name", rename_all = "snake_case")]`
     /// discriminants exactly and are verified against `serde_json` output in tests.
     #[must_use]
@@ -218,6 +247,7 @@ impl AmmVenue {
             Self::BalancerV3 { .. } => "balancer_v3",
             Self::TraderJoeLB { .. } => "trader_joe_l_b",
             Self::MaverickV2 { .. } => "maverick_v2",
+            Self::AaveGsm { .. } => "aave_gsm",
             Self::AggregatorRoute { .. } => "aggregator_route",
         }
     }
@@ -339,12 +369,10 @@ pub enum PoolState {
     Maverick {
         /// Known mode identifier (`"mode_left"`, `"mode_right"`, `"mode_both"`, `"mode_dynamic"`).
         mode: String,
-        /// Per-mode raw payload (to be decomposed into typed fields in Phase 2).
         #[tsify(type = "unknown")]
         raw: serde_json::Value,
     },
 
-    /// Escape hatch (Phase 1) for protocols not yet modelled above.
     Custom {
         /// Protocol identifier.
         protocol: String,

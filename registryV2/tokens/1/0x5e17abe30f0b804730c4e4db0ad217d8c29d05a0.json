@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5e17abe30f0b804730c4e4db0ad217d8c29d05a0",
+  "symbol": "rsTAO",
+  "decimals": 9,
+  "name": "Rivus Staked TAO",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

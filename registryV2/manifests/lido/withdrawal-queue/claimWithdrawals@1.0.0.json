@@ -1,0 +1,39 @@
+{
+  "type": "adapter_action",
+  "id": "lido/withdrawal-queue/claimWithdrawals@1.0.0",
+  "publisher": "lido.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xe3afe0a3",
+    "chain_to_addresses": {
+      "1": ["0x889edc2edab5f40e902b864ad4d7ade8e412f9b1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimWithdrawals",
+    "abi": {
+      "name": "claimWithdrawals",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "_requestIds", "type": "uint256[]" },
+        { "name": "_hints", "type": "uint256[]" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "claim_withdrawal",
+        "claim_withdrawal": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "request_ids": "$args._requestIds"
+        }
+      }
+    },
+    "live_inputs": {}
+  }
+}

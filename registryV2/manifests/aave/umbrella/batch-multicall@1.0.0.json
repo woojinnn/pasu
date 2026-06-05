@@ -1,0 +1,43 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/batch/multicall@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Umbrella batch helper self-multicall recursively decodes inner helper calls.",
+  "match": {
+    "selector": "0xac9650d8",
+    "chain_to_addresses": {
+      "1": [
+        "0xce6ced23118edeb23054e06118a702797b13fc2f"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "multicall",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "data",
+          "type": "bytes[]"
+        }
+      ],
+      "name": "multicall",
+      "outputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "results",
+          "type": "bytes[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "multicall_recurse",
+    "recurse_rule_id": "self_array_bytes_last_arg",
+    "recurse_arg": "data",
+    "max_depth": 3
+  }
+}

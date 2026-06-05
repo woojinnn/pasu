@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa6e3b73452fd323b41a657c9d92859be1ece1d4b",
+  "symbol": "DRACHMAE-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: GRD/iBBT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xcc659bbea1e1580e9a9c89d8f268101f67a881e9"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2915acaa744e36befb3c539c3d99a7f82ad8e6c9"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x691c25c461dafc47792b6e4d674fbb637bca1c6f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

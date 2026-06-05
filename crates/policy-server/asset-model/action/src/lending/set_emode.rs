@@ -3,10 +3,10 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::position::EModeCategory;
-use simulation_state::primitives::Address;
-use simulation_state::token::TokenRef;
-use simulation_state::LiveField;
+use policy_state::position::EModeCategory;
+use policy_state::primitives::Address;
+use policy_state::token::TokenRef;
+use policy_state::LiveField;
 
 use super::{LendingVenue, UserLendingState};
 
@@ -18,6 +18,10 @@ pub struct SetEModeAction {
     pub venue: LendingVenue,
     /// Target category id; `0` = disable e-mode.
     pub category_id: u8,
+    /// Account whose e-mode is changed; defaults to `submitter` when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional, type = "string")]
+    pub on_behalf_of: Option<Address>,
     /// Live inputs fetched at simulation time.
     pub live_inputs: SetEModeLiveInputs,
 }

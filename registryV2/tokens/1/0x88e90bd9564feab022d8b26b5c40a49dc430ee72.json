@@ -1,0 +1,81 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x88e90bd9564feab022d8b26b5c40a49dc430ee72",
+  "symbol": "crvInfUSD",
+  "decimals": 18,
+  "name": "Curve InfiniFi USD Pool",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x88e90bd9564feab022d8b26b5c40a49dc430ee72"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xdbdc1ef57537e34680b898e1febd3d68c7389bcb"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x12b004719fb632f1e7c010c6f5d6009fb4258442"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf1839becaf586814d022f16cdb3504ff8d8ff361"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x66bcf6151d5558afb47c38b20663589843156078"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb06cc4548febff3d66a680f9c516381c79bc9707"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf68b95b7e851170c0e5123a3249dd1ca46215085"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xbd3f9814eb946e617f1d774a6762cdbec0bf087a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/permitWitnessTransferFrom@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note": "Permit2 SignatureTransfer.permitWitnessTransferFrom single execution. This covers witness-based relayer execution, including UniswapX-style PermitWitnessTransferFrom settlement paths.",
+  "match": {
+    "selector": "0x137c29fe",
+    "chain_to_addresses": {
+      "1": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permitWitnessTransferFrom",
+    "abi": {
+      "name": "permitWitnessTransferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "permit",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "permitted",
+              "type": "tuple",
+              "components": [
+                { "name": "token", "type": "address" },
+                { "name": "amount", "type": "uint256" }
+              ]
+            },
+            { "name": "nonce", "type": "uint256" },
+            { "name": "deadline", "type": "uint256" }
+          ]
+        },
+        {
+          "name": "transferDetails",
+          "type": "tuple",
+          "components": [
+            { "name": "to", "type": "address" },
+            { "name": "requestedAmount", "type": "uint256" }
+          ]
+        },
+        { "name": "owner", "type": "address" },
+        { "name": "witness", "type": "bytes32" },
+        { "name": "witnessTypeString", "type": "string" },
+        { "name": "signature", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "permit2_transfer_from",
+        "permit2_transfer_from": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.permit[0][0]"
+            }
+          },
+          "owner": "$args.owner",
+          "spender": "$tx.from",
+          "recipient": "$args.transferDetails[0]",
+          "amount": "$args.transferDetails[1]",
+          "permitted_amount": "$args.permit[0][1]",
+          "nonce": "$args.permit[1]",
+          "sig_deadline": "$args.permit[2]",
+          "witness_type": "$args.witnessTypeString"
+        }
+      }
+    },
+    "live_inputs": {
+      "nonce": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+          "function": "nonceBitmap(address,uint256)",
+          "decoder_id": "permit2_nonce_bitmap"
+        },
+        "ttl_s": 12
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

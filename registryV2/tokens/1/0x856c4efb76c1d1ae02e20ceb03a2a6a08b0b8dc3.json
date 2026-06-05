@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x856c4efb76c1d1ae02e20ceb03a2a6a08b0b8dc3",
+  "symbol": "OETH",
+  "decimals": 18,
+  "name": "Origin Ether",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

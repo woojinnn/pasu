@@ -22,6 +22,12 @@ namespace HyperliquidCore {
     size: String,
     // Reduce-only flag.
     reduceOnly: Bool,
+    // Derived position intent: "open" (new/added exposure) or "reduce"
+    // (reduce-only ⇒ closes/shrinks an existing position). `side` is the order
+    // DIRECTION (buy/sell), so a reduce-only "short" is a long-CLOSE, not a new
+    // short — match `side=="short" && positionEffect=="open"` to block only new
+    // shorts. Derived from `reduceOnly`; no live position data.
+    positionEffect: String,
     // Time-in-force: "gtc" | "ioc" | "post_only".
     tif: String,
     // Manifest-extensible slot.

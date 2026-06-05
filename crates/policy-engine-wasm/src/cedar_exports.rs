@@ -1,7 +1,7 @@
 //! Editor-facing Cedar exports — `validate_policy_text`,
 //! `test_policy_text`, `simulate_policy_sequence`.
 //!
-//! Background: the simulation-server used to host `POST
+//! Background: the policy-server used to host `POST
 //! /policies/validate` + `POST /policies/:id/test` + `POST
 //! /simulate/sequence`. The DB-only server contract pushed those out
 //! of the server crate; the apps/web Editor and the
@@ -20,7 +20,9 @@
 
 use std::str::FromStr;
 
-use cedar_policy::{Authorizer, Context, Decision, Entities, EntityUid, PolicySet, Request};
+use cedar_policy::{
+    Authorizer, Context, Decision, Entities, EntityUid, Policy, PolicySet, Request,
+};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -127,6 +129,55 @@ pub fn validate_policy_text(text: String) -> String {
         },
     };
     json(&resp)
+}
+
+/// `policy_text_to_est_json(text) -> { ok, policies?: [{ id, est }], error? }`.
+/// Parses a (possibly multi-policy) document and emits each policy's Cedar EST
+/// (the official JSON policy format) — the read side of the block-IR engine.
+#[wasm_bindgen]
+pub fn policy_text_to_est_json(text: String) -> String {
+    let set = match PolicySet::from_str(&text) {
+        Ok(s) => s,
+        Err(e) => return serde_json::json!({ "ok": false, "error": e.to_string() }).to_string(),
+    };
+    let mut policies = Vec::new();
+    for p in set.policies() {
+        match p.to_json() {
+            Ok(est) => {
+                policies.push(serde_json::json!({ "id": p.id().to_string(), "est": est }));
+            }
+            Err(e) => {
+                return serde_json::json!({ "ok": false, "error": format!("to_json: {e}") })
+                    .to_string();
+            }
+        }
+    }
+    serde_json::json!({ "ok": true, "policies": policies }).to_string()
+}
+
+/// `est_json_to_policy_text(est_json) -> { ok, text?, error? }`. The write side:
+/// rebuilds a policy from a single EST and renders Cedar text.
+///
+/// NOTE (Phase 0 finding): `Policy::to_cedar()` returns `Option<String>` and
+/// desugars `>`/`>=` into `!(_ <= _)`. The EST itself stays faithful, so the
+/// EST↔IR engine is unaffected; see the spec's known-limitations.
+#[wasm_bindgen]
+pub fn est_json_to_policy_text(est_json: String) -> String {
+    let value: serde_json::Value = match serde_json::from_str(&est_json) {
+        Ok(v) => v,
+        Err(e) => {
+            return serde_json::json!({ "ok": false, "error": format!("invalid json: {e}") })
+                .to_string();
+        }
+    };
+    match Policy::from_json(None, value) {
+        Ok(p) => match p.to_cedar() {
+            Some(text) => serde_json::json!({ "ok": true, "text": text }).to_string(),
+            None => serde_json::json!({ "ok": false, "error": "policy could not be rendered to Cedar text" })
+                .to_string(),
+        },
+        Err(e) => serde_json::json!({ "ok": false, "error": e.to_string() }).to_string(),
+    }
 }
 
 /// `test_policy_text(text, request_json) -> JSON TestResp`. Schema-less

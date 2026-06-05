@@ -1,0 +1,57 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/variableDebtUSDT/renounceDelegation@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3 mainnet variableDebtUSDT renounceDelegation(delegator). The caller is the delegatee revoking delegated variable-rate borrow allowance, represented as delegate_borrow amount=0.",
+  "match": {
+    "selector": "0x91fb372d",
+    "chain_to_addresses": {
+      "1": [
+        "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "renounceDelegation",
+    "abi": {
+      "name": "renounceDelegation",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "delegator",
+          "type": "address"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "delegate_borrow",
+        "delegate_borrow": {
+          "venue": {
+            "name": "aave_v3",
+            "chain": "$chain",
+            "pool": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "market_id": null
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+            }
+          },
+          "delegatee": "$tx.from",
+          "amount": "0",
+          "rate_mode": "variable"
+        }
+      }
+    }
+  }
+}

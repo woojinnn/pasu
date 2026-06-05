@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, Time, U256};
-use simulation_state::token::TokenRef;
+use policy_state::primitives::{Address, Time, U256};
+use policy_state::token::TokenRef;
 
 /// `Uniswap` `Permit2` on-chain `approve` — sets allowance on the `Permit2` contract.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

@@ -1,0 +1,42 @@
+{
+  "contract": "CoWSwapEthFlow",
+  "chainId": 1,
+  "addresses": [
+    "0xba3cb449bd2b4adddbc894d8697f5170800eadec",
+    "0x40a50cf069e992aa4536211b23f286ef88752187"
+  ],
+  "snapshot": "cowswap-ethflow.abi.json",
+  "note": "Snapshot is the prod ethflow (0xba3c..eadec) verified ABI; the v1 contract (0x40a5..2187) shares the createOrder interface (same selector 0x322bba21, same EthFlowOrder.Data; confirmed by identical Dune decode + identical raw-calldata selector), so both addresses are covered by the one create-order manifest. I1 completeness runs once against the prod snapshot's 6 external-mutating fns.",
+  "functions": {
+    "0x322bba21": {
+      "name": "createOrder",
+      "decision": "cover",
+      "reason": "user native-ETH order placement (payable; msg.value = sellAmount + feeAmount wrapped to WETH). EthFlowOrder.Data carries the full order terms -> amm sign_intent_order (venue=cow_swap, OnchainTx). The dominant ethflow user action (9.3% of all settled CoW orders, L2 SCOPE ORACLE)."
+    },
+    "0x7bc41b96": {
+      "name": "invalidateOrder",
+      "decision": "exclude",
+      "reason": "DEFER: ethflow-level cancellation of a single ETH order; takes the full EthFlowOrder.Data tuple (not a uid). Mapping to cancel_intent_order needs the orderHash = keccak(order||owner||validTo), which the static V3 emit cannot compute (no $fn for arbitrary-struct hashing). Lower-frequency than placement; the dominant on-chain cancel path GPv2Settlement.invalidateOrder(orderUid) is already covered."
+    },
+    "0x4cb76498": {
+      "name": "invalidateOrdersIgnoringNotAllowed",
+      "decision": "exclude",
+      "reason": "DEFER: batch variant of the ethflow cancel (EthFlowOrder.Data[]); same orderHash-derivation limitation as invalidateOrder, and a batch-cancel maintenance action rather than an order intent."
+    },
+    "0xde0e9a3e": {
+      "name": "unwrap",
+      "decision": "exclude",
+      "reason": "permissionless WETH->ETH maintenance on the ethflow contract's OWN balance (used around settlement); not a user order/intent action — no swap terms to scope."
+    },
+    "0xea598cb0": {
+      "name": "wrap",
+      "decision": "exclude",
+      "reason": "permissionless ETH->WETH maintenance on the ethflow contract's own balance; not a user order/intent action."
+    },
+    "0x4c84c1c8": {
+      "name": "wrapAll",
+      "decision": "exclude",
+      "reason": "permissionless wrap of the ethflow contract's entire ETH balance to WETH; contract maintenance, not a user order/intent action."
+    }
+  }
+}

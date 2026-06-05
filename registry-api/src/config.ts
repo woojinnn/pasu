@@ -14,6 +14,7 @@ export interface RegistryApiConfig {
   rateLimitBurst: number;
   rateLimitRefillPerSec: number;
   rateLimitMaxIps: number;
+  trustedProxyHops: number;
 }
 
 function intFromEnv(name: string, fallback: number): number {
@@ -43,5 +44,16 @@ export function loadConfig(): RegistryApiConfig {
     rateLimitBurst: intFromEnv("RATE_LIMIT_BURST", 60),
     rateLimitRefillPerSec: intFromEnv("RATE_LIMIT_REFILL_PER_SEC", 10),
     rateLimitMaxIps: intFromEnv("RATE_LIMIT_MAX_IPS", 10_000),
+    // Trusted proxy hops to skip from the RIGHT of X-Forwarded-For when choosing
+    // the rate-limit key. On Cloud Run the rightmost entry is ALWAYS appended by
+    // Google's frontend (a request can't reach the container otherwise), so it is
+    // never client-spoofable — default 0 (rightmost) FAILS SAFE: it can never be
+    // bypassed, worst case it over-throttles. For direct *.run.app the rightmost
+    // is the genuine client IP (true per-IP); behind a Google HTTP LB it may be
+    // the LB forwarding IP (degrades to a shared/global cap — still cost-safe) so
+    // set TRUSTED_PROXY_HOPS to the LB hop count for per-IP there. (Cloud Run's
+    // exact ordering for direct run.app is not crisply documented — Google
+    // issuetracker 239503543 — hence the fail-safe default.)
+    trustedProxyHops: intFromEnv("TRUSTED_PROXY_HOPS", 0),
   };
 }

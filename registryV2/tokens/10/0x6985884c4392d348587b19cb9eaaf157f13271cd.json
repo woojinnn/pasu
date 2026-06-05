@@ -1,0 +1,18 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 10,
+  "address": "0x6985884c4392d348587b19cb9eaaf157f13271cd",
+  "symbol": "ZRO",
+  "decimals": 18,
+  "name": "LayerZero",
+  "source": "https://docs.layerzero.network/v2/deployments/token",
+  "token_kind": {
+    "kind": "base",
+    "category": {
+      "kind": "governance",
+      "protocol": {
+        "name": "layerzero"
+      }
+    }
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x430ef9263e76dae63c84292c3409d61c598e9682",
-  "symbol": "PYR",
-  "decimals": 18,
-  "name": "PYR Token"
-}

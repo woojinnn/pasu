@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, U128, U256};
-use simulation_state::token::{TokenKey, TokenRef};
-use simulation_state::LiveField;
+use policy_state::primitives::{Address, U128, U256};
+use policy_state::token::{TokenKey, TokenRef};
+use policy_state::LiveField;
 
 use super::{AmmVenue, PoolState};
 
@@ -55,6 +55,39 @@ pub enum RemoveLiquidityParams {
     ConcentratedBurn {
         /// NFT position key.
         nft_key: TokenKey,
+    },
+    /// `Curve` StableSwap-NG `remove_liquidity_one_coin` — burn LP for a single
+    /// underlying coin `i` (the calldata index `i` is resolved to `token_out`'s
+    /// address at manifest-author time via the pool's baked coin list).
+    PooledBurnOneCoin {
+        /// LP token being burned.
+        lp_token: TokenRef,
+        /// Amount of LP token to burn.
+        #[tsify(type = "string")]
+        lp_amount: U256,
+        /// The single underlying coin withdrawn (pool `coins[i]`).
+        token_out: TokenRef,
+        /// Minimum acceptable output of `token_out` (slippage floor).
+        #[tsify(type = "string")]
+        min_out: U256,
+        /// Recipient of the withdrawn token.
+        #[tsify(type = "string")]
+        recipient: Address,
+    },
+    /// `Curve` StableSwap-NG `remove_liquidity_imbalance` — withdraw exact
+    /// per-coin amounts, capped by `max_lp_burn` LP spent.
+    PooledBurnImbalance {
+        /// LP token being burned.
+        lp_token: TokenRef,
+        /// Maximum LP the user is willing to burn.
+        #[tsify(type = "string")]
+        max_lp_burn: U256,
+        /// Exact per-coin amounts to withdraw (`coins[k]`, amount).
+        #[tsify(type = "Array<[TokenRef, string]>")]
+        amounts_out: Vec<(TokenRef, U256)>,
+        /// Recipient of the withdrawn tokens.
+        #[tsify(type = "string")]
+        recipient: Address,
     },
 }
 

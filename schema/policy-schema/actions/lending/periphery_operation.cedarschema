@@ -1,0 +1,32 @@
+// Lending::PeripheryOperation — high-risk Aave periphery adapter execution.
+//
+// These adapters can combine swaps, flash liquidity, and position updates.
+// Reducer simulation intentionally emits no optimistic state transition; the
+// policy layer receives decoded intent plus full calldata for audit/replay.
+
+namespace Lending {
+  type PeripheryOperationContext = {
+    meta: Core::ActionMeta,
+    venue: LendingVenue,
+    adapter: String,
+    // "swap_collateral" | "repay_with_collateral" | "debt_swap"
+    // | "migration" | "withdraw_swap" | "raw"
+    kind: String,
+    assetIn?: Core::TokenRef,
+    assetOut?: Core::TokenRef,
+    amount?: String,
+    limitAmount?: String,
+    user?: String,
+    recipient?: String,
+    calldata: String,
+    custom?: PeripheryOperationCustomContext,
+  };
+
+  type PeripheryOperationCustomContext = {};
+
+  action "PeripheryOperation" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: PeripheryOperationContext,
+  };
+}

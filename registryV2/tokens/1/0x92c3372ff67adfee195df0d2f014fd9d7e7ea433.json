@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x92c3372ff67adfee195df0d2f014fd9d7e7ea433",
+  "symbol": "GLT",
+  "decimals": 8,
+  "name": "Galactic",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

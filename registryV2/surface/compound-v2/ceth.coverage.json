@@ -1,0 +1,119 @@
+{
+  "contract": "CEther (cETH market)",
+  "chainId": 1,
+  "address": "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+  "snapshot": "ceth.abi.json",
+  "note": "Compound v2 cETH (CEther). Value-carrying actions use distinct PAYABLE selectors vs CErc20 (mint()/repayBorrow()/repayBorrowBehalf(address)/liquidateBorrow(address,address)) because the amount comes from msg.value, not calldata. redeem/redeemUnderlying/borrow share CErc20 selectors.",
+  "functions": {
+    "0xdb006a75": {
+      "name": "redeem",
+      "decision": "cover",
+      "reason": "user position: redeem cToken shares for underlying (Lending::Withdraw, by-shares)"
+    },
+    "0x852a12e3": {
+      "name": "redeemUnderlying",
+      "decision": "cover",
+      "reason": "user position: withdraw an exact underlying amount (Lending::Withdraw, by-underlying)"
+    },
+    "0xc5ebeaec": {
+      "name": "borrow",
+      "decision": "cover",
+      "reason": "user position: borrow underlying against collateral (Lending::Borrow)"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (cToken is itself an ERC20 receipt) \u2014 covered by the erc20 standard adapter via auto-enumerate, not a per-(chain,address) manifest"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (cToken is itself an ERC20 receipt) \u2014 covered by the erc20 standard adapter via auto-enumerate, not a per-(chain,address) manifest"
+    },
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "standard ERC-20 (cToken is itself an ERC20 receipt) \u2014 covered by the erc20 standard adapter via auto-enumerate, not a per-(chain,address) manifest"
+    },
+    "0xb2a02ff1": {
+      "name": "seize",
+      "decision": "exclude",
+      "reason": "inter-cToken collateral seizure; callable only by a cToken contract during liquidation, not an EOA"
+    },
+    "0xa6afed95": {
+      "name": "accrueInterest",
+      "decision": "exclude",
+      "reason": "permissionless interest accrual; moves no caller funds"
+    },
+    "0x17bfdfbc": {
+      "name": "borrowBalanceCurrent",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0x3af9e669": {
+      "name": "balanceOfUnderlying",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0x73acee98": {
+      "name": "totalBorrowsCurrent",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0xbd6d894d": {
+      "name": "exchangeRateCurrent",
+      "decision": "exclude",
+      "reason": "accrues interest then returns a value; informational, moves no caller funds and grants no permission"
+    },
+    "0x4576b5db": {
+      "name": "_setComptroller",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0x601a0bf1": {
+      "name": "_reduceReserves",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xb71d1a0c": {
+      "name": "_setPendingAdmin",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xe9c714f2": {
+      "name": "_acceptAdmin",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xf2b3abbd": {
+      "name": "_setInterestRateModel",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0xfca7820b": {
+      "name": "_setReserveFactor",
+      "decision": "exclude",
+      "reason": "admin-only"
+    },
+    "0x1249c58b": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "user position: supply ETH via msg.value, mint cETH (Lending::Supply; payable, 0-arg overload)"
+    },
+    "0x4e4d9fea": {
+      "name": "repayBorrow",
+      "decision": "cover",
+      "reason": "user position: repay own cETH debt via msg.value (Lending::Repay; payable overload)"
+    },
+    "0xe5974619": {
+      "name": "repayBorrowBehalf",
+      "decision": "cover",
+      "reason": "user fund move: repay another borrower's cETH debt via msg.value (Lending::Repay on-behalf; payable overload)"
+    },
+    "0xaae40a2a": {
+      "name": "liquidateBorrow",
+      "decision": "cover",
+      "reason": "liquidation: repay cETH borrower via msg.value + seize collateral (Lending::Liquidate; payable overload)"
+    }
+  }
+}

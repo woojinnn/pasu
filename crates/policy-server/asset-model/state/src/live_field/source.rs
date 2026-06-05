@@ -1,8 +1,7 @@
-//! Defines where a `LiveField` comes from (its `DataSource`): the metadata
-//! describing where and how the value is fetched.
+//! Defines where a `LiveField` comes from.
 //!
-//! The `value` itself lives inside the `LiveField`; the source is the spec the
-//! updater (sync orchestrator) reads to refresh it.
+//! `DataSource` records how the sync layer refreshes the value stored inside a
+//! `LiveField`.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;

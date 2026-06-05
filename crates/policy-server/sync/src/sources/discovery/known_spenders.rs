@@ -1,11 +1,10 @@
 //! Curated per-chain catalog of common ERC-20 approval spenders.
-//!
 //! Approval discovery uses this list to ask held tokens for
 //! `allowance(owner, spender)` via Multicall. This intentionally favors
 //! high-volume protocols; long-tail spenders require an Approval-event
 //! indexing pass.
 
-use simulation_state::primitives::ChainId;
+use policy_state::primitives::ChainId;
 
 /// One spender contract in the per-chain catalog.
 pub(super) struct KnownSpender {
@@ -229,7 +228,7 @@ const POLYGON: &[KnownSpender] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::primitives::Address;
+    use policy_state::primitives::Address;
     use std::str::FromStr;
 
     #[test]

@@ -1,11 +1,8 @@
 //! Jupiter Perps venue math — Jupiter Perps on Solana; uses JLP pool as
 //! counterparty (similar to GMX V1 model).
-//!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::JupiterPerps`. Not a `Reducer` impl.
-//!
 //! ## Deferred liquidation price
-//!
 //! Jupiter Perps uses a JLP-pool-counterparty model (GMX V1 lineage): the
 //! liquidation price depends on the position's accrued borrow fees, JLP
 //! pool utilisation, and the venue's `liquidationFeeUsd` parameter. The
@@ -16,9 +13,7 @@
 //! "deferred — see venue API" }`; the canonical figure is sourced via the
 //! Jupiter Perps REST endpoint (`positions/<address>`) and refreshed by
 //! the sync orchestrator.
-//!
 //! ## Primary sources
-//!
 //! - <https://station.jup.ag/docs/perpetual-exchange/onchain-account-types>
 //!   — `Position` account layout (Anchor)
 //! - <https://station.jup.ag/docs/perpetual-exchange/fees> — fee /
@@ -26,8 +21,8 @@
 
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;
@@ -46,7 +41,6 @@ pub(super) fn required_initial_margin(
 }
 
 /// Compute the liquidation price of a newly opened position on Jupiter Perps.
-///
 /// Returns `UnsupportedProtocol` — deferred, see module docs.
 pub(super) fn liquidation_price(
     _state: &WalletState,

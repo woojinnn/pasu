@@ -1,0 +1,29 @@
+{
+  "contract": "NativeOrderFactory",
+  "chainId": 1,
+  "address": "0xe12e0f117d23a5ccc57f8935cd8c4e80cd91ff01",
+  "snapshot": "native-order-factory.abi.json",
+  "note": "Maker-facing factory surface. create=cover (on-chain native limit order open -> Amm::SignIntentOrder, OnchainTx, reuses the order-sign Action shape with address_from_uint256 on the AddressLib-packed Order fields). The per-order clone (NativeOrderImpl) cancelOrder/withdraw maker functions live at non-fixed CREATE2 clone addresses (child-address universe) -> DEFERred separately, NOT on this factory. IMPLEMENTATION/owner=view; rescueFunds/transferOwnership/renounceOwnership=owner-only admin. (IMPLEMENTATION/owner view fns dropped from coverage per surface gate I1' \u2014 coverage lists external-mutating fns only.)",
+  "functions": {
+    "0x8c72b608": {
+      "name": "create",
+      "decision": "cover",
+      "reason": "maker (msg.sender) opens an on-chain native limit order: create((uint256x8)=IOrderMixin.Order) with msg.value==makingAmount. salt/maker/receiver/makerAsset/takerAsset/makingAmount/takingAmount/makerTraits all in calldata (addresses AddressLib-packed uint256 -> address_from_uint256) -> Amm::SignIntentOrder on OneInchLimitOrder venue, order_kind=limit (the on-chain twin of order-sign@1.0.0). single_emit."
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin \u2014 OZ Ownable owner-only governance."
+    },
+    "0x6ccae054": {
+      "name": "rescueFunds",
+      "decision": "exclude",
+      "reason": "admin \u2014 onlyOwner emergency token/ETH sweep."
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin \u2014 OZ Ownable owner-only governance."
+    }
+  }
+}

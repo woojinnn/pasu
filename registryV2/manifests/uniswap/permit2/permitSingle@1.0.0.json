@@ -70,14 +70,14 @@
             "key": {
               "standard": "erc20",
               "chain": "$chain",
-              "address": "$args.permitSingle.details.token"
+              "address": "$args.permitSingle[0][0]"
             }
           },
-          "spender": "$args.permitSingle.spender",
-          "amount": "$args.permitSingle.details.amount",
-          "expires_at": "$args.permitSingle.details.expiration",
-          "sig_deadline": "$args.permitSingle.sigDeadline",
-          "nonce": "$args.permitSingle.details.nonce"
+          "spender": "$args.permitSingle[1]",
+          "amount": "$args.permitSingle[0][1]",
+          "expires_at": "$args.permitSingle[0][2]",
+          "sig_deadline": "$args.permitSingle[2]",
+          "nonce": "$args.permitSingle[0][3]"
         }
       }
     },

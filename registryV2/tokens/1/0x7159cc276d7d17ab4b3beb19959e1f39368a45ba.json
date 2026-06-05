@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7159cc276d7d17ab4b3beb19959e1f39368a45ba",
+  "symbol": "YND",
+  "decimals": 18,
+  "name": "YieldNest",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

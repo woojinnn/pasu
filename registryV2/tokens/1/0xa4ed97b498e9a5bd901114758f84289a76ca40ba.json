@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa4ed97b498e9a5bd901114758f84289a76ca40ba",
+  "symbol": "NPR-PT/cp0xLRT@19/12/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/cp0x LRT Conservative Vault@19/12/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xa4ed97b498e9a5bd901114758f84289a76ca40ba"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb908c9fe885369643adb5fba4407d52bd726c72d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe014744a8b5477422debba08b90ec374ac0a9b4e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

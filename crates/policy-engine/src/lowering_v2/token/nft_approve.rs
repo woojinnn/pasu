@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::token::NftApproveAction;
+use policy_transition::action::token::NftApproveAction;
 
 use super::super::common::cedar::addr;
 use super::super::common::token::lower_token_key;
@@ -37,9 +37,9 @@ pub(crate) fn lower(
     clippy::doc_markdown
 )]
 mod tests {
-    use simulation_reducer::action::token::{NftApproveAction, TokenAction};
-    use simulation_reducer::action::ActionBody;
-    use simulation_state::token::TokenKey;
+    use policy_state::token::TokenKey;
+    use policy_transition::action::token::{NftApproveAction, TokenAction};
+    use policy_transition::action::ActionBody;
 
     use super::super::test_support::{onchain_meta, sample_erc1155_key, sample_nft_key, spender};
 

@@ -1,0 +1,32 @@
+// Staking::Lock — lock a governance token for vote-escrow (Curve veCRV
+// `create_lock(uint256 _value, uint256 _unlock_time)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/lock.rs`
+// (`LockAction`). No LiveInputs. `StakeVenue` is defined in core.cedarschema
+// (namespace Staking).
+
+namespace Staking {
+  type LockContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Staking / vote-escrow venue (e.g. Curve VotingEscrow).
+    venue: StakeVenue,
+    // Token being locked (e.g. CRV).
+    token: Core::TokenRef,
+    // Amount locked (`_value`), U256 hex.
+    amount: String,
+    // Lock expiry, unix seconds (`_unlock_time`), U256 hex.
+    unlockTime: String,
+    // Manifest-extensible slot.
+    custom?: LockCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type LockCustomContext = {};
+
+  action "Lock" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: LockContext,
+  };
+}

@@ -1,16 +1,14 @@
-//! AMM 도메인 walk + apply.
-//!
 //! Wired: Swap (4), `AddLiquidity` (2), `RemoveLiquidity` (2), `CollectFees` (1),
 //!        `SignIntentOrder` (2). 총 11 slots.
-//! `CancelIntentOrder` 는 `live_inputs` 없음.
+//! `SettleIntentOrder` / `CancelIntentOrder` 는 `live_inputs` 없음.
 
 use serde_json::Value;
 
-use simulation_reducer::action::amm::{
+use policy_state::Time;
+use policy_transition::action::amm::{
     AddLiquidityAction, CollectFeesAction, RemoveLiquidityAction, SignIntentOrderAction, SwapAction,
 };
-use simulation_reducer::action::AmmAction;
-use simulation_state::Time;
+use policy_transition::action::AmmAction;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 
@@ -29,7 +27,11 @@ pub(super) fn walk(
         AmmAction::RemoveLiquidity(r) => walk_remove(r, ix, now, st, sx),
         AmmAction::CollectFees(c) => walk_collect(c, ix, now, st, sx),
         AmmAction::SignIntentOrder(s) => walk_sign_intent(s, ix, now, st, sx),
+        AmmAction::SettleIntentOrder(_) => {}
         AmmAction::CancelIntentOrder(_) => {}
+        AmmAction::PreSignIntentOrder(_) => {}
+        // GSM swap carries no live inputs (faithful static decode).
+        AmmAction::GsmSwap(_) => {}
     }
 }
 
@@ -165,7 +167,10 @@ pub(super) fn apply(aa: &mut AmmAction, slot: &ActionSlot, value: Value, now: Ti
         AmmAction::RemoveLiquidity(r) => apply_remove(r, slot, value, now),
         AmmAction::CollectFees(c) => apply_collect(c, slot, value, now),
         AmmAction::SignIntentOrder(s) => apply_sign_intent(s, slot, value, now),
+        AmmAction::SettleIntentOrder(_) => {}
         AmmAction::CancelIntentOrder(_) => {}
+        AmmAction::PreSignIntentOrder(_) => {}
+        AmmAction::GsmSwap(_) => {}
     }
 }
 

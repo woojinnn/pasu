@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x62a872d9977db171d9e213a5dc2b782e72ca0033",
-  "symbol": "NEUY",
-  "decimals": 18,
-  "name": "NEUY (PoS)"
-}

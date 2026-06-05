@@ -1,0 +1,45 @@
+// Yield::PtSwap — swap a token/SY into PT or PT back into a token/SY on a
+// Pendle market (ActionSwapPTV3 facet).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/pt_swap.rs`
+// (`PtSwapAction`). No LiveInputs (P1a). `YieldVenue` is defined in
+// core.cedarschema (namespace Yield).
+
+namespace Yield {
+  type PtSwapContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // Pendle market routed through (address).
+    market: String,
+    // Direction discriminant:
+    // "token_for_pt" | "sy_for_pt" | "pt_for_token" | "pt_for_sy".
+    direction: String,
+    // Plain external token side; present for token_for_pt / pt_for_token.
+    externalToken?: Core::TokenRef,
+    // Exact input amount (U256 hex).
+    exactAmountIn: String,
+    // Minimum output amount / slippage floor (U256 hex).
+    minAmountOut: String,
+    // Output recipient (address).
+    recipient: String,
+    // Market-derived instruments + maturity (host-populated live fields):
+    // SY/PT/YT from IPMarket.readTokens(), maturity from IPMarket.expiry().
+    sy: String,
+    pt: String,
+    yt: String,
+    maturity: String,
+    // Manifest-extensible slot.
+    custom?: PtSwapCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type PtSwapCustomContext = {};
+
+  action "PtSwap" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: PtSwapContext,
+  };
+}

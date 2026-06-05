@@ -87,6 +87,11 @@
 .chain-leg .cl-dot { width: 8px; height: 8px; border-radius: 50%; }
 .chain-leg .cl-name { font-weight: 600; color: var(--slate-800); }
 .chain-leg .cl-pct { color: var(--slate-500); font-variant-numeric: tabular-nums; }
+.chain-leg.wallet-leg {
+  background: transparent; border: none; cursor: pointer;
+  padding: 4px 8px; border-radius: var(--r-sm);
+}
+.chain-leg.wallet-leg:hover { background: var(--fog-200); }
 
 /* ── section header ── */
 .sec-head {

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x8236a87084f8b84306f72007f36f2618a5634494",
-  "symbol": "LBTC",
-  "decimals": 8,
-  "name": "Lombard Staked Bitcoin"
-}

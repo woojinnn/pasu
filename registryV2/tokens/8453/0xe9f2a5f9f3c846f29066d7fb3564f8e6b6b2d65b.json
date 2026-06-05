@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xe9f2a5f9f3c846f29066d7fb3564f8e6b6b2d65b",
+  "symbol": "ysUSDC",
+  "decimals": 6,
+  "name": "SuperUSDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

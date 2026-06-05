@@ -1,0 +1,98 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/batch/claimRewardsPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Umbrella batch helper claim rewards permit expanded per reward token.",
+  "match": {
+    "selector": "0xa5fbb680",
+    "chain_to_addresses": {
+      "1": [
+        "0xce6ced23118edeb23054e06118a702797b13fc2f"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimRewardsPermit",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "contract IStakeToken",
+              "name": "stakeToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address[]",
+              "name": "rewards",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bool",
+              "name": "restake",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct IUmbrellaBatchHelper.ClaimPermit",
+          "name": "p",
+          "type": "tuple"
+        }
+      ],
+      "name": "claimRewardsPermit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.rewards",
+    "per_item_body": {
+      "domain": "staking",
+      "staking": {
+        "action": "claim_rewards",
+        "claim_rewards": {
+          "venue": {
+            "name": "aave_umbrella_rewards_controller",
+            "chain": "$chain",
+            "controller": "$to"
+          },
+          "reward_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$inputs"
+            }
+          },
+          "gauges": [
+            "$args.stakeToken"
+          ],
+          "on_behalf_of": null,
+          "recipient": null,
+          "restake": "$args.restake"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x5ae84075f0e34946821a8015dab5299a00992721",
+  "symbol": "wcgUSD",
+  "decimals": 6,
+  "name": "Wrapped Cygnus USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

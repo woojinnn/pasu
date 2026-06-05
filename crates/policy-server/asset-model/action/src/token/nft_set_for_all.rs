@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId};
+use policy_state::primitives::{Address, ChainId};
 
 /// `ERC721`/`ERC1155` `setApprovalForAll` — toggles operator status across an entire collection.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]

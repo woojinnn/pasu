@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-06-01T00:00:00.000Z",
+  "source": "Dune MCP createAndExecuteQuery over ethereum.transactions",
+  "queryId": 7626385,
+  "queryUrl": "https://dune.com/queries/7626385",
+  "executionId": "01KT0RRBAXS8RHXB94B9GAQ9YN",
+  "engineUsed": "free",
+  "usageBeforeCreditsUsed": 377.867,
+  "usageAfterCreditsUsed": 378.16,
+  "executionCostCredits": 0.293,
+  "creditsQuota": 2500,
+  "billingPeriodStart": "2026-05-05T00:00:00.000Z",
+  "billingPeriodEnd": "2026-06-05T00:00:00.000Z",
+  "partitionFilter": "ethereum.transactions WHERE block_date >= current_date - interval '7' day",
+  "scope": "current local Curve decision=cover chainId=1 addresses only",
+  "totalRows": 58,
+  "previewRowsReturned": 20,
+  "topRows": [
+    {
+      "address": "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e",
+      "selector": "0x5c9c18e2",
+      "tx_count": 1588,
+      "sample_hash": "0xffcbbf8de1c2f2f4a2ec8d960fe67e4da5a03ac040a862ad366ad80b8b148a55"
+    },
+    {
+      "address": "0x45312ea0eff7e09c83cbe249fa1d7598c4c8cd4e",
+      "selector": "0xc872a3c5",
+      "tx_count": 93,
+      "sample_hash": "0xfd3726ad37b7155da4349c8446c78dfa28f38b01f0e3cdd99647448321c90adb"
+    },
+    {
+      "address": "0xd061d61a4d941c39e5453435b6345dc261c2fce0",
+      "selector": "0x6a627842",
+      "tx_count": 73,
+      "sample_hash": "0xfdcb6826d14848782cda758df453b7396900d6e20daafbe3ece937cb12878d6b"
+    },
+    {
+      "address": "0xd16d5ec345dd86fb63c6a9c43c517210f1027914",
+      "selector": "0x1e83409a",
+      "tx_count": 64,
+      "sample_hash": "0xfc3a25428a48410d36bf1ea0491f71fce372b7cb9823b2eba62a9985753bab67"
+    },
+    {
+      "address": "0x2f50d538606fa9edd2b11e2446beb18c9d5846bb",
+      "selector": "0xd7136328",
+      "tx_count": 39,
+      "sample_hash": "0xf7c1df95088d7c7e39a61e566b76dae8819bd19bbe1c9e0ccab6efa731d4bb8f"
+    }
+  ],
+  "limitations": [
+    "Dune query covers only current local cover addresses, not the full Curve pool universe.",
+    "Dune calibration confirms MCP availability and cost shape, but cannot be used as a completion claim while P0 universe disposition is blocked."
+  ]
+}

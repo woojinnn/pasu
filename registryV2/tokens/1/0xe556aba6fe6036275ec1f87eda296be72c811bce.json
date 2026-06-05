@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe556aba6fe6036275ec1f87eda296be72c811bce",
+  "symbol": "NUSD",
+  "decimals": 18,
+  "name": "Neutrl USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

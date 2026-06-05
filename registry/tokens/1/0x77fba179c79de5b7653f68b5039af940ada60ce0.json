@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x77fba179c79de5b7653f68b5039af940ada60ce0",
-  "symbol": "FORTH",
-  "decimals": 18,
-  "name": "Ampleforth Governance Token"
-}

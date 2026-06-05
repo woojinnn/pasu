@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x31bc2baa782e5180e9efa32261d2bb33ce8918bc",
+  "symbol": "xpUSD",
+  "decimals": 6,
+  "name": "Gaming XP USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

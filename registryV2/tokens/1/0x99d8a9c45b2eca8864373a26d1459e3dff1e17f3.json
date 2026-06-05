@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3",
+  "symbol": "MIM",
+  "decimals": 18,
+  "name": "Magic Internet Money",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

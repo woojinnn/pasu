@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x09fd37d9aa613789c517e76df1c53aece2b60df4",
+  "symbol": "ebUSD",
+  "decimals": 18,
+  "name": "ebUSD Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

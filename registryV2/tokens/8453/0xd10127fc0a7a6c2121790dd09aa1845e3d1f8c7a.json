@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd10127fc0a7a6c2121790dd09aa1845e3d1f8c7a",
+  "symbol": "FIRA",
+  "decimals": 18,
+  "name": "Firas Coin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

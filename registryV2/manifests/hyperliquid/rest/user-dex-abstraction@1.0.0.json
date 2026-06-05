@@ -1,0 +1,64 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/user-dex-abstraction@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) `HyperliquidTransaction:UserDexAbstraction` — an OFF-CHAIN L1 action signed via eth_signTypedData_v4 (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0). Decoded to hyperliquid_core::hl_unknown carrying action_type='userDexAbstraction' so a policy sees an attributed HyperLiquid action (gate on context.actionType) instead of an anonymous domain:unknown. enables/disables DEX abstraction for a user (account-level config) — admin permission op, no fund movement. A structured variant is deferred (low/admin usage; opaque or non-fund-moving fields).",
+  "match": {
+    "selector": "0x00000006",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:UserDexAbstraction",
+      "types": {
+        "HyperliquidTransaction:UserDexAbstraction": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "user", "type": "address" },
+          { "name": "enabled", "type": "bool" },
+          { "name": "nonce", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "userDexAbstraction",
+    "abi": {
+      "name": "userDexAbstraction",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "userDexAbstraction",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "user", "type": "address" },
+            { "name": "enabled", "type": "bool" },
+            { "name": "nonce", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "hyperliquid_core",
+      "hyperliquid_core": {
+        "action": "hl_unknown",
+        "hl_unknown": {
+          "action_type": "userDexAbstraction"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

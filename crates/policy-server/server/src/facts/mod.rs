@@ -46,7 +46,7 @@ mod valuation;
 
 use serde_json::Value;
 
-use simulation_state::WalletState;
+use policy_state::WalletState;
 
 /// Error from executing an enrichment fact against wallet state.
 ///
@@ -135,11 +135,11 @@ mod tests {
     use super::*;
 
     fn empty_state() -> WalletState {
-        WalletState::new(simulation_state::WalletId::new(
+        WalletState::new(policy_state::WalletId::new(
             "0x000000000000000000000000000000000000a01c"
                 .parse()
                 .unwrap(),
-            [simulation_state::primitives::ChainId::ethereum_mainnet()],
+            [policy_state::primitives::ChainId::ethereum_mainnet()],
         ))
     }
 

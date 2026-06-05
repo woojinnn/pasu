@@ -1,13 +1,10 @@
 //! `RepayAction` reducer — repay an outstanding debt position.
-//!
 //! Flow (PDF §6.4):
-//!
 //! 1. Validate `live_inputs.reserve_state` — reject paused (frozen reserves
 //!    still permit repays).
 //! 2. Look up the `LendingAccount` — `PositionNotFound` when missing.
 //! 3. `amount == U256::MAX` → full repay; substitute `live_inputs.current_debt`.
 //! 4. `use_a_tokens = true` (Aave V3 option) repays directly via the
-//!    wallet's `aToken` balance — under the Phase 2 1:1 approximation we
 //!    still debit the underlying. The flag is recorded for downstream
 //!    auditing but does not change the helper sequence; a follow-up commit
 //!    will route to a distinct aToken `TokenKey` once the sync orchestrator
@@ -16,9 +13,9 @@
 //! 6. `balance::debit` the repaid asset from the wallet (HF is auto-improved
 //!    by the debt reduction; no inline HF check required).
 
-use simulation_state::position::PositionKind;
-use simulation_state::primitives::U256;
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::PositionKind;
+use policy_state::primitives::U256;
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::RepayAction;
 use crate::apply::Reducer;
@@ -81,18 +78,18 @@ impl Reducer for RepayAction {
 mod tests {
     use super::*;
     use crate::action::lending::{LendingVenue, RepayLiveInputs, ReserveState, UserLendingState};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{LendingAccount, Position, PositionKind};
-    use simulation_state::primitives::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{LendingAccount, Position, PositionKind};
+    use policy_state::primitives::{
         Address, ChainId, Decimal, MarketRef, ProtocolRef, Time, VenueRef,
     };
-    use simulation_state::token::{
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, RateMode, TokenHolding, TokenKey,
         TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn now() -> Time {

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x26f3f26f46cbee59d1f8860865e13aa39e36a8c0",
+  "symbol": "sdPENDLElp-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: sdPENDLE",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x26f3f26f46cbee59d1f8860865e13aa39e36a8c0"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x808507121b80c02388fad14726482e061b8da827"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x5ea630e00d6ee438d3dea1556a110359acdc10a9"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

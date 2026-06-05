@@ -1,0 +1,13 @@
+{
+  "id": "intent-order-far-validuntil",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "sign_intent_order" } } },
+  "policy_rpc": [{
+    "id": "now",
+    "method": "clock.now",
+    "params": {},
+    "outputs": [{ "kind": "context", "field": "nowTs", "type": "Long", "from": "$.result.nowTs", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "nowTs": "Long" } }
+}

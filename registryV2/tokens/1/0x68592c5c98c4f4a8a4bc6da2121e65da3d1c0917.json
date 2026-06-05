@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x68592c5c98c4f4a8a4bc6da2121e65da3d1c0917",
+  "symbol": "USDLR",
+  "decimals": 6,
+  "name": "USDLR by Stable",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,44 @@
+// Yield::YtSwap — swap a token/SY into YT or YT back into a token/SY on a
+// Pendle market (ActionSwapYTV3 facet).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/yt_swap.rs`
+// (`YtSwapAction` + `MarketTokensLiveInputs`). The sy/pt/yt/maturity fields are
+// host-populated live inputs (P1c, §4d); `LiveField<T>` is inlined as `T`.
+
+namespace Yield {
+  type YtSwapContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // Pendle market routed through (address).
+    market: String,
+    // Direction discriminant:
+    // "token_for_yt" | "sy_for_yt" | "yt_for_token" | "yt_for_sy".
+    direction: String,
+    // Plain external token side; present for token_for_yt / yt_for_token.
+    externalToken?: Core::TokenRef,
+    // Exact input amount (U256 hex).
+    exactAmountIn: String,
+    // Minimum output amount / slippage floor (U256 hex).
+    minAmountOut: String,
+    // Output recipient (address).
+    recipient: String,
+    // Market-derived instruments + maturity (host-populated live fields):
+    // SY/PT/YT from IPMarket.readTokens(), maturity from IPMarket.expiry().
+    sy: String,
+    pt: String,
+    yt: String,
+    maturity: String,
+    // Manifest-extensible slot.
+    custom?: YtSwapCustomContext,
+  };
+
+  type YtSwapCustomContext = {};
+
+  action "YtSwap" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: YtSwapContext,
+  };
+}

@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::CancelIntentOrderAction;
+use policy_transition::action::amm::CancelIntentOrderAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
 use super::lower_intent_venue;
@@ -43,9 +43,9 @@ pub(crate) fn lower(
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{AmmAction, CancelIntentOrderAction, IntentVenue};
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::primitives::{Address, ChainId, Time};
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_transition::action::amm::{AmmAction, CancelIntentOrderAction, IntentVenue};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use super::super::test_support::{now, submitter};
 

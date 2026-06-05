@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x158079ee67fce2f58472a96584a73c7ab9ac95c1",
+  "symbol": "cREP",
+  "decimals": 8,
+  "name": "Compound Augur",
+  "source": "on-chain symbol()/name()/decimals()/underlying() on the cToken market; Comptroller.getAllMarkets() (0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B)",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "compound_v2",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0x1985365e9f78359a9b6ad760e32412f4a445e862"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+  "symbol": "variableDebtBasWETH",
+  "decimals": 18,
+  "name": "Aave Base Variable Debt WETH",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Base.sol#L135",
+  "token_kind": {
+    "kind": "debt_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:8453" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:8453", "address": "0x4200000000000000000000000000000000000006" }
+    },
+    "rate_mode": "variable"
+  }
+}

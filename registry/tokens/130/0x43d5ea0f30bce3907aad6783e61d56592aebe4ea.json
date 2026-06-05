@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x43d5ea0f30bce3907aad6783e61d56592aebe4ea",
-  "symbol": "XYO",
-  "decimals": 18,
-  "name": "XYO Network"
-}

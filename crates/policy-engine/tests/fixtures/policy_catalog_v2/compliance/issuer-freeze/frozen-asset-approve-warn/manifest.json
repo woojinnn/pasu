@@ -1,0 +1,13 @@
+{
+  "id": "frozen-asset-approve-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
+  "policy_rpc": [{
+    "id": "spender-frozen",
+    "method": "address.frozen",
+    "params": { "asset": "$.action.token", "address": "$.action.spender" },
+    "outputs": [{ "kind": "context", "field": "frozen", "type": "Bool", "from": "$.result.frozen", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "frozen": "Bool" } }
+}

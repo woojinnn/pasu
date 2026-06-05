@@ -5,16 +5,15 @@
 //! other helper families and for future invariant checks).
 //!
 //! `set_at: Time` threads `AllowanceSpec::last_set_at` through every grant-side
-//! helper. Callers (Phase 2B `effect/token.rs`) pass either `ctx.now` or a
 //! dedicated time channel; revoke-side helpers do not need it because
 //! `ApprovalRevoke` does not carry a timestamp.
 
-use simulation_state::approval::AllowanceSpec;
-use simulation_state::delta::token_change::ApprovalScope;
-use simulation_state::delta::TokenChange;
-use simulation_state::primitives::{Address, ChainId, Spender, Time, U256};
-use simulation_state::token::{TokenKey, TokenRef};
-use simulation_state::{StateDelta, WalletState};
+use policy_state::approval::AllowanceSpec;
+use policy_state::delta::token_change::ApprovalScope;
+use policy_state::delta::TokenChange;
+use policy_state::primitives::{Address, ChainId, Spender, Time, U256};
+use policy_state::token::{TokenKey, TokenRef};
+use policy_state::{StateDelta, WalletState};
 
 use crate::error::{ReducerError, ReducerResult};
 
@@ -29,6 +28,10 @@ use crate::error::{ReducerError, ReducerResult};
 /// [`revoke_erc20_allowance`]. We do not double-check the value so that
 /// callers that always emit `ApprovalSet` (preserving the timestamp) stay
 /// representable.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] when `token.key` is not `TokenKey::Erc20`.
 pub fn set_erc20_allowance(
     _state: &WalletState,
     delta: &mut StateDelta,
@@ -63,6 +66,10 @@ pub fn set_erc20_allowance(
 ///
 /// Emits `TokenChange::ApprovalRevoke { scope: Erc20 }`. No timestamp because
 /// the revoke does not refresh `last_set_at`.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] when `token.key` is not `TokenKey::Erc20`.
 pub fn revoke_erc20_allowance(
     _state: &WalletState,
     delta: &mut StateDelta,
@@ -92,8 +99,12 @@ pub fn revoke_erc20_allowance(
 /// `TokenKey::Erc721 { chain, contract, token_id: 0 }` as a *placeholder*
 /// — `apply_delta` recognises an `Erc721`/`Erc1155` key combined with a
 /// SetForAll-shaped `AllowanceSpec` (`is_unlimited`) as the set-for-all bucket.
-///
 /// `approved == false` emits `ApprovalRevoke { scope: SetForAll }`.
+///
+/// # Errors
+///
+/// This helper currently does not fail, but returns [`ReducerResult`] for a
+/// uniform approval-helper API.
 pub fn set_for_all(
     _state: &WalletState,
     delta: &mut StateDelta,
@@ -140,6 +151,10 @@ pub fn set_for_all(
 /// `AllowanceSpec`) but kept in the signature so all approve-side helpers
 /// have a uniform shape. Marked `_set_at` to silence unused-variable warnings
 /// while preserving the API.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] when `nft_key` is not `TokenKey::Erc721`.
 pub fn set_nft_approve(
     _state: &WalletState,
     delta: &mut StateDelta,
@@ -174,6 +189,10 @@ pub fn set_nft_approve(
 ///
 /// `token.key` must be `TokenKey::Erc20` — `Permit2` allowances are always
 /// keyed by the underlying ERC20.
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] when `token.key` is not `TokenKey::Erc20`.
 pub fn revoke_permit2_allowance(
     _state: &WalletState,
     delta: &mut StateDelta,
@@ -210,7 +229,10 @@ pub fn revoke_permit2_allowance(
 /// `last_set_at` as the on-chain `expiration` and writes a `Permit2Allowance`
 /// row. Nonce is not representable in the current `TokenChange` variant set
 /// and must be threaded by the caller or supplied separately by `apply_delta`
-/// (Phase 2 follow-up — `TokenChange` extension is intentionally deferred).
+///
+/// # Errors
+///
+/// Returns [`ReducerError::Invariant`] when `token.key` is not `TokenKey::Erc20`.
 pub fn upsert_permit2_allowance(
     _state: &WalletState,
     delta: &mut StateDelta,
@@ -243,9 +265,9 @@ pub fn upsert_permit2_allowance(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::primitives::{Address, ChainId};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::wallet::{WalletId, WalletState};
+    use policy_state::primitives::{Address, ChainId};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::wallet::{WalletId, WalletState};
     use std::str::FromStr;
 
     fn now() -> Time {

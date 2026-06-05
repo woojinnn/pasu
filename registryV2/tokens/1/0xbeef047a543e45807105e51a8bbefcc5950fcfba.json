@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xbeef047a543e45807105e51a8bbefcc5950fcfba",
+  "symbol": "steakUSDT",
+  "decimals": 18,
+  "name": "Steakhouse USDT",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed) + etherscan/basescan verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xdac17f958d2ee523a2206206994597c13d831ec7"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

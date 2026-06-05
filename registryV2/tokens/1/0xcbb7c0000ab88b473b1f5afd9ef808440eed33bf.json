@@ -1,0 +1,13 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+  "symbol": "cbBTC",
+  "decimals": 8,
+  "name": "Coinbase Wrapped BTC",
+  "source": "https://etherscan.io/token/0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+  "token_kind": {
+    "kind": "base",
+    "category": { "kind": "volatile" }
+  }
+}

@@ -1,14 +1,12 @@
-//! New-model Cedar lowering — `simulation_reducer::action::ActionBody` →
+//! New-model Cedar lowering — `policy_transition::action::ActionBody` →
 //! [`LoweredAction`] (`Wallet` / `<Namespace>::Action::"…"` / `Protocol` +
 //! cedarschema action-context JSON).
 //!
-//! This is the ADDITIVE counterpart to the legacy [`crate::lowering`] pipeline
-//! (which consumes the old `ActionEnvelope`). It targets the new action model
-//! directly and produces a context object that conforms to the per-action
-//! cedarschema types under `schema/policy-schema/actions/`. The two pipelines
-//! run side by side; this module never touches the legacy one.
+//! This is the active lowering path for the ActionBody architecture. It targets
+//! the new action model directly and produces a context object that conforms to
+//! the per-action cedarschema types under `schema/policy-schema/actions/`.
 //!
-//! # Layout (mirrors [`crate::lowering`])
+//! # Layout
 //!
 //! - [`dispatch`] — the `LoweredAction` / `TxMeta` / `LowerError` contract,
 //!   the `LowerCtx`, and `lower_action`, which matches an `ActionBody` on its
@@ -16,8 +14,9 @@
 //! - [`common`] — shared sub-lowerings (Cedar primitives, token refs/keys,
 //!   action meta / nature / EIP-712 domain).
 //! - one module per **domain** (`amm`, `token`, `lending`, `airdrop`,
-//!   `launchpad`, `perp`) + the two struct variants (`multicall`, `unknown`).
-//!   Each domain owns its directory and per-action leaf modules.
+//!   `launchpad`, `perp`, `permission`) + the two struct variants
+//!   (`multicall`, `unknown`). Each domain owns its directory and per-action
+//!   leaf modules.
 //!
 //! # Conventions
 //!
@@ -40,10 +39,16 @@ mod airdrop;
 mod amm;
 mod common;
 mod dispatch;
+mod governance;
 mod hyperliquid_core;
 mod launchpad;
 mod lending;
+mod liquid_staking;
 mod multicall;
+mod permission;
 mod perp;
+mod restaking;
+mod staking;
 mod token;
 mod unknown;
+mod yield_;

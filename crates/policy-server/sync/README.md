@@ -1,6 +1,6 @@
-# simulation-sync layout
+# policy-sync layout
 
-`simulation-sync` owns external data refresh. It is native-only and should not
+`policy-sync` owns external data refresh. It is native-only and should not
 be pulled into WASM policy evaluation.
 
 ## Directories
@@ -15,8 +15,8 @@ be pulled into WASM policy evaluation.
   resolution.
 - `src/runtime/`: config, error type, orchestrator, and polling scheduler.
 
-Root-level modules such as `simulation_sync::fetchers` and
-`simulation_sync::orchestrator` are compatibility re-exports. New code should
+Root-level modules such as `policy_sync::fetchers` and
+`policy_sync::orchestrator` are compatibility re-exports. New code should
 prefer the directory-aligned paths.
 
 ## External fetch model

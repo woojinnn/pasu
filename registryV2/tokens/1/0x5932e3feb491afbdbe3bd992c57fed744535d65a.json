@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5932e3feb491afbdbe3bd992c57fed744535d65a",
+  "symbol": "uniUSD",
+  "decimals": 18,
+  "name": "Unilend USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

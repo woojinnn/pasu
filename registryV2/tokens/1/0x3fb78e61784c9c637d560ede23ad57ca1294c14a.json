@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3fb78e61784c9c637d560ede23ad57ca1294c14a",
+  "symbol": "EURN/EURT-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: Neutrino EUR",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x3fb78e61784c9c637d560ede23ad57ca1294c14a"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9fcf418b971134625cdf38448b949c8640971671"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xc581b735a1688071a1746c968e0798d642ede491"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

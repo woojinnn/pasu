@@ -1,0 +1,34 @@
+// Yield::MintPy — split a token/SY into the PT+YT pair (ActionMiscV3
+// mintPyFromToken / mintPyFromSy).
+//
+// Rust source: `crates/simulation/reducer/src/action/yield_/mint_py.rs`
+// (`MintPyAction`). No LiveInputs (P1a).
+
+namespace Yield {
+  type MintPyContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Yield venue (Pendle V2 on a chain).
+    venue: YieldVenue,
+    // YT contract identifying the PT+YT position (address).
+    yt: String,
+    // Plain external input token (mintPyFromToken); absent for mintPyFromSy.
+    externalToken?: Core::TokenRef,
+    // Input amount — external token, or SY when externalToken absent (U256 hex).
+    netInput: String,
+    // Minimum PY (PT=YT) minted / slippage floor (U256 hex).
+    minPyOut: String,
+    // PT+YT recipient (address).
+    recipient: String,
+    // Manifest-extensible slot.
+    custom?: MintPyCustomContext,
+  };
+
+  type MintPyCustomContext = {};
+
+  action "MintPy" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: MintPyContext,
+  };
+}

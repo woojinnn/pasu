@@ -14,9 +14,9 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::{Address, ChainId, U256};
-use simulation_state::token::holding::TokenHolding;
-use simulation_state::token::kind::{PegKind, TokenKind};
+use policy_state::primitives::{Address, ChainId, U256};
+use policy_state::token::holding::TokenHolding;
+use policy_state::token::kind::{PegKind, TokenKind};
 
 use super::params::{param_asset_contract, param_chain_id, param_u256};
 use super::FactCtx;
@@ -258,14 +258,14 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Price, Time};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Price, Time};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{
         BaseCategory, FiatCurrency, PegKind, PegTarget, TokenKind,
     };
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{WalletId, WalletState};
 
     const TOKEN: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 
@@ -380,9 +380,9 @@ mod tests {
     #[test]
     fn interest_bearing_true_for_yield_receipt() {
         let kind = TokenKind::YieldReceipt {
-            protocol: simulation_state::primitives::ProtocolRef::new("aave-v3"),
+            protocol: policy_state::primitives::ProtocolRef::new("aave-v3"),
             underlying: TokenRef::new(token_key()),
-            rebase_form: simulation_state::token::kind::RebaseForm::Index,
+            rebase_form: policy_state::token::kind::RebaseForm::Index,
         };
         let state = state_with(1_000, kind, None);
         let params = json!({ "chain_id": chain().to_string(), "asset": asset_param() });

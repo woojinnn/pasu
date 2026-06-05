@@ -1,0 +1,62 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/send-multi-sig@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) `HyperliquidTransaction:SendMultiSig` — an OFF-CHAIN L1 action signed via eth_signTypedData_v4 (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0). Decoded to hyperliquid_core::hl_unknown carrying action_type='sendMultiSig' so a policy sees an attributed HyperLiquid action (gate on context.actionType) instead of an anonymous domain:unknown. submits a pre-authorized multi-sig action by hash (multiSigActionHash:bytes32) — the inner action is opaque (only its hash is signed) so it cannot be structurally decoded. A structured variant is deferred (low/admin usage; opaque or non-fund-moving fields).",
+  "match": {
+    "selector": "0x0000000a",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:SendMultiSig",
+      "types": {
+        "HyperliquidTransaction:SendMultiSig": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "multiSigActionHash", "type": "bytes32" },
+          { "name": "nonce", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "sendMultiSig",
+    "abi": {
+      "name": "sendMultiSig",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "sendMultiSig",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "multiSigActionHash", "type": "bytes32" },
+            { "name": "nonce", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "hyperliquid_core",
+      "hyperliquid_core": {
+        "action": "hl_unknown",
+        "hl_unknown": {
+          "action_type": "sendMultiSig"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

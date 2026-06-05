@@ -1,0 +1,53 @@
+{
+  "type": "adapter_action",
+  "id": "1inch/limit-order-protocol/cancel-orders@1.0.0",
+  "publisher": "1inch.io",
+  "schema_version": "3",
+  "note": "1inch LOP v4 maker batch cancellation: cancelOrders(uint256[] makerTraits, bytes32[] orderHashes) on AggregationRouterV6 0x111111125421ca6dc452d289314280a0f8842a65 (selector 0x89e7c650). array_emit over orderHashes (bytes32[], scalar element bound to bare $inputs) → one Amm::CancelIntentOrder per hash. The parallel makerTraits[] does not change cancel semantics, so it is not decoded. verifying_contract = $to (the v6 router).",
+  "match": {
+    "selector": "0x89e7c650",
+    "chain_to_addresses": {
+      "1": [
+        "0x111111125421ca6dc452d289314280a0f8842a65"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cancelOrders",
+    "abi": {
+      "name": "cancelOrders",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "makerTraits", "type": "uint256[]" },
+        { "name": "orderHashes", "type": "bytes32[]" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args.orderHashes",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "cancel_intent_order",
+        "cancel_intent_order": {
+          "venue": {
+            "name": "one_inch_limit_order",
+            "chain": "$chain",
+            "verifying_contract": "$to"
+          },
+          "order_hash": "$inputs"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

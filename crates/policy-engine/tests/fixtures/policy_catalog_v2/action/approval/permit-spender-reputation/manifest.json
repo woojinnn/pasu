@@ -1,0 +1,13 @@
+{
+  "id": "permit-spender-reputation",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_permit" } } },
+  "policy_rpc": [{
+    "id": "spender-rep",
+    "method": "address.reputation",
+    "params": { "chain_id": "$.root.chain_id", "address": "$.action.spender" },
+    "outputs": [{ "kind": "context", "field": "reputationFlagged", "type": "Bool", "from": "$.result.flagged", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "reputationFlagged": "Bool" } }
+}

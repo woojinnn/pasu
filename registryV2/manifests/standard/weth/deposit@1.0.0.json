@@ -1,0 +1,50 @@
+{
+  "type": "adapter_action",
+  "id": "standard/weth/deposit@1.0.0",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xd0e30db0",
+    "chain_to_addresses": {
+      "1": ["0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"],
+      "10": ["0x4200000000000000000000000000000000000006"],
+      "8453": ["0x4200000000000000000000000000000000000006"],
+      "42161": ["0x82af49447d8a07e3bd95bd0d56f35241523fbab1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "deposit",
+    "abi": {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "wrap_native",
+        "wrap_native": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$to"
+            }
+          },
+          "amount": "$tx.value"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

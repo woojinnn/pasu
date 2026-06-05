@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb4444468e444f89e1c2cac2f1d3ee7e336cbd1f5",
+  "symbol": "RZR",
+  "decimals": 18,
+  "name": "Rezerve.money",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

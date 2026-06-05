@@ -1,0 +1,106 @@
+{
+  "type": "adapter_action",
+  "id": "aave/v3/variableDebtwstETH/delegationWithSig@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave V3 mainnet variableDebtwstETH delegationWithSig. Function/EIP-712 source: Sourcify verified VariableDebtTokenInstance implementation and official aave-v3-origin DebtTokenBase DelegationWithSig typehash.",
+  "match": {
+    "selector": "0x0b52d558",
+    "chain_to_addresses": {
+      "1": [
+        "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "Aave Ethereum Variable Debt wstETH",
+      "verifying_contract": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+      "primary_type": "DelegationWithSig",
+      "types": {
+        "DelegationWithSig": [
+          {
+            "name": "delegatee",
+            "type": "address"
+          },
+          {
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "delegationWithSig",
+    "abi": {
+      "name": "delegationWithSig",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "delegator",
+          "type": "address"
+        },
+        {
+          "name": "delegatee",
+          "type": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256"
+        },
+        {
+          "name": "v",
+          "type": "uint8"
+        },
+        {
+          "name": "r",
+          "type": "bytes32"
+        },
+        {
+          "name": "s",
+          "type": "bytes32"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "delegate_borrow",
+        "delegate_borrow": {
+          "venue": {
+            "name": "aave_v3",
+            "chain": "$chain",
+            "pool": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+            "market_id": null
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+            }
+          },
+          "delegatee": "$args.delegatee",
+          "amount": "$args.value",
+          "rate_mode": "variable"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "contract": "Aave V3 SwapCollateralAdapter",
+  "chainId": 1,
+  "address": "0xadc0a53095a0af87f3aa29fe0715b5c28016364e",
+  "snapshot": "periphery-v3-swap-collateral-mainnet.abi.json",
+  "functions": {
+    "0x1b11d0ff": {
+      "name": "executeOperation",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x715018a6": {
+      "name": "renounceOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0x00ae3bf8": {
+      "name": "rescueTokens",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    },
+    "0xd3454a35": {
+      "name": "swapAndDeposit",
+      "decision": "cover",
+      "reason": "user-facing Aave swapAndDeposit action covered by registry manifest"
+    },
+    "0xf2fde38b": {
+      "name": "transferOwnership",
+      "decision": "exclude",
+      "reason": "admin, infrastructure, callback, maintenance, or protocol accounting path; excluded/fail-closed from user semantic onboarding"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x7e586fbaf3084c0be7ab5c82c04ffd7592723153",
+  "symbol": "xETH",
+  "decimals": 18,
+  "name": "Staked Stream ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

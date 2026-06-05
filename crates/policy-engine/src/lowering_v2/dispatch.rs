@@ -8,7 +8,7 @@
 
 use serde_json::Value;
 
-use simulation_reducer::action::{ActionBody, ActionMeta};
+use policy_transition::action::{ActionBody, ActionMeta};
 
 /// A lowered action ready for the Cedar engine: the `principal` / `action` /
 /// `resource` entity uids (as parseable strings) plus the action-context JSON.
@@ -106,6 +106,12 @@ pub fn lower_action(
         ActionBody::Airdrop(a) => super::airdrop::lower(a, &ctx),
         ActionBody::Launchpad(a) => super::launchpad::lower(a, &ctx),
         ActionBody::Perp(a) => super::perp::lower(a, &ctx),
+        ActionBody::LiquidStaking(a) => super::liquid_staking::lower(a, &ctx),
+        ActionBody::Permission(a) => super::permission::lower(a, &ctx),
+        ActionBody::Yield(a) => super::yield_::lower(a, &ctx),
+        ActionBody::Restaking(a) => super::restaking::lower(a, &ctx),
+        ActionBody::Staking(a) => super::staking::lower(a, &ctx),
+        ActionBody::Governance(a) => super::governance::lower(a, &ctx),
         ActionBody::HyperliquidCore(a) => super::hyperliquid_core::lower(a, &ctx),
         ActionBody::Multicall { .. } => super::multicall::lower(action, &ctx),
         ActionBody::Unknown { .. } => super::unknown::lower(action, &ctx),
@@ -119,10 +125,10 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_reducer::action::{ActionMeta, ActionNature};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::LiveField;
+    use policy_transition::action::{ActionMeta, ActionNature};
 
     const FROM: &str = "0x1111111111111111111111111111111111111111";
     const TO: &str = "0x2222222222222222222222222222222222222222";

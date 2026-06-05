@@ -1,0 +1,48 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v2-pair/sync@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Representative direct Uniswap V2 pair sync() coverage for Etherscan-enriched Track B sample pairs. Direct pair semantics remain Track B; route as explicit Unknown/fail-closed instead of registry miss.",
+  "match": {
+    "selector": "0xfff6cae9",
+    "chain_to_addresses_source": "uniswap:v2_pair_candidates",
+    "chain_ids": [
+      1,
+      42161
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "sync",
+    "abi": {
+      "name": "sync",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v2_pair_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pair id suffix"
+  }
+}

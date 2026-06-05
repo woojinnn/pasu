@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2915acaa744e36befb3c539c3d99a7f82ad8e6c9",
+  "symbol": "GRD",
+  "decimals": 7,
+  "name": "Greek Drachma",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

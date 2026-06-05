@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_state::token::{TokenKey, TokenRef};
+use policy_state::token::{TokenKey, TokenRef};
 
 use super::cedar::{addr, u256_hex};
 
@@ -56,8 +56,8 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, ChainId, U256};
-    use simulation_state::token::TokenKey;
+    use policy_state::primitives::{Address, ChainId, U256};
+    use policy_state::token::TokenKey;
 
     /// The `TokenKey::Native` / `Erc721` / `Erc1155` arms (the latter two share
     /// one match arm, gated by `is_nft()`) map to the right discriminator and

@@ -1,0 +1,524 @@
+{
+  "_comment": "Lido liquid_staking real-tx corpus (Etherscan mainnet, adapter-blind sample). expect=pass+liquid_staking; expect_body pins field-level semantics (action/venue/amount/owner/token/request_ids/embedded_permit/enrichment-view) against the production decoder per \u00a79.4 (catches silent mis-decodes verdict+domain cannot). Verified via `v3-harness corpus --filter lido --require-expect-body`. L3 independence: every expect_body value is independently derived from the raw calldata (NOT the decoder's own output) \u2014 submit/requestWithdrawals/wrap/unwrap/claimWithdrawal/requestWithdrawalsWstETH carry reasoned-from-calldata hand goldens in `tests/v3_decode_harness.rs`; the remaining entries (claimWithdrawals, requestWithdrawals(WstETH)WithPermit, the 2 native-transfer stakes) were cross-checked via `cast calldata-decode`, removing the \u00a79.4 self-reference.",
+  "transactions": [
+    {
+      "intent": "submit",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x361f764d74cc0628f94591238892b3058cfbe7970f97f95ac62dc3496b241171",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+            "value": "9800000000000000000",
+            "data": "0xa1903eab0000000000000000000000006dc9657c2d90d57cadffb64239242d06e6103e43"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x88009813ced40000"
+        },
+        {
+          "path": "$.data.actions[0].body.referral",
+          "op": "hex_eq",
+          "value": "0x6dc9657c2d90d57cadffb64239242d06e6103e43"
+        }
+      ]
+    },
+    {
+      "intent": "wrap",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x3422ad3f65b421b13dea9de1bdc3d6f9e22d8649ab473313c0432829966d21ca",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+            "value": "0",
+            "data": "0xea598cb0000000000000000000000000000000000000000000000000b3b26499afaf3f69"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "wrap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xb3b26499afaf3f69"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs.expected_wsteth.source.function",
+          "op": "equals",
+          "value": "getWstETHByStETH(uint256)"
+        }
+      ]
+    },
+    {
+      "intent": "unwrap",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x0de246bd123e6c6ea0eeffd37a67bc9d63475fec9f702068b00f21b3d573267b",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+            "value": "0",
+            "data": "0xde0e9a3e000000000000000000000000000000000000000000000000226c6a3c70ff3b9a"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "unwrap"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x226c6a3c70ff3b9a"
+        },
+        {
+          "path": "$.data.actions[0].body.live_inputs.expected_steth.source.function",
+          "op": "equals",
+          "value": "getStETHByWstETH(uint256)"
+        }
+      ]
+    },
+    {
+      "intent": "claimWithdrawals",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x88f3c654f6e6b5dd56580615172f39d8c7a7c1fa311116d7d91fef83ccb8b76a",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xe3afe0a3000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000001eabf00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000457"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.request_ids[0]",
+          "op": "u256_hex_eq",
+          "value": "0x1eabf"
+        }
+      ]
+    },
+    {
+      "intent": "requestWithdrawalsWithPermit",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x33a2f163b76cfbba6249f4702c75aec9b34ad39fa6fab1204639103f0ff8771f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xacf41e4d00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000cc9eb059623ca6687897c40e55c5b5b5a09f73f80000000000000000000000000000000000000000000000007edf11bda615641b000000000000000000000000000000000000000000000000000000006a1cf28f000000000000000000000000000000000000000000000000000000000000001c88d091dd824698f6b3234580f0e0d3abed8c7b7733842f9468a7b494fa30af03076a4cc1c83672c93da7029a7f1e0cd93abe4e1d881765757cc90ca775720dec00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000007edf11bda615641b"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x7edf11bda615641b"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0xcc9eb059623ca6687897c40e55c5b5b5a09f73f8"
+        },
+        {
+          "path": "$.data.actions[0].body.embedded_permit.value",
+          "op": "u256_hex_eq",
+          "value": "0x7edf11bda615641b"
+        },
+        {
+          "path": "$.data.actions[0].body.embedded_permit.deadline",
+          "op": "u256_hex_eq",
+          "value": "0x6a1cf28f"
+        }
+      ]
+    },
+    {
+      "intent": "requestWithdrawalsWstETHWithPermit",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x1e43b47aecb559b2c0b25229dd459b0afc5de6795b30eaba854c1cd03826d7df",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0x7951b76f00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000c7f9e94843c24b847695c04b2e556a66ddcd44de000000000000000000000000000000000000000000000001a0556e39bff311eb000000000000000000000000000000000000000000000000000000006a1cd737000000000000000000000000000000000000000000000000000000000000001c8965370804abe83cad8c54ec6bf335fbe8b9302ecc1e9901a0c6c1b2d42128c9597ae22fa2a804060e13687d32263d3ba3bf32ae2758ae0b12b58d6a91799e730000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000001a0556e39bff311eb"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x1a0556e39bff311eb"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0xc7f9e94843c24b847695c04b2e556a66ddcd44de"
+        },
+        {
+          "path": "$.data.actions[0].body.embedded_permit.value",
+          "op": "u256_hex_eq",
+          "value": "0x1a0556e39bff311eb"
+        },
+        {
+          "path": "$.data.actions[0].body.embedded_permit.deadline",
+          "op": "u256_hex_eq",
+          "value": "0x6a1cd737"
+        }
+      ]
+    },
+    {
+      "intent": "requestWithdrawals",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0xf9cdfd1cb5ad3640b8fe529bc0e71677582b14062fe09a1d0655cfbb3ab3857d",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xd66810420000000000000000000000000000000000000000000000000000000000000040000000000000000000000000afc98cfd72b91c5da3a35dbd387bdc40dd289a21000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000086346e29ab7d7"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x86346e29ab7d7"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0xafc98cfd72b91c5da3a35dbd387bdc40dd289a21"
+        }
+      ]
+    },
+    {
+      "intent": "claimWithdrawal",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0xf2d136649892cd186c9e67d9d1e584a511c31440efe14b3a635d73e11f94f5ee",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0xf8444436000000000000000000000000000000000000000000000000000000000001eb2f"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "claim_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.request_ids[0]",
+          "op": "u256_hex_eq",
+          "value": "0x1eb2f"
+        }
+      ]
+    },
+    {
+      "intent": "requestWithdrawalsWstETH",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x6420f0a2c8556db242b83fc67cbdcdabab99c71bbac07902b58875d9814e2249",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+            "value": "0",
+            "data": "0x19aa625700000000000000000000000000000000000000000000000000000000000000400000000000000000000000008e01dc1a08ddf5a47ca992ba389ae290bc6362bc0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000002b39d1477c3aa0"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "request_withdrawal"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.token.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amounts[0]",
+          "op": "u256_hex_eq",
+          "value": "0x2b39d1477c3aa0"
+        },
+        {
+          "path": "$.data.actions[0].body.owner",
+          "op": "hex_eq",
+          "value": "0x8e01dc1a08ddf5a47ca992ba389ae290bc6362bc"
+        }
+      ]
+    },
+    {
+      "intent": "stakeEthViaFallback",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x651d8e2dd61d6f9bb571fe1df010b9f1482d8507ec56702dbd9f8f3844373c4c",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+            "value": "1530000000000000000",
+            "data": "0x"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x153ba6e4ca590000"
+        }
+      ]
+    },
+    {
+      "intent": "stakeEthViaReceiveWstETH",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0xf5ef5c38f9f6cb2b820929257e2dd67f933b37d68c3022f23adad58205772705",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+            "value": "15189974607446283280",
+            "data": "0x"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "stake"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xd2cda16cf00a1410"
+        }
+      ]
+    },
+    {
+      "intent": "transferShares",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0xab81357c4dc78efd36f6127215b962f3bab39e0a5760448c08ff6b6a4c8ef290",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+            "value": "0",
+            "data": "0x8fcb4e5b000000000000000000000000855eaff58f3f627653c2de8b5ec771ebaf0d1a21000000000000000000000000000000000000000000000000004538fb9513ff97"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "transfer_shares"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x855eaff58f3f627653c2de8b5ec771ebaf0d1a21"
+        },
+        {
+          "path": "$.data.actions[0].body.shares",
+          "op": "u256_hex_eq",
+          "value": "0x4538fb9513ff97"
+        }
+      ]
+    },
+    {
+      "intent": "transferSharesFrom",
+      "expect": "pass",
+      "expect_domain": "liquid_staking",
+      "tx_hash": "0x71b67f44744c25fa3bf17c6a3ce7a1b3c9e1a0045da615d8519eb59d607535a8",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+            "value": "0",
+            "data": "0x6d780459000000000000000000000000db4ef21a4fd9002f6af5a296d0fd592605b7e55b0000000000000000000000000b70f851a1890f59ff11244b14fef41eb2f6abcc0000000000000000000000000000000000000000000000000000105ef39b2000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "transfer_shares"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "lido"
+        },
+        {
+          "path": "$.data.actions[0].body.from",
+          "op": "hex_eq",
+          "value": "0xdb4ef21a4fd9002f6af5a296d0fd592605b7e55b"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x0b70f851a1890f59ff11244b14fef41eb2f6abcc"
+        },
+        {
+          "path": "$.data.actions[0].body.shares",
+          "op": "u256_hex_eq",
+          "value": "0x105ef39b2000"
+        }
+      ]
+    }
+  ]
+}

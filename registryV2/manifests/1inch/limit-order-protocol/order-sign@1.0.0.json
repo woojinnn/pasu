@@ -1,0 +1,96 @@
+{
+  "type": "adapter_action",
+  "id": "1inch/limit-order-protocol/order-sign@1.0.0",
+  "publisher": "1inch.io",
+  "schema_version": "3",
+  "note": "Off-chain EIP-712 maker-sign of a 1inch Limit Order Protocol v4 Order. domain=\"1inch Aggregation Router\" v6, verifying_contract=AggregationRouterV6 0x111111125421ca6dc452d289314280a0f8842a65 (LOP v4 is embedded in the v6 router), primary_type=Order. selector 0x00000001 is a sign-only placeholder (no on-chain call); routing is by (verifying_contract, primary_type) via the typed-data bridge. The EIP-712 Order declares maker/receiver/makerAsset/takerAsset as `address` (Solidity calldata packs them as uint256 Address) so the message fields resolve directly to addresses. valid_until via maker_traits_expiry $fn (MakerTraits bits 80..120 = uint40 unix-seconds; 0=never-expires remapped to max sentinel). recipient via coalesce_address $fn (Order.receiver==0 means the maker is the recipient).",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "1": [
+        "0x111111125421ca6dc452d289314280a0f8842a65"
+      ]
+    },
+    "typed_data": {
+      "domain_name": "1inch Aggregation Router",
+      "verifying_contract": "0x111111125421ca6dc452d289314280a0f8842a65",
+      "primary_type": "Order",
+      "types": {
+        "Order": [
+          { "name": "salt", "type": "uint256" },
+          { "name": "maker", "type": "address" },
+          { "name": "receiver", "type": "address" },
+          { "name": "makerAsset", "type": "address" },
+          { "name": "takerAsset", "type": "address" },
+          { "name": "makingAmount", "type": "uint256" },
+          { "name": "takingAmount", "type": "uint256" },
+          { "name": "makerTraits", "type": "uint256" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "signLimitOrder",
+    "abi": {
+      "name": "signLimitOrder",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "order",
+          "type": "tuple",
+          "components": [
+            { "name": "salt", "type": "uint256" },
+            { "name": "maker", "type": "address" },
+            { "name": "receiver", "type": "address" },
+            { "name": "makerAsset", "type": "address" },
+            { "name": "takerAsset", "type": "address" },
+            { "name": "makingAmount", "type": "uint256" },
+            { "name": "takingAmount", "type": "uint256" },
+            { "name": "makerTraits", "type": "uint256" }
+          ]
+        },
+        { "name": "signature", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "sign_intent_order",
+        "sign_intent_order": {
+          "venue": {
+            "name": "one_inch_limit_order",
+            "chain": "$chain",
+            "verifying_contract": "0x111111125421ca6dc452d289314280a0f8842a65"
+          },
+          "sell": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.makerAsset" } },
+          "buy": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.order.takerAsset" } },
+          "sell_amount": "$args.order.makingAmount",
+          "buy_min": "$args.order.takingAmount",
+          "order_kind": "limit",
+          "recipient": { "$fn": "coalesce_address", "$args": ["$args.order.receiver", "$args.order.maker"] },
+          "valid_until": { "$fn": "maker_traits_expiry", "$args": ["$args.order.makerTraits"] }
+        }
+      }
+    },
+    "live_inputs": {
+      "expected_fill_price": {
+        "source": { "kind": "venue_api", "endpoint": "https://api.1inch.dev/orderbook/v4.0/1", "parser_id": "oneinch_lop_quote" },
+        "ttl_s": 6
+      },
+      "competing_orders": {
+        "source": { "kind": "venue_api", "endpoint": "https://api.1inch.dev/orderbook/v4.0/1", "parser_id": "oneinch_lop_open_orders" },
+        "ttl_s": 6
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

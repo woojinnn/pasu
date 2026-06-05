@@ -12,7 +12,7 @@ import {
   reinstallAllPolicies,
 } from "./policies-loader";
 import { loadDefaultPolicySetV2 } from "./policies-loader-v2";
-import { applyEnabledIds, getCatalog } from "./policy-selection";
+import { applyEnabledIds, getCatalog, getEnabledIds } from "./policy-selection";
 import {
   isExecutionReport,
   RequestType,
@@ -28,9 +28,17 @@ import {
   type WalletId,
 } from "./scopeball-auth";
 import {
+  declarativeRouteRequestV3,
+  estToPolicyText,
+  policyTextToEst,
   simulatePolicySequence,
+  simulateStep,
   testPolicyText,
   validatePolicyText,
+  type DeclarativeRouteRequestV3Input,
+  type DeclarativeRouteRequestV3Result,
+  type SimulateStepInput,
+  type SimulateStepOutput,
 } from "./wasm-bridge";
 import {
   clearExecutionReports,
@@ -110,6 +118,16 @@ async function bootSequence(): Promise<void> {
   } catch (err) {
     console.warn("[Scopeball] adapter-loader storage migration failed:", err);
     // Non-fatal — first JIT fetch will populate the new key anyway.
+  }
+
+  // B4 cleanup (commits 6aa3cc0 / b6f3ac9) — v1 routing 의 `registry:adapter-bundles`
+  // chrome.storage namespace 가 deprecated. v3 = 별 namespace
+  // (`scopeball:declarative-v3-bundle:*`). 보존된 v1 key 가 storage 용량 차지하므로
+  // boot 시 한 번 제거. SW restart 후 entry 부재 → 영향 0.
+  try {
+    await Browser.storage.local.remove("registry:adapter-bundles");
+  } catch {
+    // ignore — key 부재 또는 storage error 시 silent. boot 진행 영향 X.
   }
 
   // Cold-start prewarm: kick off WASM module load + default policy
@@ -263,6 +281,30 @@ interface CedarSimulateRequest {
   steps_json: string;
   policies_json: string;
 }
+interface CedarTextToEstRequest {
+  type: "cedar-text-to-est";
+  text: string;
+}
+interface CedarEstToTextRequest {
+  type: "cedar-est-to-text";
+  // Pre-serialized EST JSON (a single policy's EST object).
+  est_json: string;
+}
+/** Simulation page: one (state, action, ctx) → (delta, next_state).
+ *  Dashboard owns the per-tx loop; SW just forwards to the wasm bridge.
+ *  Contract: `crates/policy-engine-wasm/src/sim_step_exports.rs`. */
+interface SimStepRequest {
+  type: "sim-step";
+  input: SimulateStepInput;
+}
+/** Simulation page: decode a raw tx (chain_id, to, calldata, …) into the
+ *  typed `Action[]` tree the v3 route engine emits. Same wasm entry the SW
+ *  orchestrator uses for live wallet flows — exposed here so the dashboard
+ *  can drive the same decode → simulate pipeline from user-pasted calldata. */
+interface SimDecodeRequest {
+  type: "sim-decode";
+  input: DeclarativeRouteRequestV3Input;
+}
 interface ExecutionReportsListRequest {
   type: "execution-reports:list";
   opts?: ExecutionReportFilter;
@@ -294,9 +336,17 @@ interface VerdictsExportCsvRequest {
 interface VerdictsClearRequest {
   type: "verdicts:clear";
 }
+/** Read just the enabled-policy id list. The dashboard's policy list
+ *  uses this for the checkbox state; the popup also uses it indirectly
+ *  via `policy-catalog`. Keeping a dedicated `:get` lets the dashboard
+ *  invalidate the lighter query on storage broadcasts. */
+interface PolicySelectionGetRequest {
+  type: "policy-selection:get";
+}
 type PopupRequest =
   | PolicyCatalogRequest
   | SetEnabledIdsRequest
+  | PolicySelectionGetRequest
   | ScopeballAuthStatusRequest
   | ScopeballAuthSignInRequest
   | ScopeballAuthSignOutRequest
@@ -304,6 +354,10 @@ type PopupRequest =
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
+  | CedarTextToEstRequest
+  | CedarEstToTextRequest
+  | SimStepRequest
+  | SimDecodeRequest
   | ExecutionReportsListRequest
   | ExecutionReportsCountRequest
   | ExecutionReportsClearRequest
@@ -367,6 +421,52 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "cedar_simulate_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "cedar-text-to-est") {
+      void policyTextToEst((req as CedarTextToEstRequest).text)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_text_to_est_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "cedar-est-to-text") {
+      void estToPolicyText((req as CedarEstToTextRequest).est_json)
+        .then((json) => sendResponse({ ok: true, data: json }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "cedar_est_to_text_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "sim-step") {
+      void simulateStep((req as SimStepRequest).input)
+        .then((data: SimulateStepOutput) => sendResponse({ ok: true, data }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "sim_step_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+    if (req.type === "sim-decode") {
+      void declarativeRouteRequestV3((req as SimDecodeRequest).input)
+        .then((data: DeclarativeRouteRequestV3Result) =>
+          sendResponse({ ok: true, data }),
+        )
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "sim_decode_failed", message: String(err) },
           }),
         );
       return true;
@@ -570,6 +670,18 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "verdicts_clear_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    if (req.type === "policy-selection:get") {
+      void getEnabledIds()
+        .then((ids) => sendResponse({ ok: true, data: ids }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "policy_selection_get_failed", message: String(err) },
           }),
         );
       return true;

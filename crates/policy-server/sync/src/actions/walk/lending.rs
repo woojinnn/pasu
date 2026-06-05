@@ -1,16 +1,13 @@
-//! Lending 도메인의 walk + apply.
-//!
 //! Wired: Supply, Withdraw, Borrow, Repay, `SwapRateMode`, `SetEMode`,
 //!        `EnableCollateral`, `DisableCollateral`, Liquidate.
-//! `DelegateBorrow` 는 `live_inputs` 없음 → no-op.
 
 use serde_json::Value;
 
-use simulation_reducer::action::lending::{
+use policy_state::Time;
+use policy_transition::action::lending::{
     BorrowAction, LendingAction, LiquidateAction, RepayAction, SetCollateralAction, SetEModeAction,
     SupplyAction, SwapRateModeAction, WithdrawAction,
 };
-use simulation_state::Time;
 
 use crate::walker::{ActionSlot, StaleField, WalkStats};
 
@@ -37,6 +34,9 @@ pub(super) fn walk(
         }
         LendingAction::Liquidate(l) => walk_liquidate(l, action_index, now, stale, stats),
         LendingAction::DelegateBorrow(_) => {} // no live_inputs
+        LendingAction::SetAuthorization(_) => {} // no live_inputs
+        LendingAction::BuyCollateral(_) => {}  // no live_inputs
+        LendingAction::PeripheryOperation(_) => {} // no live_inputs
     }
 }
 
@@ -337,6 +337,9 @@ pub(super) fn apply(la: &mut LendingAction, slot: &ActionSlot, value: Value, now
         }
         LendingAction::Liquidate(l) => apply_liquidate(l, slot, value, now),
         LendingAction::DelegateBorrow(_) => {}
+        LendingAction::SetAuthorization(_) => {}
+        LendingAction::BuyCollateral(_) => {}
+        LendingAction::PeripheryOperation(_) => {}
     }
 }
 
@@ -532,14 +535,14 @@ mod tests {
     use crate::action_walk::{apply_value_to_action, walk_action_stale};
     use crate::walker::FieldLocation;
 
-    use simulation_reducer::action::lending::{
-        BorrowAction, BorrowLiveInputs, LendingVenue, ReserveState, UserLendingState,
-    };
-    use simulation_reducer::action::{Action, ActionBody, ActionMeta, ActionNature};
-    use simulation_state::{
+    use policy_state::{
         Address, ChainId, DataSource, Decimal, Duration, LiveField, OracleProvider, Price,
         RateMode, Time, TokenKey, TokenRef, U256,
     };
+    use policy_transition::action::lending::{
+        BorrowAction, BorrowLiveInputs, LendingVenue, ReserveState, UserLendingState,
+    };
+    use policy_transition::action::{Action, ActionBody, ActionMeta, ActionNature};
 
     fn dummy_reserve() -> ReserveState {
         ReserveState {

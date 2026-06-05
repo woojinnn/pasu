@@ -1,0 +1,1344 @@
+{
+  "generatedAt": "2026-06-02T18:22:19.385Z",
+  "protocol": "lido",
+  "source": "Etherscan v2 account txlist, adapter-blind by P0 cover deployment addresses",
+  "targetSource": "deployments",
+  "apiCallsUsed": 3,
+  "targetsQueried": 3,
+  "coverAddressesQueried": 3,
+  "offset": 10000,
+  "pageLimit": 1,
+  "targetRawTxFloor": 20000,
+  "floorMet": true,
+  "rawTxsSeen": 30000,
+  "uniqueTxHashesSeen": 30000,
+  "inputTxsSeen": 29983,
+  "matchedInputTxs": 29875,
+  "excludedInputTxs": 101,
+  "unmatchedInputTxs": 7,
+  "actionableUnmatchedInputTxs": 0,
+  "nonActionableUnmatchedInputTxs": 7,
+  "unmatchedDispositions": [
+    {
+      "disposition": "non_abi_or_text_calldata",
+      "count": 5
+    },
+    {
+      "disposition": "selector_known_elsewhere_wrong_target",
+      "count": 2
+    }
+  ],
+  "uniqueSelectorsSeen": 26,
+  "uniqueMatchedSelectorsSeen": 13,
+  "uniqueExcludedSelectorsSeen": 10,
+  "uniqueUnmatchedSelectorsSeen": 4,
+  "matchedCallkeys": 15,
+  "errors": [],
+  "topSelectors": [
+    {
+      "selector": "0x095ea7b3",
+      "count": 8532
+    },
+    {
+      "selector": "0xa9059cbb",
+      "count": 5166
+    },
+    {
+      "selector": "0xe3afe0a3",
+      "count": 4490
+    },
+    {
+      "selector": "0xacf41e4d",
+      "count": 3612
+    },
+    {
+      "selector": "0xa1903eab",
+      "count": 3517
+    },
+    {
+      "selector": "0xde0e9a3e",
+      "count": 1465
+    },
+    {
+      "selector": "0xd6681042",
+      "count": 1263
+    },
+    {
+      "selector": "0xea598cb0",
+      "count": 1224
+    },
+    {
+      "selector": "0x7951b76f",
+      "count": 369
+    },
+    {
+      "selector": "0xf8444436",
+      "count": 221
+    },
+    {
+      "selector": "0x39509351",
+      "count": 67
+    },
+    {
+      "selector": "0x42842e0e",
+      "count": 12
+    },
+    {
+      "selector": "0x23b872dd",
+      "count": 11
+    },
+    {
+      "selector": "0x19aa6257",
+      "count": 10
+    },
+    {
+      "selector": "0xa22cb465",
+      "count": 8
+    },
+    {
+      "selector": "0x4555d5c9",
+      "count": 3
+    },
+    {
+      "selector": "0x5e7eead9",
+      "count": 3
+    },
+    {
+      "selector": "0x3ccfd60b",
+      "count": 2
+    },
+    {
+      "selector": "0x046f7da2",
+      "count": 1
+    },
+    {
+      "selector": "0x06f187a4",
+      "count": 1
+    },
+    {
+      "selector": "0x07da68f5",
+      "count": 1
+    },
+    {
+      "selector": "0x38998624",
+      "count": 1
+    },
+    {
+      "selector": "0x7d031b65",
+      "count": 1
+    },
+    {
+      "selector": "0xb88d4fde",
+      "count": 1
+    },
+    {
+      "selector": "0xd505accf",
+      "count": 1
+    },
+    {
+      "selector": "0xd669a5a4",
+      "count": 1
+    }
+  ],
+  "topMatchedSelectors": [
+    {
+      "selector": "0x095ea7b3",
+      "count": 8532
+    },
+    {
+      "selector": "0xa9059cbb",
+      "count": 5166
+    },
+    {
+      "selector": "0xe3afe0a3",
+      "count": 4490
+    },
+    {
+      "selector": "0xacf41e4d",
+      "count": 3612
+    },
+    {
+      "selector": "0xa1903eab",
+      "count": 3517
+    },
+    {
+      "selector": "0xde0e9a3e",
+      "count": 1465
+    },
+    {
+      "selector": "0xd6681042",
+      "count": 1263
+    },
+    {
+      "selector": "0xea598cb0",
+      "count": 1224
+    },
+    {
+      "selector": "0x7951b76f",
+      "count": 369
+    },
+    {
+      "selector": "0xf8444436",
+      "count": 221
+    },
+    {
+      "selector": "0x19aa6257",
+      "count": 10
+    },
+    {
+      "selector": "0x23b872dd",
+      "count": 3
+    },
+    {
+      "selector": "0x5e7eead9",
+      "count": 3
+    }
+  ],
+  "topExcludedSelectors": [
+    {
+      "selector": "0x39509351",
+      "count": 67
+    },
+    {
+      "selector": "0x42842e0e",
+      "count": 12
+    },
+    {
+      "selector": "0x23b872dd",
+      "count": 8
+    },
+    {
+      "selector": "0xa22cb465",
+      "count": 8
+    },
+    {
+      "selector": "0x046f7da2",
+      "count": 1
+    },
+    {
+      "selector": "0x06f187a4",
+      "count": 1
+    },
+    {
+      "selector": "0x07da68f5",
+      "count": 1
+    },
+    {
+      "selector": "0x38998624",
+      "count": 1
+    },
+    {
+      "selector": "0xb88d4fde",
+      "count": 1
+    },
+    {
+      "selector": "0xd505accf",
+      "count": 1
+    }
+  ],
+  "topUnmatchedSelectors": [
+    {
+      "selector": "0x4555d5c9",
+      "count": 3,
+      "knownElsewhere": []
+    },
+    {
+      "selector": "0x3ccfd60b",
+      "count": 2,
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+          "manifestId": "curve/vecrv/withdraw@1.0.0"
+        }
+      ]
+    },
+    {
+      "selector": "0x7d031b65",
+      "count": 1,
+      "knownElsewhere": []
+    },
+    {
+      "selector": "0xd669a5a4",
+      "count": 1,
+      "knownElsewhere": []
+    }
+  ],
+  "topUnmatchedAddressSelectors": [
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x4555d5c9",
+      "count": 3,
+      "disposition": "non_abi_or_text_calldata",
+      "dispositionReason": "selector is absent from this target ABI snapshot; examples are treated as misdirected, spam, or non-ABI calldata",
+      "knownElsewhere": [],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x4555d5c9",
+          "txHash": "0xc276a1bf8ab74cc976b1473394934b30f469c6a186f85d84623e0d3c96cb5d06",
+          "from": "0xd9535f52702445ef6b49aa5d8bf8489641420178",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25217892",
+          "timeStamp": "1780261103",
+          "input": "0x4555d5c9"
+        },
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x4555d5c9",
+          "txHash": "0x473ceb0d3431154fa838b1be05971623bf41197b62708f0c7f7b15f498c06a24",
+          "from": "0xd9535f52702445ef6b49aa5d8bf8489641420178",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25209940",
+          "timeStamp": "1780165259",
+          "input": "0x4555d5c9"
+        },
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x4555d5c9",
+          "txHash": "0xbbd2baf582472095ee8f33057388197efd1016f08cc24d928d0ce6b1bf10e03e",
+          "from": "0xd9535f52702445ef6b49aa5d8bf8489641420178",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25209577",
+          "timeStamp": "1780160855",
+          "input": "0x4555d5c9"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x3ccfd60b",
+      "count": 1,
+      "disposition": "selector_known_elsewhere_wrong_target",
+      "dispositionReason": "selector is covered on another address but is absent from this target ABI snapshot",
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+          "manifestId": "curve/vecrv/withdraw@1.0.0"
+        }
+      ],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x3ccfd60b",
+          "txHash": "0x2b2fc89b6c58117dcf75e99a7beb889e5d0650a1b5f2c0b061279ec592787406",
+          "from": "0xa1273decaa71f4bee70fdc350b14c86fed14bb09",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25145134",
+          "timeStamp": "1779384671",
+          "input": "0x3ccfd60b0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x7d031b65",
+      "count": 1,
+      "disposition": "non_abi_or_text_calldata",
+      "dispositionReason": "selector is absent from this target ABI snapshot; examples are treated as misdirected, spam, or non-ABI calldata",
+      "knownElsewhere": [],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x7d031b65",
+          "txHash": "0x3e8d46b9d741817a427d56060fecce1978fb3517828a5b8cb2fdd35f1a9924d9",
+          "from": "0x845ddbf45d8a827581447e49e72563eaf2142263",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "24856265",
+          "timeStamp": "1775907695",
+          "input": "0x7d031b65000000000000000000000000845ddbf45d8a827581447e49e72563eaf2142263"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xd669a5a4",
+      "count": 1,
+      "disposition": "non_abi_or_text_calldata",
+      "dispositionReason": "selector is absent from this target ABI snapshot; examples are treated as misdirected, spam, or non-ABI calldata",
+      "knownElsewhere": [],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0xd669a5a4",
+          "txHash": "0xfb7780b3be6094587448768bfc73cb208173c2b72d6e9bffbaabb994ef5bd1d4",
+          "from": "0xbc2156686efd0f62eb697ef0af8955d1a518d655",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "24833582",
+          "timeStamp": "1775634407",
+          "input": "0xd669a5a40000000000000000000000000000000000000000000000000000000000000040000000000000000000000000bc2156686efd0f62eb697ef0af8955d1a518d655000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000038d7ea4c68000"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x3ccfd60b",
+      "count": 1,
+      "disposition": "selector_known_elsewhere_wrong_target",
+      "dispositionReason": "selector is covered on another address but is absent from this target ABI snapshot",
+      "knownElsewhere": [
+        {
+          "chainId": 1,
+          "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+          "manifestId": "curve/vecrv/withdraw@1.0.0"
+        }
+      ],
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x3ccfd60b",
+          "txHash": "0x8d965028af6a6cc0ccb42771c293875fc98ae7e13c1aa05497e8a1972b3c88e1",
+          "from": "0xa1273decaa71f4bee70fdc350b14c86fed14bb09",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25145114",
+          "timeStamp": "1779384431",
+          "input": "0x3ccfd60b0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ]
+    }
+  ],
+  "topExcludedAddressSelectors": [
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x39509351",
+      "count": 67,
+      "functionName": "increaseAllowance",
+      "reason": "OZ ERC20 allowance helper — erc20 standard adapter.",
+      "coverageFile": "registryV2/surface/lido/steth.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x39509351",
+          "txHash": "0xed02ba56bb878e1f050961072f468383f989c68f36609946ae074b0533ccab15",
+          "from": "0xd2d32ac6f99131dc4b3be2b8d00532b2b7b380b0",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25229376",
+          "timeStamp": "1780399439",
+          "input": "0x39509351000000000000000000000000858646372cc42e1a627fce94aa7a7033e7cf075affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x39509351",
+          "txHash": "0xe7ee127b121ba3186a3789cbdc203da6c89c582a32b45841651cfcc3e6e5d3fe",
+          "from": "0x2572a8099023bcf21eb6ecc3fe2babc8cccfef11",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25229232",
+          "timeStamp": "1780397699",
+          "input": "0x39509351000000000000000000000000889edc2edab5f40e902b864ad4d7ade8e412f9b1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x39509351",
+          "txHash": "0xc9baf9a4164c5db50253336952d3987076270952e05743cee06421379f49f3e4",
+          "from": "0xa5e326732bcd7355da1dac8bba67a1e7da487ac1",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25228487",
+          "timeStamp": "1780388687",
+          "input": "0x39509351000000000000000000000000889edc2edab5f40e902b864ad4d7ade8e412f9b1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x42842e0e",
+      "count": 12,
+      "functionName": "safeTransferFrom",
+      "reason": "standard ERC721 safeTransferFrom (NFT) — erc721 standard adapter.",
+      "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x42842e0e",
+          "txHash": "0x66105cf21b62154e97fae1fc15fdeab3c6b7050e525830389637b28674f90238",
+          "from": "0x61815c8989c33e2f8defdd73b07c184c311ecb10",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25119496",
+          "timeStamp": "1779076079",
+          "input": "0x42842e0e00000000000000000000000061815c8989c33e2f8defdd73b07c184c311ecb1000000000000000000000000065b8ae801755281d1c8919a423f30dc009e4a69f000000000000000000000000000000000000000000000000000000000001e672"
+        },
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x42842e0e",
+          "txHash": "0xf81cfb13dfa70bc16f3371325a77290ab9f492bd867f6bcf39f408671d2415db",
+          "from": "0x6b826107c6f9afe89d108ff35539facbabfcb1a7",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25089437",
+          "timeStamp": "1778714279",
+          "input": "0x42842e0e0000000000000000000000006b826107c6f9afe89d108ff35539facbabfcb1a70000000000000000000000006b826107c6f9afe89d108ff35539facbabfcb1a7000000000000000000000000000000000000000000000000000000000001d70f"
+        },
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x42842e0e",
+          "txHash": "0x570132f0c00b05ab16d2c638f6a2ee2239f9909968f7af0b0f7ffc32a33d8b94",
+          "from": "0x6b826107c6f9afe89d108ff35539facbabfcb1a7",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25089428",
+          "timeStamp": "1778714171",
+          "input": "0x42842e0e0000000000000000000000006b826107c6f9afe89d108ff35539facbabfcb1a70000000000000000000000006b826107c6f9afe89d108ff35539facbabfcb1a7000000000000000000000000000000000000000000000000000000000001d70f"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x23b872dd",
+      "count": 8,
+      "functionName": "transferFrom",
+      "reason": "standard ERC721 transferFrom (NFT) — erc721 standard adapter.",
+      "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x23b872dd",
+          "txHash": "0xfdb0cb2aad32eab019af2a1f32cd666dc68fba08b57c8ab37393572039e186d0",
+          "from": "0x19956de8f29aec406df43b231d1684d099825f64",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25209758",
+          "timeStamp": "1780163063",
+          "input": "0x23b872dd00000000000000000000000019956de8f29aec406df43b231d1684d099825f64000000000000000000000000692297c734ac65c124daea6287991b38fb7cd48f000000000000000000000000000000000000000000000000000000000001eaef"
+        },
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x23b872dd",
+          "txHash": "0x10f76b7de6b27ab7e0b75898580b258ecaf1bf18f95f295fa9d27ea31b75bf74",
+          "from": "0xef34efc3056934e30aaf10847f79cd214e9b2b0f",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25118101",
+          "timeStamp": "1779059315",
+          "input": "0x23b872dd000000000000000000000000ef34efc3056934e30aaf10847f79cd214e9b2b0f00000000000000000000000097d880d3eccbcd1297b6b728d63f1c292a55e657000000000000000000000000000000000000000000000000000000000001e61b"
+        },
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0x23b872dd",
+          "txHash": "0xf44e2de987d5fae81580afafe20c8ae6513cdcc5d32ceb3801e65ac064f1fc7b",
+          "from": "0x042af49d38e875ef3a1d808c76a117cf58cdbdd1",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25097882",
+          "timeStamp": "1778816015",
+          "input": "0x23b872dd000000000000000000000000042af49d38e875ef3a1d808c76a117cf58cdbdd1000000000000000000000000889edc2edab5f40e902b864ad4d7ade8e412f9b1000000000000000000000000000000000000000000000000000000000001e554"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xa22cb465",
+      "count": 8,
+      "functionName": "setApprovalForAll",
+      "reason": "standard ERC721 operator approval (NFT) — generic ERC721 covered by the erc721 standard adapter; not a Lido-specific permission primitive.",
+      "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0xa22cb465",
+          "txHash": "0xc9538a12b04f6aeae8208625bc73977c022328265913aaec566470ac8eaa55d0",
+          "from": "0xb4f5fd6f698f939a172abe5cc5972a4d3af0845d",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25215883",
+          "timeStamp": "1780236911",
+          "input": "0xa22cb4650000000000000000000000001e0049783f008a0085193e00003d00cd54003c710000000000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0xa22cb465",
+          "txHash": "0xe3dc57a5355bd7b66ddb95f421f9b20eedb1e35aafd87b03636a78587aab7442",
+          "from": "0xd955b7c4dada4831b4fd0c52818433c3d975cd64",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25145510",
+          "timeStamp": "1779389219",
+          "input": "0xa22cb4650000000000000000000000004fee7b061c97c9c496b01dbce9cdb10c02f0a0be0000000000000000000000000000000000000000000000000000000000000001"
+        },
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0xa22cb465",
+          "txHash": "0xe206e98a0accd76ce9d323f2fb01e9c58366f0dd6ad1d0d50790a8bbb77ff4fa",
+          "from": "0x602d4bb42818c7b15dc1be5b6a75977503be93b1",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "24937221",
+          "timeStamp": "1776881987",
+          "input": "0xa22cb4650000000000000000000000000eaa03603557b85d548e3c2679ff0cc9f0023edc0000000000000000000000000000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "name": "wstETH",
+      "selector": "0xd505accf",
+      "count": 1,
+      "functionName": "permit",
+      "reason": "EIP-2612 permit — standard ERC-2612 off-chain allowance, handled by the erc20 standard path.",
+      "coverageFile": "registryV2/surface/lido/wsteth.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+          "name": "wstETH",
+          "selector": "0xd505accf",
+          "txHash": "0x921cbe8ffe2ae92351a33e194d6d170420d94903f636adeb04108565ca6bed86",
+          "from": "0xe66aa98b55c5a55c9af9da12fe39b8868af9a346",
+          "to": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+          "value": "0",
+          "blockNumber": "25050865",
+          "timeStamp": "1778249591",
+          "input": "0xd505accf00000000000000000000000008b00ceee2fb66029b53d76110b19eeaabfd1e65000000000000000000000000e66aa98b55c5a55c9af9da12fe39b8868af9a346ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000000000001bd925c9dc4daf2b97326adca692aba99dd40a1394c841772f5a724c2dc35953867e99359d1f68b310a5c7f88d01abaf6956d58334b3ec60f8b70f32380d9474fc"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xb88d4fde",
+      "count": 1,
+      "functionName": "safeTransferFrom",
+      "reason": "standard ERC721 safeTransferFrom-with-data (NFT) — erc721 standard adapter.",
+      "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "name": "WithdrawalQueueERC721 (unstETH)",
+          "selector": "0xb88d4fde",
+          "txHash": "0x703a1a5b0d8efc5b52f575aa05db3e2598ff378d0a7579643ce61b20b0d1d40d",
+          "from": "0xa5ab9f5ef596925608887386ee0369ac568ebfc3",
+          "to": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+          "value": "0",
+          "blockNumber": "25000322",
+          "timeStamp": "1777641239",
+          "input": "0xb88d4fde000000000000000000000000a5ab9f5ef596925608887386ee0369ac568ebfc300000000000000000000000054d1f66ca38157f1848028c2e9819c4ab8e16a89000000000000000000000000000000000000000000000000000000000001e06100000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x046f7da2",
+      "count": 1,
+      "functionName": "resume",
+      "reason": "governance — PauseRole resumes the contract.",
+      "coverageFile": "registryV2/surface/lido/steth.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x046f7da2",
+          "txHash": "0x8c500090e71b7d9857063c6f2a8ec25cadd53036529eb19011fa7faa41fa84c9",
+          "from": "0x6eed10ca4adead94289b67bf9811043fd6c34ed4",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25187700",
+          "timeStamp": "1779897347",
+          "input": "0x046f7da2"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x06f187a4",
+      "count": 1,
+      "functionName": "mintExternalShares",
+      "reason": "core/role — VaultHub mints external shares.",
+      "coverageFile": "registryV2/surface/lido/steth.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x06f187a4",
+          "txHash": "0x8c50b9c7c6ef4383d95708a22ac54ed639a50233ba9c497bac42bdf1d9c292de",
+          "from": "0x6eed10ca4adead94289b67bf9811043fd6c34ed4",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25187637",
+          "timeStamp": "1779896579",
+          "input": "0x06f187a40000000000000000000000006eed10ca4adead94289b67bf9811043fd6c34ed40000000000000000000000000000000000000000000000000000000000000100"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x07da68f5",
+      "count": 1,
+      "functionName": "stop",
+      "reason": "governance — PauseRole halts the contract.",
+      "coverageFile": "registryV2/surface/lido/steth.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x07da68f5",
+          "txHash": "0xb101f4518af4bc5d21f884e82c57b10878af0bbfd6b2afda8145f6f9a0571291",
+          "from": "0x6eed10ca4adead94289b67bf9811043fd6c34ed4",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25187628",
+          "timeStamp": "1779896471",
+          "input": "0x07da68f5"
+        }
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x38998624",
+      "count": 1,
+      "functionName": "unsafeChangeDepositedValidators",
+      "reason": "governance — emergency role; not a wallet action.",
+      "coverageFile": "registryV2/surface/lido/steth.coverage.json",
+      "examples": [
+        {
+          "chainId": 1,
+          "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "name": "stETH (Lido, proxy)",
+          "selector": "0x38998624",
+          "txHash": "0x1830fa66a05c2366ad36393ef2dc8fca5c95697e2dcdebe0b70fb6205ef38f90",
+          "from": "0x397527c3f4efdd635f46709815352474d16a5b56",
+          "to": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+          "value": "0",
+          "blockNumber": "25203348",
+          "timeStamp": "1780085699",
+          "input": "0x389986240000000000000000000000000000000000000000000000000000000034fb5e38"
+        }
+      ]
+    }
+  ],
+  "manifestSelectorsByCoverAddress": [
+    {
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "name": "wstETH",
+      "selector": "0x095ea7b3",
+      "txCount": 5590,
+      "manifestIds": [
+        "standard/erc20/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xe3afe0a3",
+      "txCount": 4490,
+      "manifestIds": [
+        "lido/withdrawal-queue/claimWithdrawals@1.0.0",
+        "lido/withdrawal-queue/claimWithdrawals@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xacf41e4d",
+      "txCount": 3612,
+      "manifestIds": [
+        "lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0",
+        "lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0xa1903eab",
+      "txCount": 3517,
+      "manifestIds": [
+        "lido/steth/submit@1.0.0",
+        "lido/steth/submit@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0xa9059cbb",
+      "txCount": 3457,
+      "manifestIds": [
+        "standard/erc20/transfer@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x095ea7b3",
+      "txCount": 2942,
+      "manifestIds": [
+        "standard/erc20/approve@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "name": "wstETH",
+      "selector": "0xa9059cbb",
+      "txCount": 1709,
+      "manifestIds": [
+        "standard/erc20/transfer@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "name": "wstETH",
+      "selector": "0xde0e9a3e",
+      "txCount": 1465,
+      "manifestIds": [
+        "lido/wsteth/unwrap@1.0.0",
+        "lido/wsteth/unwrap@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xd6681042",
+      "txCount": 1263,
+      "manifestIds": [
+        "lido/withdrawal-queue/requestWithdrawals@1.0.0",
+        "lido/withdrawal-queue/requestWithdrawals@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "name": "wstETH",
+      "selector": "0xea598cb0",
+      "txCount": 1224,
+      "manifestIds": [
+        "lido/wsteth/wrap@1.0.0",
+        "lido/wsteth/wrap@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x7951b76f",
+      "txCount": 369,
+      "manifestIds": [
+        "lido/withdrawal-queue/requestWithdrawalsWstETHWithPermit@1.0.0",
+        "lido/withdrawal-queue/requestWithdrawalsWstETHWithPermit@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0xf8444436",
+      "txCount": 221,
+      "manifestIds": [
+        "lido/withdrawal-queue/claimWithdrawal@1.0.0",
+        "lido/withdrawal-queue/claimWithdrawal@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x19aa6257",
+      "txCount": 10,
+      "manifestIds": [
+        "lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0",
+        "lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "name": "wstETH",
+      "selector": "0x23b872dd",
+      "txCount": 3,
+      "manifestIds": [
+        "standard/erc20/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "selector": "0x5e7eead9",
+      "txCount": 3,
+      "manifestIds": [
+        "lido/withdrawal-queue/claimWithdrawalsTo@1.0.0",
+        "lido/withdrawal-queue/claimWithdrawalsTo@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x23b872dd",
+      "txCount": 0,
+      "manifestIds": [
+        "standard/erc20/transferFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x6d780459",
+      "txCount": 0,
+      "manifestIds": [
+        "lido/steth/transferSharesFrom@1.0.0",
+        "lido/steth/transferSharesFrom@1.0.0"
+      ]
+    },
+    {
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "name": "stETH (Lido, proxy)",
+      "selector": "0x8fcb4e5b",
+      "txCount": 0,
+      "manifestIds": [
+        "lido/steth/transferShares@1.0.0",
+        "lido/steth/transferShares@1.0.0"
+      ]
+    }
+  ],
+  "perAddress": [
+    {
+      "name": "wstETH",
+      "chainId": 1,
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "rawTxs": 10000,
+      "inputTxs": 9992,
+      "matchedInputTxs": 9991,
+      "excludedInputTxs": 1,
+      "unmatchedInputTxs": 0,
+      "topSelectors": [
+        {
+          "selector": "0x095ea7b3",
+          "count": 5590,
+          "manifestIds": [
+            "standard/erc20/approve@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 1709,
+          "manifestIds": [
+            "standard/erc20/transfer@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xde0e9a3e",
+          "count": 1465,
+          "manifestIds": [
+            "lido/wsteth/unwrap@1.0.0",
+            "lido/wsteth/unwrap@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xea598cb0",
+          "count": 1224,
+          "manifestIds": [
+            "lido/wsteth/wrap@1.0.0",
+            "lido/wsteth/wrap@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x23b872dd",
+          "count": 3,
+          "manifestIds": [
+            "standard/erc20/transferFrom@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xd505accf",
+          "count": 1,
+          "manifestIds": []
+        }
+      ],
+      "topUnmatchedSelectors": [],
+      "unmatchedDispositions": [],
+      "topExcludedSelectors": [
+        {
+          "selector": "0xd505accf",
+          "count": 1,
+          "name": "permit",
+          "reason": "EIP-2612 permit — standard ERC-2612 off-chain allowance, handled by the erc20 standard path.",
+          "coverageFile": "registryV2/surface/lido/wsteth.coverage.json"
+        }
+      ]
+    },
+    {
+      "name": "WithdrawalQueueERC721 (unstETH)",
+      "chainId": 1,
+      "address": "0x889edc2edab5f40e902b864ad4d7ade8e412f9b1",
+      "rawTxs": 10000,
+      "inputTxs": 10000,
+      "matchedInputTxs": 9968,
+      "excludedInputTxs": 29,
+      "unmatchedInputTxs": 3,
+      "topSelectors": [
+        {
+          "selector": "0xe3afe0a3",
+          "count": 4490,
+          "manifestIds": [
+            "lido/withdrawal-queue/claimWithdrawals@1.0.0",
+            "lido/withdrawal-queue/claimWithdrawals@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xacf41e4d",
+          "count": 3612,
+          "manifestIds": [
+            "lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0",
+            "lido/withdrawal-queue/requestWithdrawalsWithPermit@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xd6681042",
+          "count": 1263,
+          "manifestIds": [
+            "lido/withdrawal-queue/requestWithdrawals@1.0.0",
+            "lido/withdrawal-queue/requestWithdrawals@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x7951b76f",
+          "count": 369,
+          "manifestIds": [
+            "lido/withdrawal-queue/requestWithdrawalsWstETHWithPermit@1.0.0",
+            "lido/withdrawal-queue/requestWithdrawalsWstETHWithPermit@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xf8444436",
+          "count": 221,
+          "manifestIds": [
+            "lido/withdrawal-queue/claimWithdrawal@1.0.0",
+            "lido/withdrawal-queue/claimWithdrawal@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x42842e0e",
+          "count": 12,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x19aa6257",
+          "count": 10,
+          "manifestIds": [
+            "lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0",
+            "lido/withdrawal-queue/requestWithdrawalsWstETH@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x23b872dd",
+          "count": 8,
+          "manifestIds": []
+        },
+        {
+          "selector": "0xa22cb465",
+          "count": 8,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x5e7eead9",
+          "count": 3,
+          "manifestIds": [
+            "lido/withdrawal-queue/claimWithdrawalsTo@1.0.0",
+            "lido/withdrawal-queue/claimWithdrawalsTo@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 1,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x7d031b65",
+          "count": 1,
+          "manifestIds": []
+        }
+      ],
+      "topUnmatchedSelectors": [
+        {
+          "selector": "0x3ccfd60b",
+          "count": 1,
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "knownElsewhere": [
+            {
+              "chainId": 1,
+              "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+              "manifestId": "curve/vecrv/withdraw@1.0.0"
+            }
+          ]
+        },
+        {
+          "selector": "0x7d031b65",
+          "count": 1,
+          "disposition": "non_abi_or_text_calldata",
+          "knownElsewhere": []
+        },
+        {
+          "selector": "0xd669a5a4",
+          "count": 1,
+          "disposition": "non_abi_or_text_calldata",
+          "knownElsewhere": []
+        }
+      ],
+      "unmatchedDispositions": [
+        {
+          "disposition": "non_abi_or_text_calldata",
+          "count": 2
+        },
+        {
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "count": 1
+        }
+      ],
+      "topExcludedSelectors": [
+        {
+          "selector": "0x42842e0e",
+          "count": 12,
+          "name": "safeTransferFrom",
+          "reason": "standard ERC721 safeTransferFrom (NFT) — erc721 standard adapter.",
+          "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json"
+        },
+        {
+          "selector": "0x23b872dd",
+          "count": 8,
+          "name": "transferFrom",
+          "reason": "standard ERC721 transferFrom (NFT) — erc721 standard adapter.",
+          "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json"
+        },
+        {
+          "selector": "0xa22cb465",
+          "count": 8,
+          "name": "setApprovalForAll",
+          "reason": "standard ERC721 operator approval (NFT) — generic ERC721 covered by the erc721 standard adapter; not a Lido-specific permission primitive.",
+          "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json"
+        },
+        {
+          "selector": "0xb88d4fde",
+          "count": 1,
+          "name": "safeTransferFrom",
+          "reason": "standard ERC721 safeTransferFrom-with-data (NFT) — erc721 standard adapter.",
+          "coverageFile": "registryV2/surface/lido/withdrawal-queue.coverage.json"
+        }
+      ]
+    },
+    {
+      "name": "stETH (Lido, proxy)",
+      "chainId": 1,
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "rawTxs": 10000,
+      "inputTxs": 9991,
+      "matchedInputTxs": 9916,
+      "excludedInputTxs": 71,
+      "unmatchedInputTxs": 4,
+      "topSelectors": [
+        {
+          "selector": "0xa1903eab",
+          "count": 3517,
+          "manifestIds": [
+            "lido/steth/submit@1.0.0",
+            "lido/steth/submit@1.0.0"
+          ]
+        },
+        {
+          "selector": "0xa9059cbb",
+          "count": 3457,
+          "manifestIds": [
+            "standard/erc20/transfer@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x095ea7b3",
+          "count": 2942,
+          "manifestIds": [
+            "standard/erc20/approve@1.0.0"
+          ]
+        },
+        {
+          "selector": "0x39509351",
+          "count": 67,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x4555d5c9",
+          "count": 3,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x046f7da2",
+          "count": 1,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x06f187a4",
+          "count": 1,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x07da68f5",
+          "count": 1,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x38998624",
+          "count": 1,
+          "manifestIds": []
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 1,
+          "manifestIds": []
+        }
+      ],
+      "topUnmatchedSelectors": [
+        {
+          "selector": "0x4555d5c9",
+          "count": 3,
+          "disposition": "non_abi_or_text_calldata",
+          "knownElsewhere": []
+        },
+        {
+          "selector": "0x3ccfd60b",
+          "count": 1,
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "knownElsewhere": [
+            {
+              "chainId": 1,
+              "address": "0x5f3b5dfeb7b28cdbd7faba78963ee202a494e2a2",
+              "manifestId": "curve/vecrv/withdraw@1.0.0"
+            }
+          ]
+        }
+      ],
+      "unmatchedDispositions": [
+        {
+          "disposition": "non_abi_or_text_calldata",
+          "count": 3
+        },
+        {
+          "disposition": "selector_known_elsewhere_wrong_target",
+          "count": 1
+        }
+      ],
+      "topExcludedSelectors": [
+        {
+          "selector": "0x39509351",
+          "count": 67,
+          "name": "increaseAllowance",
+          "reason": "OZ ERC20 allowance helper — erc20 standard adapter.",
+          "coverageFile": "registryV2/surface/lido/steth.coverage.json"
+        },
+        {
+          "selector": "0x046f7da2",
+          "count": 1,
+          "name": "resume",
+          "reason": "governance — PauseRole resumes the contract.",
+          "coverageFile": "registryV2/surface/lido/steth.coverage.json"
+        },
+        {
+          "selector": "0x06f187a4",
+          "count": 1,
+          "name": "mintExternalShares",
+          "reason": "core/role — VaultHub mints external shares.",
+          "coverageFile": "registryV2/surface/lido/steth.coverage.json"
+        },
+        {
+          "selector": "0x07da68f5",
+          "count": 1,
+          "name": "stop",
+          "reason": "governance — PauseRole halts the contract.",
+          "coverageFile": "registryV2/surface/lido/steth.coverage.json"
+        },
+        {
+          "selector": "0x38998624",
+          "count": 1,
+          "name": "unsafeChangeDepositedValidators",
+          "reason": "governance — emergency role; not a wallet action.",
+          "coverageFile": "registryV2/surface/lido/steth.coverage.json"
+        }
+      ]
+    }
+  ]
+}

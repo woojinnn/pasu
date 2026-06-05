@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8964008879a594dd2b5783b52dd130d6422952c6",
+  "symbol": "cbETH",
+  "decimals": 9,
+  "name": "Coinbase Wrapped Staked ETH",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

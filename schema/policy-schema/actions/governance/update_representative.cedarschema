@@ -1,0 +1,19 @@
+// Governance::UpdateRepresentative — update a governance representative.
+
+namespace Governance {
+  type UpdateRepresentativeContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    representative: String,
+    representativeChainId: String,
+    custom?: UpdateRepresentativeCustomContext,
+  };
+
+  type UpdateRepresentativeCustomContext = {};
+
+  action "UpdateRepresentative" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: UpdateRepresentativeContext,
+  };
+}

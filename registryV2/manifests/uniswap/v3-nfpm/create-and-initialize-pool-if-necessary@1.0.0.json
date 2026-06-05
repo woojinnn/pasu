@@ -1,0 +1,82 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-nfpm/create-and-initialize-pool-if-necessary@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Pool creation/initialization has no current typed AMM ActionBody. Route it as Unknown so covered calls are explicit and policy remains conservative.",
+  "match": {
+    "selector": "0x13ead562",
+    "chain_to_addresses": {
+      "1": [
+        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+      ],
+      "10": [
+        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+      ],
+      "8453": [
+        "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"
+      ],
+      "42161": [
+        "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "createAndInitializePoolIfNecessary",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token0",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "token1",
+          "type": "address"
+        },
+        {
+          "internalType": "uint24",
+          "name": "fee",
+          "type": "uint24"
+        },
+        {
+          "internalType": "uint160",
+          "name": "sqrtPriceX96",
+          "type": "uint160"
+        }
+      ],
+      "name": "createAndInitializePoolIfNecessary",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "pool",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata",
+      "v3_pool_resolver"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xfd03723a9a3abe0562451496a9a394d2c4bad4ab",
+  "symbol": "DYAD",
+  "decimals": 18,
+  "name": "DYAD Stable",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

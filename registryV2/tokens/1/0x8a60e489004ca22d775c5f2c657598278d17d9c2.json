@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x8a60e489004ca22d775c5f2c657598278d17d9c2",
+  "symbol": "USDa",
+  "decimals": 18,
+  "name": "USDa",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

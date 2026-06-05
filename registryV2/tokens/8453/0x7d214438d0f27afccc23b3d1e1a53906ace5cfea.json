@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x7d214438d0f27afccc23b3d1e1a53906ace5cfea",
+  "symbol": "reUSD",
+  "decimals": 18,
+  "name": "Re Protocol reUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

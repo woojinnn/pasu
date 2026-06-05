@@ -1,0 +1,18 @@
+// Governance::Queue — queue an approved governance proposal.
+
+namespace Governance {
+  type QueueContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    proposalId: String,
+    custom?: QueueCustomContext,
+  };
+
+  type QueueCustomContext = {};
+
+  action "Queue" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: QueueContext,
+  };
+}

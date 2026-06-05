@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, U256};
-use simulation_state::token::TokenRef;
-use simulation_state::LiveField;
+use policy_state::primitives::{Address, U256};
+use policy_state::token::TokenRef;
+use policy_state::LiveField;
 
 use super::{AmmVenue, PoolState};
 
@@ -27,8 +27,12 @@ pub struct SwapAction {
 pub struct SwapParams {
     /// Token the user is selling.
     pub token_in: TokenRef,
-    /// Token the user is buying.
-    pub token_out: TokenRef,
+    /// Token the user is buying. `None` when the output token is not statically
+    /// known from calldata (e.g. 1inch unoswap — token_out is the pool's other
+    /// token, requiring an on-chain pool read).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub token_out: Option<TokenRef>,
     /// Exact-in / exact-out direction and limits.
     pub direction: SwapDirection,
     /// Recipient of the output tokens.

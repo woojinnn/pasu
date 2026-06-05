@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x99999999999999cc837c997b882957dafdcb1af9",
+  "symbol": "WUSDN",
+  "decimals": 18,
+  "name": "Wrapped Ultimate Synthetic Delta Neutral",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

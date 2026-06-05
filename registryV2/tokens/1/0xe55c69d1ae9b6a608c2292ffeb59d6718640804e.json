@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe55c69d1ae9b6a608c2292ffeb59d6718640804e",
+  "symbol": "IronBank",
+  "decimals": 18,
+  "name": "cyDAI/cyUSDT/cyUSDC Pool",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xe55c69d1ae9b6a608c2292ffeb59d6718640804e"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x76eb2fe28b36b3ee97f3adae0c69606eedb2a37c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x48759f220ed983db51fa7a8c0d2aab8f3ce4166a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x8e595470ed749b85c6f7669de83eae304c2ec68f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

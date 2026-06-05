@@ -1,0 +1,44 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-nativeTransfer@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 nativeTransfer plumbing leg (reached via Bundler3 multicall(Call[])). GA1 sends `amount` of native ETH to `receiver` from its own balance (bundle funding / leftover sweep). Modeled as token/erc20_transfer with the native token key so the native movement (amount + recipient) is legible. No `token` arg — the asset is the chain's native gas asset.",
+  "match": {
+    "selector": "0xf2522bcd",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "nativeTransfer",
+    "abi": {
+      "name": "nativeTransfer",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "address", "name": "receiver", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "native", "chain": "$chain" } },
+          "recipient": "$args.receiver",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

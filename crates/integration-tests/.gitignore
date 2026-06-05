@@ -1,0 +1,8 @@
+# Local secrets for the v3 decode harness (Etherscan API key, etc.).
+# The real .env is NEVER committed — only .env.sample (the placeholder template) is.
+.env
+!.env.sample
+
+# Scratch / ad-hoc harness run output — not tracked. Meaningful per-protocol
+# logs under logs/<protocol>/*.json ARE tracked (see logs/README.md).
+logs/scratch/

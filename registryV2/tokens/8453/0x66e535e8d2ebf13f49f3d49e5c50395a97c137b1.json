@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x66e535e8d2ebf13f49f3d49e5c50395a97c137b1",
+  "symbol": "MOLTEN",
+  "decimals": 18,
+  "name": "Molten",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

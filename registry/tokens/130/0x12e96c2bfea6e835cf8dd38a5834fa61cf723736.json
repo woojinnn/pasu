@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x12e96c2bfea6e835cf8dd38a5834fa61cf723736",
-  "symbol": "DOGE",
-  "decimals": 18,
-  "name": "Dogecoin"
-}

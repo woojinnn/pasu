@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xb8d89678e75a973e74698c976716308abb8a46a4",
+  "symbol": "savUSD",
+  "decimals": 18,
+  "name": "Staked avUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

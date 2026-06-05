@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x324ee0116e46c3ef1ae47a9e77c2bc27628661f8",
+  "symbol": "stcrvBONDV",
+  "decimals": 18,
+  "name": "scrvUSD-B/stcrvBOND",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x324ee0116e46c3ef1ae47a9e77c2bc27628661f8"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x20d9ef5524babc1e2bf4d1d1ab720033cf2f4a8e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x4c58bb48cbbd06c06773f703cc62dee42f2f1bc1"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

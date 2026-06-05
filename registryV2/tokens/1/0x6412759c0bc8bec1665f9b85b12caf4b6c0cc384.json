@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6412759c0bc8bec1665f9b85b12caf4b6c0cc384",
+  "symbol": "fUSDC-fDAI-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: f2Pool:fUSDC-fDAI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x5105a9e847965421a8c81ca33ea682948694a6f4"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x465a5a630482f3abd6d3b84b39b29b07214d19e5"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe2ba8693ce7474900a045757fe0efca900f6530b"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

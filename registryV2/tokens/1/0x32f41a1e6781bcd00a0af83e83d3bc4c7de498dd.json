@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x32f41a1e6781bcd00a0af83e83d3bc4c7de498dd",
+  "symbol": "litfxSAVE",
+  "decimals": 18,
+  "name": "litUSD/fxSAVE",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x32f41a1e6781bcd00a0af83e83d3bc4c7de498dd"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x3b5f2810fb2168ffa9c73160f97bf9f2461ffa5c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x7743e50f534a7f9f1791dde7dcd89f7783eefc39"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

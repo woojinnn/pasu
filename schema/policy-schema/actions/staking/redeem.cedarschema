@@ -1,0 +1,31 @@
+// Staking::Redeem — redeem a safety-module stake for its underlying (Aave
+// StakedTokenV3 `redeem(to, amount)`, post-cooldown). The underlying (AAVE /
+// GHO) is implied by `venue.module`; `recipient` is the withdrawal receiver
+// (omitted ⇒ submitter). `amount` = type(uint256).max redeems the full balance.
+//
+// Rust source: crates/policy-server/asset-model/action/src/staking/redeem.rs
+// (`RedeemAction`). No LiveInputs. `StakeVenue` is in core.cedarschema (Staking).
+
+namespace Staking {
+  type RedeemContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Staking venue (name = "aave_safety_module"; carries `module`).
+    venue: StakeVenue,
+    // Amount of staked-derivative shares redeemed (`amount`), U256 hex.
+    amount: String,
+    // Recipient of the withdrawn underlying (`to`). Absent ⇒ submitter.
+    recipient?: String,
+    // Manifest-extensible slot.
+    custom?: RedeemCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type RedeemCustomContext = {};
+
+  action "Redeem" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: RedeemContext,
+  };
+}

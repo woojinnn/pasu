@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x09ad9c6dcadcc3ab0b3e107e8e7da69c2eea8599",
+  "symbol": "muBOND",
+  "decimals": 18,
+  "name": "mu Bond",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

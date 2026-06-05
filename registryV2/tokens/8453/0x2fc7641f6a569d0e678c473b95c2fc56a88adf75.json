@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x2fc7641f6a569d0e678c473b95c2fc56a88adf75",
+  "symbol": "DgPUSDC",
+  "decimals": 6,
+  "name": "DegenPrimeUSDC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

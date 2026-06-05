@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x5875eee11cf8398102fdad704c9e96607675467a",
+  "symbol": "sUSDS",
+  "decimals": 18,
+  "name": "Savings USDS",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

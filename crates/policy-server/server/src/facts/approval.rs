@@ -8,7 +8,7 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::{ChainId, U256};
+use policy_state::primitives::{ChainId, U256};
 
 use super::params::{over_balance_4dp, param_addr, param_str, param_token_contract, param_u256};
 use super::FactCtx;
@@ -33,7 +33,7 @@ pub(super) fn dispatch(method: &str, params: &Value, ctx: &FactCtx) -> Result<Va
 ///
 /// Reads the recorded ERC20 allowance
 /// (`WalletState.approvals.erc20[(chain, contract)][spender]`) and the token's
-/// available balance ([`simulation_state::WalletState::available_balance`]).
+/// available balance ([`policy_state::WalletState::available_balance`]).
 /// Returns
 /// `{ isUnlimited: bool, amountOverBalance: "<decimal 4dp>" }`.
 ///
@@ -61,7 +61,7 @@ fn unlimited_over_balance(params: &Value, ctx: &FactCtx) -> Result<Value, FactEr
     // evaluation), which is what the policy is reasoning about.
     let available = ctx
         .state
-        .available_balance(&simulation_state::token::TokenKey::Erc20 {
+        .available_balance(&policy_state::token::TokenKey::Erc20 {
             chain,
             address: token_contract,
         })
@@ -149,7 +149,7 @@ fn resulting_allowance_state(params: &Value, ctx: &FactCtx) -> Result<Value, Fac
 
     let available = ctx
         .state
-        .available_balance(&simulation_state::token::TokenKey::Erc20 {
+        .available_balance(&policy_state::token::TokenKey::Erc20 {
             chain,
             address: token_contract,
         })
@@ -202,13 +202,13 @@ mod tests {
     use std::str::FromStr;
 
     use super::super::params::OVER_BALANCE_SENTINEL;
-    use simulation_state::approval::AllowanceSpec;
-    use simulation_state::live_field::DataSource;
-    use simulation_state::primitives::{Address, Time};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{BaseCategory, TokenKind};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::approval::AllowanceSpec;
+    use policy_state::live_field::DataSource;
+    use policy_state::primitives::{Address, Time};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{BaseCategory, TokenKind};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{WalletId, WalletState};
 
     const TOKEN: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
     const SPENDER: &str = "0x00000000000000000000000000000000deadbeef";

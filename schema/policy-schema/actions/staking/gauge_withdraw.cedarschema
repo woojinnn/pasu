@@ -1,0 +1,24 @@
+// Staking::GaugeWithdraw — unstake LP from a Curve liquidity gauge
+// (gauge `withdraw(uint256)` / `withdraw(uint256,bool)`).
+//
+// Rust source: `crates/simulation/reducer/src/action/staking/gauge_withdraw.rs`
+// (`GaugeWithdrawAction`). No LiveInputs. The withdrawn LP is identified by the
+// gauge venue (StakeVenue.gauge).
+
+namespace Staking {
+  type GaugeWithdrawContext = {
+    meta: Core::ActionMeta,
+    venue: StakeVenue,
+    // Amount of LP unstaked (`_value`), U256 hex.
+    amount: String,
+    custom?: GaugeWithdrawCustomContext,
+  };
+
+  type GaugeWithdrawCustomContext = {};
+
+  action "GaugeWithdraw" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: GaugeWithdrawContext,
+  };
+}

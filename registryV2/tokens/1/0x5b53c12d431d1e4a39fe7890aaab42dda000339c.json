@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5b53c12d431d1e4a39fe7890aaab42dda000339c",
+  "symbol": "Makina Test USD",
+  "decimals": 18,
+  "name": "MTUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,31 +1,24 @@
 //! Drift venue math — Drift runs on Solana; DLOB (decentralized limit
 //! orderbook) plus AMM fallback.
-//!
 //! Pure functions called from per-action reducers (`open.rs`, `close.rs`, ...)
 //! after dispatch on `PerpVenue::Drift`. Not a `Reducer` impl.
-//!
 //! ## On-chain settlement
-//!
 //! Drift V2 routes matches through both an off-chain DLOB and an on-chain
 //! vAMM; settlement always lands on-chain in the user's `PerpPosition`
 //! account. The reducer treats Drift as on-chain (immediate state update).
-//!
 //! ## Formulas
-//!
 //! Drift V2's `calculate_perp_liability_value` / `calculate_margin_requirement`
 //! produce a linearised health check identical in shape to Vertex /
 //! Hyperliquid; the simple-margin closed form applies.
-//!
 //! ## Primary sources
-//!
 //! - <https://github.com/drift-labs/protocol-v2> — `programs/drift/src/math`
 //!   for margin / liquidation reference (Anchor / Solana)
 //! - <https://docs.drift.trade/> — high-level margin documentation
 
 #![allow(dead_code)]
 
-use simulation_state::primitives::{Decimal, Price, SignedI256, U256};
-use simulation_state::{EvalContext, WalletState};
+use policy_state::primitives::{Decimal, Price, SignedI256, U256};
+use policy_state::{EvalContext, WalletState};
 
 use crate::action::perp::{OpenPerpAction, OpenPerpLiveInputs};
 use crate::error::ReducerResult;

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x190cc61a86e1ea80f4647e1669f899a600a8e602",
+  "symbol": "EZ",
+  "decimals": 18,
+  "name": "Eazy",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

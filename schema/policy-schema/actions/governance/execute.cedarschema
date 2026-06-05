@@ -1,0 +1,18 @@
+// Governance::Execute — execute a queued governance proposal.
+
+namespace Governance {
+  type ExecuteContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    proposalId: String,
+    custom?: ExecuteCustomContext,
+  };
+
+  type ExecuteCustomContext = {};
+
+  action "Execute" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: ExecuteContext,
+  };
+}

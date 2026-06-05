@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xeb61e567cbaeaccb6c259def92900bc59d8a14cc",
+  "symbol": "uCRVUSD",
+  "decimals": 18,
+  "name": "UwU interest bearing CRVUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

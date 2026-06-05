@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1cfa5641c01406ab8ac350ded7d735ec41298372",
+  "symbol": "CJPY",
+  "decimals": 18,
+  "name": "Convertible JPY Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

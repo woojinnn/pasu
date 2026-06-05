@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xfb9ee4cef6c343acdcae6fbe0e04765641f2765e",
+  "symbol": "STD",
+  "decimals": 18,
+  "name": "STD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

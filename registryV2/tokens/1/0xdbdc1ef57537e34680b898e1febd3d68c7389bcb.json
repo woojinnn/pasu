@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xdbdc1ef57537e34680b898e1febd3d68c7389bcb",
+  "symbol": "siUSD",
+  "decimals": 18,
+  "name": "Staked infiniFi USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x75289388d50364c3013583d97bd70ced0e183e32",
+  "symbol": "sdMAV",
+  "decimals": 18,
+  "name": "Stake DAO MAV",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

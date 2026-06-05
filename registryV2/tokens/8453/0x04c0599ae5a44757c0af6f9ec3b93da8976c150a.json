@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x04c0599ae5a44757c0af6f9ec3b93da8976c150a",
+  "symbol": "weETH",
+  "decimals": 18,
+  "name": "Wrapped eETH",
+  "source": "https://docs.ether.fi/etherfi-dao/protocol-design/weeth",
+  "token_kind": {
+    "kind": "wrapped",
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x35fa164735182de50811e8e2e824cfb9b6118ac2" }
+    },
+    "peg_kind": "hard_peg"
+  }
+}

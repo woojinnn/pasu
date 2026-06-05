@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x69420f9e38a4e60a62224c489be4bf7a94402496",
+  "symbol": "MONEY",
+  "decimals": 18,
+  "name": "Defi.Money Stablecoin",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

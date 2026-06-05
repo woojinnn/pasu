@@ -1,0 +1,65 @@
+{
+  "type": "adapter_action",
+  "id": "hyperliquid/rest/usd-send@1.0.0",
+  "publisher": "hyperliquid",
+  "schema_version": "3",
+  "_note_mapping": "HyperLiquid Mode B (UserSigned) `HyperliquidTransaction:UsdSend` — an OFF-CHAIN L1 action authorized by an eth_signTypedData_v4 signature (domain.name=HyperliquidSignTransaction, version=1, verifyingContract=0x0, chainId=signatureChainId). Decoded to the `hyperliquid_core::hl_usd_send` ActionBody (the HL-native thin off-chain action domain, reused from the /exchange Flow-3 path) so a single policy fires for BOTH the typed-sig pre-sign moment and the /exchange POST. Amounts are decimal strings (fractional-safe Decimal) and addresses are L1 identifier strings — both map losslessly. SUPERSEDES the prior `domain:unknown` mapping (the off-chain-exchange ActionBody variant the old note deferred now exists).",
+  "match": {
+    "selector": "0x00000001",
+    "chain_to_addresses": {
+      "42161": ["0x0000000000000000000000000000000000000000"],
+      "421614": ["0x0000000000000000000000000000000000000000"]
+    },
+    "typed_data": {
+      "domain_name": "HyperliquidSignTransaction",
+      "verifying_contract": "0x0000000000000000000000000000000000000000",
+      "primary_type": "HyperliquidTransaction:UsdSend",
+      "types": {
+        "HyperliquidTransaction:UsdSend": [
+          { "name": "hyperliquidChain", "type": "string" },
+          { "name": "destination", "type": "string" },
+          { "name": "amount", "type": "string" },
+          { "name": "time", "type": "uint64" }
+        ]
+      }
+    }
+  },
+  "abi_fragment": {
+    "function_name": "usdSend",
+    "abi": {
+      "name": "usdSend",
+      "type": "function",
+      "inputs": [
+        {
+          "name": "usdSend",
+          "type": "tuple",
+          "components": [
+            { "name": "hyperliquidChain", "type": "string" },
+            { "name": "destination", "type": "string" },
+            { "name": "amount", "type": "string" },
+            { "name": "time", "type": "uint64" }
+          ]
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "hyperliquid_core",
+      "hyperliquid_core": {
+        "action": "hl_usd_send",
+        "hl_usd_send": {
+          "destination": "$args.usdSend.destination",
+          "amount": "$args.usdSend.amount"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

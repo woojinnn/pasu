@@ -1,0 +1,67 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xca84572ccbb6b36a6f7666ced11eed3d67df828d",
+  "symbol": "CRAZYBTC",
+  "decimals": 18,
+  "name": "CRAZYBTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xca84572ccbb6b36a6f7666ced11eed3d67df828d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x657e8c867d8b37dcc18fa4caead9c45eb088c642"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x091d80c13e9ea84e5863161150f1d95cac12b01b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x55154aedfec29e1bbe2644f308b19cd9243e022d"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x660d8f561527cbf7376b413c8f93b8ce2a15314c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x290ce7de303957a169b55c1b93b3a0c97749f5ce"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

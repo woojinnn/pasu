@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x085780639cc2cacd35e474e71f4d000e2405d8f6",
+  "symbol": "fxUSD",
+  "decimals": 18,
+  "name": "f(x) USD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

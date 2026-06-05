@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb25d8209f238b37876f28e0e6aa07d646a451404",
+  "symbol": "ETH9",
+  "decimals": 9,
+  "name": "Ethereum 9",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

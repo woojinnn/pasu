@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x20173a75d8ae180d64704ee162e5f97a2cf7da77",
+  "symbol": "WorthlessToken",
+  "decimals": 18,
+  "name": "WorthlessToken",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

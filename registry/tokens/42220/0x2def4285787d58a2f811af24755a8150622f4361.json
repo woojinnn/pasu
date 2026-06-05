@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0x2def4285787d58a2f811af24755a8150622f4361",
-  "symbol": "cETH",
-  "decimals": 18,
-  "name": "Wrapped Ethereum"
-}

@@ -95,7 +95,7 @@ fn receiver_self(params: &Value, _ctx: &FactCtx) -> Result<Value, FactError> {
 mod tests {
     use super::*;
 
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::{WalletId, WalletState};
 
     const OWNER: &str = "0x000000000000000000000000000000000000a01c";
     const OTHER: &str = "0x0000000000000000000000000000000000000bad";
@@ -103,7 +103,7 @@ mod tests {
     fn empty_state() -> WalletState {
         WalletState::new(WalletId::new(
             OWNER.parse().unwrap(),
-            [simulation_state::primitives::ChainId::ethereum_mainnet()],
+            [policy_state::primitives::ChainId::ethereum_mainnet()],
         ))
     }
 

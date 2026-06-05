@@ -1,0 +1,51 @@
+{
+  "type": "adapter_action",
+  "id": "aave/safety-module/stake-with-permit@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave safety-module stakeWithPermit(uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) — stake with a bundled EIP-2612 permit; shares mint to msg.sender. Maps to staking::Stake (recipient omitted ⇒ submitter). Covers stkAAVE + stkGHO; selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xecd9ba82",
+    "chain_to_addresses": {
+      "1": [
+        "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+        "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "stakeWithPermit",
+    "abi": {
+      "name": "stakeWithPermit",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "amount", "type": "uint256" },
+        { "name": "deadline", "type": "uint256" },
+        { "name": "v", "type": "uint8" },
+        { "name": "r", "type": "bytes32" },
+        { "name": "s", "type": "bytes32" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "stake",
+        "stake": {
+          "venue": { "name": "aave_safety_module", "chain": "$chain", "module": "$to" },
+          "amount": "$args.amount"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

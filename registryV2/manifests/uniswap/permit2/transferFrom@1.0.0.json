@@ -1,0 +1,57 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/permit2/transferFrom@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "_note": "Permit2 AllowanceTransfer.transferFrom(from,to,amount,token). The underlying ActionBody Erc20Transfer shape carries token, recipient, and amount but not the delegated owner `from`; this manifest therefore models the user-visible fund movement while preserving delegated-owner handling as a future TokenAction extension if policy needs owner-specific rules.",
+  "match": {
+    "selector": "0x36c78516",
+    "chain_to_addresses": {
+      "1":     ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "10":    ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "8453":  ["0x000000000022d473030f116ddee9f6b43ac78ba3"],
+      "42161": ["0x000000000022d473030f116ddee9f6b43ac78ba3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "transferFrom",
+    "abi": {
+      "name": "transferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "from", "type": "address" },
+        { "name": "to", "type": "address" },
+        { "name": "amount", "type": "uint160" },
+        { "name": "token", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.token"
+            }
+          },
+          "recipient": "$args.to",
+          "amount": "$args.amount"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

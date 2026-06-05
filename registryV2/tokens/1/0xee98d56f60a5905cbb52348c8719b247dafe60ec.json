@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xee98d56f60a5905cbb52348c8719b247dafe60ec",
+  "symbol": "WOMIOMI-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: WOMI/OMI",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xee98d56f60a5905cbb52348c8719b247dafe60ec"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x04969cd041c0cafb6ac462bd65b536a5bdb3a670"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xed35af169af46a02ee13b9d79eb57d6d68c1749e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

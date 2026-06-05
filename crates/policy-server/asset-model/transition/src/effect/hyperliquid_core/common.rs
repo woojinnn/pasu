@@ -4,10 +4,10 @@ use std::str::FromStr;
 
 use rust_decimal::Decimal as RustDecimal;
 
-use simulation_state::live_field::DataSource;
-use simulation_state::position::{HlAccount, Position, PositionKind};
-use simulation_state::primitives::{Decimal, ProtocolRef, Time};
-use simulation_state::wallet::WalletState;
+use policy_state::live_field::DataSource;
+use policy_state::position::{HlAccount, Position, PositionKind};
+use policy_state::primitives::{Decimal, ProtocolRef, Time};
+use policy_state::wallet::WalletState;
 
 use crate::error::{ReducerError, ReducerResult};
 

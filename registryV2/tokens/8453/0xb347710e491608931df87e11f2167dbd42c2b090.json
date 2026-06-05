@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xb347710e491608931df87e11f2167dbd42c2b090",
+  "symbol": "COIN11",
+  "decimals": 18,
+  "name": "Coin #1.1",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

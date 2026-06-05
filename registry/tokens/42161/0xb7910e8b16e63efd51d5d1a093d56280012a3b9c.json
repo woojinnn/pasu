@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0xb7910e8b16e63efd51d5d1a093d56280012a3b9c",
-  "symbol": "AGLD",
-  "decimals": 18,
-  "name": "Adventure Gold"
-}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5ca135cb8527d76e932f34b5145575f9d8cbe08e",
+  "symbol": "FPI",
+  "decimals": 18,
+  "name": "Frax Price Index",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

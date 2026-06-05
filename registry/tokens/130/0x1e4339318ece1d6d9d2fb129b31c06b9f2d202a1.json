@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x1e4339318ece1d6d9d2fb129b31c06b9f2d202a1",
-  "symbol": "TURBO",
-  "decimals": 18,
-  "name": "Turbo"
-}

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42220,
-  "address": "0x8a567e2ae79ca692bd748ab832081c45de4041ea",
-  "symbol": "COPm",
-  "decimals": 18,
-  "name": "Mento Colombian Peso"
-}

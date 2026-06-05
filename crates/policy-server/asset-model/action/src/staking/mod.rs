@@ -1,0 +1,225 @@
+//! `StakingAction` — vote-escrow + cooldown-gated staking: Curve veCRV
+//! vote-locking, CRV reward minting, gauge-weight voting, gauge LP staking, and
+//! Aave safety-module stake/cooldown/redeem/claim.
+//!
+//! **Distinct from `liquid_staking`** (Lido stETH/wstETH, native-ETH submit +
+//! withdrawal queue): this domain models staking whose withdrawal is *gated* —
+//! veCRV locks CRV for a fixed term (vote-escrow), and the Aave safety module
+//! gates redemption behind a user-initiated `cooldown()` (and is slashable).
+//! The `Minter` mints accrued CRV and `GaugeController` allocates vote weight.
+//! New domain (extension-guide axis 1).
+//!
+//! Mirrors the `liquid_staking` layout: a venue enum (`StakeVenue`) + per-action
+//! structs + `action_tag()` / `venue_name()`. Actions carry **no** `LiveField`
+//! inputs — the `ActionBody` is a faithful static decode of the on-chain intent;
+//! APR/boost/lock-state enrichment is deferred to a later pass.
+
+use serde::{Deserialize, Serialize};
+use tsify_next::Tsify;
+
+use policy_state::primitives::{Address, ChainId};
+
+pub mod claim_rewards;
+pub mod cooldown;
+pub mod gauge_deposit;
+pub mod gauge_withdraw;
+pub mod increase_lock_amount;
+pub mod increase_lock_time;
+pub mod lock;
+pub mod redeem;
+pub mod stake;
+pub mod unlock;
+pub mod vote_for_gauge;
+
+pub use self::claim_rewards::*;
+pub use self::cooldown::*;
+pub use self::gauge_deposit::*;
+pub use self::gauge_withdraw::*;
+pub use self::increase_lock_amount::*;
+pub use self::increase_lock_time::*;
+pub use self::lock::*;
+pub use self::redeem::*;
+pub use self::stake::*;
+pub use self::unlock::*;
+pub use self::vote_for_gauge::*;
+
+/// User-level staking / vote-escrow actions across supported venues.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum StakingAction {
+    /// Lock a governance token for vote-escrow (Curve veCRV `create_lock`).
+    Lock(LockAction),
+    /// Add tokens to an existing lock (veCRV `increase_amount` / `deposit_for`).
+    IncreaseLockAmount(IncreaseLockAmountAction),
+    /// Extend the unlock time of an existing lock (veCRV `increase_unlock_time`).
+    IncreaseLockTime(IncreaseLockTimeAction),
+    /// Withdraw an expired vote-escrow lock (veCRV `withdraw`).
+    Unlock(UnlockAction),
+    /// Mint/claim accrued reward tokens (Curve `Minter.mint` / `mint_for` / `mint_many`).
+    ClaimRewards(ClaimRewardsAction),
+    /// Allocate vote-escrow weight to a gauge (`GaugeController.vote_for_gauge_weights`).
+    VoteForGauge(VoteForGaugeAction),
+    /// Stake LP into a Curve liquidity gauge (gauge `deposit`).
+    GaugeDeposit(GaugeDepositAction),
+    /// Unstake LP from a Curve liquidity gauge (gauge `withdraw`).
+    GaugeWithdraw(GaugeWithdrawAction),
+    /// Stake into an Aave safety module (`stake` / `stakeWithPermit`).
+    Stake(StakeAction),
+    /// Start the safety-module unstake cooldown window (`cooldown`).
+    Cooldown(CooldownAction),
+    /// Redeem a safety-module stake for its underlying (`redeem`).
+    Redeem(RedeemAction),
+}
+
+impl StakingAction {
+    /// The action's `serde` `action` tag (e.g. `"lock"`, `"claim_rewards"`).
+    ///
+    /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
+    /// discriminant exactly; verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn action_tag(&self) -> &'static str {
+        match self {
+            Self::Lock(_) => "lock",
+            Self::IncreaseLockAmount(_) => "increase_lock_amount",
+            Self::IncreaseLockTime(_) => "increase_lock_time",
+            Self::Unlock(_) => "unlock",
+            Self::ClaimRewards(_) => "claim_rewards",
+            Self::VoteForGauge(_) => "vote_for_gauge",
+            Self::GaugeDeposit(_) => "gauge_deposit",
+            Self::GaugeWithdraw(_) => "gauge_withdraw",
+            Self::Stake(_) => "stake",
+            Self::Cooldown(_) => "cooldown",
+            Self::Redeem(_) => "redeem",
+        }
+    }
+
+    /// The venue `name` of the wrapped action. Every staking action carries a venue.
+    #[must_use]
+    pub const fn venue_name(&self) -> Option<&'static str> {
+        match self {
+            Self::Lock(a) => Some(a.venue.name()),
+            Self::IncreaseLockAmount(a) => Some(a.venue.name()),
+            Self::IncreaseLockTime(a) => Some(a.venue.name()),
+            Self::Unlock(a) => Some(a.venue.name()),
+            Self::ClaimRewards(a) => Some(a.venue.name()),
+            Self::VoteForGauge(a) => Some(a.venue.name()),
+            Self::GaugeDeposit(a) => Some(a.venue.name()),
+            Self::GaugeWithdraw(a) => Some(a.venue.name()),
+            Self::Stake(a) => Some(a.venue.name()),
+            Self::Cooldown(a) => Some(a.venue.name()),
+            Self::Redeem(a) => Some(a.venue.name()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Venue
+// ---------------------------------------------------------------------------
+
+/// Staking / vote-escrow venue identifier. Each variant is one Curve DAO
+/// contract; the single contract address is carried per-variant.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(tag = "name", rename_all = "snake_case")]
+pub enum StakeVenue {
+    /// Curve `VotingEscrow` (veCRV) — locks CRV for vote-escrow.
+    CurveVotingEscrow {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `VotingEscrow` contract address.
+        #[tsify(type = "string")]
+        escrow: Address,
+    },
+    /// Curve CRV `Minter` — mints accrued CRV emissions.
+    CurveMinter {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `Minter` contract address.
+        #[tsify(type = "string")]
+        minter: Address,
+    },
+    /// Curve `GaugeController` — allocates gauge vote weight.
+    CurveGaugeController {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `GaugeController` contract address.
+        #[tsify(type = "string")]
+        controller: Address,
+    },
+    /// Curve liquidity gauge (per-pool LP staking). Reserved for the gauge slice.
+    CurveGauge {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// Liquidity gauge contract address.
+        #[tsify(type = "string")]
+        gauge: Address,
+    },
+    /// Curve `FeeDistributor` — distributes protocol fees (3CRV / crvUSD) to
+    /// veCRV lockers; a user `claim()`s their accrued share.
+    CurveFeeDistributor {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `FeeDistributor` contract address.
+        #[tsify(type = "string")]
+        distributor: Address,
+    },
+    /// Aave safety module (`StakedAaveV3` / `StakedGho`) — cooldown-gated,
+    /// slashable staking that mints a transferable staked derivative.
+    AaveSafetyModule {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// Safety-module (staked-token) contract address.
+        #[tsify(type = "string")]
+        module: Address,
+    },
+    /// Aave Umbrella per-asset stake token (`stkwaUSDC`, `stkwaWETH`, `stkGHO`,
+    /// …) — the ERC4626-style umbrella safety vault a user stakes/cooldowns/
+    /// redeems against directly.
+    AaveUmbrellaStakeToken {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// Umbrella stake-token (vault) contract address.
+        #[tsify(type = "string")]
+        stake_token: Address,
+    },
+    /// Aave Umbrella `RewardsController` — the contract a user `claimRewards`
+    /// against for umbrella stake-token incentives.
+    AaveUmbrellaRewardsController {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// `RewardsController` contract address.
+        #[tsify(type = "string")]
+        controller: Address,
+    },
+    /// Aave Savings GHO (sGHO) — an ERC4626 savings vault a user deposits GHO
+    /// into / redeems from.
+    AaveSavingsGho {
+        /// Chain hosting the deployment.
+        chain: ChainId,
+        /// sGHO ERC4626 vault contract address.
+        #[tsify(type = "string")]
+        vault: Address,
+    },
+}
+
+impl StakeVenue {
+    /// The venue's `serde` `name` tag (e.g. `"curve_voting_escrow"`).
+    ///
+    /// Matches the `#[serde(tag = "name", rename_all = "snake_case")]`
+    /// discriminant exactly and is verified against `serde_json` output in tests.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::CurveVotingEscrow { .. } => "curve_voting_escrow",
+            Self::CurveMinter { .. } => "curve_minter",
+            Self::CurveGaugeController { .. } => "curve_gauge_controller",
+            Self::CurveGauge { .. } => "curve_gauge",
+            Self::CurveFeeDistributor { .. } => "curve_fee_distributor",
+            Self::AaveSafetyModule { .. } => "aave_safety_module",
+            Self::AaveUmbrellaStakeToken { .. } => "aave_umbrella_stake_token",
+            Self::AaveUmbrellaRewardsController { .. } => "aave_umbrella_rewards_controller",
+            Self::AaveSavingsGho { .. } => "aave_savings_gho",
+        }
+    }
+}

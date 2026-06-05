@@ -1,0 +1,118 @@
+{
+  "contract": "Curve-crvUSD-Controller",
+  "chainId": 1,
+  "addresses": [
+    "0x100daa78fc509db39ef7d04de0c1abd299f4c6ce",
+    "0xec0820efafc41d8943ee8de495fc9ba8495b15cf",
+    "0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67"
+  ],
+  "snapshot": "crvusd-controller.abi.json",
+  "note": "crvUSD Controller mainnet markets (wstETH/sfrxETH/WBTC). 1 impl ABI -> 3 controllers (factory multi-address). 10 cover (create_loan / add_collateral x2 / remove_collateral x2 / borrow_more / repay x4) + 11 exclude (2 callback, 3 liquidate keeper, 6 admin).",
+  "functions": {
+    "0x23cfed03": {
+      "name": "create_loan(uint256,uint256,uint256)",
+      "decision": "cover",
+      "reason": "user create_loan on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0xbc61ea23": {
+      "name": "create_loan_extended(uint256,uint256,uint256,address,uint256[])",
+      "decision": "exclude",
+      "reason": "callback variant (callbacker + callback_args) — integrator flash-leverage; deferred. Base create_loan/repay are covered."
+    },
+    "0x6f972f12": {
+      "name": "add_collateral(uint256)",
+      "decision": "cover",
+      "reason": "user add_collateral on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0x24049e57": {
+      "name": "add_collateral(uint256,address)",
+      "decision": "cover",
+      "reason": "user add_collateral on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0xd14ff5b6": {
+      "name": "remove_collateral(uint256)",
+      "decision": "cover",
+      "reason": "user remove_collateral on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0x2e4af52a": {
+      "name": "remove_collateral(uint256,bool)",
+      "decision": "cover",
+      "reason": "user remove_collateral on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0xdd171e7c": {
+      "name": "borrow_more(uint256,uint256)",
+      "decision": "cover",
+      "reason": "user borrow_more on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0x371fd8e6": {
+      "name": "repay(uint256)",
+      "decision": "cover",
+      "reason": "user repay on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0xacb70815": {
+      "name": "repay(uint256,address)",
+      "decision": "cover",
+      "reason": "user repay on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0xb4440df4": {
+      "name": "repay(uint256,address,int256)",
+      "decision": "cover",
+      "reason": "user repay on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0x37671f93": {
+      "name": "repay(uint256,address,int256,bool)",
+      "decision": "cover",
+      "reason": "user repay on crvUSD Controller (lending) — Borrow/Supply/Withdraw/Repay, venue=crv_usd{controller,collateral}. create_loan/borrow_more modeled as Borrow (debt=crvUSD); the collateral token is named by the venue (the collateral DEPOSIT amount is a secondary effect, documented limitation)."
+    },
+    "0x152f65cb": {
+      "name": "repay_extended(address,uint256[])",
+      "decision": "exclude",
+      "reason": "callback variant (callbacker + callback_args) — integrator flash-leverage; deferred. Base create_loan/repay are covered."
+    },
+    "0xbcbaf487": {
+      "name": "liquidate(address,uint256)",
+      "decision": "exclude",
+      "reason": "liquidation — keeper / 3rd-party action, not the borrower's wallet."
+    },
+    "0x3ecdb828": {
+      "name": "liquidate(address,uint256,bool)",
+      "decision": "exclude",
+      "reason": "liquidation — keeper / 3rd-party action, not the borrower's wallet."
+    },
+    "0x036aed88": {
+      "name": "liquidate_extended(address,uint256,uint256,bool,address,uint256[])",
+      "decision": "exclude",
+      "reason": "liquidation — keeper / 3rd-party action, not the borrower's wallet."
+    },
+    "0x4189617d": {
+      "name": "set_amm_fee(uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback parameter management)."
+    },
+    "0xa5b4804a": {
+      "name": "set_amm_admin_fee(uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback parameter management)."
+    },
+    "0x81d2f1b7": {
+      "name": "set_monetary_policy(address)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback parameter management)."
+    },
+    "0x2a0c3586": {
+      "name": "set_borrowing_discounts(uint256,uint256)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback parameter management)."
+    },
+    "0xcc1891c7": {
+      "name": "set_callback(address)",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback parameter management)."
+    },
+    "0x1e0cfcef": {
+      "name": "collect_fees()",
+      "decision": "exclude",
+      "reason": "admin (owner-only fee / monetary-policy / callback parameter management)."
+    }
+  }
+}

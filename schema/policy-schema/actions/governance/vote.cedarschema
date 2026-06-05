@@ -1,0 +1,20 @@
+// Governance::Vote — vote on a governance proposal.
+
+namespace Governance {
+  type VoteContext = {
+    meta: Core::ActionMeta,
+    venue: GovernanceVenue,
+    proposalId: String,
+    support: Bool,
+    reason?: String,
+    custom?: VoteCustomContext,
+  };
+
+  type VoteCustomContext = {};
+
+  action "Vote" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: VoteContext,
+  };
+}

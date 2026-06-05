@@ -1,0 +1,10 @@
+{
+  "erc_kind": "native",
+  "chainId": 10,
+  "address": "0x0000000000000000000000000000000000000000",
+  "symbol": "ETH",
+  "decimals": 18,
+  "name": "Ether",
+  "source": "https://docs.optimism.io/",
+  "token_kind": { "kind": "native_gas" }
+}

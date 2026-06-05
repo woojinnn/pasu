@@ -1,9 +1,9 @@
 //! Balance manipulation primitives: `debit`, `credit`, `transfer`.
 
-use simulation_state::delta::TokenChange;
-use simulation_state::primitives::{Address, SignedI256, U256};
-use simulation_state::token::{Balance, TokenKey};
-use simulation_state::{StateDelta, WalletState};
+use policy_state::delta::TokenChange;
+use policy_state::primitives::{Address, SignedI256, U256};
+use policy_state::token::{Balance, TokenKey};
+use policy_state::{StateDelta, WalletState};
 
 use crate::error::{ReducerError, ReducerResult};
 
@@ -17,7 +17,6 @@ fn u256_to_signed_saturating(v: U256) -> SignedI256 {
 /// Effective signed balance for `key` = on-chain `state.tokens[key].balance`
 /// (interpreted as positive) plus the algebraic sum of every prior
 /// `TokenChange::BalanceDelta` entry already accumulated in `delta`.
-///
 /// Returns `Err(TokenNotFound)` when the holding is absent, and
 /// `Err(Invariant)` when the holding is non-fungible (e.g. `ERC721 Owned`).
 fn effective_signed_balance(
@@ -49,6 +48,11 @@ fn effective_signed_balance(
 /// Decrease the effective fungible balance of `key` by `amount` and emit a
 /// matching `TokenChange::BalanceDelta` into `delta`. Errors on underflow,
 /// missing holding, or non-fungible balance form.
+///
+/// # Errors
+///
+/// Returns [`ReducerError`] if the token is missing, non-fungible, or the debit
+/// would underflow the effective balance.
 pub fn debit(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -75,6 +79,11 @@ pub fn debit(
 /// First-time receipt of a previously unseen token is **not** handled here —
 /// callers must emit `TokenChange::Mint` (see PDF §8) before crediting.
 /// Returns `TokenNotFound` when `key` has no holding in `state`.
+///
+/// # Errors
+///
+/// Returns [`ReducerError`] if the token is missing or has a non-fungible
+/// balance form.
 pub fn credit(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -103,6 +112,10 @@ pub fn credit(
 /// Decreases the effective balance of `key` by `amount` (via `debit`) and
 /// records the recipient in `delta` for audit. The recipient wallet itself
 /// is not tracked here — the simulator only models one wallet's state.
+///
+/// # Errors
+///
+/// Returns [`ReducerError`] from [`debit`] if the token cannot be debited.
 pub fn transfer(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -120,17 +133,20 @@ pub fn transfer(
 }
 
 /// Outgoing NFT-style transfer from this wallet to `recipient`.
-///
 /// Routes by `TokenKey` standard:
 /// * `Erc1155` — fungible per-id semantics; `amount` must be `Some(_)` and is
 ///   subtracted from the balance via [`debit`].
 /// * `Erc721`  — non-fungible; `amount` is ignored. The wallet's `Owned`
 ///   holding is dropped via a synthetic `BalanceDelta { delta: -1 }`. The
 ///   `apply_delta` step recognises a signed `-1` on an `Owned` ERC721 key as
-///   an ownership transfer (Phase 2 follow-up; today `apply_balance_delta`
 ///   on a non-fungible holding errors, so reducer-side this helper emits the
 ///   change for audit and downstream extension is tracked separately).
 /// * `Native` / `Erc20` — invariant violation (use [`transfer`] for those).
+///
+/// # Errors
+///
+/// Returns [`ReducerError`] for missing amounts, unsupported standards, missing
+/// holdings, or balance underflow.
 pub fn transfer_nft(
     state: &WalletState,
     delta: &mut StateDelta,
@@ -170,10 +186,10 @@ pub fn transfer_nft(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simulation_state::live_field::{DataSource, LiveField, OracleProvider};
-    use simulation_state::primitives::{ChainId, Decimal, Duration, Time};
-    use simulation_state::token::{BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKind};
-    use simulation_state::wallet::WalletId;
+    use policy_state::live_field::{DataSource, LiveField, OracleProvider};
+    use policy_state::primitives::{ChainId, Decimal, Duration, Time};
+    use policy_state::token::{BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKind};
+    use policy_state::wallet::WalletId;
     use std::str::FromStr;
 
     fn mainnet_usdc_key() -> TokenKey {

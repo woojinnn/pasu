@@ -1,10 +1,7 @@
 //! axum application wiring — router, shared state, and HTTP adapters.
-//!
-//! Phase 5 split: public routes (`/auth/*`, `/health`, `/docs`,
 //! `/openapi.yaml`) sit outside the auth layer; everything else sits behind
 //! `require_auth` middleware so a missing / invalid JWT is rejected before
 //! the handler runs.
-//!
 //! State is shared as a single `AppState` carrying the per-user DB router
 //! (`MultiUserStore`) plus the cross-user identity DB (`GlobalDb`).
 
@@ -18,23 +15,25 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use std::sync::Arc;
+use std::time::Duration;
 
-use simulation_db::{GlobalDb, MultiUserStore};
-use simulation_sync::{CoinGeckoClient, EtherscanClient, Orchestrator};
+use policy_db::{GlobalDb, MultiUserStore};
+use policy_sync::{CoinGeckoClient, EtherscanClient, Orchestrator};
 
 use crate::auth::{require_auth, AuthUser};
 use crate::config::ServerConfig;
+use crate::coordination::DynCoordinator;
 use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
 use crate::handler::{evaluate, HandlerError};
+use crate::market_handlers;
 use crate::read_handlers;
 use crate::write_handlers;
 
 /// Shared, cheaply-cloneable application state handed to every handler.
-///
-/// `multi_user` resolves one PostgreSQL-backed wallet store per authenticated
-/// user. `global_db` is the cross-user identity DB (email ↔ user_id).
+/// `multi_user` resolves one `PostgreSQL`-backed wallet store per authenticated
+/// user. `global_db` is the cross-user identity DB (email ↔ `user_id`).
 #[derive(Clone)]
 pub struct AppState {
     pub multi_user: MultiUserStore,
@@ -51,11 +50,15 @@ pub struct AppState {
     /// isn't set. `POST /wallets` uses it (when present) to discover
     /// every ERC-20 a wallet holds; absent it falls back to native-only.
     pub etherscan: Option<EtherscanClient>,
-    /// CoinGecko metadata client — always present (free tier works
+    /// `CoinGecko` metadata client — always present (free tier works
     /// keyless). `POST /wallets` calls it after discovery to backfill
     /// logo / website / description on newly-seen tokens. Lookups are
-    /// best-effort; CoinGecko outages don't block wallet adds.
+    /// best-effort; `CoinGecko` outages don't block wallet adds.
     pub coingecko: CoinGeckoClient,
+    /// Cross-replica lock/idempotency boundary.
+    pub coordinator: DynCoordinator,
+    /// TTL used for user-scoped sync locks.
+    pub sync_lock_ttl: Duration,
 }
 
 impl std::fmt::Debug for AppState {
@@ -72,6 +75,8 @@ impl std::fmt::Debug for AppState {
                 &self.etherscan.as_ref().map(|_| "<EtherscanClient>"),
             )
             .field("coingecko", &"<CoinGeckoClient>")
+            .field("coordinator", &"<Coordinator>")
+            .field("sync_lock_ttl", &self.sync_lock_ttl)
             .finish()
     }
 }
@@ -106,7 +111,7 @@ impl FromRef<AppState> for Arc<Orchestrator> {
 /// Public (no auth):
 /// - `GET  /health`                         — liveness probe.
 /// - `GET  /docs`                           — Swagger UI page.
-/// - `GET  /openapi.yaml`                   — OpenAPI 3.0 spec.
+/// - `GET  /openapi.yaml`                   — `OpenAPI` 3.0 spec.
 /// - `GET  /auth/google`                    — redirect to Google consent.
 /// - `GET  /auth/google/callback`           — finish OAuth → JWT.
 ///
@@ -133,11 +138,12 @@ impl FromRef<AppState> for Arc<Orchestrator> {
 /// CORS is allowlist-based in cloud mode. Local defaults still allow the
 /// dashboard development origins configured in [`ServerConfig`].
 pub fn build_router(state: AppState) -> Router {
-    build_router_with_config(state, ServerConfig::from_env())
+    let config = ServerConfig::from_env();
+    build_router_with_config(state, &config)
 }
 
 /// Builds the service router with explicit runtime configuration.
-pub fn build_router_with_config(state: AppState, config: ServerConfig) -> Router {
+pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Router {
     let protected = Router::new()
         .route("/auth/me", get(auth_me_handler))
         .route("/evaluate", post(evaluate_handler))
@@ -166,9 +172,39 @@ pub fn build_router_with_config(state: AppState, config: ServerConfig) -> Router
         )
         .route("/transactions", get(read_handlers::list_transactions))
         .route("/tokens", get(read_handlers::list_tokens))
-        // ---- Phase 3: dashboard summary ----
         .route("/dashboard/summary", get(dashboard_handlers::get_summary))
         .route("/events/stream", get(crate::events::sse_stream))
+        // ---- Marketplace ---------------------------------------------------
+        .route(
+            "/market/listings",
+            get(market_handlers::list_listings).post(market_handlers::create_listing),
+        )
+        .route("/market/listings/:slug", get(market_handlers::get_listing))
+        .route(
+            "/market/listings/id/:id/versions",
+            post(market_handlers::create_version),
+        )
+        .route(
+            "/market/listings/id/:id/versions/:ver",
+            get(market_handlers::get_version),
+        )
+        .route(
+            "/market/listings/id/:id/install",
+            post(market_handlers::create_install),
+        )
+        .route(
+            "/market/listings/id/:id/reviews",
+            get(market_handlers::list_reviews).post(market_handlers::create_review),
+        )
+        .route(
+            "/market/listings/id/:id/watch",
+            post(market_handlers::watch).delete(market_handlers::unwatch),
+        )
+        .route(
+            "/market/reviews/:id/helpful",
+            post(market_handlers::vote_helpful),
+        )
+        .route("/market/watches", get(market_handlers::list_watches))
         // Selector decode + revoke calldata builder + Cedar sequence sim
         // all moved to the dashboard (apps/web/src/tools/* + cedar/).
         // The server holds only wallet state and sync lifecycle data.
@@ -176,6 +212,7 @@ pub fn build_router_with_config(state: AppState, config: ServerConfig) -> Router
 
     let public = Router::new()
         .route("/health", get(health_handler))
+        .route("/readyz", get(crate::readiness::readyz_handler))
         .route("/docs", get(crate::docs::docs_html))
         .route("/openapi.yaml", get(crate::docs::openapi_yaml))
         .route("/auth/google", get(crate::auth::start_google_login))
@@ -185,7 +222,7 @@ pub fn build_router_with_config(state: AppState, config: ServerConfig) -> Router
     public
         .merge(protected)
         .layer(TraceLayer::new_for_http())
-        .layer(cors_layer(&config))
+        .layer(cors_layer(config))
         .with_state(state)
 }
 
@@ -224,8 +261,6 @@ async fn auth_me_handler(Extension(user): Extension<AuthUser>) -> Response {
     .into_response()
 }
 
-/// `POST /evaluate` — JSON in, JSON out. Requires auth (Phase 5).
-///
 /// Maps [`HandlerError::Reducer`] to `422 Unprocessable Entity` (the action is
 /// invalid for the state) and [`HandlerError::Store`] to `500 Internal Server
 /// Error` (persistence failed).

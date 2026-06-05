@@ -2,7 +2,7 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::{IntentOrderKind, SignIntentOrderAction};
+use policy_transition::action::amm::{IntentOrderKind, SignIntentOrderAction};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -77,12 +77,12 @@ const fn intent_order_kind(kind: &IntentOrderKind) -> &'static str {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::primitives::{Address, ChainId, Decimal, Time, U256};
+    use policy_state::LiveField;
+    use policy_transition::action::amm::{
         AmmAction, IntentOrderKind, IntentVenue, SignIntentOrderAction, SignIntentOrderLiveInputs,
     };
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::primitives::{Address, ChainId, Decimal, Time, U256};
-    use simulation_state::LiveField;
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use super::super::test_support::{now, onchain_source, sample_token_ref, submitter, user};
 
@@ -182,6 +182,18 @@ mod tests {
     fn sign_intent_venue_bebop_conforms() {
         let venue = IntentVenue::Bebop {
             chain: ChainId::arbitrum(),
+        };
+        let (body, meta) = sample_sign_intent_with(venue, IntentOrderKind::Limit);
+        super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);
+    }
+
+    /// `one_inch_limit_order` venue → `{ chain, verifyingContract }` (1inch LOP v4).
+    #[test]
+    fn sign_intent_venue_one_inch_limit_order_conforms() {
+        let venue = IntentVenue::OneInchLimitOrder {
+            chain: ChainId::ethereum_mainnet(),
+            verifying_contract: Address::from_str("0x111111125421ca6dc452d289314280a0f8842a65")
+                .unwrap(),
         };
         let (body, meta) = sample_sign_intent_with(venue, IntentOrderKind::Limit);
         super::super::test_support::assert_conforms("sign_intent_order", &body, &meta);

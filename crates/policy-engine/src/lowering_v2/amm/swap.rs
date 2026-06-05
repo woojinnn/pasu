@@ -7,8 +7,8 @@
 
 use serde_json::{Map, Value};
 
-use simulation_reducer::action::amm::{SwapAction, SwapDirection};
-use simulation_state::primitives::U256;
+use policy_state::primitives::U256;
+use policy_transition::action::amm::{SwapAction, SwapDirection};
 
 use super::super::common::cedar::{addr, u256_hex};
 use super::super::common::token::lower_token_ref;
@@ -39,7 +39,9 @@ pub(crate) fn lower(swap: &SwapAction, ctx: &LowerCtx<'_>) -> Result<LoweredActi
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_amm_venue(&swap.venue));
     m.insert("tokenIn".into(), lower_token_ref(&swap.params.token_in));
-    m.insert("tokenOut".into(), lower_token_ref(&swap.params.token_out));
+    if let Some(token_out) = &swap.params.token_out {
+        m.insert("tokenOut".into(), lower_token_ref(token_out));
+    }
     m.insert(
         "direction".into(),
         lower_swap_direction(&swap.params.direction),
@@ -114,15 +116,15 @@ fn lower_swap_direction(direction: &SwapDirection) -> Value {
 mod tests {
     use std::str::FromStr;
 
-    use simulation_reducer::action::amm::{
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::amm::{
         AmmAction, AmmVenue, BalancerPoolType, PoolState, RouteHop, RoutePath, SwapAction,
         SwapDirection, SwapLiveInputs, SwapParams, SwapRoute,
     };
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Duration, Time, U128, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 
@@ -195,7 +197,7 @@ mod tests {
             venue: v3,
             params: SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),
@@ -269,6 +271,7 @@ mod tests {
             chain: chain.clone(),
             router,
             route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000".into(),
+            executor: None,
         };
 
         let hop_venue = AmmVenue::UniswapV3 {
@@ -309,7 +312,7 @@ mod tests {
             venue,
             params: SwapParams {
                 token_in: usdc,
-                token_out: eth,
+                token_out: Some(eth),
                 direction: SwapDirection::ExactOutput {
                     max_amount_in: U256::from(1_100_000_000u64),
                     amount_out: U256::from(300_000_000_000_000_000u64),
@@ -510,7 +513,7 @@ mod tests {
             venue,
             params: SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),
@@ -678,6 +681,7 @@ mod tests {
             chain: eth(),
             router: sample_addr(),
             route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000".into(),
+            executor: Some(sample_addr()),
         });
     }
 
@@ -776,5 +780,34 @@ mod tests {
         assert!(dir.get("amountOut").is_some());
         assert!(dir.get("amountIn").is_none());
         assert!(dir.get("minAmountOut").is_none());
+    }
+
+    /// `token_out: None` (1inch unoswap — output token is the pool's other
+    /// token, requiring an on-chain read) must lower with NO `tokenOut` key in
+    /// the Cedar context (the schema field is optional `tokenOut?`).
+    #[test]
+    fn swap_token_out_none_omits_tokenout_key() {
+        let (mut body, meta) = sample_swap_with_venue(AmmVenue::UniswapV3 {
+            chain: ChainId::ethereum_mainnet(),
+            pool: sample_addr(),
+            fee_tier_bp: 500,
+        });
+        if let ActionBody::Amm(AmmAction::Swap(s)) = &mut body {
+            s.params.token_out = None;
+        }
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+
+        // The lowered context Map must NOT carry a `tokenOut` key.
+        assert!(
+            lowered.context.get("tokenOut").is_none(),
+            "tokenOut must be omitted when token_out is None"
+        );
+
+        // And the omission must still conform to the (optional) schema field.
+        let schema_text = swap_schema_text();
+        let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
+        let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
+        cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
+            .expect("swap with omitted tokenOut must conform to Amm::SwapContext");
     }
 }

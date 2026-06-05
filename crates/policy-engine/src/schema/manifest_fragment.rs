@@ -316,6 +316,15 @@ fn base_field_names(action: &str) -> &'static [&'static str] {
             "onBehalf",
             "validity",
         ],
+        "buy_collateral" => &[
+            "market",
+            "collateralAsset",
+            "baseAsset",
+            "minCollateralAmount",
+            "baseAmount",
+            "recipient",
+            "validity",
+        ],
         "flash_loan" => &[
             "pool",
             "assets",

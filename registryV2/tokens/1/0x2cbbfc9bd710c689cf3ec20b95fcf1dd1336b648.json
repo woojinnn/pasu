@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2cbbfc9bd710c689cf3ec20b95fcf1dd1336b648",
+  "symbol": "sUSGreUSDe",
+  "decimals": 18,
+  "name": "sUSG/reUSDe",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x2cbbfc9bd710c689cf3ec20b95fcf1dd1336b648"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xf17d6f98a5c6eaa99d149079984119e0a4ef6900"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xddc0f880ff6e4e22e4b74632fbb43ce4df6ccc5a"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

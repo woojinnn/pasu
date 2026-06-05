@@ -1,0 +1,130 @@
+{
+  "type": "adapter_action",
+  "id": "aave/periphery/periphery-v3-swap-collateral-mainnet/swapAndDeposit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave periphery adapter high-risk operation. Nested callback/Paraswap effects are audit-visible via calldata and not state-simulated.",
+  "match": {
+    "selector": "0xd3454a35",
+    "chain_to_addresses": {
+      "1": [
+        "0xadc0a53095a0af87f3aa29fe0715b5c28016364e"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapAndDeposit",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "contract IERC20Detailed",
+          "name": "assetToSwapFrom",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IERC20Detailed",
+          "name": "assetToSwapTo",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amountToSwap",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minAmountToReceive",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "swapAllBalanceOffset",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "swapCalldata",
+          "type": "bytes"
+        },
+        {
+          "internalType": "contract IParaSwapAugustus",
+          "name": "augustus",
+          "type": "address"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct BaseParaSwapAdapter.PermitSignature",
+          "name": "permitParams",
+          "type": "tuple"
+        }
+      ],
+      "name": "swapAndDeposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "periphery_operation",
+        "periphery_operation": {
+          "venue": {
+            "name": "aave_v3_periphery",
+            "chain": "$chain",
+            "adapter": "$to"
+          },
+          "adapter": "$to",
+          "kind": "swap_collateral",
+          "asset_in": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.assetToSwapFrom"
+            }
+          },
+          "asset_out": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.assetToSwapTo"
+            }
+          },
+          "amount": "$args.amountToSwap",
+          "limit_amount": "$args.minAmountToReceive",
+          "user": null,
+          "recipient": null,
+          "calldata": "$calldata"
+        }
+      }
+    }
+  }
+}

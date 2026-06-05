@@ -1,0 +1,149 @@
+{
+  "type": "adapter_action",
+  "id": "curve/cryptoswap/source/factory-crypto-base/exchange@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x5b41b908",
+    "chain_to_addresses_source": "curve:factory_crypto_base",
+    "chain_ids": [
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "exchange",
+    "abi": {
+      "name": "exchange",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "i",
+          "type": "uint256"
+        },
+        {
+          "name": "j",
+          "type": "uint256"
+        },
+        {
+          "name": "dx",
+          "type": "uint256"
+        },
+        {
+          "name": "min_dy",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "curve_v2",
+            "chain": "$chain",
+            "pool": "$to"
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.i",
+                  "$cases": {
+                    "0": "$source.coins.0",
+                    "1": "$source.coins.1"
+                  }
+                }
+              }
+            },
+            "token_out": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": {
+                  "$match": "$args.j",
+                  "$cases": {
+                    "0": "$source.coins.0",
+                    "1": "$source.coins.1"
+                  }
+                }
+              }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$args.dx",
+              "min_amount_out": "$args.min_dy"
+            },
+            "recipient": "$tx.from",
+            "slippage_bp": 0
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_v2_balances"
+              },
+              "ttl_s": 12
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_expected_out"
+              },
+              "ttl_s": 12
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "oracle_feed",
+                "provider": "pyth",
+                "feed_id": "gas/ethereum"
+              },
+              "ttl_s": 6
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "curve:factory_crypto_base",
+    "note": "build-index substitutes $source.* and appends a per-pool id suffix"
+  }
+}

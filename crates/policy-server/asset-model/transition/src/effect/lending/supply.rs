@@ -1,14 +1,11 @@
 //! `SupplyAction` reducer — supply (`deposit`) an asset into a lending market.
-//!
 //! Flow (PDF §6.1):
-//!
 //! 1. Validate `live_inputs.reserve_state` — reject when frozen, paused, or
 //!    the supply cap would be exceeded.
 //! 2. Validate `eligible_as_collat` — if `false`, the supplied asset cannot
 //!    back a borrow but is still legal to supply (the `LiveField` just gates
 //!    whether the wallet's `LendingAccount.collaterals` is incremented).
 //! 3. Dispatch on `self.venue` to the venue-specific math (`aave_v3`,
-//!    `compound_v2`, …) to validate the reserve invariant. The Phase 2
 //!    approximation treats receipt amounts as 1:1 with the underlying;
 //!    receipt-token credits are emitted via the `LendingAccount.collaterals`
 //!    update rather than as a separate ERC20 mint.
@@ -17,9 +14,9 @@
 //!    position id is the deterministic `super::position_id_for_venue` so
 //!    repeated supplies merge into the same account.
 
-use simulation_state::position::{LendingAccount, Position, PositionKind};
-use simulation_state::primitives::{Decimal, MarketRef, ProtocolRef, VenueRef};
-use simulation_state::{EvalContext, StateDelta, WalletState};
+use policy_state::position::{LendingAccount, Position, PositionKind};
+use policy_state::primitives::{Decimal, MarketRef, ProtocolRef, VenueRef};
+use policy_state::{EvalContext, StateDelta, WalletState};
 
 use crate::action::lending::{LendingVenue, SupplyAction};
 use crate::apply::Reducer;
@@ -58,7 +55,6 @@ impl Reducer for SupplyAction {
         }
 
         // Step 3 — venue math validation (reserve invariant). The returned
-        // receipt amount is informational under the Phase 2 1:1 approximation;
         // it is recorded as the collateral delta below.
         let receipt_amount = match &self.venue {
             LendingVenue::AaveV3 { .. } => {
@@ -79,7 +75,16 @@ impl Reducer for SupplyAction {
             LendingVenue::MorphoOptimizer { .. } => {
                 morpho_optimizer::asset_to_optimizer_shares(reserve, self.amount)?
             }
-            LendingVenue::Fluid { .. } => fluid::asset_to_fluid_shares(reserve, self.amount)?,
+            // MetaMorpho is an OpenZeppelin ERC-4626 vault — reuse the Fluid
+            // virtual-share stand-in until vault-specific (totalAssets,totalSupply)
+            // state is wired through the sync orchestrator.
+            LendingVenue::Fluid { .. } | LendingVenue::MetaMorpho { .. } => {
+                fluid::asset_to_fluid_shares(reserve, self.amount)?
+            }
+            // crvUSD / LlamaLend collateral is held 1:1 by the Controller (no
+            // share/rebasing model) — the deposited collateral amount IS the
+            // recorded delta.
+            LendingVenue::CrvUsd { .. } | LendingVenue::LlamaLend { .. } => self.amount,
             LendingVenue::MorphoBlue { .. } => {
                 // Morpho Blue shares need (total_assets, total_shares) which
                 // `ReserveState` does not yet expose — defer until the sync
@@ -87,6 +92,14 @@ impl Reducer for SupplyAction {
                 return Err(ReducerError::UnsupportedProtocol {
                     action: "supply".into(),
                     protocol: "morpho_blue".into(),
+                });
+            }
+            // A periphery adapter is never a direct supply venue (periphery ops
+            // route through `PeripheryOperation`, not `Supply`).
+            LendingVenue::AaveV3Periphery { .. } => {
+                return Err(ReducerError::UnsupportedProtocol {
+                    action: "supply".into(),
+                    protocol: "aave_v3_periphery".into(),
                 });
             }
         };
@@ -159,16 +172,16 @@ fn new_lending_account(action: &SupplyAction, ctx: &EvalContext) -> Position {
         chain: Some(super::venue_chain(&action.venue)),
         kind: PositionKind::LendingAccount(acct),
         primitives_synced_at: ctx.now,
-        primitives_source: simulation_state::live_field::DataSource::UserSupplied,
+        primitives_source: policy_state::live_field::DataSource::UserSupplied,
     }
 }
 
 /// Construct a derived `LiveField<Decimal>` for HF / LTV / LT slots, tagged
 /// with the reducer-derived source so the sync orchestrator knows it was
 /// computed (not fetched).
-fn derived_live_field(value: Decimal, ctx: &EvalContext) -> simulation_state::LiveField<Decimal> {
-    use simulation_state::live_field::DataSource;
-    simulation_state::LiveField::new(
+fn derived_live_field(value: Decimal, ctx: &EvalContext) -> policy_state::LiveField<Decimal> {
+    use policy_state::live_field::DataSource;
+    policy_state::LiveField::new(
         value,
         DataSource::DerivedFrom {
             inputs: vec![],
@@ -182,15 +195,15 @@ fn derived_live_field(value: Decimal, ctx: &EvalContext) -> simulation_state::Li
 mod tests {
     use super::*;
     use crate::action::lending::{ReserveState, SupplyLiveInputs, UserLendingState};
-    use simulation_state::delta::TokenChange;
-    use simulation_state::eval_context::RequestKind;
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::primitives::{Address, ChainId, Price, Time, U256};
-    use simulation_state::token::{
+    use policy_state::delta::TokenChange;
+    use policy_state::eval_context::RequestKind;
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::primitives::{Address, ChainId, Price, Time, U256};
+    use policy_state::token::{
         Balance, BaseCategory, FiatCurrency, PegTarget, TokenHolding, TokenKey, TokenKind, TokenRef,
     };
-    use simulation_state::wallet::WalletId;
-    use simulation_state::PositionChange;
+    use policy_state::wallet::WalletId;
+    use policy_state::PositionChange;
     use std::str::FromStr;
 
     fn now() -> Time {

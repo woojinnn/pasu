@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x8408d45b61f5823298f19a09b53b7339c0280489",
-  "symbol": "ALLO",
-  "decimals": 18,
-  "name": "Allora"
-}

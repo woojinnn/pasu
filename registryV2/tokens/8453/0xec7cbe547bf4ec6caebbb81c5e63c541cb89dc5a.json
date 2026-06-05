@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xec7cbe547bf4ec6caebbb81c5e63c541cb89dc5a",
+  "symbol": "NUSD",
+  "decimals": 18,
+  "name": "NUSD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

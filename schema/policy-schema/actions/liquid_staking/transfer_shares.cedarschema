@@ -1,0 +1,33 @@
+// LiquidStaking::TransferShares — transfer the rebasing staking token denominated
+// in protocol shares. Models stETH `transferShares` / `transferSharesFrom`.
+// `shares` is the internal share unit (NOT stETH balance), so this is distinct
+// from a plain erc20_transfer.
+//
+// Rust source: `crates/simulation/reducer/src/action/liquid_staking/transfer_shares.rs`
+// (`TransferSharesAction` + `TransferSharesLiveInputs`). `LiveField<T>` is inlined
+// as the underlying `T` at the policy layer (source/ttl/synced_at not exposed).
+
+namespace LiquidStaking {
+  type TransferSharesContext = {
+    meta: Core::ActionMeta,
+    venue: StakingVenue,
+    // Recipient of the shares.
+    recipient: String,
+    // Amount in protocol shares (not stETH balance units), U256 hex.
+    shares: String,
+    // stETH the transferred shares correspond to (getPooledEthByShares), U256 hex.
+    // Host-populated live field — what the recipient actually receives.
+    pooledEth: String,
+    // Source holder for the `…From` variant; omitted ⇒ the submitter.
+    from?: String,
+    custom?: TransferSharesCustomContext,
+  };
+
+  type TransferSharesCustomContext = {};
+
+  action "TransferShares" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: TransferSharesContext,
+  };
+}

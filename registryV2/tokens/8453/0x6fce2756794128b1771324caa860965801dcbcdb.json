@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x6fce2756794128b1771324caa860965801dcbcdb",
+  "symbol": "stataBasUSDbC",
+  "decimals": 6,
+  "name": "Static Aave Base USDbC",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

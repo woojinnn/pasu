@@ -41,16 +41,50 @@ const AMM_CANCEL_INTENT_ORDER_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/cancel_intent_order.cedarschema");
 const AMM_COLLECT_FEES_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/collect_fees.cedarschema");
+const AMM_GSM_SWAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/amm/gsm_swap.cedarschema");
+const AMM_PRE_SIGN_INTENT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/amm/pre_sign_intent_order.cedarschema");
 const AMM_REMOVE_LIQUIDITY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/remove_liquidity.cedarschema");
+const AMM_SETTLE_INTENT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/amm/settle_intent_order.cedarschema");
 const AMM_SIGN_INTENT_ORDER_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/sign_intent_order.cedarschema");
 const AMM_SWAP_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/swap.cedarschema");
 
+// governance (alphabetical)
+const GOVERNANCE_ACTIVATE_VOTING_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/activate_voting.cedarschema");
+const GOVERNANCE_CANCEL_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/cancel.cedarschema");
+const GOVERNANCE_CLOSE_VOTE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/close_vote.cedarschema");
+const GOVERNANCE_DELEGATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/delegate.cedarschema");
+const GOVERNANCE_EXECUTE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/execute.cedarschema");
+const GOVERNANCE_PROPOSE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/propose.cedarschema");
+const GOVERNANCE_QUEUE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/queue.cedarschema");
+const GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/governance/redeem_cancellation_fee.cedarschema"
+);
+const GOVERNANCE_START_VOTE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/start_vote.cedarschema");
+const GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/governance/update_representative.cedarschema"
+);
+const GOVERNANCE_VOTE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/governance/vote.cedarschema");
+
 // lending (alphabetical)
 const LENDING_BORROW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/borrow.cedarschema");
+const LENDING_BUY_COLLATERAL_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/buy_collateral.cedarschema");
 const LENDING_DELEGATE_BORROW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/delegate_borrow.cedarschema");
 const LENDING_DISABLE_COLLATERAL_SCHEMA: &str =
@@ -59,6 +93,9 @@ const LENDING_ENABLE_COLLATERAL_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/enable_collateral.cedarschema");
 const LENDING_LIQUIDATE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/liquidate.cedarschema");
+const LENDING_PERIPHERY_OPERATION_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/lending/periphery_operation.cedarschema"
+);
 const LENDING_REPAY_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/repay.cedarschema");
 const LENDING_SET_EMODE_SCHEMA: &str =
@@ -69,6 +106,75 @@ const LENDING_SWAP_RATE_MODE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/swap_rate_mode.cedarschema");
 const LENDING_WITHDRAW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/lending/withdraw.cedarschema");
+const LENDING_SET_AUTHORIZATION_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/lending/set_authorization.cedarschema");
+
+// liquid_staking (alphabetical)
+const LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/liquid_staking/claim_withdrawal.cedarschema"
+);
+const LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/liquid_staking/request_withdrawal.cedarschema"
+);
+const LIQUID_STAKING_STAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/liquid_staking/stake.cedarschema");
+const LIQUID_STAKING_TRANSFER_SHARES_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/liquid_staking/transfer_shares.cedarschema"
+);
+const LIQUID_STAKING_UNWRAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/liquid_staking/unwrap.cedarschema");
+const LIQUID_STAKING_WRAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/liquid_staking/wrap.cedarschema");
+
+// yield (alphabetical)
+const YIELD_ADD_MARKET_LIQUIDITY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/add_market_liquidity.cedarschema");
+const YIELD_CANCEL_LIMIT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/cancel_limit_order.cedarschema");
+const YIELD_CLAIM_YIELD_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/claim_yield.cedarschema");
+const YIELD_MINT_PY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/mint_py.cedarschema");
+const YIELD_MINT_SY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/mint_sy.cedarschema");
+const YIELD_PT_SWAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/pt_swap.cedarschema");
+const YIELD_REDEEM_PY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/redeem_py.cedarschema");
+const YIELD_REDEEM_SY_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/redeem_sy.cedarschema");
+const YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/yield/remove_market_liquidity.cedarschema"
+);
+const YIELD_SIGN_LIMIT_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/sign_limit_order.cedarschema");
+const YIELD_YT_SWAP_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/yield/yt_swap.cedarschema");
+
+// staking (alphabetical)
+const STAKING_CLAIM_REWARDS_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/claim_rewards.cedarschema");
+const STAKING_COOLDOWN_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/cooldown.cedarschema");
+const STAKING_GAUGE_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/gauge_deposit.cedarschema");
+const STAKING_GAUGE_WITHDRAW_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/gauge_withdraw.cedarschema");
+const STAKING_INCREASE_LOCK_AMOUNT_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/staking/increase_lock_amount.cedarschema"
+);
+const STAKING_INCREASE_LOCK_TIME_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/increase_lock_time.cedarschema");
+const STAKING_LOCK_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/lock.cedarschema");
+const STAKING_REDEEM_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/redeem.cedarschema");
+const STAKING_STAKE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/stake.cedarschema");
+const STAKING_UNLOCK_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/unlock.cedarschema");
+const STAKING_VOTE_FOR_GAUGE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/staking/vote_for_gauge.cedarschema");
 
 // launchpad (alphabetical)
 const LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA: &str =
@@ -106,6 +212,29 @@ const PERP_PLACE_LIMIT_ORDER_SCHEMA: &str =
 const PERP_PLACE_STOP_ORDER_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/perp/place_stop_order.cedarschema");
 
+// permission (alphabetical)
+const PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/permission/protocol_authorization.cedarschema"
+);
+
+// restaking (alphabetical)
+const RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/restaking/complete_withdrawal.cedarschema"
+);
+const RESTAKING_DELEGATE_TO_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/delegate_to.cedarschema");
+const RESTAKING_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/deposit.cedarschema");
+const RESTAKING_QUEUE_WITHDRAWAL_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/queue_withdrawal.cedarschema");
+const RESTAKING_REDELEGATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/redelegate.cedarschema");
+const RESTAKING_REGISTER_OPERATOR_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/restaking/register_operator.cedarschema"
+);
+const RESTAKING_UNDELEGATE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/restaking/undelegate.cedarschema");
+
 // token (alphabetical)
 const TOKEN_ERC20_APPROVE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/erc20_approve.cedarschema");
@@ -125,8 +254,18 @@ const TOKEN_PERMIT2_APPROVE_SCHEMA: &str =
 const TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/token/permit2_sign_allowance.cedarschema"
 );
+const TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/token/permit2_sign_transfer.cedarschema"
+);
+const TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/token/permit2_transfer_from.cedarschema"
+);
 const TOKEN_REVOKE_APPROVAL_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/revoke_approval.cedarschema");
+const TOKEN_UNWRAP_NATIVE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/token/unwrap_native.cedarschema");
+const TOKEN_WRAP_NATIVE_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/token/wrap_native.cedarschema");
 
 // hyperliquid_core (alphabetical) — the thin off-chain L1 action model.
 const HL_ORDER_SCHEMA: &str =
@@ -141,6 +280,42 @@ const HL_USD_SEND_SCHEMA: &str =
 const HL_APPROVE_AGENT_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/approve_agent.cedarschema"
 );
+const HL_UNKNOWN_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/unknown.cedarschema");
+const HL_SPOT_SEND_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/spot_send.cedarschema");
+const HL_USD_CLASS_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/usd_class_transfer.cedarschema"
+);
+const HL_SEND_ASSET_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/send_asset.cedarschema"
+);
+const HL_SEND_TO_EVM_WITH_DATA_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/send_to_evm_with_data.cedarschema"
+);
+const HL_C_DEPOSIT_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/c_deposit.cedarschema");
+const HL_C_WITHDRAW_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/c_withdraw.cedarschema"
+);
+const HL_VAULT_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/vault_transfer.cedarschema"
+);
+const HL_SUB_ACCOUNT_TRANSFER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/sub_account_transfer.cedarschema"
+);
+const HL_APPROVE_BUILDER_FEE_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/approve_builder_fee.cedarschema"
+);
+const HL_TOKEN_DELEGATE_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/token_delegate.cedarschema"
+);
+const HL_TWAP_ORDER_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/twap_order.cedarschema"
+);
+const HL_UPDATE_ISOLATED_MARGIN_SCHEMA: &str = include_str!(
+    "../../../../schema/policy-schema/actions/hyperliquid_core/update_isolated_margin.cedarschema"
+);
 
 /// Ordered list of all shipped cedarschema files. The merge in
 /// [`base_schema_text`] preserves this order so the resulting per-namespace
@@ -154,19 +329,52 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA,
     AMM_COLLECT_FEES_SCHEMA,
+    AMM_GSM_SWAP_SCHEMA,
+    AMM_PRE_SIGN_INTENT_ORDER_SCHEMA,
     AMM_REMOVE_LIQUIDITY_SCHEMA,
+    AMM_SETTLE_INTENT_ORDER_SCHEMA,
     AMM_SIGN_INTENT_ORDER_SCHEMA,
     AMM_SWAP_SCHEMA,
+    GOVERNANCE_ACTIVATE_VOTING_SCHEMA,
+    GOVERNANCE_CANCEL_SCHEMA,
+    GOVERNANCE_CLOSE_VOTE_SCHEMA,
+    GOVERNANCE_DELEGATE_SCHEMA,
+    GOVERNANCE_EXECUTE_SCHEMA,
+    GOVERNANCE_PROPOSE_SCHEMA,
+    GOVERNANCE_QUEUE_SCHEMA,
+    GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
+    GOVERNANCE_START_VOTE_SCHEMA,
+    GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA,
+    GOVERNANCE_VOTE_SCHEMA,
     LENDING_BORROW_SCHEMA,
     LENDING_DELEGATE_BORROW_SCHEMA,
     LENDING_DISABLE_COLLATERAL_SCHEMA,
     LENDING_ENABLE_COLLATERAL_SCHEMA,
     LENDING_LIQUIDATE_SCHEMA,
+    LENDING_PERIPHERY_OPERATION_SCHEMA,
     LENDING_REPAY_SCHEMA,
     LENDING_SET_EMODE_SCHEMA,
     LENDING_SUPPLY_SCHEMA,
     LENDING_SWAP_RATE_MODE_SCHEMA,
     LENDING_WITHDRAW_SCHEMA,
+    LENDING_SET_AUTHORIZATION_SCHEMA,
+    LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_STAKE_SCHEMA,
+    LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
+    LIQUID_STAKING_UNWRAP_SCHEMA,
+    LIQUID_STAKING_WRAP_SCHEMA,
+    YIELD_ADD_MARKET_LIQUIDITY_SCHEMA,
+    YIELD_CANCEL_LIMIT_ORDER_SCHEMA,
+    YIELD_CLAIM_YIELD_SCHEMA,
+    YIELD_MINT_PY_SCHEMA,
+    YIELD_MINT_SY_SCHEMA,
+    YIELD_PT_SWAP_SCHEMA,
+    YIELD_REDEEM_PY_SCHEMA,
+    YIELD_REDEEM_SY_SCHEMA,
+    YIELD_REMOVE_MARKET_LIQUIDITY_SCHEMA,
+    YIELD_SIGN_LIMIT_ORDER_SCHEMA,
+    YIELD_YT_SWAP_SCHEMA,
     LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA,
     LAUNCHPAD_COMMIT_SCHEMA,
@@ -183,6 +391,25 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     PERP_OPEN_POSITION_SCHEMA,
     PERP_PLACE_LIMIT_ORDER_SCHEMA,
     PERP_PLACE_STOP_ORDER_SCHEMA,
+    PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA,
+    RESTAKING_DELEGATE_TO_SCHEMA,
+    RESTAKING_DEPOSIT_SCHEMA,
+    RESTAKING_QUEUE_WITHDRAWAL_SCHEMA,
+    RESTAKING_REDELEGATE_SCHEMA,
+    RESTAKING_REGISTER_OPERATOR_SCHEMA,
+    RESTAKING_UNDELEGATE_SCHEMA,
+    STAKING_CLAIM_REWARDS_SCHEMA,
+    STAKING_COOLDOWN_SCHEMA,
+    STAKING_GAUGE_DEPOSIT_SCHEMA,
+    STAKING_GAUGE_WITHDRAW_SCHEMA,
+    STAKING_INCREASE_LOCK_AMOUNT_SCHEMA,
+    STAKING_INCREASE_LOCK_TIME_SCHEMA,
+    STAKING_LOCK_SCHEMA,
+    STAKING_REDEEM_SCHEMA,
+    STAKING_STAKE_SCHEMA,
+    STAKING_UNLOCK_SCHEMA,
+    STAKING_VOTE_FOR_GAUGE_SCHEMA,
     TOKEN_ERC20_APPROVE_SCHEMA,
     TOKEN_ERC20_PERMIT_SCHEMA,
     TOKEN_ERC20_TRANSFER_SCHEMA,
@@ -191,12 +418,29 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     TOKEN_NFT_TRANSFER_SCHEMA,
     TOKEN_PERMIT2_APPROVE_SCHEMA,
     TOKEN_PERMIT2_SIGN_ALLOWANCE_SCHEMA,
+    TOKEN_PERMIT2_SIGN_TRANSFER_SCHEMA,
+    TOKEN_PERMIT2_TRANSFER_FROM_SCHEMA,
     TOKEN_REVOKE_APPROVAL_SCHEMA,
+    TOKEN_UNWRAP_NATIVE_SCHEMA,
+    TOKEN_WRAP_NATIVE_SCHEMA,
     HL_ORDER_SCHEMA,
     HL_UPDATE_LEVERAGE_SCHEMA,
     HL_WITHDRAW_SCHEMA,
     HL_USD_SEND_SCHEMA,
     HL_APPROVE_AGENT_SCHEMA,
+    HL_UNKNOWN_SCHEMA,
+    HL_SPOT_SEND_SCHEMA,
+    HL_USD_CLASS_TRANSFER_SCHEMA,
+    HL_SEND_ASSET_SCHEMA,
+    HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
+    HL_C_DEPOSIT_SCHEMA,
+    HL_C_WITHDRAW_SCHEMA,
+    HL_VAULT_TRANSFER_SCHEMA,
+    HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
+    HL_APPROVE_BUILDER_FEE_SCHEMA,
+    HL_TOKEN_DELEGATE_SCHEMA,
+    HL_TWAP_ORDER_SCHEMA,
+    HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -642,7 +886,9 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("add_liquidity", "AddLiquidityContext"),
     ("cancel_intent_order", "CancelIntentOrderContext"),
     ("collect_fees", "CollectFeesContext"),
+    ("pre_sign_intent_order", "PreSignIntentOrderContext"),
     ("remove_liquidity", "RemoveLiquidityContext"),
+    ("settle_intent_order", "SettleIntentOrderContext"),
     ("sign_intent_order", "SignIntentOrderContext"),
     ("swap", "SwapContext"),
     // lending (alphabetical)
@@ -674,6 +920,8 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("open_position", "OpenPositionContext"),
     ("place_limit_order", "PlaceLimitOrderContext"),
     ("place_stop_order", "PlaceStopOrderContext"),
+    // permission (alphabetical)
+    ("protocol_authorization", "ProtocolAuthorizationContext"),
     // token (alphabetical)
     ("erc20_approve", "Erc20ApproveContext"),
     ("erc20_permit", "Erc20PermitContext"),
@@ -683,13 +931,30 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("nft_transfer", "NftTransferContext"),
     ("permit2_approve", "Permit2ApproveContext"),
     ("permit2_sign_allowance", "Permit2SignAllowanceContext"),
+    ("permit2_sign_transfer", "Permit2SignTransferContext"),
+    ("permit2_transfer_from", "Permit2TransferFromContext"),
     ("revoke_approval", "RevokeApprovalContext"),
+    ("unwrap_native", "UnwrapNativeContext"),
+    ("wrap_native", "WrapNativeContext"),
     // hyperliquid_core (alphabetical) — `hl_`-prefixed tags keep these globally
     // unique (notably `withdraw` is already a Lending tag).
     ("hl_approve_agent", "HlApproveAgentContext"),
+    ("hl_approve_builder_fee", "HlApproveBuilderFeeContext"),
+    ("hl_c_deposit", "HlCDepositContext"),
+    ("hl_c_withdraw", "HlCWithdrawContext"),
     ("hl_order", "HlOrderContext"),
+    ("hl_send_asset", "HlSendAssetContext"),
+    ("hl_send_to_evm_with_data", "HlSendToEvmWithDataContext"),
+    ("hl_spot_send", "HlSpotSendContext"),
+    ("hl_sub_account_transfer", "HlSubAccountTransferContext"),
+    ("hl_token_delegate", "HlTokenDelegateContext"),
+    ("hl_twap_order", "HlTwapOrderContext"),
+    ("hl_unknown", "HlUnknownContext"),
+    ("hl_update_isolated_margin", "HlUpdateIsolatedMarginContext"),
     ("hl_update_leverage", "HlUpdateLeverageContext"),
+    ("hl_usd_class_transfer", "HlUsdClassTransferContext"),
     ("hl_usd_send", "HlUsdSendContext"),
+    ("hl_vault_transfer", "HlVaultTransferContext"),
     ("hl_withdraw", "HlWithdrawContext"),
 ];
 
@@ -740,6 +1005,7 @@ mod base_schema_tests {
             r#"Lending::Action::"Supply""#,
             r#"Launchpad::Action::"Commit""#,
             r#"Perp::Action::"OpenPosition""#,
+            r#"Permission::Action::"ProtocolAuthorization""#,
             r#"Token::Action::"Erc20Approve""#,
         ];
         // Cedar 4.10's Schema::actions() yields EntityUids whose Display form

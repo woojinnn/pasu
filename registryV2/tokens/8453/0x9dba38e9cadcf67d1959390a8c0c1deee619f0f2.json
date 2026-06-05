@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9dba38e9cadcf67d1959390a8c0c1deee619f0f2",
+  "symbol": "TOP",
+  "decimals": 18,
+  "name": "Toppa",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

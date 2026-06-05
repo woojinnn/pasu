@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa2e3356610840701bdf5611a53974510ae27e2e1",
+  "symbol": "wBETH",
+  "decimals": 18,
+  "name": "Wrapped Binance Beacon ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

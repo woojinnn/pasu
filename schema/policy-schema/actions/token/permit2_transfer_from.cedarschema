@@ -1,0 +1,51 @@
+// Token::Permit2TransferFrom — on-chain Permit2 SignatureTransfer execution.
+//
+// Models `permitTransferFrom` / `permitWitnessTransferFrom` execution. This is
+// owner-aware: if `owner` is the active wallet, reducer simulation debits the
+// token balance; otherwise the action remains policy-visible without inventing
+// local balance movement.
+
+namespace Token {
+  type Permit2TransferFromNonce = {
+    word: String,
+    bit: Long,
+  };
+
+  type Permit2TransferFromContext = {
+    // Common envelope. `meta.nature.kind` is `"onchain_tx"`.
+    meta: Core::ActionMeta,
+    // Underlying token moved by Permit2.
+    token: Core::TokenRef,
+    // Token owner whose signature is being consumed.
+    owner: String,
+    // On-chain caller / spender submitting the signature.
+    spender: String,
+    // Transfer recipient supplied by the spender at execution time.
+    recipient: String,
+    // Actual transfer amount (U256 hex).
+    amount: String,
+    // Amount permitted by the signed message (U256 hex).
+    permittedAmount: String,
+    // Token-native nano (raw × 10^(9 − decimals)). Host-populated.
+    amountNano?: Long,
+    // USD estimate at submission time. Host-populated.
+    amountUsd?: decimal,
+    // Signature deadline (unix seconds).
+    sigDeadline: Long,
+    // Permit2 unordered nonce bitmap coordinates.
+    nonce: Permit2TransferFromNonce,
+    // Optional EIP-712 witness type name.
+    witnessType?: String,
+    // Manifest-extensible slot.
+    custom?: Permit2TransferFromCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type Permit2TransferFromCustomContext = {};
+
+  action "Permit2TransferFrom" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: Permit2TransferFromContext,
+  };
+}

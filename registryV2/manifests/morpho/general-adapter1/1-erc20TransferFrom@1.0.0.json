@@ -1,0 +1,45 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-erc20TransferFrom@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 erc20TransferFrom plumbing leg (reached via Bundler3 multicall(Call[])). GA1 pulls `amount` of `token` from the bundle initiator (the user, via the user's ERC20 approval) to `receiver` (typically GA1 itself, to fund a downstream deposit). This is the bundle's token-IN: the amount can EXCEED the deposit (over-pull), bounded only by the separately-gated approval — so surfacing it (token + amount + recipient, all in calldata) is the legibility win.",
+  "match": {
+    "selector": "0xd96ca0b9",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "erc20TransferFrom",
+    "abi": {
+      "name": "erc20TransferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "address", "name": "token", "type": "address" },
+        { "internalType": "address", "name": "receiver", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.token" } },
+          "recipient": "$args.receiver",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

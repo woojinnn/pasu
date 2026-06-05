@@ -1,0 +1,16 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5e8422345238f34275888049021821e8e08caa1f",
+  "symbol": "frxETH",
+  "decimals": 18,
+  "name": "Frax Ether",
+  "source": "https://docs.frax.finance/frax-ether/frxeth-and-sfrxeth",
+  "token_kind": {
+    "kind": "wrapped",
+    "underlying": {
+      "key": { "standard": "native", "chain": "eip155:1" }
+    },
+    "peg_kind": "hard_peg"
+  }
+}

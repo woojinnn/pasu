@@ -1,0 +1,74 @@
+{
+  "contract": "AaveVariableDebtLINK",
+  "chainId": 1,
+  "address": "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
+  "snapshot": "variable-debt-link-mainnet.abi.json",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "exclude",
+      "reason": "non-transferable debt token ERC20 compatibility method; implementation reverts OperationNotSupported and does not grant spend permission"
+    },
+    "0xc04a8a10": {
+      "name": "approveDelegation",
+      "decision": "cover",
+      "reason": "permission primitive: grant variable-rate borrow allowance to delegatee"
+    },
+    "0xf5298aca": {
+      "name": "burn",
+      "decision": "exclude",
+      "reason": "pool-only debt accounting hook, not a direct user pre-sign permission or position action"
+    },
+    "0xa457c2d7": {
+      "name": "decreaseAllowance",
+      "decision": "exclude",
+      "reason": "non-transferable debt token ERC20 compatibility method; implementation reverts OperationNotSupported"
+    },
+    "0x0b52d558": {
+      "name": "delegationWithSig",
+      "decision": "cover",
+      "reason": "permission primitive: relayed EIP-712 credit delegation grant"
+    },
+    "0x39509351": {
+      "name": "increaseAllowance",
+      "decision": "exclude",
+      "reason": "non-transferable debt token ERC20 compatibility method; implementation reverts OperationNotSupported"
+    },
+    "0x7fdd585f": {
+      "name": "initialize",
+      "decision": "exclude",
+      "reason": "one-time pool initialization hook for the proxy implementation"
+    },
+    "0x9ceeaca7": {
+      "name": "mint",
+      "decision": "exclude",
+      "reason": "pool-only debt accounting hook, not a direct user pre-sign permission or position action"
+    },
+    "0xaf5f243b": {
+      "name": "renounceAllowance",
+      "decision": "exclude",
+      "reason": "non-transferable debt token ERC20 compatibility method; implementation reverts OperationNotSupported"
+    },
+    "0x91fb372d": {
+      "name": "renounceDelegation",
+      "decision": "cover",
+      "reason": "permission primitive: delegatee revokes borrow allowance delegated by a user"
+    },
+    "0xa9059cbb": {
+      "name": "transfer",
+      "decision": "exclude",
+      "reason": "non-transferable debt token ERC20 compatibility method; implementation reverts OperationNotSupported"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "exclude",
+      "reason": "non-transferable debt token ERC20 compatibility method; implementation reverts OperationNotSupported"
+    }
+  },
+  "signed_structs": {
+    "DelegationWithSig": {
+      "decision": "cover",
+      "reason": "off-chain Aave credit delegation grant covered by delegationWithSig typed-data manifest"
+    }
+  }
+}

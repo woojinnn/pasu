@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x55a8a39bc9694714e2874c1ce77aa1e599461e18",
+  "symbol": "MIM-UST-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: MIM-UST",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x55a8a39bc9694714e2874c1ce77aa1e599461e18"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa47c8bf37f92abed4a126bda807a7b7498661acd"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

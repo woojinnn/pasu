@@ -6,7 +6,7 @@
 //! no domain-local helper (the `RevokeScope` lowering is single-use and lives
 //! private in the `revoke_approval` leaf).
 
-use simulation_reducer::action::token::TokenAction;
+use policy_transition::action::token::TokenAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
@@ -18,7 +18,11 @@ mod nft_set_approval_for_all;
 mod nft_transfer;
 mod permit2_approve;
 mod permit2_sign_allowance;
+mod permit2_sign_transfer;
+mod permit2_transfer_from;
 mod revoke_approval;
+mod unwrap_native;
+mod wrap_native;
 
 /// Dispatch a [`TokenAction`] to its per-action lowering.
 ///
@@ -32,11 +36,15 @@ pub(crate) fn lower(action: &TokenAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
         TokenAction::Erc20Permit(a) => erc20_permit::lower(a, ctx),
         TokenAction::Permit2Approve(a) => permit2_approve::lower(a, ctx),
         TokenAction::Permit2SignAllowance(a) => permit2_sign_allowance::lower(a, ctx),
+        TokenAction::Permit2SignTransfer(a) => permit2_sign_transfer::lower(a, ctx),
+        TokenAction::Permit2TransferFrom(a) => permit2_transfer_from::lower(a, ctx),
         TokenAction::Erc20Transfer(a) => erc20_transfer::lower(a, ctx),
         TokenAction::NftApprove(a) => nft_approve::lower(a, ctx),
         TokenAction::NftSetApprovalForAll(a) => nft_set_approval_for_all::lower(a, ctx),
         TokenAction::NftTransfer(a) => nft_transfer::lower(a, ctx),
         TokenAction::RevokeApproval(a) => revoke_approval::lower(a, ctx),
+        TokenAction::WrapNative(a) => wrap_native::lower(a, ctx),
+        TokenAction::UnwrapNative(a) => unwrap_native::lower(a, ctx),
     }
 }
 
@@ -47,11 +55,11 @@ pub(crate) fn lower(action: &TokenAction, ctx: &LowerCtx<'_>) -> Result<LoweredA
 pub(crate) mod test_support {
     use std::str::FromStr;
 
-    use simulation_reducer::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{Address, ChainId, Time, U256};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{LiveField, NonceKey};
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{Address, ChainId, Time, U256};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{LiveField, NonceKey};
+    use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
     use crate::lowering_v2::{lower_action, TxMeta};
 

@@ -1,0 +1,73 @@
+{
+  "type": "adapter_action",
+  "id": "aave/gho/sgho/withdraw@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "sGHO ERC4626-style exit from Aave savings GHO.",
+  "match": {
+    "selector": "0xb460af94",
+    "chain_to_addresses": {
+      "1": [
+        "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "withdraw",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "redeem",
+        "redeem": {
+          "venue": {
+            "name": "aave_savings_gho",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f"
+            }
+          },
+          "amount": "$args.assets",
+          "recipient": "$args.receiver",
+          "owner": "$args.owner"
+        }
+      }
+    }
+  }
+}

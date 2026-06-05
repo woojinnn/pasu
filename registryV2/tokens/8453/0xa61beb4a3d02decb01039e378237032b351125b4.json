@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xa61beb4a3d02decb01039e378237032b351125b4",
+  "symbol": "EURA",
+  "decimals": 18,
+  "name": "EURA (previously agEUR)",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

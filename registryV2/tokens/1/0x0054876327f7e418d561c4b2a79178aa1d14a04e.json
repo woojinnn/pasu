@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0054876327f7e418d561c4b2a79178aa1d14a04e",
+  "symbol": "acrvUSD+",
+  "decimals": 18,
+  "name": "Staked Astral crvUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

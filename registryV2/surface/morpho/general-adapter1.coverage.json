@@ -1,0 +1,139 @@
+{
+  "contract": "GeneralAdapter1",
+  "chainId": 1,
+  "address": "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0",
+  "snapshot": "general-adapter1.abi.json",
+  "note": "GeneralAdapter1 — the adapter Bundler3 multicall(Call[]) legs target on Ethereum mainnet. EVERY external-mutating selector triaged (I1). cover = 20 legs: 10 user position legs (erc4626Deposit/Mint/Withdraw/Redeem → metamorpho; morphoSupply/SupplyCollateral/Borrow/Repay/Withdraw/WithdrawCollateral → morpho_blue) + 6 funding/plumbing legs (erc20Transfer/erc20TransferFrom/permit2TransferFrom/nativeTransfer → token/erc20_transfer; wrapNative/unwrapNative → net WETH/native credit) + 3 Lido staking legs (stakeEth → liquid_staking/stake; wrapStEth/unwrapStEth → wrap/unwrap) + morphoFlashLoan (reenter_only — no body, callback recurses), reached per-leg-to from a Bundler3 bundle. morphoSupply/Repay/SupplyCollateral + morphoFlashLoan declare emit.reenter_callback_arg=data so the reenter(Call[]) callback is decoded generically (no engine selector list). exclude = onMorpho* callbacks (reenterHash-guarded; their payload IS the decoded reenter callback), MORPHO governance wrapper.",
+  "functions": {
+    "0x6ef5eeae": {
+      "name": "erc4626Deposit(address,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Deposit into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0x39029ab6": {
+      "name": "erc4626Mint(address,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Mint into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0xc9565706": {
+      "name": "erc4626Withdraw(address,uint256,uint256,address,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Withdraw into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0xa7f6e606": {
+      "name": "erc4626Redeem(address,uint256,uint256,address,address)",
+      "decision": "cover",
+      "reason": "user ERC-4626 erc4626Redeem into a MetaMorpho vault VIA Bundler3/GeneralAdapter1 → LendingAction (vault=$args.vault, asset=injected underlying). Decoded as a per-leg-to multicall child."
+    },
+    "0x5b866db6": {
+      "name": "morphoSupply((address,address,address,address,uint256),uint256,uint256,uint256,address,bytes)",
+      "decision": "cover",
+      "reason": "user Morpho Blue supply VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0xca463673": {
+      "name": "morphoSupplyCollateral((address,address,address,address,uint256),uint256,address,bytes)",
+      "decision": "cover",
+      "reason": "user Morpho Blue supply VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x62577ad0": {
+      "name": "morphoBorrow((address,address,address,address,uint256),uint256,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user Morpho Blue borrow VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x4d5fcf68": {
+      "name": "morphoRepay((address,address,address,address,uint256),uint256,uint256,uint256,address,bytes)",
+      "decision": "cover",
+      "reason": "user Morpho Blue repay VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x84d287ef": {
+      "name": "morphoWithdraw((address,address,address,address,uint256),uint256,uint256,uint256,address)",
+      "decision": "cover",
+      "reason": "user Morpho Blue withdraw VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x1af3bbc6": {
+      "name": "morphoWithdrawCollateral((address,address,address,address,uint256),uint256,address)",
+      "decision": "cover",
+      "reason": "user Morpho Blue withdraw VIA Bundler3/GeneralAdapter1 → same LendingAction as the direct singleton call (market from $args.marketParams)."
+    },
+    "0x2075be03": {
+      "name": "onMorphoSupply(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0xb1022fdf": {
+      "name": "onMorphoSupplyCollateral(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0x05b4591c": {
+      "name": "onMorphoRepay(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0x31f57072": {
+      "name": "onMorphoFlashLoan(uint256,bytes)",
+      "decision": "exclude",
+      "reason": "Morpho callback (called BY Morpho mid-bundle under the reenterHash guard) — not a user pre-sign entrypoint."
+    },
+    "0xe2975912": {
+      "name": "morphoFlashLoan(address,uint256,bytes)",
+      "decision": "cover",
+      "reason": "GA1 morphoFlashLoan: borrows assets via a Morpho Blue flash loan; the borrowed funds are used+repaid in the reenter(Call[]) callback carried in `data` (the leverage intent). Net-neutral, so strategy=reenter_only (NO own body) — only the callback legs recurse via emit.reenter_callback_arg. Per-leg-to multicall child."
+    },
+    "0x54f09129": {
+      "name": "stakeEth(uint256,uint256,address,address)",
+      "decision": "cover",
+      "reason": "GA1 stakeEth: stake `amount` native ETH into Lido (→stETH) for receiver → liquid_staking/stake (venue=lido). Per-leg-to multicall child (Lido-collateral leverage zap)."
+    },
+    "0x5a18a7d0": {
+      "name": "wrapStEth(uint256,address)",
+      "decision": "cover",
+      "reason": "GA1 wrapStEth: wrap `amount` stETH → wstETH → liquid_staking/wrap (venue=lido). Per-leg-to multicall child."
+    },
+    "0xe17aeb46": {
+      "name": "unwrapStEth(uint256,address)",
+      "decision": "cover",
+      "reason": "GA1 unwrapStEth: unwrap `amount` wstETH → stETH → liquid_staking/unwrap (venue=lido). Per-leg-to multicall child."
+    },
+    "0xbff63170": {
+      "name": "morphoWrapperDepositFor(address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: legacy MORPHO token wrapper (governance-token migration) — token-level, low value."
+    },
+    "0xa387bd8e": {
+      "name": "morphoWrapperWithdrawTo(address,uint256)",
+      "decision": "exclude",
+      "reason": "DEFERRED: legacy MORPHO token wrapper (governance-token migration) — token-level, low value."
+    },
+    "0x3790767d": {
+      "name": "erc20Transfer(address,address,uint256)",
+      "decision": "cover",
+      "reason": "GA1 sends `amount` of `token` to `receiver` from its own balance (bundle funding / leftover sweep) → token/erc20_transfer (token+amount+recipient legible). Per-leg-to multicall child."
+    },
+    "0xd96ca0b9": {
+      "name": "erc20TransferFrom(address,address,uint256)",
+      "decision": "cover",
+      "reason": "GA1 pulls `amount` of `token` from the bundle initiator (user ERC20 approval) to `receiver` → token/erc20_transfer. Bundle token-IN (over-pull bound by the approval)."
+    },
+    "0x827fcfcc": {
+      "name": "permit2TransferFrom(address,address,uint256)",
+      "decision": "cover",
+      "reason": "GA1 pulls `amount` of `token` from the user via Permit2 ALLOWANCE to `receiver` → token/erc20_transfer. Bundle token-IN (over-pull bound by the Permit2 allowance); owner/nonce/deadline not in this calldata."
+    },
+    "0xf2522bcd": {
+      "name": "nativeTransfer(address,uint256)",
+      "decision": "cover",
+      "reason": "GA1 sends `amount` native ETH to `receiver` from its own balance → token/erc20_transfer (native token key). Per-leg-to multicall child."
+    },
+    "0x3244c12c": {
+      "name": "wrapNative(uint256,address)",
+      "decision": "cover",
+      "reason": "GA1 wraps `amount` native ETH into WETH, credits `receiver` → token/erc20_transfer of the net WETH credit ($resolved.weth). Per-leg-to multicall child."
+    },
+    "0xb172af6d": {
+      "name": "unwrapNative(uint256,address)",
+      "decision": "cover",
+      "reason": "GA1 unwraps `amount` WETH into native ETH, credits `receiver` → token/erc20_transfer of the net native credit. Per-leg-to multicall child."
+    }
+  }
+}

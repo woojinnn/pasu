@@ -1,0 +1,102 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v3-nfpm/mint@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x88316456",
+    "chain_to_addresses": {
+      "1":     ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "10":    ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "42161": ["0xC36442b4a4522E871399CD717aBDD847Ab11FE88"],
+      "8453":  ["0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint",
+    "abi": {
+      "name": "mint",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "components": [
+            { "name": "token0",         "type": "address" },
+            { "name": "token1",         "type": "address" },
+            { "name": "fee",            "type": "uint24"  },
+            { "name": "tickLower",      "type": "int24"   },
+            { "name": "tickUpper",      "type": "int24"   },
+            { "name": "amount0Desired", "type": "uint256" },
+            { "name": "amount1Desired", "type": "uint256" },
+            { "name": "amount0Min",     "type": "uint256" },
+            { "name": "amount1Min",     "type": "uint256" },
+            { "name": "recipient",      "type": "address" },
+            { "name": "deadline",       "type": "uint256" }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "add_liquidity",
+        "add_liquidity": {
+          "venue": {
+            "name":        "uniswap_v3",
+            "chain":       "$chain",
+            "pool":        "$resolved.pool",
+            "fee_tier_bp": "$args.fee"
+          },
+          "params": {
+            "kind": "concentrated_mint",
+            "pool_pair": [
+              { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.token0" } },
+              { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.token1" } }
+            ],
+            "amount_desired": ["$args.amount0Desired", "$args.amount1Desired"],
+            "amount_min":     ["$args.amount0Min", "$args.amount1Min"],
+            "range": {
+              "kind":      "tick",
+              "lower":     "$args.tickLower",
+              "upper":     "$args.tickUpper",
+              "liquidity": "0"
+            },
+            "recipient": "$args.recipient"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind":       "onchain_view",
+                "chain":      "$chain",
+                "contract":   "$resolved.pool",
+                "function":   "slot0()",
+                "decoder_id": "uniswap_v3_slot0"
+              },
+              "ttl_s": 12
+            },
+            "current_price": {
+              "source": {
+                "kind":    "derived_from",
+                "inputs":  [{ "scope": "global", "name": "uniswap_v3_pool_state" }],
+                "calc_id": "uniswap_v3_sqrt_price_to_price"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata", "v3_pool_resolver"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

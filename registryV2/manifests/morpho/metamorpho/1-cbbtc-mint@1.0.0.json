@@ -1,0 +1,106 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/metamorpho/1-cbbtc-mint@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "MetaMorpho ERC-4626 mint for cbBTC vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=cbBTC (0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf) baked (not in ERC-4626 calldata). amount=shares SHARE-denominated (abstract — §4d convertToAssets enrichment deferred; decode-faithful). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 1 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
+  "match": {
+    "selector": "0x94bf804d",
+    "chain_to_addresses": {
+      "1": [
+        "0xa02f5e93f783baf150aa1f8b341ae90fe0a772f7"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "mint",
+    "abi": {
+      "name": "mint",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "assets",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "supply",
+        "supply": {
+          "venue": {
+            "name": "metamorpho",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf"
+            }
+          },
+          "amount": "$args.shares",
+          "on_behalf_of": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_reserve_state_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "supply_apy": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_supply_apy_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "a_token_price_usd": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_share_price_skeleton"
+        },
+        "ttl_s": 60
+      },
+      "eligible_as_collat": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_collat_flag_skeleton"
+        },
+        "ttl_s": 60
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_user_state_skeleton"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

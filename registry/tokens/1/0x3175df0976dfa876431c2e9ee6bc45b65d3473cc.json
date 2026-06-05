@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x3175df0976dfa876431c2e9ee6bc45b65d3473cc",
-  "symbol": "crvFRAX",
-  "decimals": 18,
-  "name": "Curve.fi FRAX/USDC"
-}

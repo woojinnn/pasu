@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xf30a340a938aaf4db2c981f7bd8a998d283a429c",
+  "symbol": "TV3",
+  "decimals": 18,
+  "name": "test-v3",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

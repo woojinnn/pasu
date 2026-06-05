@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd166337499e176bbc38a1fbd113ab144e5bd2df7",
+  "symbol": "sUSDat",
+  "decimals": 18,
+  "name": "Staked USDat",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

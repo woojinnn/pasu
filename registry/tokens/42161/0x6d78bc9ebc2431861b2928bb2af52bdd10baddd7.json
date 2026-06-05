@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 42161,
-  "address": "0x6d78bc9ebc2431861b2928bb2af52bdd10baddd7",
-  "symbol": "PEPECOIN",
-  "decimals": 18,
-  "name": "PepeCoin"
-}

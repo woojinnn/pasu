@@ -1,0 +1,115 @@
+{
+  "contract": "NonfungiblePositionManager",
+  "chainId": 8453,
+  "address": "0x03a520b32c04bf3beef7beb72e919cf822ed34f1",
+  "snapshot": "v3-nfpm-base.abi.json",
+  "note": "Covers V3 position lifecycle functions plus ERC721 position NFT movement/approval surface.",
+  "functions": {
+    "0x095ea7b3": {
+      "name": "approve",
+      "decision": "cover",
+      "reason": "standard ERC721 approval on Uniswap V3 position NFT"
+    },
+    "0x42966c68": {
+      "name": "burn",
+      "decision": "cover",
+      "reason": "user AMM action: burn V3 position NFT"
+    },
+    "0xfc6f7865": {
+      "name": "collect",
+      "decision": "cover",
+      "reason": "user AMM action: collect V3 position fees"
+    },
+    "0x13ead562": {
+      "name": "createAndInitializePoolIfNecessary",
+      "decision": "cover",
+      "reason": "user-visible V3 pool create/initialize action routed conservatively as Unknown"
+    },
+    "0x0c49ccbe": {
+      "name": "decreaseLiquidity",
+      "decision": "cover",
+      "reason": "user AMM action: decrease V3 concentrated liquidity"
+    },
+    "0x219f5d17": {
+      "name": "increaseLiquidity",
+      "decision": "cover",
+      "reason": "user AMM action: increase V3 concentrated liquidity"
+    },
+    "0x88316456": {
+      "name": "mint",
+      "decision": "cover",
+      "reason": "user AMM action: mint V3 concentrated liquidity position"
+    },
+    "0xac9650d8": {
+      "name": "multicall",
+      "decision": "cover",
+      "reason": "self-multicall envelope"
+    },
+    "0x7ac2ff7b": {
+      "name": "permit",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0x12210e8a": {
+      "name": "refundETH",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0x42842e0e": {
+      "name": "safeTransferFrom",
+      "decision": "cover",
+      "reason": "standard ERC721 safe transfer of Uniswap V3 position NFT"
+    },
+    "0xb88d4fde": {
+      "name": "safeTransferFrom",
+      "decision": "cover",
+      "reason": "standard ERC721 safe transfer with data of Uniswap V3 position NFT"
+    },
+    "0xf3995c67": {
+      "name": "selfPermit",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0x4659a494": {
+      "name": "selfPermitAllowed",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0xa4a78f0c": {
+      "name": "selfPermitAllowedIfNecessary",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0xc2e3140a": {
+      "name": "selfPermitIfNecessary",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0xa22cb465": {
+      "name": "setApprovalForAll",
+      "decision": "cover",
+      "reason": "standard ERC721 operator approval on Uniswap V3 position NFT"
+    },
+    "0xdf2ab5bb": {
+      "name": "sweepToken",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0x23b872dd": {
+      "name": "transferFrom",
+      "decision": "cover",
+      "reason": "standard ERC721 transfer of Uniswap V3 position NFT"
+    },
+    "0xd3487997": {
+      "name": "uniswapV3MintCallback",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    },
+    "0x49404b7c": {
+      "name": "unwrapWETH9",
+      "decision": "exclude",
+      "reason": "periphery payment helper, callback, permit helper, or inherited helper not modeled as direct user AMM intent"
+    }
+  },
+  "signed_structs": {}
+}

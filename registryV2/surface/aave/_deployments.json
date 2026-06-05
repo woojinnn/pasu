@@ -1,0 +1,310 @@
+{
+  "protocol": "aave",
+  "source": "bgd-labs/aave-address-book (AaveV3Ethereum.sol, GovernanceV3Ethereum.sol, AaveSafetyModule.sol, GhoEthereum.sol, UmbrellaEthereum.sol) + Etherscan-verified ABIs",
+  "url": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol",
+  "fetchedAt": "2026-06-03",
+  "note": "Aave on Ethereum mainnet (chainId 1) — representative-chain onboarding. SCOPE: lending Pool + WETHGateway + variable-debt credit delegation + AAVE governance-power delegation (governance domain, axis-1). DEFER (user-facing, usage-share measured P2): GHO/GSM/SGHO, stkAAVE/stkGHO/Umbrella safety-module staking, Governance proposal/voting, aAAVE/stkAAVE delegation (same surface as AAVE; AAVE dominant). L2 deployments = multichain expansion deferred (separate framework). EXCLUDE = infra/admin/keeper/standard-ERC20.",
+  "contracts": [
+    {
+      "name": "Pool (v3.4 proxy)",
+      "chainId": 1,
+      "address": "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2",
+      "decision": "cover",
+      "reason": "primary lending surface: supply/withdraw/borrow/repay/setUserEMode/collateral/multicall"
+    },
+    {
+      "name": "WrappedTokenGatewayV3 (WETHGateway)",
+      "chainId": 1,
+      "address": "0xd01607c3c5ecaba394d8be377a08590149325722",
+      "decision": "cover",
+      "reason": "ETH-native supply/borrow/repay/withdraw periphery"
+    },
+    {
+      "name": "AAVE token (AaveTokenV3, proxy)",
+      "chainId": 1,
+      "address": "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
+      "decision": "cover",
+      "reason": "governance-power delegation surface (delegate/metaDelegate) — governance domain axis-1; standard ERC-20 via erc20 adapter"
+    },
+    {
+      "name": "variableDebtToken DAI",
+      "chainId": 1,
+      "address": "0xcf8d0c70c850859266f5c338b38f9d663181c314",
+      "decision": "cover",
+      "reason": "credit-delegation permission surface (approveDelegation/delegationWithSig/renounceDelegation)"
+    },
+    {
+      "name": "variableDebtToken LINK",
+      "chainId": 1,
+      "address": "0x4228f8895c7dda20227f6a5c6751b8ebf19a6ba8",
+      "decision": "cover",
+      "reason": "credit-delegation permission surface"
+    },
+    {
+      "name": "variableDebtToken USDC",
+      "chainId": 1,
+      "address": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+      "decision": "cover",
+      "reason": "credit-delegation permission surface"
+    },
+    {
+      "name": "variableDebtToken USDT",
+      "chainId": 1,
+      "address": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+      "decision": "cover",
+      "reason": "credit-delegation permission surface"
+    },
+    {
+      "name": "variableDebtToken WBTC",
+      "chainId": 1,
+      "address": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+      "decision": "cover",
+      "reason": "credit-delegation permission surface"
+    },
+    {
+      "name": "variableDebtToken wstETH",
+      "chainId": 1,
+      "address": "0xc96113eed8cab59cd8a66813bcb0ceb29f06d2e4",
+      "decision": "cover",
+      "reason": "credit-delegation permission surface"
+    },
+    {
+      "name": "PoolAddressesProvider",
+      "chainId": 1,
+      "address": "0x2f39d218133afab8f2b819b1066c7e434ad94e9e",
+      "decision": "exclude",
+      "reason": "infra: address registry, not a user pre-sign target"
+    },
+    {
+      "name": "PoolConfigurator",
+      "chainId": 1,
+      "address": "0x64b761d848206f447fe2dd461b0c635ec39ebb27",
+      "decision": "exclude",
+      "reason": "governance/admin: reserve/risk configuration"
+    },
+    {
+      "name": "ACLManager",
+      "chainId": 1,
+      "address": "0xc2aacf6553d20d1e9d78e365aaba8032af9c85b0",
+      "decision": "exclude",
+      "reason": "admin: role management"
+    },
+    {
+      "name": "AaveOracle",
+      "chainId": 1,
+      "address": "0x54586be62e3c3580375ae3723c145253060ca0c2",
+      "decision": "exclude",
+      "reason": "read-only price infra"
+    },
+    {
+      "name": "Collector",
+      "chainId": 1,
+      "address": "0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c",
+      "decision": "exclude",
+      "reason": "treasury/admin"
+    },
+    {
+      "name": "GHO token",
+      "chainId": 1,
+      "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f",
+      "decision": "exclude",
+      "reason": "no protocol-specific contract surface to decode: transfer/approve/permit = standard ERC-20 (erc20 standard adapter); mint/burn/addFacilitator = facilitator-gated (non-EOA). GHO is covered as a registered TOKEN (tokens/1/0x40d16f…, check:tokens) so amounts are legible across Pool-borrow / GSM swap / stkGHO stake — not as a cover contract."
+    },
+    {
+      "name": "GSM USDC",
+      "chainId": 1,
+      "address": "0x3a3868898305f04bec7fea77becff04c13444112",
+      "decision": "cover",
+      "reason": "user GSM swap surface: buyAsset/sellAsset (GHO↔USDC fixed-price). snapshot gsm-usdc-mainnet (impl 0x320be97b…); maps to amm::GsmSwap."
+    },
+    {
+      "name": "GSM USDT",
+      "chainId": 1,
+      "address": "0x882285e62656b9623af136ce3078c6bdcc33f5e3",
+      "decision": "cover",
+      "reason": "user GSM swap surface: buyAsset/sellAsset (GHO↔USDT fixed-price). snapshot gsm-usdt-mainnet (impl 0x31fe806e…); maps to amm::GsmSwap."
+    },
+    {
+      "name": "SGHO (Savings GHO, ERC4626)",
+      "chainId": 1,
+      "address": "0xe1753f2e00940cc31213dd92013cf019dfe4ca1d",
+      "decision": "cover",
+      "reason": "sGHO ERC4626 savings vault: deposit/mint/redeem/withdraw → staking domain (AaveSavingsGho venue). snapshot sgho-mainnet."
+    },
+    {
+      "name": "GHO FlashMinter",
+      "chainId": 1,
+      "address": "0xb639d208bcf0589d54fac24e655c79ec529762b8",
+      "decision": "exclude",
+      "reason": "keeper/integrator flash-mint facilitator; receiver is a contract, not EOA pre-sign"
+    },
+    {
+      "name": "stkAAVE (StakedAaveV3)",
+      "chainId": 1,
+      "address": "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+      "decision": "cover",
+      "reason": "user safety-module surface: stake/cooldown/redeem/claimRewards (→ staking domain) + governance delegate/delegateByType (→ airdrop::Delegate). snapshot stkaave-mainnet (impl 0x0fe58fe1…)."
+    },
+    {
+      "name": "stkGHO (StakedGho)",
+      "chainId": 1,
+      "address": "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d",
+      "decision": "cover",
+      "reason": "user safety-module surface: stake/cooldown/redeem/claimRewards (→ staking domain); no governance delegation (GHO non-gov). snapshot stkgho-mainnet (impl 0x50f9d4e2…)."
+    },
+    {
+      "name": "stkABPT",
+      "chainId": 1,
+      "address": "0xa1116930326d21fb917d5a27f1e9943a9595fb47",
+      "decision": "exclude",
+      "reason": "deferred legacy Balancer-pool staking; usage-share P2, follow-up"
+    },
+    {
+      "name": "Umbrella (safety module controller)",
+      "chainId": 1,
+      "address": "0xd400fc38ed4732893174325693a63c30ee3881a8",
+      "decision": "exclude",
+      "reason": "deferred user-facing surface (new safety-module deposit/cooldown); usage-share P2, follow-up"
+    },
+    {
+      "name": "Umbrella BatchHelper",
+      "chainId": 1,
+      "address": "0xce6ced23118edeb23054e06118a702797b13fc2f",
+      "decision": "exclude",
+      "reason": "deferred user-facing batch helper; usage-share P2, follow-up"
+    },
+    {
+      "name": "aAAVE (AAVE aToken)",
+      "chainId": 1,
+      "address": "0xa700b4eb416be35b2911fd5dee80678ff64ff6c9",
+      "decision": "cover",
+      "reason": "governance-power delegation surface (delegate/delegateByType on-chain); SCOPE ORACLE: aAAVE delegate (2.5%) is the dominant delegate surface vs AAVE (0%). standard aToken ERC-20 via erc20 adapter; off-chain metaDelegate (low) deferred."
+    },
+    {
+      "name": "Governance V3 (proxy)",
+      "chainId": 1,
+      "address": "0x9aee0b04504cef83a65ac3f0e838d0593bcb2bc7",
+      "decision": "cover",
+      "reason": "user governance: createProposal/cancel/queue/execute/redeemCancellationFee/updateRepresentatives → governance domain. snapshot governance-core-mainnet."
+    },
+    {
+      "name": "VotingMachine",
+      "chainId": 1,
+      "address": "0x06a1795a88b82700896583e123f46be43877bfb6",
+      "decision": "cover",
+      "reason": "user governance voting: submitVote(BySignature)/startProposalVote/closeAndSendVote → governance domain. snapshot governance-voting-machine-mainnet."
+    },
+    {
+      "name": "PayloadsController",
+      "chainId": 1,
+      "address": "0xdabad81af85554e9ae636395611c58f7ec1aaec5",
+      "decision": "exclude",
+      "reason": "keeper/admin: executePayload is a permissionless crank; cancelPayload is guardian-only"
+    },
+    {
+      "name": "VotingPortal ETH_ETH",
+      "chainId": 1,
+      "address": "0x6ace1bf22d57a33863161bfdc851316fb0442690",
+      "decision": "exclude",
+      "reason": "infra: cross-chain voting plumbing, appears as createProposal arg, never a user to:"
+    },
+    {
+      "name": "Executor LVL_1",
+      "chainId": 1,
+      "address": "0x5300a1a15135ea4dc7ad5a167152c01efc9b192a",
+      "decision": "exclude",
+      "reason": "infra: only callable by PayloadsController"
+    },
+    {
+      "name": "Executor LVL_2",
+      "chainId": 1,
+      "address": "0x17dd33ed0e3dd2a80e37489b8a63063161be6957",
+      "decision": "exclude",
+      "reason": "infra: only callable by PayloadsController"
+    },
+    {
+      "name": "CrossChainController",
+      "chainId": 1,
+      "address": "0xed42a7d8559a463722ca4bed50e0cc05a386b0e1",
+      "decision": "exclude",
+      "reason": "infra: relayer plumbing, not wallet-facing"
+    },
+    {
+      "name": "GovernancePowerStrategy",
+      "chainId": 1,
+      "address": "0xa198fac58e02a5c5f8f7e877895d50cfa9ad1e04",
+      "decision": "exclude",
+      "reason": "read-only view strategy"
+    },
+    {
+      "name": "META_DELEGATE_HELPER",
+      "chainId": 1,
+      "address": "0x94363b11b37bc3ffe43ab09cff5a010352fe85dc",
+      "decision": "exclude",
+      "reason": "deferred: batched metaDelegate helper across gov tokens; usage-share P2, follow-up"
+    },
+    {
+      "name": "ParaSwapRepayAdapter",
+      "chainId": 1,
+      "address": "0x35bb522b102326ea3f1141661df4626c87000e3e",
+      "decision": "cover",
+      "reason": "ParaSwapRepayAdapter (v3 repay-with-collateral): flash-loan+swap periphery → lending::periphery_operation (aave_v3_periphery venue)."
+    },
+    {
+      "name": "ParaSwapLiquiditySwapAdapter",
+      "chainId": 1,
+      "address": "0xadc0a53095a0af87f3aa29fe0715b5c28016364e",
+      "decision": "cover",
+      "reason": "ParaSwapLiquiditySwapAdapter (v3 swap-collateral): flash-loan+swap periphery → lending::periphery_operation (aave_v3_periphery venue)."
+    },
+    {
+      "name": "ParaSwapWithdrawSwapAdapter",
+      "chainId": 1,
+      "address": "0x78f8bd884c3d738b74b420540659c82f392820e0",
+      "decision": "cover",
+      "reason": "ParaSwapWithdrawSwapAdapter (v3 withdraw-swap): flash-loan+swap periphery → lending::periphery_operation (aave_v3_periphery venue)."
+    },
+    {
+      "name": "Aave V3 DebtSwap adapter",
+      "chainId": 1,
+      "address": "0xd7852e139a7097e119623de0751ae53a61efb442",
+      "decision": "cover",
+      "reason": "Aave V3 DebtSwap adapter: → lending::periphery_operation."
+    },
+    {
+      "name": "Aave Umbrella RewardsController",
+      "chainId": 1,
+      "address": "0x4655ce3d625a63d30ba704087e52b4c31e38188b",
+      "decision": "cover",
+      "reason": "Aave Umbrella RewardsController: umbrella stake/cooldown/redeem/claim → staking domain (aave_umbrella_* venue)."
+    },
+    {
+      "name": "Aave Umbrella StakeToken (stkwa vault 1)",
+      "chainId": 1,
+      "address": "0x6bf183243fdd1e306ad2c4450bc7dcf6f0bf8aa6",
+      "decision": "cover",
+      "reason": "Aave Umbrella StakeToken (stkwa vault 1): umbrella stake/cooldown/redeem/claim → staking domain (aave_umbrella_* venue)."
+    },
+    {
+      "name": "Aave Umbrella StakeToken (stkwa vault 2)",
+      "chainId": 1,
+      "address": "0xa484ab92fe32b143aee7019fc1502b1daa522d31",
+      "decision": "cover",
+      "reason": "Aave Umbrella StakeToken (stkwa vault 2): umbrella stake/cooldown/redeem/claim → staking domain (aave_umbrella_* venue)."
+    },
+    {
+      "name": "Aave Umbrella StakeToken (stkwa vault 3)",
+      "chainId": 1,
+      "address": "0xaafd07d53a7365d3e9fb6f3a3b09ec19676b73ce",
+      "decision": "cover",
+      "reason": "Aave Umbrella StakeToken (stkwa vault 3): umbrella stake/cooldown/redeem/claim → staking domain (aave_umbrella_* venue)."
+    },
+    {
+      "name": "Aave Umbrella StakeToken (stkGHO vault)",
+      "chainId": 1,
+      "address": "0x4f827a63755855cdf3e8f3bcd20265c833f15033",
+      "decision": "cover",
+      "reason": "Aave Umbrella StakeToken (stkGHO vault): umbrella stake/cooldown/redeem/claim → staking domain (aave_umbrella_* venue)."
+    }
+  ]
+}

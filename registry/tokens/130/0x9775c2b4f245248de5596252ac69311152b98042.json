@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0x9775c2b4f245248de5596252ac69311152b98042",
-  "symbol": "OXT",
-  "decimals": 18,
-  "name": "Orchid"
-}

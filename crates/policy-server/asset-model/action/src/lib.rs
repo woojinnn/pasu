@@ -1,39 +1,47 @@
 //! `Action` — a single user-signed (or about-to-be-signed) intent. spec: action-design.md
-//!
 //! `Action` is the primary input to the simulator. The reducer maps
 //! `(Action, State) -> StateDelta` to predict outcomes; the policy engine
 //! inspects `Action` / `State` / `StateDelta` together to allow or block.
-//!
-//! This module defines **types only** (Phase 1). The effect function
 //! (`run_action`) is implemented separately under `reducers/`.
-//!
 //! The module layout mirrors the section structure of action-design.md §3–§9.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use simulation_state::primitives::{Address, ChainId, Time, U256};
-use simulation_state::{LiveField, NonceKey};
+use policy_state::primitives::{Address, ChainId, Time, U256};
+use policy_state::{LiveField, NonceKey};
 
 pub mod airdrop;
 pub mod amm;
+pub mod governance;
 pub mod hyperliquid_core;
 pub mod launchpad;
 pub mod lending;
+pub mod liquid_staking;
 pub mod order_intent;
+pub mod permission;
 pub mod perp;
+pub mod restaking;
+pub mod staking;
 pub mod token;
 pub mod view;
+pub mod yield_;
 
 pub use airdrop::AirdropAction;
 pub use amm::AmmAction;
+pub use governance::GovernanceAction;
 pub use hyperliquid_core::HyperliquidCoreAction;
 pub use launchpad::LaunchpadAction;
 pub use lending::LendingAction;
+pub use liquid_staking::LiquidStakingAction;
 pub use order_intent::OrderIntent;
+pub use permission::PermissionAction;
 pub use perp::PerpAction;
+pub use restaking::RestakingAction;
+pub use staking::StakingAction;
 pub use token::TokenAction;
 pub use view::ActionView;
+pub use yield_::YieldAction;
 
 // ---------------------------------------------------------------------------
 // Common helper types
@@ -41,7 +49,6 @@ pub use view::ActionView;
 
 /// Arbitrary binary payload (calldata, signature, etc.) serialized as a
 /// 0x-prefixed hex string. Matches the `B256` convention in the state crate —
-/// kept as a `String` alias in Phase 1.
 pub type Bytes = String;
 
 /// `EIP-712` domain separator info. Carried by `OffchainSig` natures to
@@ -113,8 +120,7 @@ pub enum ActionNature {
         #[tsify(type = "string")]
         gas_limit: U256,
         /// Gas price as a `LiveField`. Under `EIP-1559` both `maxFee` and
-        /// `maxPriority` may be needed; Phase 1 keeps a single value and
-        /// can be extended into a fee struct in a follow-up spec.
+        /// can be extended into a fee struct once the action schema needs it.
         #[tsify(type = "LiveField<string>")]
         gas_price: LiveField<U256>,
         /// Native value attached to the call (`msg.value`).
@@ -155,6 +161,18 @@ pub enum ActionBody {
     Launchpad(LaunchpadAction),
     /// Perp-domain action (open/close position, funding, ...).
     Perp(PerpAction),
+    /// Liquid-staking-domain action (stake, wrap/unwrap, withdrawal request/claim, ...).
+    LiquidStaking(LiquidStakingAction),
+    /// Protocol permission-domain action (manager/operator/relayer grants).
+    Permission(PermissionAction),
+    /// Yield-tokenization-domain action (Pendle PT/YT swap, liquidity, mint/redeem, claim).
+    Yield(YieldAction),
+    /// Restaking-domain action (delegate, deposit, queue/complete withdrawal, ...).
+    Restaking(RestakingAction),
+    /// Staking / vote-escrow-domain action (veCRV lock, claim rewards, gauge vote, ...).
+    Staking(StakingAction),
+    /// Governance-domain action (proposal lifecycle, voting, power delegation).
+    Governance(GovernanceAction),
     /// Hyperliquid CORE action (off-chain L1 order / leverage / fund movement),
     /// intercepted from a `/exchange` POST rather than `window.ethereum`.
     HyperliquidCore(HyperliquidCoreAction),
@@ -186,7 +204,6 @@ pub enum ActionBody {
 
 // ===========================================================================
 // Smoke tests — verify the `Action` type tree compiles, serializes, and
-// deserializes as one piece. Before Phase 2 introduces real effect functions
 // we only check *shape stability*.
 // ===========================================================================
 
@@ -194,10 +211,10 @@ pub enum ActionBody {
 mod smoke {
     use super::*;
 
-    use simulation_state::live_field::{DataSource, OracleProvider};
-    use simulation_state::primitives::{ChainId, Duration, MarketRef, VenueRef};
-    use simulation_state::token::TokenKey;
-    use simulation_state::LiveField;
+    use policy_state::live_field::{DataSource, OracleProvider};
+    use policy_state::primitives::{ChainId, Duration, MarketRef, VenueRef};
+    use policy_state::token::TokenKey;
+    use policy_state::LiveField;
     use std::str::FromStr;
 
     fn now() -> Time {
@@ -209,7 +226,7 @@ mod smoke {
     }
 
     fn token_usdc() -> token::TokenAction {
-        let token = simulation_state::token::TokenRef {
+        let token = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: ChainId::ethereum_mainnet(),
                 address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
@@ -267,13 +284,13 @@ mod smoke {
 
     #[test]
     fn intent_order_offchain_sig_round_trip() {
-        let sell = simulation_state::token::TokenRef {
+        let sell = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: ChainId::ethereum_mainnet(),
                 address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
             },
         };
-        let buy = simulation_state::token::TokenRef {
+        let buy = policy_state::token::TokenRef {
             key: TokenKey::Native {
                 chain: ChainId::ethereum_mainnet(),
             },
@@ -293,7 +310,7 @@ mod smoke {
             valid_until: Time::from_unix(1_738_001_800),
             live_inputs: amm::SignIntentOrderLiveInputs {
                 expected_fill_price: LiveField::new(
-                    simulation_state::primitives::Price::new("3720.0"),
+                    policy_state::primitives::Price::new("3720.0"),
                     DataSource::VenueApi {
                         endpoint: "https://api.uniswap.org/v2/quote".into(),
                         parser_id: "uniswapx_quote".into(),
@@ -329,7 +346,7 @@ mod smoke {
                         salt: None,
                     },
                     deadline: Time::from_unix(1_738_001_800),
-                    nonce_key: Some(simulation_state::NonceKey::OrderHash {
+                    nonce_key: Some(policy_state::NonceKey::OrderHash {
                         hash: "0xabc0000000000000000000000000000000000000000000000000000000000000"
                             .into(),
                     }),
@@ -353,19 +370,19 @@ mod smoke {
     #[test]
     fn split_aggregator_swap_route_round_trip() {
         let chain = ChainId::ethereum_mainnet();
-        let usdc = simulation_state::token::TokenRef {
+        let usdc = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
             },
         };
-        let wbtc = simulation_state::token::TokenRef {
+        let wbtc = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0x2260fac5e5542a773aa44fbcfedf7c193bc2c599").unwrap(),
             },
         };
-        let weth = simulation_state::token::TokenRef {
+        let weth = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").unwrap(),
@@ -390,7 +407,7 @@ mod smoke {
         let pool_state_concentrated = amm::PoolState::Concentrated {
             sqrt_price_x96: U256::from(1u64),
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(0u64),
+            liquidity: policy_state::primitives::U128::from(0u64),
             ticks: vec![],
         };
         let pool_state_cryptoswap = amm::PoolState::Cryptoswap {
@@ -457,10 +474,11 @@ mod smoke {
                 router: Address::from_str("0x111111125421ca6dc452d289314280a0f8842a65").unwrap(),
                 route_hash: "0xabc0000000000000000000000000000000000000000000000000000000000000"
                     .into(),
+                executor: None,
             },
             params: amm::SwapParams {
                 token_in: usdc,
-                token_out: wbtc,
+                token_out: Some(wbtc),
                 direction: amm::SwapDirection::ExactInput {
                     amount_in: U256::from(50_000_000_000u64),
                     min_amount_out: U256::from(74_000_000u64),
@@ -520,14 +538,14 @@ mod smoke {
     fn uniswap_v3_arbitrum_single_hop_round_trip() {
         let chain = ChainId::arbitrum();
         // Arbitrum native USDC (Circle official).
-        let usdc = simulation_state::token::TokenRef {
+        let usdc = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0xaf88d065e77c8cc2239327c5edb3a432268e5831").unwrap(),
             },
         };
         // Arbitrum WETH (canonical bridge wrapper).
-        let weth = simulation_state::token::TokenRef {
+        let weth = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0x82af49447d8a07e3bd95bd0d56f35241523fbab1").unwrap(),
@@ -545,7 +563,7 @@ mod smoke {
         let pool_state = amm::PoolState::Concentrated {
             sqrt_price_x96: U256::from(1u64),
             tick: 0,
-            liquidity: simulation_state::primitives::U128::from(0u64),
+            liquidity: policy_state::primitives::U128::from(0u64),
             ticks: vec![],
         };
 
@@ -576,7 +594,7 @@ mod smoke {
             venue: v3,
             params: amm::SwapParams {
                 token_in: usdc,
-                token_out: weth,
+                token_out: Some(weth),
                 direction: amm::SwapDirection::ExactInput {
                     amount_in: U256::from(1_000_000_000u64),
                     min_amount_out: U256::from(300_000_000_000_000_000u64),
@@ -638,7 +656,7 @@ mod smoke {
     fn aave_v3_borrow_optimism_round_trip() {
         let chain = ChainId::new("eip155:10");
         // Optimism native USDC (Circle official).
-        let usdc = simulation_state::token::TokenRef {
+        let usdc = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0x0b2c639c533813f4aa9d7837caf62653d097ff85").unwrap(),
@@ -668,7 +686,7 @@ mod smoke {
             },
             asset: usdc,
             amount: U256::from(500_000_000u64),
-            rate_mode: simulation_state::token::RateMode::Variable,
+            rate_mode: policy_state::token::RateMode::Variable,
             on_behalf_of: None,
             live_inputs: lending::BorrowLiveInputs {
                 reserve_state: LiveField::new(
@@ -690,7 +708,7 @@ mod smoke {
                 ),
                 user_state_before: LiveField::new(
                     lending::UserLendingState {
-                        health_factor: simulation_state::primitives::Decimal::new("2.4"),
+                        health_factor: policy_state::primitives::Decimal::new("2.4"),
                         total_collat_usd: U256::from(10_000u64),
                         total_debt_usd: U256::from(4_000u64),
                         available_borrow_usd: U256::from(3_500u64),
@@ -699,7 +717,7 @@ mod smoke {
                     now(),
                 ),
                 asset_price_usd: LiveField::new(
-                    simulation_state::primitives::Decimal::new("1.0"),
+                    policy_state::primitives::Decimal::new("1.0"),
                     DataSource::OracleFeed {
                         provider: OracleProvider::Chainlink,
                         feed_id: "USDC/USD".into(),
@@ -707,7 +725,7 @@ mod smoke {
                     now(),
                 ),
                 current_borrow_rate: LiveField::new(
-                    simulation_state::primitives::Decimal::new("0.045"),
+                    policy_state::primitives::Decimal::new("0.045"),
                     reserve_source.clone(),
                     now(),
                 ),
@@ -755,7 +773,7 @@ mod smoke {
         // Placeholder collateral USDC — Hyperliquid USDC bridge token, PDF §11 doesn't pin
         // an address. Real Hyperliquid USDC bridges via Arbitrum; left placeholder here
         // because the fixture verifies serde round-trip, not on-chain identity.
-        let usdc = simulation_state::token::TokenRef {
+        let usdc = policy_state::token::TokenRef {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),
                 address: Address::from_str("0x000000000000000000000000000000000000beef").unwrap(),
@@ -776,28 +794,28 @@ mod smoke {
         let open = perp::PerpAction::OpenPosition(perp::OpenPerpAction {
             venue: perp::PerpVenue::Hyperliquid { chain },
             market,
-            side: simulation_state::position::PerpSide::Long,
+            side: policy_state::position::PerpSide::Long,
             size: perp::SizeSpec::BaseAmount {
                 amount: U256::from(2_000_000_000_000_000_000u64),
             },
-            leverage: simulation_state::primitives::Decimal::new("5.0"),
+            leverage: policy_state::primitives::Decimal::new("5.0"),
             collateral: (usdc, U256::from(1_500_000_000u64)),
-            margin_mode: simulation_state::position::MarginMode::Cross,
+            margin_mode: policy_state::position::MarginMode::Cross,
             slippage_bp: 30,
             reduce_only: false,
             live_inputs: perp::OpenPerpLiveInputs {
                 mark_price: LiveField::new(
-                    simulation_state::primitives::Price::new("3750.0"),
+                    policy_state::primitives::Price::new("3750.0"),
                     venue_source("hl_mids"),
                     now(),
                 ),
                 oracle_price: LiveField::new(
-                    simulation_state::primitives::Price::new("3751.2"),
+                    policy_state::primitives::Price::new("3751.2"),
                     venue_source("hl_oracle"),
                     now(),
                 ),
                 funding_rate: LiveField::new(
-                    simulation_state::primitives::Decimal::new("0.0001"),
+                    policy_state::primitives::Decimal::new("0.0001"),
                     venue_source("hl_funding"),
                     now(),
                 ),
@@ -807,7 +825,7 @@ mod smoke {
                     now(),
                 ),
                 max_leverage: LiveField::new(
-                    simulation_state::primitives::Decimal::new("20.0"),
+                    policy_state::primitives::Decimal::new("20.0"),
                     venue_source("hl_market_meta"),
                     now(),
                 ),
@@ -841,7 +859,7 @@ mod smoke {
                         salt: None,
                     },
                     deadline: Time::from_unix(1_738_000_060),
-                    nonce_key: Some(simulation_state::NonceKey::OrderHash {
+                    nonce_key: Some(policy_state::NonceKey::OrderHash {
                         hash: "0xfeed00000000000000000000000000000000000000000000000000000000ffff"
                             .into(),
                     }),

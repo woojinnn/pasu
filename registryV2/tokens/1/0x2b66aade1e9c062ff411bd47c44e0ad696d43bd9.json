@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2b66aade1e9c062ff411bd47c44e0ad696d43bd9",
+  "symbol": "sUSDa",
+  "decimals": 18,
+  "name": "USDa saving token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

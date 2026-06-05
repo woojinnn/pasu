@@ -1,0 +1,67 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/rewards/claimAllRewards/0xbb492bf5@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Aave Umbrella rewards claim. The ClaimRewardsAction gauges field carries rewarded stake assets for this controller.",
+  "match": {
+    "selector": "0xbb492bf5",
+    "chain_to_addresses": {
+      "1": [
+        "0x4655ce3d625a63d30ba704087e52b4c31e38188b"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "claimAllRewards",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "assets",
+          "type": "address[]"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "name": "claimAllRewards",
+      "outputs": [
+        {
+          "internalType": "address[][]",
+          "name": "",
+          "type": "address[][]"
+        },
+        {
+          "internalType": "uint256[][]",
+          "name": "",
+          "type": "uint256[][]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "claim_rewards",
+        "claim_rewards": {
+          "venue": {
+            "name": "aave_umbrella_rewards_controller",
+            "chain": "$chain",
+            "controller": "$to"
+          },
+          "reward_token": null,
+          "gauges": "$args.assets",
+          "on_behalf_of": null,
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  }
+}

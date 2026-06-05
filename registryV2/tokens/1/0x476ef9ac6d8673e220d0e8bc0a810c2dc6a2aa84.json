@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x476ef9ac6d8673e220d0e8bc0a810c2dc6a2aa84",
+  "symbol": "USPD",
+  "decimals": 18,
+  "name": "United States Permissionless Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -167,8 +167,8 @@ fn exit_asymmetry(_params: &Value, _ctx: &FactCtx) -> Result<Value, FactError> {
 mod tests {
     use serde_json::json;
 
-    use simulation_state::primitives::ChainId;
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::primitives::ChainId;
+    use policy_state::{WalletId, WalletState};
 
     use super::*;
 

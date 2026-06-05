@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xad55aebc9b8c03fc43cd9f62260391c13c23e7c0",
+  "symbol": "cUSDO",
+  "decimals": 18,
+  "name": "Compounding Open Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

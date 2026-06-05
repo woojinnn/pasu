@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x5d489d45c56e40b971e601ccbc506112a2004da2",
+  "symbol": "IOTXCIOTX-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: IOTX/CIOTX",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x5d489d45c56e40b971e601ccbc506112a2004da2"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x6fb3e0a217407efff7ca062d46c26e5d60a14d69"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9f90b457dea25ef802e38d470dda7343691d8fe1"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

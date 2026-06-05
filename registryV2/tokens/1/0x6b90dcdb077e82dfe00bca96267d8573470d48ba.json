@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6b90dcdb077e82dfe00bca96267d8573470d48ba",
+  "symbol": "NPR-PT/eUSDe@30/5/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/Ethereal Pre-deposit Vault@30/5/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x6b90dcdb077e82dfe00bca96267d8573470d48ba"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x90d2af7d622ca3141efa4d8f1f24d86e5974cc8f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x71487b906434c8ee170f046be4beb470e56fd77e"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

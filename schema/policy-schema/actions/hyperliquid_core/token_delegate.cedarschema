@@ -1,0 +1,29 @@
+// HyperliquidCore::HlTokenDelegate — a Hyperliquid `{"type":"tokenDelegate"}`.
+//
+// Delegates or undelegates HYPE stake to a validator (moves staking weight).
+
+namespace HyperliquidCore {
+  type HlTokenDelegateContext = {
+    // Common envelope.
+    meta: Core::ActionMeta,
+    // Always `{ name: "hyperliquid" }`.
+    venue: HlVenue,
+    // Validator address (lowercase 0x-hex).
+    validator: String,
+    // `true` ⇒ undelegate, `false` ⇒ delegate.
+    isUndelegate: Bool,
+    // Amount in token wei (decimal string).
+    wei: String,
+    // Manifest-extensible slot.
+    custom?: HlTokenDelegateCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type HlTokenDelegateCustomContext = {};
+
+  action "HlTokenDelegate" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: HlTokenDelegateContext,
+  };
+}

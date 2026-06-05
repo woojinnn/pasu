@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 137,
-  "address": "0x37d52ef15fc07ba2e4ab3a70c593a8e6a8492e5f",
-  "symbol": "sDECT",
-  "decimals": 18,
-  "name": "sDECT Token"
-}

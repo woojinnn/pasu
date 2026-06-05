@@ -1,0 +1,120 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/metamorpho/1-usdc-redeem@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "MetaMorpho ERC-4626 redeem for USDC vault(s) on chain 1. venue=metamorpho{vault=$to}; asset=USDC (0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48) baked (not in ERC-4626 calldata). amount=shares SHARE-denominated (abstract — §4d convertToAssets enrichment deferred; decode-faithful). live_inputs are skeleton (derived_from placeholders; vault-state/share-price enrichment deferred §4d). Vaults share the ERC-4626 impl ABI (v1.0/v1.1); verified vs blue-api.morpho.org (listed:true) + on-chain decimals(). All 27 listed mainnet vault(s) for this underlying; universe in _address_universe.json.",
+  "match": {
+    "selector": "0xba087652",
+    "chain_to_addresses": {
+      "1": [
+        "0x0b2d98bbf3e38df1d1b7be7343732e32e8b1f818",
+        "0x4f460bb11cf958606c69a963b4a17f9daeeea8b6",
+        "0x4ff4186188f8406917293a9e01a1ca16d3cf9e59",
+        "0x56a76b428244a50513ec81e225a293d128fd581d",
+        "0x62fe596d59fb077c2df736df212e0affb522dc78",
+        "0x64964e162aa18d32f91ea5b24a09529f811aeb8e",
+        "0x68aea7b82df6ccdf76235d46445ed83f85f845a3",
+        "0x6c26793c7f1e2785c09b460676e797b716f0bc8e",
+        "0x711a68a82dd80cb0435b281af76b0b80804efab9",
+        "0x777791c4d6dc2ce140d00d2828a7c93503c67777",
+        "0x8eb67a509616cd6a7c1b3c8c21d48ff57df3d458",
+        "0x974c8fbf4fd795f66b85b73ebc988a51f1a040a9",
+        "0xa1ff9c28ebc160c1dcde4b9aa9551f617880c6fb",
+        "0xa8875aaebc4f830524e35d57f9772ffacbdd6c45",
+        "0xb0f05e4de970a1aaf77f8c2f823953a367504ba9",
+        "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+        "0xbeef1f5bd88285e5b239b6aacb991d38cca23ac9",
+        "0xbeef2b5fd3d94469b7782aebe6364e6e6fb1b709",
+        "0xbeef346d7099865208ff331e4f648f4154ddaa05",
+        "0xbeef96b330ef1fe7ebe41ece0bd4a41a94bc03dc",
+        "0xbeefb9f61cc44895d8aec381373555a64191a9c4",
+        "0xbeefff209270748ddd194831b3fa287a5386f5bc",
+        "0xcdaea3dde6ce5969aa1414a82a3a681ced51ce72",
+        "0xd41830d88dfd08678b0b886e0122193d54b02acc",
+        "0xd63070114470f685b75b74d60eec7c1113d33a3d",
+        "0xdd0f28e19c1780eb6396170735d45153d261490d",
+        "0xf9bddd4a9b3a45f980e11fdde96e16364ddbec49"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "redeem",
+    "abi": {
+      "name": "redeem",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "assets",
+          "type": "uint256"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "lending",
+      "lending": {
+        "action": "withdraw",
+        "withdraw": {
+          "venue": {
+            "name": "metamorpho",
+            "chain": "$chain",
+            "vault": "$to"
+          },
+          "asset": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+            }
+          },
+          "amount": "$args.shares",
+          "recipient": "$args.receiver"
+        }
+      }
+    },
+    "live_inputs": {
+      "reserve_state": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_reserve_state_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "available_to_withdraw": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_available_to_withdraw_skeleton"
+        },
+        "ttl_s": 30
+      },
+      "user_state_before": {
+        "source": {
+          "kind": "derived_from",
+          "inputs": [],
+          "calc_id": "metamorpho_user_state_skeleton"
+        },
+        "ttl_s": 12
+      }
+    }
+  }
+}

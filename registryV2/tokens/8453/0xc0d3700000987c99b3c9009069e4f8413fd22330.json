@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xc0d3700000987c99b3c9009069e4f8413fd22330",
+  "symbol": "cdxUSD",
+  "decimals": 18,
+  "name": "Cod3x USD",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

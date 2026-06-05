@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x018008bfb33d285247a21d44e50697654f754e63",
+  "symbol": "aEthDAI",
+  "decimals": 18,
+  "name": "Aave Ethereum DAI",
+  "source": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol#L243",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "aave_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0x6b175474e89094c44da98b954eedeac495271d0f" }
+    },
+    "rebase_form": "rebasing"
+  }
+}

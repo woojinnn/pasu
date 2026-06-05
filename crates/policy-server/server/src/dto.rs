@@ -19,8 +19,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use simulation_reducer::action::Action;
-use simulation_state::{EvalContext, StateDelta, WalletId, WalletState};
+use policy_state::{EvalContext, StateDelta, WalletId, WalletState};
+use policy_transition::action::Action;
 
 /// Request: browser extension → simulation backend.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -117,8 +117,8 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::primitives::{Address, ChainId, Time};
-    use simulation_state::RequestKind;
+    use policy_state::primitives::{Address, ChainId, Time};
+    use policy_state::RequestKind;
 
     fn sample_wallet_id() -> WalletId {
         WalletId::new(

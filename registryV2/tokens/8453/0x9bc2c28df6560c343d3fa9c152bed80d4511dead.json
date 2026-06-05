@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x9bc2c28df6560c343d3fa9c152bed80d4511dead",
+  "symbol": "USDeAD",
+  "decimals": 18,
+  "name": "Deaderal Reserve Note",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

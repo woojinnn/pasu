@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf92a583ae0241c1924cf5a039555d18ec9082d5c",
+  "symbol": "NPR-PT/T9cbBTC@17/6/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/Flagship cbBTC@17/6/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf92a583ae0241c1924cf5a039555d18ec9082d5c"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xb09f761cb13baca8ec087ac476647361b6314f98"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xfff823b51f31d96ec13da2f454fb696da08d3814"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

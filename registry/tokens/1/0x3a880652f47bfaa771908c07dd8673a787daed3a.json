@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x3a880652f47bfaa771908c07dd8673a787daed3a",
-  "symbol": "DDX",
-  "decimals": 18,
-  "name": "DerivaDAO"
-}

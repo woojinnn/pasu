@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4fabb145d64652a948d72533023f6e7a623c7c53",
+  "symbol": "BUSD",
+  "decimals": 18,
+  "name": "BUSD",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,21 +1,11 @@
-//! `DynSolValue` → `serde_json::Value` 변환.
-//!
-//! alloy-dyn-abi 가 디코드한 결과를 sync 가 쓰는 JSON 형태로 평탄화.
-//! `Uint(256, "100")` 같은 typed value 를 `"100"` (decimal string) 으로.
-//! Tuple/Array 는 JSON Array, Address 는 hex string 등.
-
 use alloy_dyn_abi::DynSolValue;
 use serde_json::Value;
 
-/// 한 `DynSolValue` 를 `serde_json::Value` 로.
 pub fn dyn_to_json(v: &DynSolValue) -> Value {
     match v {
         DynSolValue::Bool(b) => Value::Bool(*b),
 
-        DynSolValue::Int(i, _bits) => {
-            // 음수도 가능 — decimal string 으로
-            Value::String(i.to_string())
-        }
+        DynSolValue::Int(i, _bits) => Value::String(i.to_string()),
         DynSolValue::Uint(u, _bits) => Value::String(u.to_string()),
 
         DynSolValue::FixedBytes(bytes, _len) => {
@@ -31,17 +21,10 @@ pub fn dyn_to_json(v: &DynSolValue) -> Value {
             Value::Array(items.iter().map(dyn_to_json).collect())
         }
 
-        DynSolValue::Tuple(items) => {
-            // Tuple 은 JSON Array 로 변환 (sync 의 디코더 convention 과 매칭)
-            Value::Array(items.iter().map(dyn_to_json).collect())
-        }
+        DynSolValue::Tuple(items) => Value::Array(items.iter().map(dyn_to_json).collect()),
     }
 }
 
-/// Top-level tuple (= 함수의 returns) 을 평탄화.
-///
-/// 함수가 단일 반환값이면 `result[0]` 만 풀어 그 값 자체로 반환.
-/// 다중 반환값이면 JSON Array 그대로.
 pub fn flatten_function_result(values: &[DynSolValue]) -> Value {
     match values.len() {
         0 => Value::Null,
@@ -64,7 +47,6 @@ mod tests {
     #[test]
     fn int_negative_to_string() {
         let v = DynSolValue::Int(I256::try_from(-100i64).unwrap(), 256);
-        // I256 의 to_string 은 음수 표기 포함
         let json = dyn_to_json(&v);
         assert!(json.as_str().unwrap().starts_with('-'));
     }

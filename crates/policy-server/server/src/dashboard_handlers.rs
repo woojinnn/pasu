@@ -8,7 +8,7 @@
 //!
 //! Implementation deliberately walks the user's primitive wallet snapshots
 //! one-by-one and reuses `WalletState::populate_computed_values()`. Aggregate
-//! read models are intentionally kept out of the database for now.
+//! read models are derived on request instead of persisted in the database.
 
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -16,8 +16,8 @@ use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
 use serde::Serialize;
 
-use simulation_state::primitives::ChainId;
-use simulation_state::{WalletId, WalletStore};
+use policy_state::primitives::ChainId;
+use policy_state::{WalletId, WalletStore};
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -72,9 +72,8 @@ pub async fn get_summary(
             Some(addr) => WalletId::new(addr, w_row.chains.clone()),
             None => continue,
         };
-        let mut s = match store.load(&wallet_id).await {
-            Ok(s) => s,
-            Err(_) => continue, // best-effort: skip on per-wallet load failure
+        let Ok(mut s) = store.load(&wallet_id).await else {
+            continue; // best-effort: skip on per-wallet load failure
         };
         let unlimited = count_unlimited_approvals(&s);
         let pending = i64::try_from(s.pending.len()).unwrap_or(i64::MAX);
@@ -135,16 +134,16 @@ fn fmt6(v: f64) -> String {
     format!("{v:.6}")
 }
 
-fn parse_addr(addr_lower: &str) -> Option<simulation_state::primitives::Address> {
+fn parse_addr(addr_lower: &str) -> Option<policy_state::primitives::Address> {
     use std::str::FromStr;
-    simulation_state::primitives::Address::from_str(addr_lower).ok()
+    policy_state::primitives::Address::from_str(addr_lower).ok()
 }
 
-fn key_chain(k: &simulation_state::token::TokenKey) -> &ChainId {
+fn key_chain(k: &policy_state::token::TokenKey) -> &ChainId {
     k.chain()
 }
 
-fn count_unlimited_approvals(state: &simulation_state::WalletState) -> i64 {
+fn count_unlimited_approvals(state: &policy_state::WalletState) -> i64 {
     let erc20 = state
         .approvals
         .erc20

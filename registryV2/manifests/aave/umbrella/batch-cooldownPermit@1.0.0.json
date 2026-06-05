@@ -1,0 +1,75 @@
+{
+  "type": "adapter_action",
+  "id": "aave/umbrella/batch/cooldownPermit@1.0.0",
+  "publisher": "aave.eth",
+  "schema_version": "3",
+  "note": "Umbrella batch helper cooldown permit mapped to staking cooldown.",
+  "match": {
+    "selector": "0x51d3bf6d",
+    "chain_to_addresses": {
+      "1": [
+        "0xce6ced23118edeb23054e06118a702797b13fc2f"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cooldownPermit",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "contract IStakeToken",
+              "name": "stakeToken",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct IUmbrellaBatchHelper.CooldownPermit",
+          "name": "p",
+          "type": "tuple"
+        }
+      ],
+      "name": "cooldownPermit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "cooldown",
+        "cooldown": {
+          "venue": {
+            "name": "aave_umbrella_stake_token",
+            "chain": "$chain",
+            "stake_token": "$args.stakeToken"
+          },
+          "account": null
+        }
+      }
+    }
+  }
+}

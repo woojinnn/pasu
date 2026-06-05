@@ -1,0 +1,20 @@
+{
+  "date": "2026-06-01",
+  "tool": "mcp__etherscan.normalTxsByAddress",
+  "chainId": 1,
+  "targetAddress": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+  "targetLabel": "Uniswap V2 Router02 mainnet",
+  "request": {
+    "startblock": 0,
+    "endblock": 99999999,
+    "page": 1,
+    "offset": 5,
+    "sort": "desc"
+  },
+  "status": "OK",
+  "apiCallsUsed": 1,
+  "rawTxsSeen": 5,
+  "uniqueSelectorsSeen": ["0x791ac947", "0xb6f9de95"],
+  "targetAddressCount": 1,
+  "blocker": "MCP normalTxsByAddress tool is capped to the last 5 returned transactions per call in this environment, so the framework's 10000-tx Etherscan bulk lane was not completed."
+}

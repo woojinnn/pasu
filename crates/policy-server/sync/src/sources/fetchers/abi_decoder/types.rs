@@ -1,12 +1,6 @@
 //! `decoder_id → DynSolType` registry.
-//!
-//! 한 함수의 returndata 를 풀려면 그 함수의 **output ABI 타입** 만 알면 된다.
-//! `alloy-dyn-abi` 의 `DynSolType` 가 그 타입을 표현 (예: "(uint256,uint256,uint256)").
-//!
 //! Builtins:
-//! * 단순: `u256`, `address`, `bool` 같은 1-필드
 //! * Aave V3: getUserAccountData, getReserveData
-//! * (확장 예정) Compound V3, Uniswap V3, Curve 등
 
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -18,7 +12,6 @@ pub struct AbiTypeRegistry {
     by_id: HashMap<String, DynSolType>,
 }
 
-/// Type-string 파싱 에러 — 외부 사용자는 String 만 보면 됨.
 pub type ParseError = String;
 
 impl AbiTypeRegistry {
@@ -38,13 +31,10 @@ impl AbiTypeRegistry {
         self.by_id.get(id)
     }
 
-    /// 자주 쓰는 ABI 타입 일괄 등록. 새 protocol 추가 시 여기에 한 줄.
     #[must_use]
     pub fn with_builtins() -> Self {
         let mut r = Self::new();
 
-        // ─── 단순 타입 ───
-        // (single value 라도 () 로 감싸야 tuple 로 디코드되어 일관성)
         r.register("abi_u256", "(uint256)").unwrap();
         r.register("abi_address", "(address)").unwrap();
         r.register("abi_bool", "(bool)").unwrap();
@@ -60,10 +50,8 @@ impl AbiTypeRegistry {
         .unwrap();
 
         // getReserveData(address) returns ReserveData (15 fields)
-        // Aave V3 의 ReserveData struct — bp/index 단위 + 주소들 + bitmask config
         r.register(
             "aave_v3_reserve_data",
-            // ReserveDataLegacy struct - 15 필드
             // configuration (uint256 bitmap), liquidityIndex, currentLiquidityRate,
             // variableBorrowIndex, currentVariableBorrowRate, currentStableBorrowRate,
             // lastUpdateTimestamp (uint40), id (uint16),
@@ -74,8 +62,6 @@ impl AbiTypeRegistry {
         )
         .unwrap();
 
-        // 같은 reserve_data ABI 의 다른 view — currentVariableBorrowRate (index 4) 만 추출.
-        // mapper 가 ray scale 적용해서 borrow APY decimal 만 반환.
         r.register(
             "aave_v3_current_borrow_rate",
             "(uint256,uint128,uint128,uint128,uint128,uint128,uint40,uint16,address,address,address,address,uint128,uint128,uint128)",

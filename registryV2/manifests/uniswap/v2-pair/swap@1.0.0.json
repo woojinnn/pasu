@@ -1,0 +1,65 @@
+{
+  "type": "adapter_action",
+  "id": "uniswap/v2-pair/swap@1.0.0",
+  "publisher": "uniswap.eth",
+  "schema_version": "3",
+  "note": "Representative direct Uniswap V2 pair swap(uint256,uint256,address,bytes) coverage for Etherscan-enriched Track B sample pairs. Faithful pair-level AMM semantics require reserve/token context and remain Track B; route as explicit Unknown/fail-closed.",
+  "match": {
+    "selector": "0x022c0d9f",
+    "chain_to_addresses_source": "uniswap:v2_pair_candidates",
+    "chain_ids": [
+      1,
+      42161
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "swap",
+    "abi": {
+      "name": "swap",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "amount0Out",
+          "type": "uint256"
+        },
+        {
+          "name": "amount1Out",
+          "type": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "unknown",
+      "unknown": {
+        "target": "$to",
+        "chain": "$chain",
+        "calldata": "$calldata",
+        "value": "$tx.value"
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "uniswap:v2_pair_candidates",
+    "note": "build-index consumes reviewed cover entries from surface/uniswap/_address_universe.json and appends a per-pair id suffix"
+  }
+}

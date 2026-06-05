@@ -1,0 +1,17 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xa17581a9e3356d9a858b789d68b4d866e593ae94",
+  "symbol": "cWETHv3",
+  "decimals": 18,
+  "name": "Compound WETH",
+  "source": "https://docs.compound.finance/#networks",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": { "name": "compound_v3", "chain": "eip155:1" },
+    "underlying": {
+      "key": { "standard": "erc20", "chain": "eip155:1", "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" }
+    },
+    "rebase_form": "index"
+  }
+}

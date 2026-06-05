@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x1f440fb7dab4d3b27617f8e5b4855b476fdd95a2",
+  "symbol": "WON",
+  "decimals": 18,
+  "name": "WON",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

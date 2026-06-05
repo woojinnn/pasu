@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x84631c0d0081fde56deb72f6de77abbbf6a9f93a",
+  "symbol": "Re7LRT",
+  "decimals": 18,
+  "name": "Re7 Labs LRT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

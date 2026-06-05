@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xe2f3d42443605fc4ad5bce82f0e9bfffbcffa6ca",
+  "symbol": "TBCD",
+  "decimals": 18,
+  "name": "SORA TBC Dollar",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

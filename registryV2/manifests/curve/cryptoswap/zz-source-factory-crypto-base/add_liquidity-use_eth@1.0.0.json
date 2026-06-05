@@ -1,0 +1,116 @@
+{
+  "type": "adapter_action",
+  "id": "curve/cryptoswap/source/factory-crypto-base/add_liquidity-use_eth@1.0.0",
+  "publisher": "curve.fi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0xee22be23",
+    "chain_to_addresses_source": "curve:factory_crypto_base",
+    "chain_ids": [
+      8453
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "add_liquidity",
+    "abi": {
+      "name": "add_liquidity",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "amounts",
+          "type": "uint256[2]"
+        },
+        {
+          "name": "min_mint_amount",
+          "type": "uint256"
+        },
+        {
+          "name": "use_eth",
+          "type": "bool"
+        }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "add_liquidity",
+        "add_liquidity": {
+          "venue": {
+            "name": "curve_v2",
+            "chain": "$chain",
+            "pool": "$to"
+          },
+          "params": {
+            "kind": "pooled",
+            "tokens": [
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.0"
+                  }
+                },
+                "$args.amounts[0]"
+              ],
+              [
+                {
+                  "key": {
+                    "standard": "erc20",
+                    "chain": "$chain",
+                    "address": "$source.coins.1"
+                  }
+                },
+                "$args.amounts[1]"
+              ]
+            ],
+            "min_lp_out": "$args.min_mint_amount",
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$to",
+                "function": "get_balances()",
+                "decoder_id": "curve_v2_balances"
+              },
+              "ttl_s": 12
+            },
+            "current_price": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [
+                  {
+                    "scope": "global",
+                    "name": "curve_v2_pool_state"
+                  }
+                ],
+                "calc_id": "curve_v2_price_impact_bp"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "curve:factory_crypto_base",
+    "note": "build-index substitutes $source.* and appends a per-pool id suffix"
+  }
+}

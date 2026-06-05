@@ -25,23 +25,20 @@ use axum::Json;
 use serde::Deserialize;
 use serde_json::json;
 
-use simulation_db::GlobalDb;
+use policy_db::GlobalDb;
 
 use crate::auth::jwt::{self, TokenType};
 
 /// `GET /auth/google` — bounce the user to Google's consent screen.
-///
 /// All config (`GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`) read at request
 /// time so a missing env var surfaces as a clear 500 rather than a
 /// startup-time panic.
 pub async fn start_google_login() -> Response {
-    let client_id = match env::var("GOOGLE_CLIENT_ID") {
-        Ok(v) => v,
-        Err(_) => return env_missing("GOOGLE_CLIENT_ID"),
+    let Ok(client_id) = env::var("GOOGLE_CLIENT_ID") else {
+        return env_missing("GOOGLE_CLIENT_ID");
     };
-    let redirect_uri = match env::var("GOOGLE_REDIRECT_URI") {
-        Ok(v) => v,
-        Err(_) => return env_missing("GOOGLE_REDIRECT_URI"),
+    let Ok(redirect_uri) = env::var("GOOGLE_REDIRECT_URI") else {
+        return env_missing("GOOGLE_REDIRECT_URI");
     };
     let state = match jwt::issue("oauth-state", "oauth-state", TokenType::Access, Some(300)) {
         Ok(s) => s,
@@ -71,6 +68,13 @@ pub struct CallbackQuery {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct TokenResp {
+    id_token: Option<String>,
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
 /// `GET /auth/google/callback?code=…&state=…` — finish the OAuth dance.
 pub async fn google_callback(
     State(global): State<GlobalDb>,
@@ -79,13 +83,11 @@ pub async fn google_callback(
     if let Some(err) = q.error {
         return user_error(&format!("Google denied login: {err}"));
     }
-    let code = match q.code {
-        Some(c) => c,
-        None => return user_error("missing `code` parameter"),
+    let Some(code) = q.code else {
+        return user_error("missing `code` parameter");
     };
-    let state = match q.state {
-        Some(s) => s,
-        None => return user_error("missing `state` parameter"),
+    let Some(state) = q.state else {
+        return user_error("missing `state` parameter");
     };
     // Verify CSRF state. Don't care about the claims, only that it's
     // ours and recent.
@@ -133,8 +135,8 @@ pub struct RefreshRequest {
 }
 
 /// `POST /auth/refresh` — rotate a refresh token and mint a new access
-/// token. This remains stateless for now; Redis/DB revocation can be layered
-/// underneath the same endpoint once cloud session storage is introduced.
+/// token. Token revocation can be layered underneath the same endpoint once
+/// distributed session storage is introduced.
 pub async fn refresh_token(Json(req): Json<RefreshRequest>) -> Response {
     let claims = match jwt::verify(&req.refresh_token) {
         Ok(c) if c.is_refresh() => c,
@@ -176,13 +178,6 @@ async fn exchange_code_for_id_token(code: &str) -> Result<String, String> {
         ("redirect_uri", &redirect_uri),
         ("grant_type", "authorization_code"),
     ];
-
-    #[derive(Debug, Deserialize)]
-    struct TokenResp {
-        id_token: Option<String>,
-        error: Option<String>,
-        error_description: Option<String>,
-    }
 
     let resp: TokenResp = reqwest::Client::new()
         .post("https://oauth2.googleapis.com/token")

@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x2d0dcc48c041c0ddc199ee83ea249ed7ed085fbc",
+  "symbol": "asdCRVSP",
+  "decimals": 18,
+  "name": "asdCRV/sdCRV Oracle",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x2d0dcc48c041c0ddc199ee83ea249ed7ed085fbc"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x43e54c2e7b3e294de3a155785f52ab49d87b9922"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xd1b5651e55d4ceed36251c61c50c889b36f6abb5"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

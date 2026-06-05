@@ -14,7 +14,7 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::primitives::U256;
+use policy_state::primitives::U256;
 
 use super::params::param_action;
 use super::FactCtx;
@@ -213,14 +213,14 @@ mod tests {
 
     use serde_json::json;
 
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::{WalletId, WalletState};
 
     fn empty_state() -> WalletState {
         WalletState::new(WalletId::new(
             "0x000000000000000000000000000000000000a01c"
                 .parse()
                 .unwrap(),
-            [simulation_state::primitives::ChainId::ethereum_mainnet()],
+            [policy_state::primitives::ChainId::ethereum_mainnet()],
         ))
     }
 

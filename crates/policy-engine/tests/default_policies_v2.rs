@@ -118,3 +118,134 @@ fn default_v2_bundles_are_internally_consistent() {
         "expected at least one default v2 bundle in {dir:?}"
     );
 }
+
+// ── N5 — deny × optional-enrichment ship-gate ──────────────────────────────
+// An enrichment call that is `optional` (skipped when a param selector is
+// missing), or whose output is not `required`, may leave its `context.custom.*`
+// field ABSENT at evaluation time. A pure-static `warn` policy guarding such a
+// field with `context.custom has X` is fine — it simply doesn't warn. But a
+// `forbid` (`@severity("deny")`) whose firing hinges on that field will silently
+// NOT deny when the field is absent — a fail-open. This gate forbids shipping
+// such a bundle. (Conservative + bundle-level: a bundle mixing a deny policy on
+// a required field with a warn policy on an optional field could over-flag, but
+// shipped defaults are one policy each.)
+
+/// Custom fields a deny policy must not hinge on: those NOT guaranteed present
+/// (every feeder is an `optional` call or a non-`required` output) AND
+/// referenced by a `@severity("deny")` policy. Returns the offending field names.
+fn deny_optional_violations(manifest: &ManifestV2, policy: &str) -> Vec<String> {
+    use std::collections::BTreeSet;
+
+    let mut all_fed: BTreeSet<String> = BTreeSet::new();
+    let mut guaranteed: BTreeSet<String> = BTreeSet::new();
+    for spec in &manifest.policy_rpc {
+        for out in &spec.outputs {
+            all_fed.insert(out.field.clone());
+            if out.required && !spec.optional {
+                guaranteed.insert(out.field.clone());
+            }
+        }
+    }
+
+    // Only a deny (forbid) policy can fail OPEN on a missing field.
+    if !policy.contains("@severity(\"deny\")") {
+        return Vec::new();
+    }
+
+    all_fed
+        .difference(&guaranteed)
+        .filter(|f| {
+            policy.contains(&format!("context.custom.{f}"))
+                || policy.contains(&format!("context.custom has {f}"))
+        })
+        .cloned()
+        .collect()
+}
+
+/// No shipped default deny policy may hinge solely on an optional/non-required
+/// enrichment field (it would silently skip → never deny → fail-open).
+#[test]
+fn no_default_deny_policy_depends_only_on_optional_enrichment() {
+    let dir = default_policies_dir();
+    for entry in fs::read_dir(&dir).expect("read default_policies_v2 fixture dir") {
+        let entry = entry.expect("dir entry");
+        if !entry.file_type().expect("file type").is_dir() {
+            continue;
+        }
+        let bundle = entry.path();
+        let id = bundle
+            .file_name()
+            .expect("name")
+            .to_string_lossy()
+            .into_owned();
+        let manifest_json = fs::read_to_string(bundle.join("manifest.json"))
+            .unwrap_or_else(|e| panic!("read {id}/manifest.json: {e}"));
+        let policy = fs::read_to_string(bundle.join("policy.cedar"))
+            .unwrap_or_else(|e| panic!("read {id}/policy.cedar: {e}"));
+        let manifest: ManifestV2 = serde_json::from_str(&manifest_json)
+            .unwrap_or_else(|e| panic!("parse {id}/manifest.json: {e}"));
+
+        let violations = deny_optional_violations(&manifest, &policy);
+        assert!(
+            violations.is_empty(),
+            "{id}: deny policy hinges on optional/non-required enrichment field(s) \
+             {violations:?} — they may be absent at eval → forbid never fires \
+             (fail-open). Make the feeding output required + the call non-optional, \
+             or downgrade the policy to warn."
+        );
+    }
+}
+
+/// The gate actually detects a violation (a deny forbidding on an `optional`
+/// call's non-`required` output).
+#[test]
+fn deny_optional_gate_detects_a_synthetic_violation() {
+    let manifest: ManifestV2 = serde_json::from_str(
+        r#"{
+            "id": "synthetic-deny-optional",
+            "schema_version": 2,
+            "policy_rpc": [{
+                "id": "rep",
+                "method": "address.reputation",
+                "params": {},
+                "outputs": [{
+                    "kind": "context", "field": "flagged", "type": "Bool",
+                    "from": "$.result.flagged", "required": false
+                }],
+                "optional": true
+            }],
+            "custom_context": { "fields": { "flagged": "Bool" } }
+        }"#,
+    )
+    .expect("synthetic manifest parses");
+    let policy = "@id(\"x\")\n@severity(\"deny\")\nforbid(principal, action, resource) \
+         when { context has custom && context.custom has flagged && context.custom.flagged };\n";
+
+    let violations = deny_optional_violations(&manifest, policy);
+    assert!(
+        violations.contains(&"flagged".to_string()),
+        "gate must flag the deny-on-optional 'flagged' field, got {violations:?}"
+    );
+
+    // Control: the SAME field fed by a required, non-optional output is fine.
+    let ok_manifest: ManifestV2 = serde_json::from_str(
+        r#"{
+            "id": "synthetic-deny-required",
+            "schema_version": 2,
+            "policy_rpc": [{
+                "id": "rep", "method": "address.reputation", "params": {},
+                "outputs": [{
+                    "kind": "context", "field": "flagged", "type": "Bool",
+                    "from": "$.result.flagged", "required": true
+                }],
+                "optional": false
+            }],
+            "custom_context": { "fields": { "flagged": "Bool" } }
+        }"#,
+    )
+    .expect("control manifest parses");
+    assert!(
+        deny_optional_violations(&ok_manifest, policy).is_empty(),
+        "a deny on a required+non-optional field must NOT be flagged"
+    );
+}

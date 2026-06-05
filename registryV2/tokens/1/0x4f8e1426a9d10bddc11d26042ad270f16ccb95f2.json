@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x4f8e1426a9d10bddc11d26042ad270f16ccb95f2",
+  "symbol": "sUSD",
+  "decimals": 18,
+  "name": "YieldFi Stable Token",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

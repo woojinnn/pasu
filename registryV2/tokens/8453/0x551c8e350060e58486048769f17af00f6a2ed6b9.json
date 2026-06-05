@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x551c8e350060e58486048769f17af00f6a2ed6b9",
+  "symbol": "ONES-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Crypto Pool: ONE/4pool",
+  "source": "https://api.curve.fi/api/getPools/base/factory-crypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_cryptoswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xc06d98085f2d5bd9e12acc5a86b79e2d02b42bba"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xca32694b58fd19b23f585054e4a8d8b84a6e3177"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xf6c5f01c7f3148891ad0e19df78743d31e390d1f"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

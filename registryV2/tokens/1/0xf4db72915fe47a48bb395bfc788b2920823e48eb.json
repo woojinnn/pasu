@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf4db72915fe47a48bb395bfc788b2920823e48eb",
+  "symbol": "NPR-PT/MC_USD0@1/9/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/MEV Capital USD0@1/9/2025",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xf4db72915fe47a48bb395bfc788b2920823e48eb"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x749794e985af5a9a384b9cee6d88dab4ce1576a1"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xa5e08889865f4a4d4f250853dbaefb1f4e91f4ec"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

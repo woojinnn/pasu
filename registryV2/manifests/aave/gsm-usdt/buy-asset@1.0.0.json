@@ -1,0 +1,49 @@
+{
+  "type": "adapter_action",
+  "id": "aave/gsm-usdt/buy-asset@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave GSM (USDT) buyAsset(uint256 minAmount, address receiver) — buy USDT with GHO at the GSM fixed price; minAmount = minimum USDT out. Maps to amm::GsmSwap (side=buy_asset). Gsm proxy 0x882285e62656b9623af136ce3078c6bdcc33f5e3; selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x40fb07a0",
+    "chain_to_addresses": {
+      "1": ["0x882285e62656b9623af136ce3078c6bdcc33f5e3"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "buyAsset",
+    "abi": {
+      "name": "buyAsset",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "minAmount", "type": "uint256" },
+        { "name": "receiver", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "gsm_swap",
+        "gsm_swap": {
+          "venue": { "name": "aave_gsm", "chain": "$chain", "gsm": "$to" },
+          "asset": { "key": { "standard": "erc20", "chain": "$chain", "address": "0xdac17f958d2ee523a2206206994597c13d831ec7" } },
+          "gho": { "key": { "standard": "erc20", "chain": "$chain", "address": "0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f" } },
+          "side": "buy_asset",
+          "amount": "$args.minAmount",
+          "recipient": "$args.receiver"
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

@@ -15,9 +15,9 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::pending::{NonceKey, PendingKind};
-use simulation_state::primitives::{ChainId, U256};
-use simulation_state::token::TokenKey;
+use policy_state::pending::{NonceKey, PendingKind};
+use policy_state::primitives::{ChainId, U256};
+use policy_state::token::TokenKey;
 
 use super::params::{param_action, param_chain_id, param_str, param_u256};
 use super::FactCtx;
@@ -250,17 +250,17 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::delta::StateDelta;
-    use simulation_state::live_field::DataSource;
-    use simulation_state::pending::{
+    use policy_state::delta::StateDelta;
+    use policy_state::live_field::DataSource;
+    use policy_state::pending::{
         AssetCommitment, NonceKey, OrderKind, PendingKind, PendingLifecycle, PendingStatus,
         PendingTx,
     };
-    use simulation_state::primitives::{Address, Time, VenueRef};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{BaseCategory, TokenKind};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::primitives::{Address, Time, VenueRef};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{BaseCategory, TokenKind};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{WalletId, WalletState};
 
     use serde_json::json;
 
@@ -352,6 +352,7 @@ mod tests {
                     hash: id.to_owned(),
                 }),
                 on_chain_tx: None,
+                raw_status: None,
             },
             sync: source(),
             signed_at: Time::from_unix(1_700_000_000),

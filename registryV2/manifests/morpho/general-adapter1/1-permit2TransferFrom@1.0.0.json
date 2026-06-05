@@ -1,0 +1,45 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-permit2TransferFrom@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 permit2TransferFrom plumbing leg (reached via Bundler3 multicall(Call[])). GA1 pulls `amount` of `token` from the bundle initiator via the user's Permit2 ALLOWANCE (not a signature-transfer) to `receiver`. The bundle's token-IN (over-pull bound = the Permit2 allowance). Modeled as token/erc20_transfer (token + amount + recipient, all in calldata); the Permit2-allowance mechanism's owner/nonce/deadline are NOT in this calldata, so the richer token/permit2_transfer_from variant would be mostly empty.",
+  "match": {
+    "selector": "0x827fcfcc",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "permit2TransferFrom",
+    "abi": {
+      "name": "permit2TransferFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "address", "name": "token", "type": "address" },
+        { "internalType": "address", "name": "receiver", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "erc20", "chain": "$chain", "address": "$args.token" } },
+          "recipient": "$args.receiver",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

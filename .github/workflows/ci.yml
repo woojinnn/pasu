@@ -20,6 +20,20 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The v3 decode harness (crates/integration-tests) reads `registryV2/index/`
+      # at test runtime. That index is a build artifact (no longer tracked);
+      # regenerate it from registryV2/{manifests,tokens} before the test steps so
+      # `cargo test` can find the by-callkey / by-typed-data entries.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build registry index
+        working-directory: registryV2
+        run: |
+          npm ci
+          npm run build -- --summary-only --representative-source-refs
+
       - name: Format
         run: cargo fmt --all -- --check
 
@@ -30,6 +44,8 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Test
+        env:
+          SCOPEBALL_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
         run: cargo test --all-features
 
       - name: Doctest

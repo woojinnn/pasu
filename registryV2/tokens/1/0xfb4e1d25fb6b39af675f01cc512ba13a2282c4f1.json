@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xfb4e1d25fb6b39af675f01cc512ba13a2282c4f1",
+  "symbol": "uUSDT",
+  "decimals": 6,
+  "name": "Unilend Interest Bearing USDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xff0031bc30174b192ec860f3c929f2c36bf2e4cd",
+  "symbol": "mUSDret",
+  "decimals": 18,
+  "name": "mUSDre test v0.14",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

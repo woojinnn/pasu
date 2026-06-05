@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x8b99b9b1bb34c81e76a94c95dbe712ae225be826",
+  "symbol": "四零二币",
+  "decimals": 18,
+  "name": "四零二币",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

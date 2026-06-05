@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xf196c68233464a16cfda319a47c21f4ceca62001",
+  "symbol": "vetBTC",
+  "decimals": 18,
+  "name": "Vetro BTC",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

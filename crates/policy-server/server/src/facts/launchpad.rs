@@ -24,10 +24,10 @@
 
 use serde_json::{json, Value};
 
-use simulation_state::position::PositionKind;
-use simulation_state::primitives::{ChainId, Decimal, U256};
-use simulation_state::token::holding::TokenHolding;
-use simulation_state::token::TokenKey;
+use policy_state::position::PositionKind;
+use policy_state::primitives::{ChainId, Decimal, U256};
+use policy_state::token::holding::TokenHolding;
+use policy_state::token::TokenKey;
 
 use super::params::{param_action, param_chain_id};
 use super::FactCtx;
@@ -257,15 +257,15 @@ mod tests {
 
     use std::str::FromStr;
 
-    use simulation_state::live_field::{DataSource, LiveField};
-    use simulation_state::position::{
+    use policy_state::live_field::{DataSource, LiveField};
+    use policy_state::position::{
         LaunchpadAllocation, Position, PositionKind, VestCurve, VestSchedule,
     };
-    use simulation_state::primitives::{Address, ChainId, Price, ProtocolRef, Time, U256};
-    use simulation_state::token::holding::{Balance, TokenHolding};
-    use simulation_state::token::kind::{BaseCategory, TokenKind};
-    use simulation_state::token::{TokenKey, TokenRef};
-    use simulation_state::{WalletId, WalletState};
+    use policy_state::primitives::{Address, ChainId, Price, ProtocolRef, Time, U256};
+    use policy_state::token::holding::{Balance, TokenHolding};
+    use policy_state::token::kind::{BaseCategory, TokenKind};
+    use policy_state::token::{TokenKey, TokenRef};
+    use policy_state::{WalletId, WalletState};
 
     const PAY_TOKEN: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
 

@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0x8df723295214ea6f21026eeeb4382d475f146f9f",
-  "symbol": "EURQ",
-  "decimals": 6,
-  "name": "Quantoz EURQ"
-}

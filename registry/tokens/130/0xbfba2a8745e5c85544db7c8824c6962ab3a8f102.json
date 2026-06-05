@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 130,
-  "address": "0xbfba2a8745e5c85544db7c8824c6962ab3a8f102",
-  "symbol": "METIS",
-  "decimals": 18,
-  "name": "Metis"
-}

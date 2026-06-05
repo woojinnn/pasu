@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x6bb7a212910682dcfdbd5bcbb3e28fb4e8da10ee",
+  "symbol": "GHO",
+  "decimals": 18,
+  "name": "Gho Token",
+  "source": "https://api.curve.fi/api/getPools/base/factory-stable-ng"
+}

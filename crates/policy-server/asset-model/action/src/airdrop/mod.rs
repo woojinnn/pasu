@@ -25,7 +25,6 @@ pub enum AirdropAction {
 
 impl AirdropAction {
     /// The action's `serde` `action` tag (`"claim"` or `"delegate"`).
-    ///
     /// Matches the `#[serde(tag = "action", rename_all = "snake_case")]`
     /// discriminant exactly; verified against `serde_json` output in tests.
     #[must_use]

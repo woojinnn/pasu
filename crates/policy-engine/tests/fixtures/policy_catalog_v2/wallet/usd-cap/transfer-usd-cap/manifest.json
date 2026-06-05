@@ -1,0 +1,17 @@
+{
+  "id": "transfer-usd-cap",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [{
+    "id": "transfer-usd",
+    "method": "oracle.usd_value",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "asset": "$.action.token",
+      "amount": "$.action.amount"
+    },
+    "outputs": [{ "kind": "context", "field": "transferUsd", "type": "Decimal", "from": "$.result.usd", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "transferUsd": "decimal" } }
+}

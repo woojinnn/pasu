@@ -1,0 +1,24 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xc080f56504e0278828a403269db945f6c6d6e014",
+  "symbol": "gteUSDc",
+  "decimals": 18,
+  "name": "Gauntlet eUSD Core",
+  "source": "https://blue-api.morpho.org/graphql (MetaMorpho vault, listed:true mainnet snapshot 2026-06-02) + on-chain decimals() verified",
+  "token_kind": {
+    "kind": "yield_receipt",
+    "protocol": {
+      "name": "metamorpho",
+      "chain": "eip155:1"
+    },
+    "underlying": {
+      "key": {
+        "standard": "erc20",
+        "chain": "eip155:1",
+        "address": "0xa0d69e286b938e21cbf7e51d71f6a4c8918f482f"
+      }
+    },
+    "rebase_form": "index"
+  }
+}

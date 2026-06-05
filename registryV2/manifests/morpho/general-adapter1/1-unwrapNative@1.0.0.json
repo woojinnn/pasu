@@ -1,0 +1,44 @@
+{
+  "type": "adapter_action",
+  "id": "morpho/general-adapter1/1-unwrapNative@1.0.0",
+  "publisher": "morpho.eth",
+  "schema_version": "3",
+  "note": "GeneralAdapter1 unwrapNative plumbing leg (reached via Bundler3 multicall(Call[])). GA1 unwraps `amount` of WETH into native ETH and credits `receiver`. Modeled as token/erc20_transfer of the NET CREDIT — `receiver` receives `amount` native ETH — rather than the WETH→ETH mechanism (no dedicated unwrap ActionBody).",
+  "match": {
+    "selector": "0xb172af6d",
+    "chain_to_addresses": {
+      "1": [
+        "0x4a6c312ec70e8747a587ee860a0353cd42be0ae0"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "unwrapNative",
+    "abi": {
+      "name": "unwrapNative",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "internalType": "uint256", "name": "amount", "type": "uint256" },
+        { "internalType": "address", "name": "receiver", "type": "address" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "token",
+      "token": {
+        "action": "erc20_transfer",
+        "erc20_transfer": {
+          "token": { "key": { "standard": "native", "chain": "$chain" } },
+          "recipient": "$args.receiver",
+          "amount": "$args.amount"
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {}
+}

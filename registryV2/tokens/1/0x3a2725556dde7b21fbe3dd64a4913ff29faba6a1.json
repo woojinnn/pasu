@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x3a2725556dde7b21fbe3dd64a4913ff29faba6a1",
+  "symbol": "rosETH",
+  "decimals": 18,
+  "name": "RestakeFi Restaked osETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

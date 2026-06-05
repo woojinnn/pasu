@@ -1,0 +1,13 @@
+{
+  "id": "high-risk-jurisdiction-rpc-warn",
+  "schema_version": 2,
+  "trigger": { "where": { "action.domain": { "eq": "unknown" } } },
+  "policy_rpc": [{
+    "id": "target-category",
+    "method": "address.category",
+    "params": { "address": "$.action.target" },
+    "outputs": [{ "kind": "context", "field": "riskCategory", "type": "String", "from": "$.result.riskCategory", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "riskCategory": "String" } }
+}

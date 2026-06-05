@@ -1,0 +1,46 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0xd52c2389b0c8362e26465c49f4330a3afb3edf28",
+  "symbol": "YB-cvrBOND",
+  "decimals": 18,
+  "name": "Tri-Yield MAX APY crvBOND LP",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-tricrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_tricrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0xd52c2389b0c8362e26465c49f4330a3afb3edf28"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x20d9ef5524babc1e2bf4d1d1ab720033cf2f4a8e"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x1f6f16945e395593d8050d6cc33e4328a515b648"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x43e54c2e7b3e294de3a155785f52ab49d87b9922"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

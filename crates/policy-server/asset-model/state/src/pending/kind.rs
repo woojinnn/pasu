@@ -14,99 +14,123 @@ use crate::token::TokenRef;
 pub enum OrderKind {
     /// Dutch auction order whose price decays over time (e.g. `UniswapX`).
     Dutch,
-    /// Standard limit order filled at or better than a fixed price.
+    /// Plain limit order.
     Limit,
-    /// Request-for-quote order matched against a market-maker quote.
+    /// Request-for-Quote order, such as 1inch Fusion or Bebop.
     Rfq,
 }
 
-/// Kind of resting (unfilled) order on a perpetual-futures venue.
+/// Unsettled perp order kind.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(rename_all = "snake_case")]
 pub enum PerpOrderKind {
-    /// Limit order resting at a fixed price.
+    /// Limit order that fills when price reaches the limit.
     Limit,
-    /// Stop order that triggers a market order once the stop price is reached.
+    /// Market order that fires when the trigger price is reached.
     StopMarket,
-    /// Stop order that triggers a limit order once the stop price is reached.
+    /// Limit order activated when the trigger price is reached.
     StopLimit,
-    /// Take-profit order that closes the position at a favorable target price.
+    /// take-profit trigger.
     TakeProfit,
 }
 
-/// A signature-only or unsettled entry that may still consume funds or open a position.
+/// Sub-kind for signature-only or unsettled pending entries.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PendingKind {
     /// Off-chain-matched limit order (`UniswapX`, `CowSwap`, 1inch Fusion, Bebop, OKX RFQ, etc.).
     OffchainLimitOrder {
-        /// Venue the order was submitted to.
+        /// Venue that will match the order.
         venue: VenueRef,
-        /// Token being sold (input side of the swap).
+        /// Token being sold.
         sell: TokenRef,
-        /// Token being bought (output side of the swap).
+        /// Token being bought.
         buy: TokenRef,
-        /// Maximum amount of `sell` token spendable (raw token units).
+        /// Maximum sell amount in base units.
         #[tsify(type = "string")]
         sell_max: U256,
-        /// Minimum amount of `buy` token to receive (raw token units).
+        /// Minimum buy amount in base units.
         #[tsify(type = "string")]
         buy_min: U256,
-        /// Matching style of the order (Dutch / limit / RFQ).
+        /// Order kind.
         order_kind: OrderKind,
     },
 
-    /// Unfilled resting order on a perpetual-futures DEX.
+    /// Unsettled perp venue order.
     PerpVenueOrder {
-        /// Perp venue the order rests on.
+        /// Venue where the order is registered.
         venue: VenueRef,
-        /// Market (trading pair) the order targets.
+        /// Trading market.
         market: MarketRef,
-        /// Position side the order would take (long / short).
+        /// Order side.
         side: PerpSide,
-        /// Order size denominated in the base asset (raw units).
+        /// Order size in base-asset units.
         #[tsify(type = "string")]
         size_base: U256,
-        /// Limit / trigger price of the order.
+        /// Order price.
         price: Price,
-        /// Order kind (limit / stop-market / stop-limit / take-profit).
+        /// Order kind.
         order_kind: PerpOrderKind,
-        /// Whether the order may only reduce, never increase, the position.
+        /// Reduce-only flag.
         reduce_only: bool,
     },
 
-    /// A signed-but-unused Permit2 approval — a potential spend cap.
+    /// Signed Permit2 allowance that may become a spend cap.
     SignedPermit2 {
-        /// Token the approval applies to.
+        /// Token being authorized.
         token: TokenRef,
-        /// Address authorized to spend the token.
+        /// Authorized spender address.
         #[tsify(type = "string")]
         spender: Address,
-        /// Maximum amount the spender is permitted to transfer (raw token units).
+        /// Allowance amount in base units.
         #[tsify(type = "string")]
         amount: U256,
-        /// Timestamp at which the permit expires.
+        /// Allowance expiration timestamp.
         expires_at: Time,
-        /// Permit2 unordered nonce as a `(word, bit)` pair.
+        /// Permit2 bitmap nonce as `(word, bit)`.
         #[tsify(type = "[string, number]")]
-        nonce: (U256, u8), // (word, bit)
+        nonce: (U256, u8),
     },
 
-    /// A signed-but-unused EIP-2612 `permit` approval (USDC, DAI, etc.).
-    SignedEIP2612 {
-        /// Token the approval applies to.
+    /// 서명만 발급된 Permit2 `SignatureTransfer` — spender/recipient are supplied
+    /// at execution time, so this records the owner-level one-time spend cap.
+    SignedPermit2Transfer {
+        /// 서명자가 spend를 허용한 토큰.
         token: TokenRef,
-        /// Address authorized to spend the token.
+        /// 토큰 owner / signer.
+        #[tsify(type = "string")]
+        owner: Address,
+        /// 서명된 one-time spender.
         #[tsify(type = "string")]
         spender: Address,
-        /// Maximum amount the spender is permitted to transfer (raw token units).
+        /// 허용된 최대 transfer 양.
         #[tsify(type = "string")]
         amount: U256,
-        /// Timestamp at which the permit expires.
+        /// `SignatureTransfer` deadline.
         expires_at: Time,
-        /// Sequential EIP-2612 nonce for the token owner.
+        /// Permit2 비트맵 nonce — (word, bit).
+        #[tsify(type = "[string, number]")]
+        nonce: (U256, u8),
+        /// Optional `PermitWitnessTransferFrom` witness type name.
+        #[tsify(optional)]
+        witness_type: Option<String>,
+    },
+
+    /// EIP-2612 (USDC, DAI 등).
+    SignedEIP2612 {
+        /// Token being authorized.
+        token: TokenRef,
+        /// Authorized spender address.
+        #[tsify(type = "string")]
+        spender: Address,
+        /// Allowance amount in base units.
+        #[tsify(type = "string")]
+        amount: U256,
+        /// Allowance expiration timestamp.
+        expires_at: Time,
+        /// Owner-level nonce for this token.
         #[tsify(type = "string")]
         nonce: U256,
     },

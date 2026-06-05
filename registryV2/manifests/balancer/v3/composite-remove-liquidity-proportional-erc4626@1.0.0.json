@@ -1,0 +1,120 @@
+{
+  "type": "adapter_action",
+  "id": "balancer/v3/composite-remove-liquidity-proportional-erc4626@1.0.0",
+  "publisher": "balancer.eth",
+  "schema_version": "3",
+  "_note": "Balancer V3 CompositeLiquidityRouter v2 (0xb21A277466e7dB6934556a1Ce12eb3F032815c8A) \u2014 ERC4626/boosted pool liquidity. Source: balancer/balancer-deployments v3. amounts[i] is indexed by the pool's registered token list (NOT in calldata) \u2014 resolved via the baked balancer_v3:composite_pool_tokens map ($source.pool_tokens, same universe as the Router) + balancer_v3_zip_pool_tokens $fn. The bool[] wrapUnderlying/unwrapWrapped flag (whether each leg is the ERC4626 wrapped token or its underlying) is a detail not separately surfaced \u2014 the decode uses the pool's registered ERC4626 token (coarse but identifies pool + amounts; documented). Mainnet only; resolved as a permitBatchAndCall child too via multicall_recurse.",
+  "match": {
+    "selector": "0xd8a7f9fe",
+    "chain_to_addresses_source": "balancer_v3:composite_pool_tokens",
+    "chain_ids": [
+      1
+    ]
+  },
+  "abi_fragment": {
+    "function_name": "removeLiquidityProportionalFromERC4626Pool",
+    "abi": {
+      "name": "removeLiquidityProportionalFromERC4626Pool",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "pool",
+          "type": "address"
+        },
+        {
+          "name": "unwrapWrapped",
+          "type": "bool[]"
+        },
+        {
+          "name": "exactBptAmountIn",
+          "type": "uint256"
+        },
+        {
+          "name": "minAmountsOut",
+          "type": "uint256[]"
+        },
+        {
+          "name": "wethIsEth",
+          "type": "bool"
+        },
+        {
+          "name": "userData",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "remove_liquidity",
+        "remove_liquidity": {
+          "venue": {
+            "name": "balancer_v3",
+            "chain": "$chain",
+            "pool_id": "$args.pool",
+            "pool_type": "weighted"
+          },
+          "params": {
+            "kind": "pooled_burn",
+            "lp_token": {
+              "key": {
+                "standard": "erc20",
+                "chain": "$chain",
+                "address": "$args.pool"
+              }
+            },
+            "lp_amount": "$args.exactBptAmountIn",
+            "min_out": {
+              "$fn": "balancer_v3_zip_pool_tokens",
+              "$args": [
+                "$chain",
+                "$args.pool",
+                "$args.minAmountsOut",
+                "$source.pool_tokens"
+              ]
+            },
+            "recipient": "$tx.from"
+          },
+          "live_inputs": {
+            "pool_state": {
+              "source": {
+                "kind": "onchain_view",
+                "chain": "$chain",
+                "contract": "$args.pool",
+                "function": "getCurrentLiveBalances()",
+                "decoder_id": "balancer_v3_pool_balances"
+              },
+              "ttl_s": 12
+            },
+            "fees_owed": {
+              "source": {
+                "kind": "derived_from",
+                "inputs": [],
+                "calc_id": "balancer_v3_fees_owed"
+              },
+              "ttl_s": 12
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "source_materialize": {
+    "kind": "per_address_context",
+    "source": "balancer_v3:composite_pool_tokens",
+    "note": "build-index materializes the single mainnet CompositeLiquidityRouter v2 bundle and inlines $source.pool_tokens (the baked pool->tokens map from surface/balancer/_pool_universe.json)"
+  }
+}

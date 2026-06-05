@@ -9,8 +9,8 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use simulation_state::primitives::{Address, ChainId, U256};
-use simulation_state::token::TokenKey;
+use policy_state::primitives::{Address, ChainId, U256};
+use policy_state::token::TokenKey;
 
 use crate::error::SyncError;
 use crate::fetchers::rpc::multicall::{Call3, Multicall};
@@ -383,7 +383,6 @@ fn decode_balance(return_data: &[u8]) -> U256 {
 
 /// Top-N discovery for `chain`: one Multicall round-trip with N
 /// `balanceOf(holder)` calls, filtered to non-zero results.
-///
 /// Returns an empty vec for unsupported chains (no catalog entry).
 pub async fn discover_top_tokens(
     router: &Arc<RpcRouter>,

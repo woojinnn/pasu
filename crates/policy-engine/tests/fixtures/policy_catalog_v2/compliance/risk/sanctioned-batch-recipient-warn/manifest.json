@@ -1,0 +1,5 @@
+{
+  "id": "sanctioned-batch-recipient-warn",
+  "schema_version": 2,
+  "trigger": { "scope": "outer", "where": { "action.domain": { "eq": "multicall" } } }
+}

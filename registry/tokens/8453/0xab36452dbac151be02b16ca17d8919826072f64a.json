@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0xab36452dbac151be02b16ca17d8919826072f64a",
-  "symbol": "RSR",
-  "decimals": 18,
-  "name": "Reserve Rights"
-}

@@ -61,7 +61,7 @@ export { listTransactions, type TxRow } from "./transactions";
 
 export { listTokens, type TokenCatalogRow } from "./tokens";
 
-// Phase 1 catalog endpoints (policy schema, templates, examples,
+// Catalog endpoints (policy schema, templates, examples,
 // spenders, single policy fetch).
 export {
   getPolicySchema,
@@ -78,7 +78,7 @@ export {
   type SpenderRep,
 } from "./catalog";
 
-// Phase 3 dashboard summary.
+// Dashboard summary.
 export {
   getDashboardSummary,
   type DashboardSummary,
@@ -86,7 +86,7 @@ export {
   type ChainShare,
 } from "./dashboard";
 
-// Phase 2 verdict / audit / history / findings — now backed by
+// Verdict / audit / history / findings — backed by
 // chrome.storage.local via the extension bridge.
 export {
   listAuditVerdicts,
@@ -109,6 +109,62 @@ export {
   ExtensionBridgeError,
   ExtensionBridgeTimeout,
 } from "./extension-bridge";
+
+// Dashboard ↔ extension SW bridge for managed policies. Replaces the
+// retired server-side `user_policies` CRUD (see policies.ts stubs).
+export {
+  putPolicy,
+  deletePolicy as deleteManagedPolicy,
+  listManagedPolicies,
+  getEnabledPolicyIds,
+  setEnabledPolicyIds,
+  ENABLED_IDS_STORAGE_KEY,
+  dashboardId,
+  stripDashboardId,
+  type ManagedPolicy,
+  listPolicySets,
+  putPolicySet,
+  deletePolicySet,
+  dashboardSetId,
+  stripDashboardSetId,
+  type PolicySet,
+  type PutPolicySetOpts,
+} from "./extension-sync";
+
+export { subscribeToBroadcast } from "./extension-bridge";
+
+export {
+  listListings,
+  getListing,
+  getListingVersion,
+  createListing,
+  createVersion,
+  installListing,
+  listReviews,
+  createReview,
+  voteHelpful,
+  watchListing,
+  unwatchListing,
+  listWatches,
+  pickI18n,
+  type ListingKind,
+  type PublisherTier,
+  type ListingStatus,
+  type Severity as MarketSeverity,
+  type ListingSort,
+  type I18nText,
+  type SetMember,
+  type ListingSummary,
+  type ListingVersion,
+  type ListingDetail,
+  type Review,
+  type ListListingsParams,
+  type CreatePolicyListingBody,
+  type CreateSetListingBody,
+  type CreateListingBody,
+  type CreateVersionBody,
+  type CreateReviewBody,
+} from "./market";
 
 // Shared primitive types — kept in one file (./types) to mirror the
 // Rust DTOs. Re-exported here so consumer pages can

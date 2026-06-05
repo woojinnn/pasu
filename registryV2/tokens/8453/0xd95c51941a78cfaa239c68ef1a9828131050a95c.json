@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0xd95c51941a78cfaa239c68ef1a9828131050a95c",
+  "symbol": "NPR-PT/ysUSDC@16/3/2025",
+  "decimals": 18,
+  "name": "NapierV2-PT/Morpho Moonwell Flagship USDC Compounder@16/3/2025",
+  "source": "https://api.curve.fi/api/getPools/base/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0xd95c51941a78cfaa239c68ef1a9828131050a95c"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xd5428b889621eee8060fc105aa0ab0fa2e344468"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x8d176e326c5c9ce6910049e56d423dae305c2403"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

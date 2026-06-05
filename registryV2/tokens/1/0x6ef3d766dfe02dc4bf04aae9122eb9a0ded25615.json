@@ -1,0 +1,9 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x6ef3d766dfe02dc4bf04aae9122eb9a0ded25615",
+  "symbol": "primeETH",
+  "decimals": 18,
+  "name": "Prime Staked ETH",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng"
+}

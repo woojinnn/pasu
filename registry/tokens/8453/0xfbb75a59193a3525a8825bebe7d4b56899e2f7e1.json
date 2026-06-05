@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 8453,
-  "address": "0xfbb75a59193a3525a8825bebe7d4b56899e2f7e1",
-  "symbol": "RSC",
-  "decimals": 18,
-  "name": "ResearchCoin"
-}

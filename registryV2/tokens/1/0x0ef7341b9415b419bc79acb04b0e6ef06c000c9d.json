@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x0ef7341b9415b419bc79acb04b0e6ef06c000c9d",
+  "symbol": "PUSSYPUSSY",
+  "decimals": 18,
+  "name": "PUSSY/PUSSY",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-twocrypto",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_twocrypto",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x0ef7341b9415b419bc79acb04b0e6ef06c000c9d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x9603c4a5d8b5ad89923da36d4bfed843337d390f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x13ab3dc341ddd02a67770a1e5fe1abd4a973ea40"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

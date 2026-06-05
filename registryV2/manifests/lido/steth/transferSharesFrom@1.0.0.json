@@ -1,0 +1,53 @@
+{
+  "type": "adapter_action",
+  "id": "lido/steth/transferSharesFrom@1.0.0",
+  "publisher": "lido.eth",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x6d780459",
+    "chain_to_addresses": {
+      "1": ["0xae7ab96520de3a18e5e111b5eaab095312d7fe84"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "transferSharesFrom",
+    "abi": {
+      "name": "transferSharesFrom",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "_sender", "type": "address" },
+        { "name": "_recipient", "type": "address" },
+        { "name": "_sharesAmount", "type": "uint256" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "liquid_staking",
+      "liquid_staking": {
+        "action": "transfer_shares",
+        "transfer_shares": {
+          "venue": { "name": "lido", "chain": "$chain" },
+          "recipient": "$args._recipient",
+          "shares": "$args._sharesAmount",
+          "from": "$args._sender"
+        }
+      }
+    },
+    "live_inputs": {
+      "pooled_eth": {
+        "source": {
+          "kind": "onchain_view",
+          "chain": "$chain",
+          "contract": "$to",
+          "function": "getPooledEthByShares(uint256)",
+          "decoder_id": "u256"
+        },
+        "ttl_s": 30
+      }
+    }
+  }
+}

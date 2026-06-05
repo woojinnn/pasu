@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x69833361991ed76f9e8dbbcdf9ea1520febfb4a7",
+  "symbol": "yPRISMA-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: PRISMA/yPRISMA",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x69833361991ed76f9e8dbbcdf9ea1520febfb4a7"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xda47862a83dac0c112ba89c6abc2159b95afd71c"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0xe3668873d944e4a949da05fc8bde419eff543882"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

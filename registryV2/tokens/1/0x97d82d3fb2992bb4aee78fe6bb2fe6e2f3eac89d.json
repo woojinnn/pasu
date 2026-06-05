@@ -1,0 +1,39 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 1,
+  "address": "0x97d82d3fb2992bb4aee78fe6bb2fe6e2f3eac89d",
+  "symbol": "syUSDCUSDT",
+  "decimals": 18,
+  "name": "syrupUSDC/syrupUSDT",
+  "source": "https://api.curve.fi/api/getPools/ethereum/factory-stable-ng",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap_ng",
+        "chain": "eip155:1"
+      },
+      "pool_addr": "0x97d82d3fb2992bb4aee78fe6bb2fe6e2f3eac89d"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x80ac24aa929eaf5013f6436cda2a7ba190f5cc0b"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:1",
+          "address": "0x356b8d89c1e1239cbbb9de4815c39a1474d5ba7d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

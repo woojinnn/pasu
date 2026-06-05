@@ -1,0 +1,18 @@
+{
+  "id": "transfer-fraction-deny-tier",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "erc20_transfer" } } },
+  "policy_rpc": [{
+    "id": "holdings-fraction",
+    "method": "portfolio.input_fraction_bps",
+    "params": {
+      "chain_id": "$.root.chain_id",
+      "owner": "$.root.from",
+      "asset": "$.action.token",
+      "amount": "$.action.amount"
+    },
+    "outputs": [{ "kind": "context", "field": "holdingsBp", "type": "Long", "from": "$.result.bps", "required": false }],
+    "optional": true
+  }],
+  "custom_context": { "fields": { "holdingsBp": "Long" } }
+}

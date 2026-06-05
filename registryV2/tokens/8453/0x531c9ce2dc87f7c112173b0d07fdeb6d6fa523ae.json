@@ -1,0 +1,53 @@
+{
+  "erc_kind": "erc20",
+  "chainId": 8453,
+  "address": "0x531c9ce2dc87f7c112173b0d07fdeb6d6fa523ae",
+  "symbol": "AKITA V4-f",
+  "decimals": 18,
+  "name": "Curve.fi Factory Plain Pool: HaiaMermesUalosTlyssesV2Inu",
+  "source": "https://api.curve.fi/api/getPools/base/factory",
+  "token_kind": {
+    "kind": "lp_share",
+    "pool": {
+      "protocol": {
+        "name": "curve_stableswap",
+        "chain": "eip155:8453"
+      },
+      "pool_addr": "0x531c9ce2dc87f7c112173b0d07fdeb6d6fa523ae"
+    },
+    "underlyings": [
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xad1a4f25485cbfeb9c58ef866cfec33c98d0f10f"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x10784720a547412a788123b9d528c93221203949"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0x5144635314d16805e933a93dd0e7a630979bb33a"
+        }
+      },
+      {
+        "key": {
+          "standard": "erc20",
+          "chain": "eip155:8453",
+          "address": "0xa5e9fa870c50f4fd352a82ffe16a63646864686d"
+        }
+      }
+    ],
+    "share_form": "fungible",
+    "shape": {
+      "kind": "pooled"
+    }
+  }
+}

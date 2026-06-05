@@ -1,0 +1,770 @@
+{
+  "_comment": "MetaMorpho ERC-4626 vault DIRECT-call real-tx corpus (Ethereum mainnet, chain 1) \u2014 Etherscan v2 txlist of cover-batch vaults (2026-06-02, adapter-blind, isError=0). COVER deposit/withdraw/mint/redeem -> pass/lending (LendingAction Supply/Withdraw, venue=metamorpho{vault=$to}, asset=baked underlying). EXCLUDE reallocate(0x7299aa31)/updateWithdrawQueue(0x41b67833) -> expect:error (allocator governance, no metamorpho manifest -> no_declarative_v3_mapper). approve/transfer on the vault SHARE -> pass/token (vault registered as yield_receipt erc20 -> tokens:erc20 standard adapter). mint sparse on-chain (most users deposit). Semantic field pins via expect_body + Rust golden.",
+  "transactions": [
+    {
+      "intent": "metamorpho reallocate (PYUSD vault Sentora PYUSD)",
+      "expect": "error",
+      "tx_hash": "0x4efc6b19ef92b9ef037eca4a85416bc3b9db0ec274c1e29ba2361eb60c6afe70",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x19b3cd7032b8c062e8d44eacad661a0970dd8c55",
+            "value": "0",
+            "data": "0x7299aa31000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000020000000000000000000000006c3ea9036406852006290770bedfcaba0e23a0e8000000000000000000000000cbb7c0000ab88b473b1f5afd9ef808440eed33bf0000000000000000000000007681692a9f228fd7dac0679238d467729af4e9ca000000000000000000000000870ac11d48b15db9a138cf899d20f13f79ba00bc0000000000000000000000000000000000000000000000000bef55718ad6000000000000000000000000000000000000000000000000000000000943a7baa4650000000000000000000000006c3ea9036406852006290770bedfcaba0e23a0e80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "metamorpho approve (PYUSD vault Sentora PYUSD)",
+      "expect": "pass",
+      "tx_hash": "0xd6d6670b4d85d4537b6bd9da64d1b10c0e0bed492eec0054f02032f7da663546",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x19b3cd7032b8c062e8d44eacad661a0970dd8c55",
+            "value": "0",
+            "data": "0x095ea7b3000000000000000000000000958df31a39fa8bab547cb7c3f164de52d195ed4affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        ]
+      },
+      "expect_domain": "token",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho redeem (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0xad8057362dd485046e69f5dbf12626d027864b62d59980bc646acee4e152a1c9",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xba087652000000000000000000000000000000000000000000000000000003c7e7ad4fd80000000000000000000000001428d685f1d73cb5fd581db759cd3ad6deb090ab0000000000000000000000001428d685f1d73cb5fd581db759cd3ad6deb090ab"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3c7e7ad4fd8"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1428d685f1d73cb5fd581db759cd3ad6deb090ab"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho redeem (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x569e4548f991e9ff085fc7b35a74429ba219804a87fca5b2ee8c2728c1d6a26d",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xba08765200000000000000000000000000000000000000000000000018a2909aed3d1c0e0000000000000000000000001428d685f1d73cb5fd581db759cd3ad6deb090ab0000000000000000000000001428d685f1d73cb5fd581db759cd3ad6deb090ab"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x18a2909aed3d1c0e"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x1428d685f1d73cb5fd581db759cd3ad6deb090ab"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho redeem (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x12c8ba0455bc407246113f47694af86ab70d2dcc0900cfe01af9ba79eb46a874",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xba08765200000000000000000000000000000000000000000000000056ac7ad9356a44e600000000000000000000000082a80fb2c7203b80c8ebf96a33ea68fe685ca19800000000000000000000000082a80fb2c7203b80c8ebf96a33ea68fe685ca198"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x56ac7ad9356a44e6"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x82a80fb2c7203b80c8ebf96a33ea68fe685ca198"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho redeem (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x932de0a9bbb06cd98d2b5104c240fe7d29f3747f0d934e1d8a8ada9e1950c35f",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xba08765200000000000000000000000000000000000000000000001209da418be25e7507000000000000000000000000781ee986573a2d5951fbad81cce1f0d0662a9774000000000000000000000000781ee986573a2d5951fbad81cce1f0d0662a9774"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x1209da418be25e7507"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x781ee986573a2d5951fbad81cce1f0d0662a9774"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho deposit (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x8516737e40edde55784c674542aad7ac458488d45e50524ad7f64b0aab95f238",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0x6e553f6500000000000000000000000000000000000000000000000000000000001e8bb90000000000000000000000001428d685f1d73cb5fd581db759cd3ad6deb090ab"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x1e8bb9"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0x1428d685f1d73cb5fd581db759cd3ad6deb090ab"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho transfer (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x6d163cc35ab2d862854baddd2f9fa193e05caf74a2c2edc18c3cbb27347225ba",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xa9059cbb00000000000000000000000060d547aa25e5574eb1d3c4fe8216f3b66b4e71dc0000000000000000000000000000000000000000000000000cbbc4f4bc40dd2f"
+          }
+        ]
+      },
+      "expect_domain": "token",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "token"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho withdraw (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0xe406118c61cc81852c9084a4c1bfaf7e83b204071cb8c2fb3459c0375f9035ea",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xb460af9400000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000b9c0867a4ee647807951220401862d10b316d572000000000000000000000000b9c0867a4ee647807951220401862d10b316d572"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xb9c0867a4ee647807951220401862d10b316d572"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho deposit (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x476c3aa4bb8f0bb5b32bb54c2f52c0d9ae92dcaca7aa475aa12be05f1ad36e48",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0x6e553f6500000000000000000000000000000000000000000000000000000000004c4b40000000000000000000000000a4882d799ec469bcfc42d5ea8a1fd6f818adcdd8"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x4c4b40"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0xa4882d799ec469bcfc42d5ea8a1fd6f818adcdd8"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho deposit (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0xd303e5a0c99bd4782a68a025f236f434825fac8faffaf0049c2d60bd8b0c67a1",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0x6e553f6500000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000b66c684cc8208a9e292d05d660f0be81a932655c4d8274eab12ff62b7e9b3a4c21f8d052535a2a0fffc69deb"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0xb66c684cc8208a9e292d05d660f0be81a932655c"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho deposit (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0x55574a107d783ebe9689c20b0425ab033437a466bbd4f8c0605577c0b8d3f49e",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0x6e553f6500000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000b66c684cc8208a9e292d05d660f0be81a932655c4d8274eab12ff62b7e9b3a4c21f8d052535a2a0fffc69deb"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0xb66c684cc8208a9e292d05d660f0be81a932655c"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho withdraw (USDC vault Steakhouse USDC)",
+      "expect": "pass",
+      "tx_hash": "0xba4c440415425114e9f8555dc536a44cd3d1d94283604f6f47c596d609217578",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb",
+            "value": "0",
+            "data": "0xb460af9400000000000000000000000000000000000000000000000000000000000f424000000000000000000000000036c12872c10637d7a8d9f4d12ba2d44b3e65e9ec00000000000000000000000036c12872c10637d7a8d9f4d12ba2d44b3e65e9ec"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeef01735c132ada46aa9aa4c54623caa92a64cb"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0xf4240"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0x36c12872c10637d7a8d9f4d12ba2d44b3e65e9ec"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho updateWithdrawQueue (USDtb vault Steakhouse Ethena USDtb)",
+      "expect": "error",
+      "tx_hash": "0x441a09eb65121e0c81ea93734b1d971f2a26abb5c48a7d257818ea845091eec5",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeefc1cdafc5b4a649b54d07afc6bf0f75c6f4e2",
+            "value": "0",
+            "data": "0x41b6783300000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004"
+          }
+        ]
+      }
+    },
+    {
+      "intent": "metamorpho mint (USDtb vault Steakhouse Ethena USDtb)",
+      "expect": "pass",
+      "tx_hash": "0xd6a1c44d0f14b13d18d319fbf8296faa2ec41f03a46f4059f43f8f58756e1954",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0xbeefc1cdafc5b4a649b54d07afc6bf0f75c6f4e2",
+            "value": "0",
+            "data": "0x94bf804d000000000000000000000000000000000000000000000000000000003b9aca000000000000000000000000000000000000000000000000000000000000000001"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0xbeefc1cdafc5b4a649b54d07afc6bf0f75c6f4e2"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0xc139190f447e929f090edeb554d95abb8b18ac1c"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x3b9aca00"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0x0000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho deposit (wstETH vault bbqWSTETH) [Q1 long-tail new-underlying]",
+      "expect": "pass",
+      "tx_hash": "0xe8e7fc8c2a1bf7959e4432e060f3dd3c37a3864a4999b26791b05a7856292561",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x833adaef212c5cd3f78906b44bbfb18258f238f0",
+            "value": "0",
+            "data": "0x6e553f65000000000000000000000000000000000000000000000001a24f7a3ce1386067000000000000000000000000a356d8fb4dd09bbe034fd2b8255fddde989d832dd4e39552f5f84ac07e9b3a4c21f8d052535a2a0fffc69deb"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "supply"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x833adaef212c5cd3f78906b44bbfb18258f238f0"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x1a24f7a3ce1386067"
+        },
+        {
+          "path": "$.data.actions[0].body.on_behalf_of",
+          "op": "hex_eq",
+          "value": "0xa356d8fb4dd09bbe034fd2b8255fddde989d832d"
+        }
+      ]
+    },
+    {
+      "intent": "metamorpho redeem (wstETH vault bbqWSTETH) [Q1 long-tail new-underlying]",
+      "expect": "pass",
+      "tx_hash": "0x27dddde0ac885988f33a58710e8b434d5178ccda18b35da110adfea867b7a981",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x833adaef212c5cd3f78906b44bbfb18258f238f0",
+            "value": "0",
+            "data": "0xba087652000000000000000000000000000000000000000000000000000162ae8a8bfa88000000000000000000000000deba922080fe851a9b2e63d9dfdf97404287de0e000000000000000000000000deba922080fe851a9b2e63d9dfdf97404287de0e"
+          }
+        ]
+      },
+      "expect_domain": "lending",
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "lending"
+        },
+        {
+          "path": "$.data.actions[0].body.action",
+          "op": "equals",
+          "value": "withdraw"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.name",
+          "op": "equals",
+          "value": "metamorpho"
+        },
+        {
+          "path": "$.data.actions[0].body.venue.vault",
+          "op": "hex_eq",
+          "value": "0x833adaef212c5cd3f78906b44bbfb18258f238f0"
+        },
+        {
+          "path": "$.data.actions[0].body.asset.key.address",
+          "op": "hex_eq",
+          "value": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0"
+        },
+        {
+          "path": "$.data.actions[0].body.amount",
+          "op": "u256_hex_eq",
+          "value": "0x162ae8a8bfa88"
+        },
+        {
+          "path": "$.data.actions[0].body.recipient",
+          "op": "hex_eq",
+          "value": "0xdeba922080fe851a9b2e63d9dfdf97404287de0e"
+        }
+      ]
+    }
+  ]
+}

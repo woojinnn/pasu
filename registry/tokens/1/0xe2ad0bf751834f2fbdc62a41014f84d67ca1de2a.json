@@ -1,8 +1,0 @@
-{
-  "kind": "erc20",
-  "chainId": 1,
-  "address": "0xe2ad0bf751834f2fbdc62a41014f84d67ca1de2a",
-  "symbol": "ERA",
-  "decimals": 18,
-  "name": "Caldera"
-}

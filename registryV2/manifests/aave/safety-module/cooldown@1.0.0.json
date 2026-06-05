@@ -1,0 +1,44 @@
+{
+  "type": "adapter_action",
+  "id": "aave/safety-module/cooldown@1.0.0",
+  "publisher": "aave.eth",
+  "note": "Aave safety-module cooldown() — start the unstake cooldown window for the caller's whole staked balance. Maps to staking::Cooldown. Covers stkAAVE + stkGHO; selector keccak-verified.",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x787a08a6",
+    "chain_to_addresses": {
+      "1": [
+        "0x4da27a545c0c5b758a6ba100e3a049001de870f5",
+        "0x1a88df1cfe15af22b3c4c783d4e6f7f9e0c1885d"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "cooldown",
+    "abi": {
+      "name": "cooldown",
+      "type": "function",
+      "stateMutability": "nonpayable",
+      "inputs": [],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "staking",
+      "staking": {
+        "action": "cooldown",
+        "cooldown": {
+          "venue": { "name": "aave_safety_module", "chain": "$chain", "module": "$to" }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

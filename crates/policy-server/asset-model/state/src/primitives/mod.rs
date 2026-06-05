@@ -1,10 +1,14 @@
-//! Foundational primitive types (addresses, chains, decimals, refs, time) that all other modules depend on.
+//! Primitive types shared by the asset model.
 
+/// Address helpers and semantic aliases.
 pub mod address;
-/// Chain and block identifiers: CAIP-2 `ChainId` and `BlockHeight`.
+/// Chain identifiers and block heights.
 pub mod chain;
+/// Decimal, price, signed integer, and fixed-size numeric wrappers.
 pub mod decimal;
+/// Protocol, pool, market, and venue references.
 pub mod refs;
+/// Timestamp and duration wrappers.
 pub mod time;
 
 pub use address::{Address, Spender};
