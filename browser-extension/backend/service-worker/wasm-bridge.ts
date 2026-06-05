@@ -71,6 +71,10 @@ interface WasmExports {
   // `crates/policy-engine-wasm/src/sim_step_exports.rs`. The host owns the
   // per-tx loop and feeds `next_state` back as `state` on the next call.
   simulate_step_json(input_json: string): string;
+  // Denial diagnosis: run Cedar probes against the materialized context and
+  // return which probe ids were true / errored. Contract:
+  // `crates/policy-engine-wasm/src/diagnosis_exports.rs`.
+  run_diagnosis_probes_v2_json(input_json: string): string;
 }
 
 /**
@@ -524,6 +528,15 @@ export async function evaluateActionV2(
       })) ?? [],
   });
   return verdict;
+}
+
+/** Run denial-diagnosis probes; returns the raw `{ ok, data: { true_ids, error_ids } }`
+ *  envelope JSON STRING from WASM (the dashboard re-parses it). `inputJson` is the
+ *  serialized `{ action, meta, tx, bundles, results, probes }` built by the
+ *  dashboard's `runDiagnosisProbes`. Backs the `run-diagnosis-probes` SW op. */
+export async function runDiagnosisProbesV2(inputJson: string): Promise<string> {
+  const exports = await load();
+  return exports.run_diagnosis_probes_v2_json(inputJson);
 }
 
 // ── Cedar editor exports (apps/web dashboard) ───────────────────────────
