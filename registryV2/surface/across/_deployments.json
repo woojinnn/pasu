@@ -1,0 +1,13 @@
+{
+  "protocol": "across",
+  "source": "docs.across.to/reference/contract-addresses (Ethereum mainnet) + Etherscan getsourcecode (proxy→impl)",
+  "url": "https://docs.across.to/reference/contract-addresses/ethereum-mainnet-chain-id-1",
+  "fetchedAt": "2026-06-05",
+  "note": "Onboarding scope = wallet-facing cross-chain DEPOSIT surface (Ethereum_SpokePool, cover). SpokePoolPeriphery (swap-and-bridge / native deposit, ~3K EOA/30d) is user-facing but a SEPARATE contract+ABI (swap/permit surface) → DEFERRED #1 follow-up with measured usage-share. MulticallHandler = destination-side message executor (not source pre-sign). HubPool/AcrossConfigStore = LP + dataworker/governance infra (LP surface = separate follow-up), not listed by the mainnet contract-addresses page; out of this wallet-facing slice. Honest floor: I0 enforces only the contracts listed here; LP/infra contracts intentionally out-of-scope.",
+  "contracts": [
+    { "name": "Ethereum_SpokePool (ERC1967Proxy)", "chainId": 1, "address": "0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5", "decision": "cover", "reason": "user cross-chain deposit entry: depositV3 (9,312 EOA/30d) + deposit (3,150 EOA/30d), Dune 7659328" },
+    { "name": "Ethereum_SpokePool (implementation)", "chainId": 1, "address": "0x5e5b726c81f43b953a62ad87e2835c85c4d9dd3b", "decision": "exclude", "reason": "implementation behind the SpokePool proxy — users call the proxy (covered); ABI snapshotted there" },
+    { "name": "SpokePoolPeriphery", "chainId": 1, "address": "0x10d8b8daa26d307489803e10477de69c0492b610", "decision": "exclude", "reason": "user-facing swap-and-bridge periphery: depositNative (1,934 EOA) + swapAndBridge (1,174 EOA) + depositWithAuthorization (8, solver), Dune 7659341. DEFERRED #1 follow-up — separate ABI with swap/permit surface, out of this deposit-anchor slice" },
+    { "name": "MulticallHandler", "chainId": 1, "address": "0x0f7ae28de1c8532170ad4ee566b5801485c13a0e", "decision": "exclude", "reason": "infra: destination-chain message executor for Across `message` payloads — not a source-chain user pre-sign entry" }
+  ]
+}

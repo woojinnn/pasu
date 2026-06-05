@@ -1,0 +1,45 @@
+{
+  "contract": "Ethereum_SpokePool",
+  "chainId": 1,
+  "address": "0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5",
+  "snapshot": "spoke-pool.abi.json",
+  "note": "33 external-mutating selectors triaged. COVER = depositV3 + deposit (the entire user deposit surface by signing-EOA: 9,312 + 3,150 EOA/30d, Dune 7659328). All other deposit variants show 0 tx/30d (data-gated defer). fill*/relay*/execute* = relayer/keeper. set*/pause*/upgrade*/ownership/init = admin/proxy. SpokePoolPeriphery deposit surface tracked in _deployments.json (deferred).",
+  "functions": {
+    "0x7b939232": { "name": "depositV3", "decision": "cover", "reason": "user cross-chain deposit (address-typed); 9,312 EOA/30d; bridge::send" },
+    "0xad5425c6": { "name": "deposit", "decision": "cover", "reason": "user cross-chain deposit (bytes32 / cross-VM unified); 3,150 EOA/30d; bridge::send" },
+
+    "0x7aef642c": { "name": "depositV3Now", "decision": "exclude", "reason": "deposit variant (address, fillDeadlineOffset); 0 tx/30d (Dune 7659328); deferred — trivially addable depositV3 variant" },
+    "0xea86bd46": { "name": "depositNow", "decision": "exclude", "reason": "deposit variant (bytes32, fillDeadlineOffset); 0 tx/30d; deferred — trivially addable deposit variant" },
+    "0x8b15788e": { "name": "unsafeDeposit", "decision": "exclude", "reason": "deposit variant (caller-specified depositNonce); 0 tx/30d; deferred" },
+    "0x541f4f14": { "name": "depositFor", "decision": "exclude", "reason": "legacy V2 deposit-for; 0 tx/30d; deferred" },
+    "0x1186ec33": { "name": "depositDeprecated_5947912356", "decision": "exclude", "reason": "deprecated V2 deposit (name self-documents); 0 tx/30d; deferred" },
+    "0xbabb6aac": { "name": "speedUpDeposit", "decision": "exclude", "reason": "EIP-712 deposit speed-up (bytes32, depositorSignature); 0 tx/30d; deferred — speed-up of an existing deposit, not a new fund-movement" },
+    "0x577f51f8": { "name": "speedUpV3Deposit", "decision": "exclude", "reason": "EIP-712 deposit speed-up (address, depositorSignature); 0 tx/30d; deferred" },
+    "0xac9650d8": { "name": "multicall", "decision": "exclude", "reason": "same-to batch wrapper (OZ multicall(bytes[])); 6 tx / 2 EOA/30d; deferred — multicall_recurse follow-up if usage grows" },
+    "0x437b9116": { "name": "tryMulticall", "decision": "exclude", "reason": "same-to batch wrapper (try variant); 0 tx/30d; deferred" },
+
+    "0xdeff4b24": { "name": "fillRelay", "decision": "exclude", "reason": "relayer: fill a deposit on destination (56,087 tx / 21 relayer EOA/30d); not user pre-sign" },
+    "0x2e378115": { "name": "fillV3Relay", "decision": "exclude", "reason": "relayer: V3 fill (346 tx / 2 EOA/30d); not user pre-sign" },
+    "0x97943aa9": { "name": "fillRelayWithUpdatedDeposit", "decision": "exclude", "reason": "relayer: fill honoring a depositor speed-up; not user pre-sign" },
+    "0x82e2c43f": { "name": "fill", "decision": "exclude", "reason": "relayer: generic fill entry; not user pre-sign" },
+    "0x2e63e59a": { "name": "requestSlowFill", "decision": "exclude", "reason": "relay mechanic: request a slow fill for a deposit (4 tx / 2 EOA/30d); not user fund-movement" },
+    "0x1fab657c": { "name": "executeSlowRelayLeaf", "decision": "exclude", "reason": "keeper/relayer: execute a slow-relay merkle leaf" },
+    "0x1b3d5559": { "name": "executeRelayerRefundLeaf", "decision": "exclude", "reason": "dataworker/keeper: execute a relayer-refund merkle leaf" },
+    "0xa18a096e": { "name": "claimRelayerRefund", "decision": "exclude", "reason": "relayer: claim accrued refund" },
+    "0x493a4f84": { "name": "relayRootBundle", "decision": "exclude", "reason": "dataworker: relay a HubPool root bundle to the SpokePool" },
+    "0x7659f9e0": { "name": "executeExternalCall", "decision": "exclude", "reason": "infra: cross-domain admin external call execution" },
+
+    "0x979f2bc2": { "name": "__SpokePool_init", "decision": "exclude", "reason": "initializer" },
+    "0x8624c35c": { "name": "initialize", "decision": "exclude", "reason": "initializer" },
+    "0x8a7860ce": { "name": "emergencyDeleteRootBundle", "decision": "exclude", "reason": "admin: emergency root-bundle delete" },
+    "0x738b62e5": { "name": "pauseDeposits", "decision": "exclude", "reason": "admin: pause deposits" },
+    "0x99cc2968": { "name": "pauseFills", "decision": "exclude", "reason": "admin: pause fills" },
+    "0xde7eba78": { "name": "setCrossDomainAdmin", "decision": "exclude", "reason": "admin: set cross-domain admin" },
+    "0x19c1648c": { "name": "setOftMessenger", "decision": "exclude", "reason": "admin: configure OFT messenger" },
+    "0xfc8a584f": { "name": "setWithdrawalRecipient", "decision": "exclude", "reason": "admin: set withdrawal recipient" },
+    "0x715018a6": { "name": "renounceOwnership", "decision": "exclude", "reason": "admin: ownership renounce" },
+    "0xf2fde38b": { "name": "transferOwnership", "decision": "exclude", "reason": "admin: ownership transfer" },
+    "0x3659cfe6": { "name": "upgradeTo", "decision": "exclude", "reason": "proxy: UUPS upgrade" },
+    "0x4f1ef286": { "name": "upgradeToAndCall", "decision": "exclude", "reason": "proxy: UUPS upgrade + call" }
+  }
+}
