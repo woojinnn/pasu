@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import {
+  getDiagnosisContextRow,
   getStateDeltaRow,
   listHistoryVerdicts,
   listManagedPolicies,
@@ -182,11 +183,17 @@ export function HistoryPage() {
     queryFn: listManagedPolicies,
     staleTime: 60_000,
   });
-  const policyTextById = useMemo(() => {
-    const m: Record<string, string> = {};
+  const policyBundleById = useMemo(() => {
+    const m: Record<string, { text: string; manifest: unknown }> = {};
     for (const p of managedQ.data ?? []) {
       const id = p.text.match(/@id\("([^"]+)"\)/)?.[1];
-      if (id) m[id] = p.text;
+      if (id) {
+        const manifest =
+          p.manifest && typeof p.manifest === "object"
+            ? p.manifest
+            : { id: p.id, schema_version: 2 };
+        m[id] = { text: p.text, manifest };
+      }
     }
     return m;
   }, [managedQ.data]);
@@ -300,7 +307,7 @@ export function HistoryPage() {
                         v={v}
                         open={openId === v.id}
                         onToggle={() => setOpenId(openId === v.id ? null : v.id)}
-                        policyTextById={policyTextById}
+                        policyBundleById={policyBundleById}
                       />
                     ))}
                 </Fragment>
@@ -596,16 +603,18 @@ function buildGroups(rows: VerdictDto[], mode: GroupMode): RenderGroup[] {
 
 // ── Row + detail ────────────────────────────────────────────────────────
 
+type PolicyBundleMap = Record<string, { text: string; manifest: unknown }>;
+
 function HistoryRow({
   v,
   open,
   onToggle,
-  policyTextById,
+  policyBundleById,
 }: {
   v: VerdictDto;
   open: boolean;
   onToggle: () => void;
-  policyTextById: Record<string, string>;
+  policyBundleById: PolicyBundleMap;
 }) {
   const fn = v.decoded_fn ?? v.method ?? "—";
   const origin = v.dapp_origin ?? "—";
@@ -670,7 +679,7 @@ function HistoryRow({
       {open && (
         <tr className="v-detail-row">
           <td colSpan={9}>
-            <HistoryDetail v={v} policyTextById={policyTextById} />
+            <HistoryDetail v={v} policyBundleById={policyBundleById} />
           </td>
         </tr>
       )}
@@ -680,10 +689,10 @@ function HistoryRow({
 
 function HistoryDetail({
   v,
-  policyTextById,
+  policyBundleById,
 }: {
   v: VerdictDto;
-  policyTextById: Record<string, string>;
+  policyBundleById: PolicyBundleMap;
 }) {
   const reason = v.reason?.ko ?? v.reason?.en ?? null;
   const contractAddr = v.contract?.addr ?? null;
@@ -780,20 +789,49 @@ function HistoryDetail({
       <StateDeltaSection v={v} />
 
       {/* Policy structure + denial diagnosis: only for a deny whose policy we
-          can resolve back to its Cedar source (by @id). On-demand. */}
+          can resolve back to its Cedar source (by @id). */}
       {v.verdict === "fail" &&
         v.policy?.name &&
-        policyTextById[v.policy.name] && (
-          <PolicyStructureSection cedarText={policyTextById[v.policy.name]} />
+        policyBundleById[v.policy.name] && (
+          <PolicyStructureSection
+            bundle={policyBundleById[v.policy.name]}
+            deltaId={v.delta_id}
+          />
         )}
     </div>
   );
 }
 
-/** Collapsible policy structure diagram + on-demand "where it's blocked"
- *  diagnosis for a history deny row. Mirrors the simulation verdict panel. */
-function PolicyStructureSection({ cedarText }: { cedarText: string }) {
+/** Collapsible policy structure diagram + "where it's blocked" diagnosis for a
+ *  history deny row. When the live deny's context was captured (keyed by
+ *  delta_id), the diagnosis auto-runs against that REAL context — reproducing
+ *  the actual blocked clause; otherwise it falls back to an on-demand SAMPLE. */
+function PolicyStructureSection({
+  bundle,
+  deltaId,
+}: {
+  bundle: { text: string; manifest: unknown };
+  deltaId: string | null;
+}) {
   const [open, setOpen] = useState(false);
+  const ctxQ = useQuery({
+    queryKey: ["diagnosis-context", deltaId],
+    queryFn: () =>
+      deltaId ? getDiagnosisContextRow(deltaId) : Promise.resolve(null),
+    enabled: open && !!deltaId,
+    retry: false,
+  });
+  const ctx = ctxQ.data ?? null;
+  const request = ctx
+    ? {
+        action: ctx.action,
+        meta: ctx.meta,
+        tx: ctx.tx,
+        bundles: [{ policy: bundle.text, manifest: bundle.manifest }],
+        results: ctx.results,
+      }
+    : undefined;
+
   return (
     <div className="v-struct-section">
       <button
@@ -806,7 +844,16 @@ function PolicyStructureSection({ cedarText }: { cedarText: string }) {
       </button>
       {open && (
         <div className="v-struct-body">
-          <PolicyDiagnosisByText cedarText={cedarText} compact />
+          {ctxQ.isLoading ? (
+            <div className="pdiagram-empty">불러오는 중…</div>
+          ) : (
+            <PolicyDiagnosisByText
+              cedarText={bundle.text}
+              compact
+              request={request}
+              autoRun={!!request}
+            />
+          )}
         </div>
       )}
     </div>

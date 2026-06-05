@@ -8,14 +8,23 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { textToBlocks } from "..";
-import { PolicyDiagnosis } from "./PolicyDiagnosis";
+import { PolicyDiagnosis, type DiagnosisContext } from "./PolicyDiagnosis";
 
 export interface PolicyDiagnosisByTextProps {
   cedarText: string;
   compact?: boolean;
+  /** Real captured context to diagnose against (else SAMPLE). */
+  request?: DiagnosisContext;
+  /** Auto-run the diagnosis on mount (for a real captured context). */
+  autoRun?: boolean;
 }
 
-export function PolicyDiagnosisByText({ cedarText, compact }: PolicyDiagnosisByTextProps) {
+export function PolicyDiagnosisByText({
+  cedarText,
+  compact,
+  request,
+  autoRun,
+}: PolicyDiagnosisByTextProps) {
   const q = useQuery({
     queryKey: ["policy-diagram-ir-by-text", cedarText],
     queryFn: async () => (await textToBlocks(cedarText))[0] ?? null,
@@ -27,5 +36,12 @@ export function PolicyDiagnosisByText({ cedarText, compact }: PolicyDiagnosisByT
       <div className="pdiagram-empty">정책을 파싱할 수 없어 다이어그램을 못 그려요</div>
     );
   }
-  return <PolicyDiagnosis ir={q.data ?? null} compact={compact} />;
+  return (
+    <PolicyDiagnosis
+      ir={q.data ?? null}
+      compact={compact}
+      request={request}
+      autoRun={autoRun}
+    />
+  );
 }
