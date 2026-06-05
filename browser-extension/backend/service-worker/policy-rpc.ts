@@ -1,6 +1,6 @@
 import { tryHandleLocally } from "./local-method-handlers";
 import { fetchStarted, fetchEnded } from "./diagnostics";
-// `./scopeball-auth/*` is imported LAZILY inside the authenticated dispatch path
+// `./pasu-auth/*` is imported LAZILY inside the authenticated dispatch path
 // only — it pulls `webextension-polyfill` (browser-only), which would otherwise
 // break every (test) importer of this module at load time.
 import type {
@@ -31,7 +31,7 @@ export interface ServerEvalContext {
 /** True when a signed-in server session token is present (lazy polyfill load). */
 async function hasServerSession(): Promise<boolean> {
   try {
-    const { getAccessToken } = await import("./scopeball-auth/tokenStore");
+    const { getAccessToken } = await import("./pasu-auth/tokenStore");
     return (await getAccessToken()) != null;
   } catch {
     return false;
@@ -43,7 +43,7 @@ async function serveEnrichmentViaEvaluate(
   planned: readonly PlannedCallV2Dto[],
   ctx: ServerEvalContext,
 ): Promise<Record<string, unknown>> {
-  const { evaluate: serverEvaluate } = await import("./scopeball-auth/client");
+  const { evaluate: serverEvaluate } = await import("./pasu-auth/client");
   // `PlannedCallV2Dto` IS the server `CallSpec` shape (manifest_id / call_id /
   // method / params / outputs / optional) — forward the remote subset verbatim.
   const callSpecs = planned.filter((c) => remoteCallIds.has(c.call_id));
@@ -82,7 +82,7 @@ async function serveEnrichmentViaEvaluate(
 // `evaluate_action_v2_json`.
 //
 // Wire shape (request body):
-//   { jsonrpc: "2.0", method: "scopeball.evaluate_v3",
+//   { jsonrpc: "2.0", method: "pasu.evaluate_v3",
 //     params: { wallet_id, actions, eval_context }, id: <unique> }
 //
 // Wire shape (success response):
@@ -127,7 +127,7 @@ export class RpcError extends Error {
 
 /**
  * Phase 5A — opaque diagnostic record the rpc-server may attach to a
- * `scopeball.evaluate_v3` reply. The SW renders these into the audit
+ * `pasu.evaluate_v3` reply. The SW renders these into the audit
  * log alongside the verdict so a faulty reducer / sync orchestrator
  * trip is surfaceable without re-routing through the verdict path.
  *
@@ -238,7 +238,7 @@ function generateRequestId(): string {
 }
 
 /**
- * Phase 5A — call the rpc-server's `scopeball.evaluate_v3` method.
+ * Phase 5A — call the rpc-server's `pasu.evaluate_v3` method.
  *
  * Returns the rpc-server's `policyRequest` payload (an opaque object the
  * SW hands to `evaluate_policy_request_json` for Cedar evaluation) plus
@@ -266,7 +266,7 @@ export async function evaluateV3(
     readonly eval_context: EvalContext;
   }> = {
     jsonrpc: "2.0",
-    method: "scopeball.evaluate_v3",
+    method: "pasu.evaluate_v3",
     params: {
       wallet_id: walletId,
       actions,
@@ -332,7 +332,7 @@ export async function evaluateV3(
     throw new Error("policy-rpc v3 reply.result is missing `policyRequest`");
   }
   const diagnostics = reply.result.diagnostics ?? [];
-  console.debug("[Scopeball] policy-rpc.v3", {
+  console.debug("[Pasu] policy-rpc.v3", {
     requestId: id,
     url,
     actionCount: actions.length,
@@ -401,7 +401,7 @@ export async function dispatchCallsV2(
   }
 
   if (remoteCalls.length === 0) {
-    console.debug("[Scopeball] policy-rpc-v2 (all local)", {
+    console.debug("[Pasu] policy-rpc-v2 (all local)", {
       plannedCount: planned.length,
       resolvedCount: Object.keys(results).length,
     });
@@ -422,7 +422,7 @@ export async function dispatchCallsV2(
       Object.assign(results, served);
     } catch (err) {
       console.warn(
-        "[Scopeball] /evaluate enrichment failed, omitting remote calls (fail-closed)",
+        "[Pasu] /evaluate enrichment failed, omitting remote calls (fail-closed)",
         { callCount: remoteCalls.length, err },
       );
     }
@@ -444,7 +444,7 @@ export async function dispatchCallsV2(
     // Fail CLOSED: do NOT synthesise error stubs. Omitting the calls means a
     // required one trips `SystemFail` → `__system__` deny inside WASM.
     console.warn(
-      "[Scopeball] policy-rpc-v2 unreachable, omitting remote calls (fail-closed)",
+      "[Pasu] policy-rpc-v2 unreachable, omitting remote calls (fail-closed)",
       { requestId, callCount: remoteCalls.length, err },
     );
     return results;
@@ -475,7 +475,7 @@ async function postPolicyRpc(
   const url = `${policyRpcUrl.replace(/\/+$/, "")}/v1/rpc`;
   const startedAtMs = Date.now();
   const traceSeq = fetchStarted("dispatch", url);
-  console.info("[Scopeball] registry-fetch → sent", {
+  console.info("[Pasu] registry-fetch → sent", {
     label: "dispatch",
     url,
     sentAt: new Date(startedAtMs).toISOString(),
@@ -487,7 +487,7 @@ async function postPolicyRpc(
       body: JSON.stringify(plan),
     });
     fetchEnded(traceSeq, response.status, Date.now() - startedAtMs);
-    console.info("[Scopeball] registry-fetch ← recv", {
+    console.info("[Pasu] registry-fetch ← recv", {
       label: "dispatch",
       url,
       sentAt: new Date(startedAtMs).toISOString(),
@@ -502,7 +502,7 @@ async function postPolicyRpc(
     if (body.request_id !== plan.request_id || !Array.isArray(body.results)) {
       throw new Error("policy-rpc returned malformed response");
     }
-    console.debug("[Scopeball] policy-rpc", {
+    console.debug("[Pasu] policy-rpc", {
       requestId: plan.request_id,
       url,
       callCount: plan.calls.length,
@@ -518,7 +518,7 @@ async function postPolicyRpc(
       `error:${err instanceof Error ? err.message : String(err)}`,
       Date.now() - startedAtMs,
     );
-    console.error("[Scopeball] policy-rpc failed", {
+    console.error("[Pasu] policy-rpc failed", {
       requestId: plan.request_id,
       url,
       callCount: plan.calls.length,

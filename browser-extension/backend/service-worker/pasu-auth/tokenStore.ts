@@ -1,5 +1,5 @@
 /**
- * Persistent JWT storage for the Scopeball (Rust) policy-rpc server.
+ * Persistent JWT storage for the Pasu (Rust) policy-rpc server.
  *
  * Stored in `chrome.storage.local` (≈5 MB quota, plenty for a couple of
  * tokens). Reads are memoised after the first lookup so hot-path code
@@ -13,8 +13,8 @@
 
 import Browser from "webextension-polyfill";
 
-const ACCESS_KEY = "scopeball_jwt";
-const REFRESH_KEY = "scopeball_jwt_refresh";
+const ACCESS_KEY = "pasu_jwt";
+const REFRESH_KEY = "pasu_jwt_refresh";
 
 let accessCache: string | null | undefined;
 let refreshCache: string | null | undefined;

@@ -6,11 +6,11 @@ const tokenStore = vi.hoisted(() => ({
   setTokens: vi.fn<(access: string | null, refresh?: string | null) => Promise<void>>(),
 }));
 
-vi.mock("../scopeball-auth/tokenStore", () => tokenStore);
+vi.mock("../pasu-auth/tokenStore", () => tokenStore);
 
-import { request } from "../scopeball-auth/client";
+import { request } from "../pasu-auth/client";
 
-describe("scopeball-auth client", () => {
+describe("pasu-auth client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
