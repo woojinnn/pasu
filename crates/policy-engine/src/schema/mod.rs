@@ -54,6 +54,10 @@ const AMM_SIGN_INTENT_ORDER_SCHEMA: &str =
 const AMM_SWAP_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/amm/swap.cedarschema");
 
+// bridge
+const BRIDGE_SEND_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/bridge/send.cedarschema");
+
 // governance (alphabetical)
 const GOVERNANCE_ACTIVATE_VOTING_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/governance/activate_voting.cedarschema");
@@ -323,6 +327,7 @@ const HL_UPDATE_ISOLATED_MARGIN_SCHEMA: &str = include_str!(
 const SHIPPED_SCHEMA_FILES: &[&str] = &[
     CORE_SCHEMA,
     CORE_MULTICALL_SCHEMA,
+    BRIDGE_SEND_SCHEMA,
     CORE_UNKNOWN_SCHEMA,
     AIRDROP_CLAIM_SCHEMA,
     AIRDROP_DELEGATE_SCHEMA,
@@ -879,6 +884,8 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     // Core structural
     ("multicall", "MulticallContext"),
     ("unknown", "UnknownContext"),
+    // bridge
+    ("send", "SendContext"),
     // airdrop (alphabetical)
     ("claim", "ClaimContext"),
     ("delegate", "DelegateContext"),

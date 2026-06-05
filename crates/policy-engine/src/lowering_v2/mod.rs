@@ -37,6 +37,7 @@ pub use dispatch::{lower_action, LowerError, LoweredAction, TxMeta};
 
 mod airdrop;
 mod amm;
+mod bridge;
 mod common;
 mod dispatch;
 mod governance;

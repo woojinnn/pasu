@@ -17,5 +17,6 @@
   "balancer_v3_swap_path_field",
   "tuple_array_field",
   "array_len",
-  "u64_saturating"
+  "u64_saturating",
+  "bytes_nonempty"
 ]

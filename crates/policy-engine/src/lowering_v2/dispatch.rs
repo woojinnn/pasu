@@ -113,6 +113,7 @@ pub fn lower_action(
         ActionBody::Staking(a) => super::staking::lower(a, &ctx),
         ActionBody::Governance(a) => super::governance::lower(a, &ctx),
         ActionBody::HyperliquidCore(a) => super::hyperliquid_core::lower(a, &ctx),
+        ActionBody::Bridge(a) => super::bridge::lower(a, &ctx),
         ActionBody::Multicall { .. } => super::multicall::lower(action, &ctx),
         ActionBody::Unknown { .. } => super::unknown::lower(action, &ctx),
     }

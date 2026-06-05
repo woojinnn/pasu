@@ -55,14 +55,14 @@ evidence; the phase tables below are the mandatory gate.
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| every COVER selector mapped to existing ActionBody or Tier3 requirement | pending | |
-| permission/fund-movement/red-flag selector review recorded | pending | |
-| manifest files added/changed listed | pending | |
-| enrichment/live_field decision recorded for every COVER action | pending | |
-| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | pending | |
-| Tier3 not needed or full Tier3 downstream contract completed | pending | |
-| Tier3 files listed if applicable: ActionBody/effect/view/sync/lowering_v2/cedarschema/schema registration/conformance test | pending | |
-| `npm run check:manifest` or protocol-filtered validate output recorded | pending | |
+| every COVER selector mapped to existing ActionBody or Tier3 requirement | done | depositV3 (0x7b939232) + deposit (0xad5425c6) → bridge::send (new domain). = entire user deposit surface (Dune 7659328). |
+| permission/fund-movement/red-flag selector review recorded | done | both COVER = fund-movement (outbound bridge). Red-flag signals in BridgeSendAction: dstRecipient (cross-chain misdirection=irreversible), dstChainId, dstToken vs srcToken, hasMessage (compose/dest-exec). No permission-grant selectors in scope (speedUp* deferred, 0 tx). |
+| manifest files added/changed listed | done | registryV2/manifests/across/spoke-pool/deposit-v3@1.0.0.json + deposit@1.0.0.json (single_emit → bridge::send). |
+| enrichment/live_field decision recorded for every COVER action | done | no live_field/enrichment — all fields static from calldata. *Nano/*Usd = host-populated Cedar projections (not manifest-driven). dst_chain_id via $match/$cases value-map; bytes32 tokens/recipient via address_from_uint256 $fn; has_message via bytes_nonempty $fn. |
+| required remote policy-RPC/live/enrichment methods have local handler, configured endpoint test, or explicit blocker | done | n/a — no remote policy-RPC / live / enrichment methods (static decode only). |
+| Tier3 not needed or full Tier3 downstream contract completed | done | Tier3 COMPLETED — new `bridge` domain (axis-1). 12 edit sites + 3-site Cedar registration + conformance; cargo test -p policy-transition -p policy-engine 0 fail (incl send_lowering_conforms). |
+| Tier3 files listed if applicable: ActionBody/effect/view/sync/lowering_v2/cedarschema/schema registration/conformance test | done | ActionBody: action/src/bridge/{mod,send}.rs + lib.rs + view.rs. effect: transition/src/effect/bridge.rs + effect/mod.rs. sync: actions/walk/mod.rs (2 arms). lowering: lowering_v2/bridge/{mod,send}.rs + dispatch.rs + mod.rs. cedar: actions/bridge/send.cedarschema. registration: schema/{mod.rs const+SHIPPED+ACTION_CONTEXT_TYPES, action_name.rs +assert119, per_policy.rs +import+assert121}. apply.rs Reducer arm. $fn: builtin_fn.rs bytes_nonempty + fn_whitelist.json. |
+| `npm run check:manifest` or protocol-filtered validate output recorded | done | check:manifest: 2051 single_emit OK, 0 structural errors (24 iters/manifest, source-ref representative). check:surface across green (2 cover/2 manifests/I0). mappers 62 tests (whitelist lockstep). policy-transition+policy-engine 0 fail. |
 
 ## P2 Synthetic Evidence
 

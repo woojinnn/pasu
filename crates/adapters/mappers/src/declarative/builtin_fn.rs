@@ -60,6 +60,7 @@ pub const WHITELIST: &[&str] = &[
     "tuple_array_field",
     "array_len",
     "u64_saturating",
+    "bytes_nonempty",
 ];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
@@ -88,6 +89,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "tuple_array_field" => tuple_array_field(args),
         "array_len" => array_len(args),
         "u64_saturating" => u64_saturating(args),
+        "bytes_nonempty" => bytes_nonempty(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -218,6 +220,22 @@ fn address_from_uint256(args: &[JsonValue]) -> Result<JsonValue, String> {
     let bytes = packed.to_be_bytes::<32>();
     let addr = Address::from_slice(&bytes[12..]);
     Ok(JsonValue::String(format!("{addr:#x}")))
+}
+
+/// `bytes_nonempty(data: bytes) -> bool` — whether a `bytes` argument carries any
+/// payload. Used to flag a bridge destination-execution message (Across `message`,
+/// LayerZero `composeMsg`) as a compose / arbitrary-call risk without surfacing the
+/// raw payload. The arg is the `args_json` encoding of a `bytes` field (`"0x.."`);
+/// empty / `"0x"` → `false`. Venue-agnostic byte utility.
+fn bytes_nonempty(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 1 {
+        return Err(format!(
+            "bytes_nonempty expects 1 arg (bytes), got {}",
+            args.len()
+        ));
+    }
+    let bytes = json_hex_bytes(&args[0], "bytes_nonempty: data")?;
+    Ok(JsonValue::Bool(!bytes.is_empty()))
 }
 
 /// `maker_traits_expiry(maker_traits: uint256) -> uint` — extract the 1inch LOP v4

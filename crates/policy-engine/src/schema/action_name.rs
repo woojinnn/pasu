@@ -78,6 +78,8 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     // Core structural (ActionBody::Multicall / ActionBody::Unknown)
     "multicall",
     "unknown",
+    // Bridge (1)
+    "send",
     // Airdrop (2)
     "claim",
     "delegate",
@@ -273,8 +275,8 @@ mod tests {
         // Union of feat/registry-v2 (incl. weth-wrap `wrap_native`/`unwrap_native`
         // + CoW Swap `pre_sign_intent_order`) and feat/morpho-onboarding (Compound
         // + Aave `gsm_swap` + governance + lending periphery + staking
-        // redeem/stake/cooldown) = 118.
-        assert_eq!(REGISTERED_ACTIONS.len(), 118);
+        // redeem/stake/cooldown) = 118, plus bridge `send` = 119.
+        assert_eq!(REGISTERED_ACTIONS.len(), 119);
     }
 
     #[test]

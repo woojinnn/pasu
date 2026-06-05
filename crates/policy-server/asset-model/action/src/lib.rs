@@ -13,6 +13,7 @@ use policy_state::{LiveField, NonceKey};
 
 pub mod airdrop;
 pub mod amm;
+pub mod bridge;
 pub mod governance;
 pub mod hyperliquid_core;
 pub mod launchpad;
@@ -29,6 +30,7 @@ pub mod yield_;
 
 pub use airdrop::AirdropAction;
 pub use amm::AmmAction;
+pub use bridge::BridgeAction;
 pub use governance::GovernanceAction;
 pub use hyperliquid_core::HyperliquidCoreAction;
 pub use launchpad::LaunchpadAction;
@@ -176,6 +178,9 @@ pub enum ActionBody {
     /// Hyperliquid CORE action (off-chain L1 order / leverage / fund movement),
     /// intercepted from a `/exchange` POST rather than `window.ethereum`.
     HyperliquidCore(HyperliquidCoreAction),
+
+    /// Cross-chain bridge action (the source-chain deposit/send leg the user signs).
+    Bridge(BridgeAction),
 
     /// Batched multi-call (e.g. `Uniswap Universal Router`, `Aave`).
     Multicall {

@@ -1,0 +1,104 @@
+{
+  "type": "adapter_action",
+  "id": "across/spoke-pool/deposit@1.0.0",
+  "publisher": "across",
+  "schema_version": "3",
+  "note": "Across SpokePool deposit (bytes32-typed, cross-VM unified) — outbound cross-chain bridge → bridge::send. depositor/recipient/inputToken/outputToken/exclusiveRelayer are bytes32; for EVM destinations (the mainnet-dominant case) they are left-padded 20-byte addresses, decoded via address_from_uint256 (low 160 bits). A genuinely non-EVM (e.g. Solana) recipient would be mis-projected as an EVM address — acceptable for V1 (rare on mainnet), tracked for a Raw-recipient follow-up. has_message flags an attached destination-execution `message` (compose risk).",
+  "match": {
+    "selector": "0xad5425c6",
+    "chain_to_addresses": {
+      "1": ["0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5"]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "deposit",
+    "abi": {
+      "name": "deposit",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        { "name": "depositor", "type": "bytes32" },
+        { "name": "recipient", "type": "bytes32" },
+        { "name": "inputToken", "type": "bytes32" },
+        { "name": "outputToken", "type": "bytes32" },
+        { "name": "inputAmount", "type": "uint256" },
+        { "name": "outputAmount", "type": "uint256" },
+        { "name": "destinationChainId", "type": "uint256" },
+        { "name": "exclusiveRelayer", "type": "bytes32" },
+        { "name": "quoteTimestamp", "type": "uint32" },
+        { "name": "fillDeadline", "type": "uint32" },
+        { "name": "exclusivityDeadline", "type": "uint32" },
+        { "name": "message", "type": "bytes" }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "bridge",
+      "bridge": {
+        "action": "send",
+        "send": {
+          "venue": { "name": "across_spoke_pool" },
+          "src_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": { "$fn": "address_from_uint256", "$args": ["$args.inputToken"] }
+            }
+          },
+          "input_amount": "$args.inputAmount",
+          "dst_chain_id": {
+            "$match": "$args.destinationChainId",
+            "$cases": {
+              "1": "eip155:1",
+              "10": "eip155:10",
+              "137": "eip155:137",
+              "8453": "eip155:8453",
+              "42161": "eip155:42161",
+              "59144": "eip155:59144",
+              "534352": "eip155:534352",
+              "81457": "eip155:81457",
+              "324": "eip155:324"
+            }
+          },
+          "dst_recipient": {
+            "kind": "evm",
+            "address": { "$fn": "address_from_uint256", "$args": ["$args.recipient"] }
+          },
+          "dst_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": {
+                "$match": "$args.destinationChainId",
+                "$cases": {
+                  "1": "eip155:1",
+                  "10": "eip155:10",
+                  "137": "eip155:137",
+                  "8453": "eip155:8453",
+                  "42161": "eip155:42161",
+                  "59144": "eip155:59144",
+                  "534352": "eip155:534352",
+                  "81457": "eip155:81457",
+                  "324": "eip155:324"
+                }
+              },
+              "address": { "$fn": "address_from_uint256", "$args": ["$args.outputToken"] }
+            }
+          },
+          "output_amount": "$args.outputAmount",
+          "exclusive_relayer": { "$fn": "address_from_uint256", "$args": ["$args.exclusiveRelayer"] },
+          "has_message": { "$fn": "bytes_nonempty", "$args": ["$args.message"] }
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": ["token_metadata"],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}
