@@ -103,31 +103,31 @@ evidence; the phase tables below are the mandatory gate.
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | pending | |
-| each fix tied to a gap id, selector, tx hash, or synthetic seed | pending | |
-| manifest/decoder/Tier3/harness change list recorded | pending | |
-| P2 rerun after fixes recorded | pending | |
-| corpus `expect` flips or exclusions justified | pending | |
-| remaining gaps have explicit defer/blocker disposition | pending | |
+| all P2 hard/soft/misdecoded/unknown_protocol_address/excluded gaps bucketed | done | No hard/misdecoded/unknown_protocol_address gaps — both in-scope selectors decode green (corpus 2/2, fuzz 0 fail/0 panic). Soft (9589 fuzz) = random destinationChainId → value-map ValueMapNoMatch (unknown dst chain → fail-loud, by design, NOT a gap). Excluded/deferred selectors surface-triaged (relayer/keeper/admin + 0-tx variants). |
+| each fix tied to a gap id, selector, tx hash, or synthetic seed | done | No actionable gap → no P3 fix. (P1 authoring fix: $fn call key `args`→`$args`, selector 0xad5425c6, caught by check:manifest validate.) |
+| manifest/decoder/Tier3/harness change list recorded | done | P1 = Tier3 bridge domain + deposit-v3/deposit manifests + bytes_nonempty $fn; P2 = across corpus. No P3 decoder/manifest changes (nothing to fix). |
+| P2 rerun after fixes recorded | done | n/a — no fixes. Final P2 state = corpus 2/2 matched + fuzz 10000 iters 0 fail/0 panic. |
+| corpus `expect` flips or exclusions justified | done | No flips — both entries expect=pass, achieved. No exclusions. |
+| remaining gaps have explicit defer/blocker disposition | done | Deferred (measured, in surface + scope classification): SpokePoolPeriphery ~3,108 EOA (separate contract); deposit variants depositNow/depositV3Now/unsafeDeposit/depositFor/speedUp* (0 tx/30d); multichain SpokePools. No blockers. |
 
 ## P4 Land Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| `registryV2 npm run build` output recorded | pending | |
-| registryV2 build-index vitest output recorded | pending | |
-| `npm run check:manifest` output recorded | pending | |
-| `npm run check:surface` output recorded | pending | |
-| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | pending | |
-| v3-harness coverage/fuzz/corpus outputs recorded | pending | |
-| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
-| `cargo test --workspace` output recorded | pending | |
-| wasm build output recorded if runtime/wasm/schema changed | pending | |
-| fmt/clippy/typecheck output recorded for changed crates/packages | pending | |
-| exact staged files and commit hash recorded | pending | |
-| remaining WARNs/deferred selectors/actions listed with reason | pending | |
-| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | pending | |
-| no base/worktree merge performed unless user explicitly requested it | pending | |
+| `registryV2 npm run build` output recorded | done | 1013 manifests → 53,805 callkeys + 88 typed-data entries (incl across/spoke-pool deposit-v3 + deposit). 239 sourced dup callkeys skipped (pre-existing). |
+| registryV2 build-index vitest output recorded | done | n/a — registryV2 has no vitest target; build-index correctness is gated by check:manifest (validate 2051 OK) + check:surface + typecheck (tsc 0). |
+| `npm run check:manifest` output recorded | done | validate (all): 2051 single_emit OK, 0 structural errors (24 iters/manifest, --strict-callkeys, --representative-source-refs). |
+| `npm run check:surface` output recorded | done | exit 0, 0 FAIL. [I0] across 4 deployed/1 cover/3 exclude ✓; Ethereum_SpokePool 33 surface/2 cover/2 manifests/31 exclude (I1/I1'/I2/I3). |
+| `npm run check:universe -- --protocol <protocol> --require-cover-linkage` output recorded for pool/factory/vault-heavy protocols, or explicitly not applicable | done | n/a — Across SpokePool is a singleton proxy, not pool/factory/vault-heavy. |
+| v3-harness coverage/fuzz/corpus outputs recorded | done | fuzz --iterations 5000 --filter across → 10000 iters, pass=411 soft=9589 fail=0 panic=0 (bridge domain 411); corpus --filter across → 2/2 matched. |
+| protocol-filtered strict corpus output recorded: `v3-harness corpus --filter <protocol> --require-expect-body` | done | v3-harness corpus --filter across --require-expect-body → 2/2 matched; semantic expect_body 2/2 pass entries pinned. |
+| `cargo test --workspace` output recorded | done | 59 test suites `ok`, 0 FAILED (full workspace; new bridge domain additive → 0 existing-protocol regression). incl conformance send_lowering_conforms + mappers whitelist lockstep. |
+| wasm build output recorded if runtime/wasm/schema changed | done | ./scripts/wasm-build.sh OK — policy-engine-wasm → wasm32 compiled + wasm-opt; tsify .d.ts regenerated (ActionBody union now includes Bridge); artifact copied to browser-extension/backend/wasm + public/wasm. |
+| fmt/clippy/typecheck output recorded for changed crates/packages | done | cargo fmt --all --check: clean (0 diffs). clippy -p policy-action/policy-transition/policy-engine/mappers/policy-sync --all-targets -D warnings: clean. registryV2 tsc --noEmit: 0. extension tsc --noEmit: 0 (bridge union additive, no extension code change). |
+| exact staged files and commit hash recorded | done | P0 417e5107 (surface+oracle), P1 c6990726 (bridge domain+manifests+$fn), P2 c4356f01 (corpus+fuzz), P3+P4 = this evidence/land commit (see git log feat/bridge-onboarding). NOT pushed/merged. |
+| remaining WARNs/deferred selectors/actions listed with reason | done | DEFER: SpokePoolPeriphery (~3,108 EOA, separate contract — #1 follow-up); SpokePool deposit variants depositNow/depositV3Now/unsafeDeposit/depositFor/speedUp*/multicall (0–6 tx/30d); multichain SpokePools. BridgeRecipient::Raw arm unused until non-EVM/Solana dests. Pre-existing (unrelated): check:tokens 1338 warns; build-index 239 sourced-dup callkeys; morpho/uniswap I0' warns. |
+| final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | Across SpokePool direct deposit (depositV3 + deposit), Ethereum mainnet, ~100% of SpokePool deposit-signing EOA / ~80% incl SpokePoolPeriphery. NOT full Across surface — deferred: SpokePoolPeriphery swap-and-bridge, 0-usage deposit variants, multichain. |
+| no base/worktree merge performed unless user explicitly requested it | done | no merge/push/deploy performed — 4 commits on feat/bridge-onboarding only. |
 
 ## Blockers
 
