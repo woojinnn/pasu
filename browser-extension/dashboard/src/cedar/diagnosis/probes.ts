@@ -69,9 +69,15 @@ function childBoolPos(parent: Expr, step: string, parentBoolPos: boolean): boole
   }
 }
 
-/** Enumerate every boolean-POSITION node (and every structurally-boolean node)
- *  of `policy` and build one probe each. Subtrees containing `hole`/`raw` are
- *  skipped and flip `diagnosable` to false. */
+/** ENTRY POINT (consumers call this). Enumerate every boolean-POSITION node (and
+ *  every structurally-boolean node) of `policy` and build one probe each — a
+ *  `permit(...) when { <subtree> }` EST tagged with the node's structural path as
+ *  its `@id`. Pass the resulting `probes` to `runDiagnosisProbes` and the path
+ *  ids back into `diagnoseFromResult`.
+ *
+ *  Subtrees containing a `hole`/`raw` node are skipped and flip `diagnosable` to
+ *  `false`; when `diagnosable === false`, do NOT run the oracle — fall back to the
+ *  policy's static `@reason` annotation (a partial probe set would mis-attribute). */
 export function buildProbes(policy: PolicyIR): ProbeSet {
   const probes: Probe[] = [];
   let diagnosable = true;

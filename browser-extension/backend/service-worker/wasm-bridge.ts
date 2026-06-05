@@ -530,7 +530,10 @@ export async function evaluateActionV2(
   return verdict;
 }
 
-/** Run denial-diagnosis probes; returns the `{ true_ids, error_ids }` envelope JSON. */
+/** Run denial-diagnosis probes; returns the raw `{ ok, data: { true_ids, error_ids } }`
+ *  envelope JSON STRING from WASM (the dashboard re-parses it). `inputJson` is the
+ *  serialized `{ action, meta, tx, bundles, results, probes }` built by the
+ *  dashboard's `runDiagnosisProbes`. Backs the `run-diagnosis-probes` SW op. */
 export async function runDiagnosisProbesV2(inputJson: string): Promise<string> {
   const exports = await load();
   return exports.run_diagnosis_probes_v2_json(inputJson);

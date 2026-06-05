@@ -3,7 +3,13 @@ import { eachChild, nodeAtPath, pathByNode } from "./path";
 
 export type TruthMap = Record<string, boolean>;
 
-/** Return the structural paths of the leaf nodes responsible for the forbid
+/** NOTE for consumers: you usually call `diagnoseFromResult` (in `index.ts`),
+ *  NOT `blame` directly — it builds the false-inclusive `truth` map from the
+ *  oracle result, calls this, then removes errored paths from the RESULT (errored
+ *  ids stay in the map as `false`, so blame still sees them). Call `blame`
+ *  directly only if you already hold a complete `TruthMap`.
+ *
+ *  Return the structural paths of the leaf nodes responsible for the forbid
  *  firing, per the AND/OR/NOT rule. `truth[path]` is the probed truth of the
  *  boolean node at `path`. Every boolean-POSITION node is now probed (see
  *  `buildProbes`/`childBoolPos`), so a Bool `attr`/`lit`/`if` operand always has

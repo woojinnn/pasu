@@ -1,3 +1,20 @@
+/**
+ * Node-path scheme: address any `Expr` node by its structural path from the
+ * policy root (e.g. `c0.body.left`). A node has no id, so this path is its
+ * stable name — used as the probe `@id`, the blame output, and the editor's
+ * block-map key.
+ *
+ * `eachChild` is the SINGLE place path-step labels are defined; every other
+ * producer (probe builder, blame walker, editor block map) derives paths from it
+ * so they can never drift apart. Do NOT hand-build path strings elsewhere.
+ *
+ * Consumer-facing helpers:
+ *   - `pathToBlockId(policy, blockIdByNode)` — path → Blockly block id (for highlighting).
+ *   - `enumeratePaths(policy)` — all `{ path, node }` pairs; build a `path → Expr` map from
+ *     it to resolve a full culprit path to its `Expr` (e.g. to gloss it).
+ *   - `nodeAtPath(node, step)` — resolve a SINGLE path step against one node (not a full path).
+ */
+
 import type { PolicyIR, Expr } from "../blocks/ir";
 
 /** A labelled child edge of an Expr. `step` is the path segment. */

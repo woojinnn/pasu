@@ -432,6 +432,10 @@ Browser.runtime.onMessage.addListener(
       return true;
     }
     if (req.type === "run-diagnosis-probes") {
+      // Denial-diagnosis oracle. `input_json` is built by the dashboard's
+      // `runDiagnosisProbes` and forwarded verbatim to WASM; `json` is the raw
+      // WASM `{ ok, data }` envelope STRING, which the dashboard re-parses (see
+      // dashboard `server-api/diagnosis.ts`). Guide: `cedar/diagnosis/README.md`.
       void runDiagnosisProbesV2((req as RunDiagnosisProbesRequest).input_json)
         .then((json) => sendResponse({ ok: true, data: json }))
         .catch((err: unknown) =>

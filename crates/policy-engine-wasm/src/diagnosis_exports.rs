@@ -1,5 +1,36 @@
-//! Denial diagnosis: Cedar-probe oracle. See
-//! docs/superpowers/specs/2026-06-05-blockir-denial-diagnosis-design.md.
+//! Denial diagnosis: Cedar-probe oracle (the back end of the "which sub-clause
+//! caused this denial?" feature).
+//!
+//! ## How it is invoked
+//!
+//! The TS side (`browser-extension/dashboard/src/cedar/diagnosis`) builds the
+//! probes and calls this through the service worker:
+//!
+//! ```text
+//! dashboard  runDiagnosisProbes(req)            (server-api/diagnosis.ts)
+//!   → SW op  "run-diagnosis-probes"             (service-worker/index.ts)
+//!   → bridge runDiagnosisProbesV2(inputJson)    (service-worker/wasm-bridge.ts)
+//!   → WASM   run_diagnosis_probes_v2_json(...)  (this file)
+//! ```
+//!
+//! The frontend usage guide is `cedar/diagnosis/README.md` in the dashboard
+//! package; this module is the runner it ultimately reaches.
+//!
+//! ## Contract
+//!
+//! Input JSON (`DiagnosisInput`): the same `{ action, meta, tx, bundles, results }`
+//! the evaluate path takes, PLUS `probes: [{ id, est }]` — each probe is a
+//! `permit(...) when { <subtree> }` policy (as EST) authored in TS, whose `id` is
+//! the subtree's structural node path. Output JSON (`DiagnosisOutput`):
+//! `{ true_ids, error_ids }` — the probe ids whose body evaluated TRUE / ERRORED.
+//! Every other probe id is implicitly false; the TS blame walker derives culprits.
+//!
+//! ## Why it is provable
+//!
+//! `materialized_context` rebuilds the byte-identical context the real verdict
+//! used (lower → plan → materialize), and we run a RAW `Authorizer` ONCE over the
+//! probes against it — so each probe's truth is computed by *Cedar itself* on the
+//! *same* context, and cannot disagree with the real verdict. No second evaluator.
 
 use std::collections::BTreeMap;
 

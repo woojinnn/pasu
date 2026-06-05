@@ -253,6 +253,25 @@ export function WorkspaceV9({
     })();
   };
 
+  // ────────────────────────────────────────────────────────────────────────
+  // REFERENCE INTEGRATION for denial diagnosis — copy this pattern for any new
+  // surface. Full guide: `src/cedar/diagnosis/README.md`.
+  //
+  // On-demand: evaluate the draft `forbid` policy against a sample action and
+  // red-box the sub-clause(s) that caused the (simulated) denial. Steps:
+  //   1. workspaceToIR() ONCE → `policy` (with a validity guard).
+  //   2. guard: only `forbid` policies are diagnosable (a fired forbid = denial).
+  //   3. pick the sample for the policy's action id (bail if none).
+  //   4. buildProbes(policy) → bail to @reason if `!diagnosable` (hole/raw).
+  //   5. re-render via irToWorkspace(ws, policies, map) so the Expr→blockId
+  //      identity map is keyed by the SAME `policy` objects we diagnose — this is
+  //      the load-bearing seam (README §4): map + buildProbes + diagnoseFromResult
+  //      + pathToBlockId must all share one PolicyIR object or nothing highlights.
+  //   6. runDiagnosisProbes({ ...sample(), probes }) → Cedar oracle (WASM, via SW).
+  //      (`sample` is a factory function — call it.)
+  //   7. diagnoseFromResult(policy, probeIds, result) → culprit leaf paths.
+  //   8. pathToBlockId(policy, map) → applyCulprits(ws, pathMap, culprits, note).
+  // ────────────────────────────────────────────────────────────────────────
   const onSimulate = async () => {
     const ws = wsRef.current;
     if (!ws || simulating) return;

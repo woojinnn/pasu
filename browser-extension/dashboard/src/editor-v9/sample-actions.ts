@@ -23,7 +23,16 @@ import type { DiagnosisRequestDto } from "../server-api/diagnosis";
  *  own probes onto it at Simulate time (`{ ...SAMPLE_ACTIONS[id](), probes }`). */
 export type SampleRequest = Omit<DiagnosisRequestDto, "probes">;
 
-/** Minimal, self-contained sample requests keyed by action-uid id (Pascal). */
+/**
+ * Minimal, self-contained sample requests keyed by action-uid id (Pascal).
+ *
+ * To add a sample for another action type: add an entry keyed by its Pascal
+ * action id (the `policy.scope.action.entity.id` a policy targets, e.g.
+ * `"Transfer"`), and fill `action`/`meta` from the matching Rust serializer
+ * output (see the regeneration steps above). `tx` can stay as-is; keep `bundles`
+ * empty and `results` `{}` for a base-context sim. Surfaces look this map up by
+ * the policy's action id and show "이 액션의 샘플이 없습니다" when it is missing.
+ */
 export const SAMPLE_ACTIONS: Record<string, () => SampleRequest> = {
   Swap: () => ({
     action: {
