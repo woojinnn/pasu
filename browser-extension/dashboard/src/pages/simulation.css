@@ -418,6 +418,22 @@
   background: var(--surface); padding: 1px 5px;
   border-radius: var(--r-sm); border: 1px solid var(--hairline-soft);
 }
+.vline-diagram { margin-top: 6px; }
+.vline-diag-toggle {
+  font: 600 11px/1.2 var(--ff-sans);
+  color: var(--slate-600);
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+}
+.vline-diag-toggle:hover { color: var(--slate-900); }
+.vline-diag-body {
+  margin-top: 6px;
+  height: 360px;
+  display: flex;
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
 .vline-hint {
   margin-top: 4px;
   font: 500 10.5px/1 var(--ff-mono); color: var(--slate-400);

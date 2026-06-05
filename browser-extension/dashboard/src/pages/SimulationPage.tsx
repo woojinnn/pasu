@@ -188,6 +188,17 @@ function SimulationPageInner() {
   });
   const policies: ReadonlyArray<ManagedPolicy> = managedQ.data ?? [];
 
+  // Cedar `@id` → policy text, so the verdict panel can resolve a matched
+  // deny back to its source for the structure diagram + diagnosis.
+  const policyTextById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const p of policies) {
+      const id = p.text.match(/@id\("([^"]+)"\)/)?.[1];
+      if (id) m[id] = p.text;
+    }
+    return m;
+  }, [policies]);
+
   const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
   // Seed once when both queries land.
   useEffect(() => {
@@ -551,7 +562,10 @@ function SimulationPageInner() {
           totalSteps={stepsOut.length}
           chain={chain}
         />
-        <VerdictPanel currentVerdict={currentVerdict} />
+        <VerdictPanel
+          currentVerdict={currentVerdict}
+          policyTextById={policyTextById}
+        />
 
         <CalldataTxBuilder
           rows={rows}

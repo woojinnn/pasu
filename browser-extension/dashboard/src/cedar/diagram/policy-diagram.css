@@ -1,5 +1,46 @@
 /* PolicyDiagram — UML-feel policy structure tree. */
 
+.pdiagnosis {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pdiagnosis .pdiagram {
+  flex: 1;
+  min-height: 0;
+}
+.pdiagnosis-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline-soft, #e6e9ed);
+  background: var(--surface-raised, #fff);
+}
+.pdiagnosis-run {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--hairline, #d7dbe0);
+  background: var(--surface-raised, #fff);
+  color: var(--slate-800);
+  cursor: pointer;
+}
+.pdiagnosis-run:disabled { opacity: 0.5; cursor: default; }
+.pdiagnosis-msg { font-size: 12px; color: var(--slate-600); }
+.pdiagnosis-clear {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--slate-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.pdiagnosis-clear:hover { color: var(--slate-800); }
+
 .pdiagram {
   width: 100%;
   height: 100%;
