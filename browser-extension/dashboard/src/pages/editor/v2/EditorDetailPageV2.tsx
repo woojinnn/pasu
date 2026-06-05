@@ -30,6 +30,9 @@ import { CatIcon, PencilIcon, ShieldIcon, WarnIcon } from "./icons";
 import { isDraft, isMarketSource } from "./helpers";
 import { PolicyDiagram } from "../../../cedar/diagram/PolicyDiagram";
 import { textToBlocks } from "../../../cedar";
+import { buildProbes, diagnoseFromResult } from "../../../cedar/diagnosis";
+import { runDiagnosisProbes } from "../../../server-api/diagnosis";
+import { SAMPLE_ACTIONS } from "../../../editor-v9/sample-actions";
 
 type Tab = "cedar" | "form" | "block" | "diagram";
 
@@ -468,6 +471,64 @@ function DiagramTab({ cedarText }: { cedarText: string }) {
     placeholderData: (prev) => prev, // hold the last diagram across re-parses
     retry: false,
   });
+  const ir = q.data ?? null;
+
+  const [diag, setDiag] = useState<{ culprits: string[]; errored: string[] } | null>(
+    null,
+  );
+  const [simMsg, setSimMsg] = useState<string | null>(null);
+  const [simBusy, setSimBusy] = useState(false);
+
+  // A diagnosis is bound to one policy; drop it when the policy changes.
+  useEffect(() => {
+    setDiag(null);
+    setSimMsg(null);
+  }, [ir]);
+
+  // On-demand denial diagnosis on a built-in SAMPLE action — mirrors the Block
+  // tab's "Simulate", but red-traces the culprit clause on the diagram instead
+  // of the Blockly blocks. `ir` is the SAME object PolicyDiagram renders, so the
+  // returned culprit paths line up with the diagram's nodes.
+  const runDiag = async () => {
+    if (!ir) return;
+    setSimBusy(true);
+    setSimMsg(null);
+    setDiag(null);
+    try {
+      if (ir.effect !== "forbid") {
+        setSimMsg("forbid(차단) 정책만 진단할 수 있어요");
+        return;
+      }
+      const a = ir.scope.action;
+      const actionId = a.kind === "scopeEq" ? a.entity.id : undefined;
+      const sample = actionId ? SAMPLE_ACTIONS[actionId] : undefined;
+      if (!sample) {
+        setSimMsg(`이 액션(${actionId ?? "미지정"})의 샘플이 없어 진단할 수 없어요`);
+        return;
+      }
+      const { probes, diagnosable } = buildProbes(ir);
+      if (!diagnosable) {
+        setSimMsg("hole/raw 블록이 있어 진단할 수 없어요");
+        return;
+      }
+      const result = await runDiagnosisProbes({ ...sample(), probes });
+      const d = diagnoseFromResult(
+        ir,
+        probes.map((p) => p.id),
+        result,
+      );
+      setDiag({ culprits: d.culprits, errored: d.errored });
+      setSimMsg(
+        d.culprits.length > 0
+          ? `차단 조건 ${d.culprits.length}개를 빨갛게 표시했어요`
+          : "이 샘플 거래는 차단되지 않았어요 (빨간 조건 없음)",
+      );
+    } catch (e) {
+      setSimMsg(`진단 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSimBusy(false);
+    }
+  };
 
   if (q.isError) {
     return (
@@ -481,7 +542,35 @@ function DiagramTab({ cedarText }: { cedarText: string }) {
   }
   return (
     <div className="ev2-diagram-pane">
-      <PolicyDiagram ir={q.data ?? null} />
+      <div className="ev2-diagram-bar">
+        <button
+          type="button"
+          className="ev2-pri ghost"
+          onClick={runDiag}
+          disabled={simBusy || !ir}
+          title="샘플 거래로 어느 조건이 차단하는지 진단합니다"
+        >
+          <ShieldIcon /> {simBusy ? "진단 중…" : "진단 실행"}
+        </button>
+        {simMsg && <span className="ev2-diagram-msg">{simMsg}</span>}
+        {diag && (
+          <button
+            type="button"
+            className="ev2-diagram-clear"
+            onClick={() => {
+              setDiag(null);
+              setSimMsg(null);
+            }}
+          >
+            지우기
+          </button>
+        )}
+      </div>
+      <PolicyDiagram
+        ir={ir}
+        highlightPaths={diag?.culprits}
+        erroredPaths={diag?.errored}
+      />
     </div>
   );
 }

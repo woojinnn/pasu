@@ -89,5 +89,15 @@
   stroke-width: 2.2;
 }
 .pd-node.pd-culprit .pd-title { fill: var(--fail-700, #7f4740); font-weight: 700; }
+
+/* Errored probe → "uneval": dashed amber, not a confident red. */
+.pd-node.pd-errored .pd-box {
+  fill: var(--warn-50, #f7f2e8);
+  stroke: var(--warn-600, #a07d2c);
+  stroke-width: 1.8;
+  stroke-dasharray: 5 3;
+}
+.pd-node.pd-errored .pd-title { fill: var(--warn-700, #8a6d3b); }
+
 .pd-edge.pd-dim,
 .pd-node.pd-dim { opacity: 0.32; }

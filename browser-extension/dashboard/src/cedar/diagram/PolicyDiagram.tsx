@@ -19,6 +19,7 @@
 import { useMemo } from "react";
 
 import type { ActionScope, Expr, PolicyIR } from "../blocks/ir";
+import { pathByNode } from "../diagnosis/path";
 
 import "./policy-diagram.css";
 
@@ -49,7 +50,9 @@ function actionLabel(a: ActionScope): string {
   }
 }
 
-/** Flatten a same-operator binary chain: `A && B && C` → `[A, B, C]`. */
+/** Flatten a same-operator binary chain into its leaf operands, preserving each
+ *  operand's identity so its canonical path resolves via {@link pathByNode}:
+ *  `A && B && C` → `[A, B, C]`. */
 function flatten(e: Expr, op: "&&" | "||"): Expr[] {
   if (e.kind === "binary" && e.op === op) {
     return [...flatten(e.left, op), ...flatten(e.right, op)];
@@ -57,56 +60,72 @@ function flatten(e: Expr, op: "&&" | "||"): Expr[] {
   return [e];
 }
 
-function exprToNode(e: Expr, path: string): DNode {
+/**
+ * Convert an Expr to a diagram node. Node paths come from {@link pathByNode}
+ * (the diagnosis module's single path producer), so they are byte-identical to
+ * the `culprits`/`errored` paths a diagnosis returns — that is what lets
+ * `highlightPaths` light up the right node. AND/OR chains are flattened for a
+ * clean gate, but each flattened operand keeps its true nested path.
+ */
+function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
+  const path = pathOf.get(e) ?? "?";
   if (e.kind === "binary" && (e.op === "&&" || e.op === "||")) {
-    const op = e.op;
     return {
       path,
-      kind: op === "&&" ? "and" : "or",
-      title: op === "&&" ? "AND" : "OR",
-      children: flatten(e, op).map((c, i) => exprToNode(c, `${path}.${i}`)),
+      kind: e.op === "&&" ? "and" : "or",
+      title: e.op === "&&" ? "AND" : "OR",
+      children: flatten(e, e.op).map((c) => exprToNode(c, pathOf)),
     };
   }
   if (e.kind === "unary" && e.op === "!") {
-    return {
-      path,
-      kind: "not",
-      title: "NOT",
-      children: [exprToNode(e.operand, `${path}.n`)],
-    };
+    return { path, kind: "not", title: "NOT", children: [exprToNode(e.operand, pathOf)] };
   }
   if (e.kind === "if") {
-    const branch = (b: Expr, tag: string, seg: string): DNode => ({
-      ...exprToNode(b, `${path}.${seg}`),
+    const branch = (b: Expr, tag: string): DNode => ({
+      ...exprToNode(b, pathOf),
       detail: tag,
     });
     return {
       path,
       kind: "if",
       title: "IF",
-      children: [
-        branch(e.cond, "조건", "cond"),
-        branch(e.then, "then", "then"),
-        branch(e.else, "else", "else"),
-      ],
+      children: [branch(e.cond, "조건"), branch(e.then, "then"), branch(e.else, "else")],
     };
   }
   return { path, kind: "leaf", title: exprToText(e), children: [] };
 }
 
 function buildTree(ir: PolicyIR): DNode {
+  const pathOf = pathByNode(ir);
   return {
     path: "root",
     kind: "root",
     title: ir.effect === "forbid" ? "FORBID" : "PERMIT",
     detail: actionLabel(ir.scope.action),
     children: ir.conditions.map((c, i) => ({
-      path: `c${i}`,
+      // Display wrapper for the clause; its body carries the canonical `c{i}.body`.
+      path: `clause${i}`,
       kind: c.kind === "unless" ? "unless" : "when",
       title: c.kind === "unless" ? "UNLESS" : "WHEN",
-      children: [exprToNode(c.body, `c${i}.b`)],
+      children: [exprToNode(c.body, pathOf)],
     })),
   };
+}
+
+/**
+ * Test/debug helper: every canonical node path the diagram assigns to an Expr
+ * node (excludes the synthetic root/WHEN/UNLESS wrappers). Asserting these are a
+ * subset of the diagnosis module's `enumeratePaths` proves the diagram can never
+ * drift from the paths a diagnosis blames.
+ */
+export function policyDiagramPaths(ir: PolicyIR): string[] {
+  const out: string[] = [];
+  const walk = (n: DNode) => {
+    if (n.kind !== "root" && n.kind !== "when" && n.kind !== "unless") out.push(n.path);
+    n.children.forEach(walk);
+  };
+  walk(buildTree(ir));
+  return out;
 }
 
 /** Compact Cedar-ish text for a leaf expression. Truncated by the renderer. */
@@ -224,13 +243,22 @@ function layout(root: DNode): { placed: Placed; width: number; height: number } 
 
 export interface PolicyDiagramProps {
   ir: PolicyIR | null;
-  /** Structural node paths to red-trace (denial diagnosis). Empty = structure only. */
+  /** Canonical node paths of the responsible leaves (diagnosis `culprits`) —
+   *  red-traced. Empty = structure only. */
   highlightPaths?: readonly string[];
+  /** Canonical paths whose probe errored (diagnosis `errored`) — shown as a
+   *  distinct "uneval" state rather than a confident red box. */
+  erroredPaths?: readonly string[];
   /** Tighter sizing for cramped surfaces (e.g. the confirm popup). */
   compact?: boolean;
 }
 
-export function PolicyDiagram({ ir, highlightPaths, compact }: PolicyDiagramProps) {
+export function PolicyDiagram({
+  ir,
+  highlightPaths,
+  erroredPaths,
+  compact,
+}: PolicyDiagramProps) {
   const model = useMemo(() => (ir ? layout(buildTree(ir)) : null), [ir]);
 
   if (!ir || !model) {
@@ -238,13 +266,15 @@ export function PolicyDiagram({ ir, highlightPaths, compact }: PolicyDiagramProp
   }
 
   const hl = new Set(highlightPaths ?? []);
-  // A node is on the blamed trace if it (or any descendant) is highlighted, so
-  // we can dim the branches that did NOT contribute to the block.
+  const err = new Set(erroredPaths ?? []);
+  const active = hl.size > 0 || err.size > 0;
+  // A node is on the trace if it (or any descendant) is a culprit/errored, so we
+  // can dim the branches that did NOT contribute to the block.
   const onTrace = new Set<string>();
-  if (hl.size > 0) {
+  if (active) {
     const mark = (n: Placed): boolean => {
       const childHit = n.children.map(mark).some(Boolean);
-      const hit = hl.has(n.path) || childHit;
+      const hit = hl.has(n.path) || err.has(n.path) || childHit;
       if (hit) onTrace.add(n.path);
       return hit;
     };
@@ -262,7 +292,7 @@ export function PolicyDiagram({ ir, highlightPaths, compact }: PolicyDiagramProp
     const cx = n.x + PAD;
     const cy = n.y + PAD;
     for (const c of n.children) {
-      const dimmed = hl.size > 0 && !onTrace.has(c.path);
+      const dimmed = active && !onTrace.has(c.path);
       edges.push(
         <path
           key={`e-${n.path}-${c.path}`}
@@ -275,15 +305,16 @@ export function PolicyDiagram({ ir, highlightPaths, compact }: PolicyDiagramProp
       walk(c);
     }
     const culprit = hl.has(n.path);
-    const dimmed = hl.size > 0 && !onTrace.has(n.path);
+    const errored = !culprit && err.has(n.path);
+    const dimmed = active && !onTrace.has(n.path);
     const label =
       n.title.length > LABEL_CAP ? `${n.title.slice(0, LABEL_CAP - 1)}…` : n.title;
     nodes.push(
       <g
         key={`n-${n.path}`}
         className={`pd-node pd-${n.kind}${culprit ? " pd-culprit" : ""}${
-          dimmed ? " pd-dim" : ""
-        }`}
+          errored ? " pd-errored" : ""
+        }${dimmed ? " pd-dim" : ""}`}
         transform={`translate(${cx - n.w / 2}, ${cy})`}
       >
         <rect className="pd-box" width={n.w} height={NODE_H} rx={n.kind === "leaf" ? 7 : 10} />

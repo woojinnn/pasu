@@ -1038,6 +1038,28 @@
   flex: 1;
   min-height: 0;
 }
+.ev2-diagram-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline-soft, #e6e9ed);
+  background: var(--surface-raised, #fff);
+}
+.ev2-diagram-msg {
+  font-size: 12px;
+  color: var(--slate-600);
+}
+.ev2-diagram-clear {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--slate-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ev2-diagram-clear:hover { color: var(--slate-800); }
 
 .ev2-cedar-pane {
   flex: 1;
