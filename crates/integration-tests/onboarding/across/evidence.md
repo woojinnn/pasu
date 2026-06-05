@@ -68,36 +68,36 @@ evidence; the phase tables below are the mandatory gate.
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| fuzz command with seed recorded | pending | |
-| iterations >= 5000 or justified lower bound | pending | |
-| fixed edge-case matrix recorded | pending | |
-| permission/value/nested/array/opcode/deadline/path edge coverage recorded | pending | |
-| representative pass/error corpus entries committed or justified | pending | |
+| fuzz command with seed recorded | done | v3-harness fuzz --iterations 5000 --seed 0 --filter across |
+| iterations >= 5000 or justified lower bound | done | 5000/callkey × 2 callkeys = 10000 total. pass=411 soft=9589 fail=0 panic=0 (soft = random destinationChainId → value-map ValueMapNoMatch fail-loud, by design). |
+| fixed edge-case matrix recorded | done | real corpus covers: address-typed (depositV3) vs bytes32-typed (deposit) recipient/tokens; no-message vs with-compose-message (deposit recipient=MulticallHandler); zero exclusiveRelayer (lowering-omitted); 2 dst chains (Base 8453 / Arbitrum 42161); payable. |
+| permission/value/nested/array/opcode/deadline/path edge coverage recorded | done | bridge has no permission/nested/array/opcode legs. Covered edges: bytes32↔address recipient/token (address_from_uint256), CAIP-2 value-map (matched + unknown→fail-loud, 9589 fuzz soft), has_message bool ($fn bytes_nonempty), zero-relayer omit, payable value. deadline fields decoded but not policy-surfaced (deferred). |
+| representative pass/error corpus entries committed or justified | done | 2 pass entries committed (across/corpus.json). No error entries — all in-scope selectors decode; deferred/excluded selectors are surface-triaged (not corpus). |
 
 ## P2 Real-Tx Evidence
 
 | required evidence | status | artifact / exact command / summary |
 |---|---|---|
-| Etherscan MCP/API availability checked | pending | |
-| Etherscan txlist pull executed adapter-blind by P0 cover addresses | pending | |
-| external tx pull target address count is nonzero and recorded | pending | |
-| Etherscan `api_calls_used` recorded | pending | |
-| Etherscan `raw_txs_seen` recorded | pending | |
-| Etherscan `unique_selectors_seen` recorded | pending | |
-| Etherscan real tx coverage per COVER selector recorded | pending | |
-| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | pending | |
-| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | pending | |
-| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | pending | |
-| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | pending | |
-| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | pending | |
-| Dune MCP/API availability checked | pending | |
-| Dune usage baseline recorded | pending | |
-| Dune calibration/query executed with partition WHERE or explicitly blocked | pending | |
-| Dune `executionCostCredits` / usage delta recorded | pending | |
-| Dune rows returned / selected tx hashes recorded | pending | |
-| representative real-tx corpus/golden entries committed or justified | pending | |
-| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | pending | |
-| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered set decodes), **volume-weighted protocol-level (Σ covered top-level tx / Σ all top-level tx across every user-facing entry, NOT per-contract selector-share) (H2)** and **every wrapper/router selector counted by child resolution-rate, not manifest-presence (H3)**, with each user-facing DEFER's usage-share recorded; completion label must not over-claim it | pending | |
+| Etherscan MCP/API availability checked | done | Etherscan v2 API live (chainid=1): getsourcecode, getabi, txlist. Key from crates/integration-tests/.env (local). |
+| Etherscan txlist pull executed adapter-blind by P0 cover addresses | done | txlist address=0x5c7b…35C5 (SpokePool) page=1 offset=200 sort=desc. |
+| external tx pull target address count is nonzero and recorded | done | 1 target (SpokePool); 200 txs pulled. |
+| Etherscan `api_calls_used` recorded | done | ~5 (getsourcecode ×1, getabi ×2 [impl + periphery], txlist ×1, deposit-decode local). |
+| Etherscan `raw_txs_seen` recorded | done | 200 (txlist offset). |
+| Etherscan `unique_selectors_seen` recorded | done | per Dune 7659328 (full 30d): 7 selectors on SpokePool — depositV3, deposit, fillRelay, fillV3Relay, multicall, requestSlowFill, (empty/eth). |
+| Etherscan real tx coverage per COVER selector recorded | done | depositV3 0x7b939232 → tx 0x5ba1…; deposit 0xad5425c6 → tx 0xde48…; both decode green. |
+| wallet-facing target sweep executed or explicitly not applicable, with target count, per-target floor, raw/matched tx counts, and target file | done | SpokePool is the single wallet-facing target; swept via txlist (200) + Dune per-selector (7659328). target file = surface/across/spoke-pool.coverage.json. raw=200, matched cover-selectors = depositV3+deposit. |
+| unmatched Etherscan txs classified as actionable/non-actionable with disposition counts | done | non-deposit selectors (fillRelay 56K/fillV3Relay/requestSlowFill/multicall) = non-actionable: relayer/keeper/batch, surface-EXCLUDED. 0 actionable unmatched. |
+| pool-heavy/factory protocols swept candidate/universe addresses, not only selected cover addresses, or explicitly not applicable | done | n/a — SpokePool singleton, no factory/pool universe. |
+| unknown to-addresses with known protocol selectors bucketed as P0/P2 hard gaps | done | n/a — single contract (SpokePool); SpokePoolPeriphery is a separate known contract (deferred), not an unknown. |
+| typed-data signing corpus/golden executed for every in-scope EIP-712 primaryType/witnessType, or explicitly not applicable | done | n/a — Across deposit is Flow 1 (on-chain calldata), no user EIP-712 in scope. speedUp* (depositorSignature) deferred, 0 tx/30d. |
+| Dune MCP/API availability checked | done | Dune MCP live. |
+| Dune usage baseline recorded | done | queries 7659328 (SpokePool per-selector), 7659341 (Periphery), 7651935/7652023 (bridge landscape), 7652321 (OFT). |
+| Dune calibration/query executed with partition WHERE or explicitly blocked | done | yes — all queries use WHERE block_time >= CURRENT_DATE - INTERVAL '30' DAY (partition prune). |
+| Dune `executionCostCredits` / usage delta recorded | done | 7659328 ≈ 0.62 credits; 7659341 ≈ 0.60; free engine. |
+| Dune rows returned / selected tx hashes recorded | done | 7659328 → 7 selector rows; selected corpus tx hashes 0x5ba1578f… (depositV3), 0xde48fbb4… (deposit) via Etherscan txlist. |
+| representative real-tx corpus/golden entries committed or justified | done | crates/integration-tests/data/golden/v3-decode/across/corpus.json — 2 real mainnet txs. |
+| protocol-filtered corpus replay executed with semantic pin gate: `v3-harness corpus --filter <protocol> --require-expect-body` | done | v3-harness corpus --filter across --require-expect-body → 2/2 matched; semantic expect_body 2/2 pass entries pinned (9 + 8 field pins). |
+| SCOPE ORACLE — covered-surface real-usage coverage-share measured on the P0 universe (1st-party Etherscan/Dune: % of recent txs the covered set decodes), **volume-weighted protocol-level (Σ covered top-level tx / Σ all top-level tx across every user-facing entry, NOT per-contract selector-share) (H2)** and **every wrapper/router selector counted by child resolution-rate, not manifest-presence (H3)**, with each user-facing DEFER's usage-share recorded; completion label must not over-claim it | done | H2: depositV3+deposit = 12,462 signing-EOA = ~100% of SpokePool deposit-signing (Dune 7659328); ~80% of Across mainnet deposit-signing incl Periphery. H3 n/a (flat single_emit, not wrapper). DEFER usage-share: SpokePoolPeriphery ~3,108 EOA (7659341); SpokePool deposit variants each 0 tx/30d; multicall 6 tx. Completion label does not over-claim (SpokePool deposit only). |
 
 ## P3 Develop Evidence
 
