@@ -175,8 +175,26 @@ export function policyDiagramPaths(ir: PolicyIR): string[] {
   return out;
 }
 
+/** Boolean comparison extension fns → their operator glyph, so a leaf reads
+ *  `inputUsd ≥ 0.05` instead of `greaterThanOrEqual(inputUsd, decimal("0.05"))`. */
+const EXT_OP: Record<string, string> = {
+  greaterThan: ">",
+  greaterThanOrEqual: "≥",
+  lessThan: "<",
+  lessThanOrEqual: "≤",
+};
+
+/** `decimal("0.05")` / `ip("…")` used as a value → just its inner literal text. */
+function unwrapExtLiteral(e: Expr): string | null {
+  if (e.kind === "ext" && (e.fn === "decimal" || e.fn === "ip") && e.args.length === 1) {
+    const a = e.args[0];
+    if (a.kind === "lit") return String(a.value);
+  }
+  return null;
+}
+
 /** Compact Cedar-ish text for a leaf expression. Truncated by the renderer. */
-function exprToText(e: Expr): string {
+export function exprToText(e: Expr): string {
   switch (e.kind) {
     case "var":
       return e.name;
@@ -204,8 +222,22 @@ function exprToText(e: Expr): string {
       return `${exprToText(e.of)} is ${e.entityType}${
         e.in ? ` in ${exprToText(e.in)}` : ""
       }`;
-    case "ext":
-      return `${e.fn}(${e.args.map(exprToText).join(", ")})`;
+    case "ext": {
+      // A bare `decimal(...)`/`ip(...)` value → its inner literal.
+      const lit = unwrapExtLiteral(e);
+      if (lit !== null) return lit;
+      // A comparison method → operator form: `a.greaterThanOrEqual(b)` → `a ≥ b`.
+      const op = EXT_OP[e.fn];
+      if (op && e.args.length === 2) {
+        return `${exprToText(e.args[0])} ${op} ${exprToText(e.args[1])}`;
+      }
+      // Otherwise method-style: `receiver.fn(rest…)` (e.g. `ip.isInRange(r)`).
+      if (e.args.length >= 1) {
+        const [recv, ...rest] = e.args;
+        return `${exprToText(recv)}.${e.fn}(${rest.map(exprToText).join(", ")})`;
+      }
+      return `${e.fn}()`;
+    }
     case "set":
       return `[${e.elements.map(exprToText).join(", ")}]`;
     case "record":

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Expr, PolicyIR } from "../../blocks/ir";
 import { enumeratePaths } from "../../diagnosis/path";
-import { policyDiagramPaths } from "../PolicyDiagram";
+import { exprToText, policyDiagramPaths } from "../PolicyDiagram";
 
 /** `context.custom.<name> == <n>` — a simple boolean leaf. */
 const cmp = (name: string, n: number): Expr => ({
@@ -106,5 +106,22 @@ describe("PolicyDiagram path alignment", () => {
     expect(paths.has("c0.body.left.right")).toBe(false); // context.custom has amount
     // The real comparison survives (and the now-single-operand AND collapses).
     expect(paths.has("c0.body.right")).toBe(true);
+  });
+
+  it("renders decimal/ext comparisons in operator form", () => {
+    const inputUsd: Expr = {
+      kind: "attr",
+      of: { kind: "attr", of: { kind: "var", name: "context" }, attr: "custom" },
+      attr: "inputUsd",
+    };
+    const cmp: Expr = {
+      kind: "ext",
+      fn: "greaterThanOrEqual",
+      args: [
+        inputUsd,
+        { kind: "ext", fn: "decimal", args: [{ kind: "lit", litType: "string", value: "0.0500" }] },
+      ],
+    };
+    expect(exprToText(cmp)).toBe("context.custom.inputUsd ≥ 0.0500");
   });
 });
