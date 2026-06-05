@@ -146,6 +146,10 @@ export {
   clearStateDeltas,
   type StateDeltaRow,
 } from "./state-deltas";
+export {
+  getDiagnosisContextRow,
+  type DiagnosisContextRow,
+} from "./diagnosis-context";
 
 export {
   listListings,

@@ -12,6 +12,7 @@ import {
 } from "./storage";
 import { appendVerdict, type VerdictInsert } from "./verdict-storage";
 import { appendStateDelta } from "./state-delta-storage";
+import { appendDiagnosisContext } from "./diagnosis-context-storage";
 import {
   EngineError,
   evaluateActionV2,
@@ -1147,9 +1148,27 @@ async function evaluateBodyTree(
       planned.length > 0
         ? await dispatchCallsV2(planned, policyRpcUrl, { action: body, meta, tx })
         : {};
-    verdicts.push(
-      await evaluateActionV2({ action: body, meta, tx, bundles, results }),
-    );
+    const verdict = await evaluateActionV2({ action: body, meta, tx, bundles, results });
+    verdicts.push(verdict);
+    // DENY → capture the exact diagnosis context (action + materialized
+    // enrichment results) so the dashboard can re-run "which clause blocked
+    // this" against the real context (Option B). Best-effort, keyed by
+    // requestId (= the verdict log's delta_id). Last denying leg wins.
+    if (verdict.kind === "fail") {
+      void appendDiagnosisContext({
+        id: requestId,
+        ts: Math.floor(Date.now() / 1000),
+        action: body,
+        meta,
+        tx,
+        results,
+      }).catch((err) =>
+        console.warn(
+          "[Scopeball] diagnosis-context append failed",
+          err instanceof Error ? err.message : err,
+        ),
+      );
+    }
   } else if (domain === "unknown") {
     // N2: a nested batch position that decoded to NOTHING — the WASM decoder
     // surfaces an all-empty nested opcode stream as an `Unknown` child (rather
