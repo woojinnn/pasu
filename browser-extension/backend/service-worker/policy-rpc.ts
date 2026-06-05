@@ -50,10 +50,16 @@ async function serveEnrichmentViaEvaluate(
     wallet_id: { address: ctx.tx.from, chains: [ctx.tx.chain_id] },
     envelopes: [{ meta: ctx.meta, body: ctx.action } as Record<string, unknown>],
     eval_context: {
+      // Field names + enum variants must match the server's `EvalContext`
+      // (asset-model/state/eval_context.rs): `request_kind` is camelCase,
+      // `simulation` (NOT `simulation_mode`) is snake_case, and `action_index`
+      // is a REQUIRED field (no serde default) — omitting any of these makes the
+      // server reject the whole request with 422 → enrichment fail-closed.
       chain: ctx.tx.chain_id,
       now: Math.floor(Date.now() / 1000),
-      request_kind: "Transaction",
-      simulation_mode: "Predicted",
+      action_index: 0,
+      request_kind: "transaction",
+      simulation: "preview",
     },
     call_specs: callSpecs as unknown as ReadonlyArray<Record<string, unknown>>,
   });

@@ -1706,7 +1706,10 @@ async function recordSimulationOnServer(input: {
   //   - wallet_id: from tx.from + tx.chain_id
   //   - envelopes: the typed action wrapped as { meta, body } (server
   //                accepts an opaque array; reducer dispatches on body.domain)
-  //   - eval_context: minimal — chain + now + RequestKind::Transaction
+  //   - eval_context: minimal — must match the server's `EvalContext` field
+  //                names + enum variants (camelCase `request_kind`, snake_case
+  //                `simulation`, REQUIRED `action_index`); a mismatch makes the
+  //                server reject with 422 and the record silently no-ops.
   //   - call_specs: empty (enrichment is rewritten LiveField-first per
   //                Phase 8B; server-side dispatcher remains intentionally
   //                unimplemented)
@@ -1714,8 +1717,9 @@ async function recordSimulationOnServer(input: {
   const evalContext = {
     chain: input.tx.chain_id,
     now: Math.floor(Date.now() / 1000),
-    request_kind: "Transaction",
-    simulation_mode: "Predicted",
+    action_index: 0,
+    request_kind: "transaction",
+    simulation: "preview",
   };
   const walletId = {
     address: input.tx.from,
