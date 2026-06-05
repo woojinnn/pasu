@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AIR-03 ("gasless claim" that is
+// pasu default v2 policy — explorer id: AIR-03 ("gasless claim" that is
 // actually a permit/approve phishing an ALREADY-HELD token out of the wallet).
 //
 // METHOD-BACKED state read (Aggregator type 9; sv = COV). A genuine claim

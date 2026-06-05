@@ -59,7 +59,7 @@ export async function ensureDefaultV3BundlesInstalled(): Promise<number> {
     const response = await fetch(url);
     if (!response.ok) {
       console.warn(
-        `[Scopeball] v3 default bundles fetch failed: HTTP ${response.status} for ${url}`,
+        `[Pasu] v3 default bundles fetch failed: HTTP ${response.status} for ${url}`,
       );
       bootDone = true;
       return 0;
@@ -67,7 +67,7 @@ export async function ensureDefaultV3BundlesInstalled(): Promise<number> {
     const text = await response.text();
     const parsed = JSON.parse(text) as unknown;
     if (!Array.isArray(parsed)) {
-      console.warn("[Scopeball] v3 default bundles asset is not an array");
+      console.warn("[Pasu] v3 default bundles asset is not an array");
       bootDone = true;
       return 0;
     }
@@ -85,14 +85,14 @@ export async function ensureDefaultV3BundlesInstalled(): Promise<number> {
         installedCount += 1;
         ok += 1;
         console.debug(
-          "[Scopeball] v3 bundle installed:",
+          "[Pasu] v3 bundle installed:",
           result.decoder_id ?? "<unknown>",
         );
       } catch (err) {
         // One bundle failing to install (e.g. schema drift, missing capability)
         // shouldn't poison the rest. Log + continue.
         console.warn(
-          "[Scopeball] v3 bundle install failed:",
+          "[Pasu] v3 bundle install failed:",
           err instanceof Error ? err.message : err,
         );
       }
@@ -101,7 +101,7 @@ export async function ensureDefaultV3BundlesInstalled(): Promise<number> {
     return ok;
   } catch (err) {
     console.warn(
-      "[Scopeball] v3 default bundles load failed:",
+      "[Pasu] v3 default bundles load failed:",
       err instanceof Error ? err.message : err,
     );
     bootDone = true;

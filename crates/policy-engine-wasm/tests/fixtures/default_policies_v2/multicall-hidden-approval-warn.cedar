@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: GEN-16 (an approval hidden inside a
+// pasu default v2 policy — explorer id: GEN-16 (an approval hidden inside a
 // benign-looking bundle).
 //
 // Drainer bundles wrap a token grant inside an innocuous-looking multicall ("claim

@@ -11,7 +11,7 @@
 |---|---|
 | protocol | cowswap |
 | branch | feat/cowswap-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-cowswap |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-cowswap |
 | date | 2026-06-03 |
 | main agent | Claude Opus 4.8 (1M context) |
 | base commit | c9916daf |
@@ -152,7 +152,7 @@ No code/manifest/corpus change for L3 (disposition is "intentional non-mapping" 
 
 ### L1 — eip1271 interception (extension-level finding, OUT of registry scope)
 
-Investigation of whether ScopeBall actually *intercepts* the SC-wallet (eip1271) CoW
+Investigation of whether Pasu actually *intercepts* the SC-wallet (eip1271) CoW
 signing flow — the 12.8% eip1271 bucket from L2. Read-only review of
 `browser-extension/backend/injected/proxy-injected-providers.ts` + `…/service-worker/sig-routing.ts`.
 

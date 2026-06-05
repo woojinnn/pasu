@@ -11,7 +11,7 @@
 |---|---|
 | protocol | compound |
 | branch | feat/compound-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-compound |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-compound |
 | date | 2026-06-02 |
 | main agent | Claude Code (Opus 4.8, 1M) |
 | base commit | a8909023 (feat/registry-v2 — re-grounded framework + doc_grounding/check:tokens gates) |

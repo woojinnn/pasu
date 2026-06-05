@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
   const localStore = new Map<string, unknown>();
   return {
     declarativeInstallV3: vi.fn(),
-    getURL: vi.fn((p: string) => `chrome-extension://scopeball/${p}`),
+    getURL: vi.fn((p: string) => `chrome-extension://pasu/${p}`),
     localStore,
     storageLocal: {
       get: vi.fn(async (key: string) => ({ [key]: localStore.get(key) })),

@@ -54,7 +54,7 @@ export async function collectHlLeverage(
     const master = await resolveHlMaster(payload);
     if (!master) {
       console.info(
-        "[Scopeball] HL order-leverage: no master account resolved " +
+        "[Pasu] HL order-leverage: no master account resolved " +
           "(vaultAddress / wallet_id / stored all empty) → leverage omitted, policy dormant",
         { assetIndex },
       );
@@ -64,7 +64,7 @@ export async function collectHlLeverage(
     const coin = await client.coinForIndex(assetIndex);
     if (!coin) {
       console.info(
-        "[Scopeball] HL order-leverage: coin unresolved (spot index or meta miss) → leverage omitted",
+        "[Pasu] HL order-leverage: coin unresolved (spot index or meta miss) → leverage omitted",
         { assetIndex, master },
       );
       return {};
@@ -73,13 +73,13 @@ export async function collectHlLeverage(
     const leverage = await client.leverageFor(master, coin);
     if (leverage === null) {
       console.info(
-        "[Scopeball] HL order-leverage: activeAssetData returned no leverage → omitted",
+        "[Pasu] HL order-leverage: activeAssetData returned no leverage → omitted",
         { master, coin },
       );
       return {};
     }
 
-    console.info("[Scopeball] HL order-leverage resolved", {
+    console.info("[Pasu] HL order-leverage resolved", {
       master,
       coin,
       assetIndex,
@@ -88,7 +88,7 @@ export async function collectHlLeverage(
     return { [String(assetIndex)]: leverage };
   } catch (err) {
     // Never let leverage collection break (or deny-close) the verdict path.
-    console.warn("[Scopeball] HL order-leverage collection threw (omitted)", {
+    console.warn("[Pasu] HL order-leverage collection threw (omitted)", {
       err: err instanceof Error ? err.message : String(err),
     });
     return {};

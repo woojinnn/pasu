@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: CURVE-5 (metapool deposit inherits
+// pasu default v2 policy — explorer id: CURVE-5 (metapool deposit inherits
 // hidden base-pool contagion risk).
 //
 // DERIVED fact (NOT an action-field). A Curve metapool pairs one asset with a

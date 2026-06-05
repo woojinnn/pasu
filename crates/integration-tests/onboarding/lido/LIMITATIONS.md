@@ -1,6 +1,6 @@
 # Lido onboarding — known limitations & remediation plan
 
-> Honest gap list for the `feat/lido-onboarding` run (worktree `scopeball-lido`, off
+> Honest gap list for the `feat/lido-onboarding` run (worktree `pasu-lido`, off
 > `feat/registry-v2`; base after P0–P4 = `df15cb65`). P0–P4 are `done` and
 > `check-onboarding-evidence --phase all` = 70 rows / 0 blocked, but "done" means the
 > *covered* surface is gate-clean — it does **not** mean zero limitations. This file
@@ -8,7 +8,7 @@
 > files / gate. Close items by updating this file + `evidence.md` and committing.
 >
 > Categories: **Addressable** (fix), **Larger** (real work but separate scope —
-> needs a user decision before starting), **Structural** (ScopeBall design choices —
+> needs a user decision before starting), **Structural** (Pasu design choices —
 > document as accepted, do NOT fake a fix).
 
 ---
@@ -53,7 +53,7 @@ Structural items remain accepted-by-design (not faked).** Not pushed/merged.
 > ---
 >
 > - **What:** sending ETH with **empty calldata** to stETH (`Lido` fallback, `NON_EMPTY_DATA`-guarded) or to wstETH (`receive()`, stakes+wraps in one step) mints the staking token. These txs have **no 4-byte selector**, so the `(chain,to,selector)` router misses them and the orchestrator fail-closes to a generic `warn`. The user sees "unknown action" instead of "you stake X ETH".
-- **Why it matters:** it is a genuine wallet-facing stake path that ScopeBall cannot name. Conservative (warn) but zero decode value.
+- **Why it matters:** it is a genuine wallet-facing stake path that Pasu cannot name. Conservative (warn) but zero decode value.
 - **Materiality:** measured ~0.06% of direct txs (17 / 30 000 in the P2 sweep) — small, but it is the one concrete *decode* gap, not a scope choice.
 - **Approach:** FIRST investigate whether empty-calldata / native-sentinel routing is even expressible. The harness `coverage` output lists `native-transfer sentinel 0x00000000` as a deferred category, and `harness/mod.rs::replay` special-cases `selector == "0x00000000"` — so a sentinel concept exists. Check `crates/policy-engine-wasm/src/declarative_exports.rs` (route resolution) + the registry callkey scheme (`registryV2/scripts/build-index.ts`) for whether a manifest can key on selector `0x00000000` + a value-bearing tx.
   - If expressible → add 2 manifests (`manifests/lido/steth/stake-eth`, `manifests/lido/wsteth/stake-eth`) keyed on the empty-calldata sentinel, emit `liquid_staking.stake` with `amount=$tx.value` (wstETH variant may need a `wrap`-after-stake note), plus a real-tx corpus entry each.
@@ -91,7 +91,7 @@ Structural items remain accepted-by-design (not faked).** Not pushed/merged.
 > ---
 >
 > - **What:** `requestWithdrawalsWithPermit` / `requestWithdrawalsWstETHWithPermit` carry an in-calldata EIP-2612 permit `(value, deadline, v, r, s)` that grants the WithdrawalQueue an allowance over the user's stETH/wstETH. The current body emits only `request_withdrawal{amounts, owner, token}` and **drops** the permit's `value`/`deadline`.
-- **Why it matters:** ScopeBall is a *permission*-scope analyzer; an embedded allowance grant is on-mission to surface. Currently invisible.
+- **Why it matters:** Pasu is a *permission*-scope analyzer; an embedded allowance grant is on-mission to surface. Currently invisible.
 - **Materiality:** bounded — `spender` is the queue contract itself (self-contained), and the withdrawal `amounts` (the economic intent) ARE surfaced. So low risk, but a real modeling omission.
 - **Approach:** axis-2 Tier-3 extension — add an optional `embedded_permit: { value, deadline }` (spender is implicit = the queue) to `RequestWithdrawalAction` (`crates/policy-server/asset-model/action/src/liquid_staking/request_withdrawal.rs`). Then map it in the two `*WithPermit` manifests' `emit.body` (`$args._permit.value`, `$args._permit.deadline`). Requires the full Tier-3 downstream: effect/view/sync if needed, `lowering_v2/liquid_staking/request_withdrawal.rs`, cedarschema, conformance (`MissingAction`). Non-permit request variants leave the field absent.
 - **Files:** `.../liquid_staking/request_withdrawal.rs`, `crates/policy-engine/src/lowering_v2/liquid_staking/request_withdrawal.rs`, `schema/policy-schema/actions/liquid_staking/**`, the 2 `*WithPermit` manifests, corpus expect_body.
@@ -204,10 +204,10 @@ Structural items remain accepted-by-design (not faked).** Not pushed/merged.
 
 ---
 
-## Structural — ScopeBall design choices (accept + document, do NOT fake a fix)
+## Structural — Pasu design choices (accept + document, do NOT fake a fix)
 
-- **No simulation.** ScopeBall is static-decode only (per repo CLAUDE.md). It decodes intent ("submit X ETH"), not outcome (resulting balance, slippage, claimability). Accept.
-- **No signature validation.** Permit message fields are decoded; the signature is not verified. The stETH domain `version="2"` gotcha matters to a validator, not to ScopeBall's decode. Accept (decode shows *what* you sign, not *whether the sig is valid*).
+- **No simulation.** Pasu is static-decode only (per repo CLAUDE.md). It decodes intent ("submit X ETH"), not outcome (resulting balance, slippage, claimability). Accept.
+- **No signature validation.** Permit message fields are decoded; the signature is not verified. The stETH domain `version="2"` gotcha matters to a validator, not to Pasu's decode. Accept (decode shows *what* you sign, not *whether the sig is valid*).
 - **decode ≠ semantic correctness.** 99.6% "decode" = "produces a non-Unknown ActionBody", not "is semantically correct"; field correctness is spot-checked (corpus + goldens), not proven over all 30k. Inherent; mitigated by L3.
 - **Scope is human judgment.** The gates check internal consistency, not scope correctness (a missed wallet-facing contract would still pass if internally consistent; I0 only cross-checks docs.lido.fi, which can itself omit). Inherent framework limit — keep challenging the contract inventory against Dune/Etherscan labels.
 

@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: CURVE-1 (one-sided add_liquidity
+// pasu default v2 policy — explorer id: CURVE-1 (one-sided add_liquidity
 // into a Curve stableswap → silent imbalance fee).
 //
 // DERIVED fact (NOT an action-field). Depositing mostly the coin the pool is

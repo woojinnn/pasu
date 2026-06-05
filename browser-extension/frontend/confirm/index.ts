@@ -46,7 +46,7 @@ async function reply(ok: boolean): Promise<void> {
   }
   try {
     await Browser.runtime.sendMessage({
-      type: "scopeball:verdict-decision",
+      type: "pasu:verdict-decision",
       requestId,
       ok,
     });

@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: PERP-08 (a "reduce" order that
+// pasu default v2 policy — explorer id: PERP-08 (a "reduce" order that
 // overshoots zero and flips into a position on the other side).
 //
 // Mis-sizing a close/reduce can sail past 0 and open a fresh OPPOSITE position —

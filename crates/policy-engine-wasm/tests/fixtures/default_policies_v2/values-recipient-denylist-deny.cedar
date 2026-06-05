@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: H3 / VALUE (personal allow/deny
+// pasu default v2 policy — explorer id: H3 / VALUE (personal allow/deny
 // list for tokens / contracts).
 //
 // Personal-trading (TradFi pre-trade) family. Deny an AMM swap whose `recipient`

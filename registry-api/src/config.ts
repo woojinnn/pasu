@@ -1,6 +1,6 @@
 /**
  * registry-api — runtime configuration. 모든 값이 env-overridable 라
- * Cloud Run deploy 가 rebuild 없이 proxy 를 튜닝한다. 기본값은 ScopeBall
+ * Cloud Run deploy 가 rebuild 없이 proxy 를 튜닝한다. 기본값은 Pasu
  * PoC 트래픽 (Uniswap callkey 몇 개 + ~50 token 파일) 기준.
  */
 export interface RegistryApiConfig {
@@ -33,7 +33,7 @@ export function loadConfig(): RegistryApiConfig {
   return {
     host: stringFromEnv("HOST", "0.0.0.0"),
     port: intFromEnv("PORT", 8080),
-    bucketName: stringFromEnv("REGISTRY_BUCKET", "scopeball-registry-seoul"),
+    bucketName: stringFromEnv("REGISTRY_BUCKET", "pasu-registry-seoul"),
     cacheMaxEntries: intFromEnv("CACHE_MAX_ENTRIES", 1024),
     cacheTtlMs: intFromEnv("CACHE_TTL_MS", 300_000),
     cacheNegativeTtlMs: intFromEnv("CACHE_NEGATIVE_TTL_MS", 60_000),

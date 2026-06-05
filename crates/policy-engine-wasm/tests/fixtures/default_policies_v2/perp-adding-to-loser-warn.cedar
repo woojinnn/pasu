@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: PERP-09 (averaging down — adding
+// pasu default v2 policy — explorer id: PERP-09 (averaging down — adding
 // size/margin to a position that's already underwater).
 //
 // Pouring more into a losing position is the #1 way accounts blow up. The signal

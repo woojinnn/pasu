@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: UNI-02 (slippage tolerance set far
+// pasu default v2 policy — explorer id: UNI-02 (slippage tolerance set far
 // too wide → sandwich-MEV bait).
 //
 // A wide slippage band lets an MEV bot push the price out and back within that

@@ -1,6 +1,6 @@
 # 1inch — Onboarding Evidence Ledger
 
-> Greenfield run of the ScopeBall protocol-onboarding framework (`ONBOARDING_PROMPT.md`,
+> Greenfield run of the Pasu protocol-onboarding framework (`ONBOARDING_PROMPT.md`,
 > SCOPE-ORACLE-hardened) on **1inch AggregationRouterV6**, Ethereum mainnet only.
 > Treated as a fresh onboarding (no prior 1inch artifacts existed).
 >
@@ -17,7 +17,7 @@
 |---|---|
 | protocol | 1inch |
 | branch | feat/1inch-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-1inch |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-1inch |
 | date | 2026-06-03 |
 | main agent | Claude Opus 4.8 (1M context), this session |
 | base commit | c9916daf (feat/registry-v2) |
@@ -131,7 +131,7 @@
 | exact staged files and commit hash recorded | done | Onboarding landed across 4 explicit-stage commits on `feat/1inch-onboarding`: **d109f545** P0 (surface/1inch/{_deployments,abi,coverage}.json + evidence), **65800825** P1 (builtin_fn.rs keccak256 $fn + manifests/1inch/aggregation-router-v6/swap@1.0.0.json), **89aa8d5f** P2 (data/golden/v3-decode/1inch/corpus.json + evidence), and the **P3/P4 commit carrying this evidence** (staged: builtin_fn.rs fmt-wrap + this evidence.md; HEAD of git log). Generated `index/`, `pkg/`, `browser-extension/**/wasm/` gitignored. `.cargo/config.toml` (target-dir redirect) git-ignored, never staged. |
 | remaining WARNs/deferred selectors/actions listed with reason | done | Deferred (data-gated): LOP cancel/fill ~19% (#1 follow-up — needs 1inch-LOP IntentVenue + AddressLib unmask), unoswap family ~4.1% ($fn/token_out-from-pool gap), permitAndCall ~0.2% (recursion), clipper ~0%. EXCLUDE: epoch bookkeeping ~6.2%, callbacks, admin. Separate framework: multichain (Arbitrum/Base/BSC/Polygon/Optimism), legacy v5/v4 routers + standalone LOP V2/V3. WARNs: pre-existing registry-wide (morpho I0', aave/compound ungated) — not 1inch. |
 | final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | see Final Completion Claim — bounded to the measured ~62–70% `swap`-selector coverage-share; explicitly NOT "the full 1inch swap surface". |
-| no base/worktree merge performed unless user explicitly requested it | done | no merge/push; all work on `feat/1inch-onboarding` (worktree scopeball-1inch). Shared base `feat/registry-v2` untouched. |
+| no base/worktree merge performed unless user explicitly requested it | done | no merge/push; all work on `feat/1inch-onboarding` (worktree pasu-1inch). Shared base `feat/registry-v2` untouched. |
 
 ## Blockers
 
@@ -238,7 +238,7 @@ cargo run -p policy-engine-integration-tests --bin check-onboarding-evidence -- 
 ## Follow-up Round 6 — FULL-COVERAGE (NativeOrderFactory + unoswap family + universe re-audit + PowerPod) — 2026-06-03
 
 > Triggered by a dogfood miss: a real `NativeOrderFactory.create` tx route-missed (`bundle_not_installed` → warn-closed).
-> Isolated worktree `scopeball-1inch-full` / branch `feat/1inch-full-coverage` (off `5d6710f7`); commit `454bcf79` (NOT merged/pushed).
+> Isolated worktree `pasu-1inch-full` / branch `feat/1inch-full-coverage` (off `5d6710f7`); commit `454bcf79` (NOT merged/pushed).
 
 | track | status | summary |
 |---|---|---|

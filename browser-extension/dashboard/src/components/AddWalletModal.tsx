@@ -142,7 +142,7 @@ export function AddWalletModal({ open, onClose, onAdded }: AddWalletModalProps) 
             ))}
           </div>
           <div className="hint">
-            전체 선택 안 하면: <code>scopeball-sync.toml</code>에 RPC가 설정된 모든 체인을 추적합니다.
+            전체 선택 안 하면: <code>pasu-sync.toml</code>에 RPC가 설정된 모든 체인을 추적합니다.
           </div>
         </div>
 

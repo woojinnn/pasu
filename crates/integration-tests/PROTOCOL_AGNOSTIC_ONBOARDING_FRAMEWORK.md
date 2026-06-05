@@ -1,4 +1,4 @@
-# ScopeBall Protocol-Agnostic Onboarding Framework
+# Pasu Protocol-Agnostic Onboarding Framework
 
 > 목적: 새 프로토콜마다 다시 생각하지 않도록, **프로토콜 독립 코드 골격과 실행 인스트럭션**을 고정한다. 이 문서는 구현 전체를 한 번에 끝내는 계획이 아니라, 어떤 프로토콜에도 반복 적용할 수 있는 framework contract 이다.
 >
@@ -419,7 +419,7 @@ Dual-agent rule:
 1. Current Codex session performs P0 research from official/verified sources.
 2. Claude Code receives the same discovery prompt via headless CLI, for example:
    ```bash
-   claude -p "<P0 discovery prompt>" --add-dir /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+   claude -p "<P0 discovery prompt>" --add-dir /Users/jhy/Desktop/Pasu/pasu-registry-v2
    ```
 3. Merge Codex ∪ Claude ∪ official deployment list ∪ secondary sweeps.
 4. Any Codex-only or Claude-only candidate is high-priority for 1st-source verification.
@@ -716,7 +716,7 @@ No protocol moves to done while any COVER selector is `uncovered`, `decode_error
 Minimum commands:
 
 ```bash
-cd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2
+cd /Users/jhy/Desktop/Pasu/pasu-registry-v2
 
 cd registryV2
 npm run build
@@ -783,8 +783,8 @@ Use sub-agents for breadth, but make each prompt self-contained.
 ### P0 Contract Discovery Template
 
 ```text
-Repo: /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
-Task: Protocol <PROTOCOL> contract inventory for ScopeBall V3 onboarding.
+Repo: /Users/jhy/Desktop/Pasu/pasu-registry-v2.
+Task: Protocol <PROTOCOL> contract inventory for Pasu V3 onboarding.
 
 Read:
 - crates/integration-tests/PROTOCOL_AGNOSTIC_ONBOARDING_FRAMEWORK.md
@@ -805,7 +805,7 @@ Do not author manifests. Do not touch unrelated files.
 ### P1 Selector Mapping Template
 
 ```text
-Repo: /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
+Repo: /Users/jhy/Desktop/Pasu/pasu-registry-v2.
 Task: Map <PROTOCOL> selector <SELECTOR> / signature <SIG> into V3 ActionBody.
 
 Read:
@@ -829,7 +829,7 @@ Run or report:
 ### P2 Corpus/Oracle Template
 
 ```text
-Repo: /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
+Repo: /Users/jhy/Desktop/Pasu/pasu-registry-v2.
 Task: Build semantic corpus / field oracle for <PROTOCOL> selector <SELECTOR>.
 
 Read:

@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: PERP-11 (raising the leverage on a
+// pasu default v2 policy — explorer id: PERP-11 (raising the leverage on a
 // position you already hold).
 //
 // Bumping leverage on an open position (especially isolated) pulls margin out and

@@ -8,7 +8,7 @@
 |---|---|
 | protocol | ethena |
 | branch | feat/ethena-onboarding |
-| worktree | ~/Desktop/ScopeBall/scopeball-ethena |
+| worktree | ~/Desktop/Pasu/pasu-ethena |
 | date | 2026-06-04 |
 | main agent | Claude Code (Opus 4.8, ultracode) |
 | base commit | 420639b7 (feat/registry-v2) |
@@ -125,7 +125,7 @@
 | exact staged files and commit hash recorded | done | P0 `0efce66d` (surface/_deployments+abi+coverage, sUSDe token, evidence). P1 `17854568` (staking mod.rs/cooldown.rs + lowering + cedarschema + 6 manifests). P2 `7f8a4856` (corpus.json + evidence). P3/P4 = HEAD after this commit (cooldown.rs fmt fix + evidence.md P3/P4). |
 | remaining WARNs/deferred selectors/actions listed with reason | done | DEFER: sUSDe withdraw(ERC4626) — 0% usage, cooldown-ON dead path. EXCLUDE: addToBlacklist + admin/infra; EthenaMinting (MM RFQ); USDeSilo (infra). Out-of-scope: ENA/sENA, USDtb, multichain. build-index WARN: 239 pre-existing sourced duplicate callkeys (not ethena). |
 | final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | "Ethena sUSDe + USDe **wallet-facing** surface, **mainnet** — ~99.8% of top-level tx covered (H2 volume-weighted, both entries); sUSDe staking lifecycle (deposit/mint/cooldownShares/cooldownAssets/unstake/redeem) + ERC20 via standard adapter. withdraw(ERC4626) deferred (0% usage); EthenaMinting + multichain out of scope." NOT full-surface, NOT multichain. |
-| no base/worktree merge performed unless user explicitly requested it | done | No merge/push performed. Commits stay on feat/ethena-onboarding (worktree scopeball-ethena). |
+| no base/worktree merge performed unless user explicitly requested it | done | No merge/push performed. Commits stay on feat/ethena-onboarding (worktree pasu-ethena). |
 
 ## Blockers
 
