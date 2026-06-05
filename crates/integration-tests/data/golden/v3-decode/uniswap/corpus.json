@@ -669,12 +669,12 @@
         {
           "path": "$.data.actions[0].body.actions[1].params.token_in.key.address",
           "op": "hex_eq",
-          "value": "0x0000000000000000000000000000000000000000"
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
         },
         {
           "path": "$.data.actions[0].body.actions[1].params.token_out.key.address",
           "op": "hex_eq",
-          "value": "0x0000000000000000000000000000000000000000"
+          "value": "0xdac17f958d2ee523a2206206994597c13d831ec7"
         },
         {
           "path": "$.data.actions[0].body.actions[1].params.direction.kind",
@@ -2336,12 +2336,12 @@
         {
           "path": "$.data.actions[0].body.actions[1].params.token_in.key.address",
           "op": "hex_eq",
-          "value": "0x0000000000000000000000000000000000000000"
+          "value": "0x4200000000000000000000000000000000000006"
         },
         {
           "path": "$.data.actions[0].body.actions[1].params.token_out.key.address",
           "op": "hex_eq",
-          "value": "0x0000000000000000000000000000000000000000"
+          "value": "0xbd285498822217835d839660583c794fc5419c19"
         },
         {
           "path": "$.data.actions[0].body.actions[1].params.direction.kind",
@@ -2409,12 +2409,12 @@
         {
           "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
           "op": "hex_eq",
-          "value": "0x0000000000000000000000000000000000000000"
+          "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
         },
         {
           "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
           "op": "hex_eq",
-          "value": "0x0000000000000000000000000000000000000000"
+          "value": "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b"
         },
         {
           "path": "$.data.actions[0].body.actions[0].params.direction.kind",

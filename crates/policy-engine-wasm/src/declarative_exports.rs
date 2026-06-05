@@ -1838,7 +1838,11 @@ fn dispatch_opcode_stream(
             args_json: ctx.args_json,
             raw_calldata: ctx.raw_calldata,
             resolved: ctx.resolved.clone(),
-            derived: ctx.derived.clone(),
+            // Re-derive $derived.* from THIS opcode's decoded inputs (it carries
+            // its own `path`/`marketParams`/`vault`); the route-level pass only
+            // saw the outer execute(commands, inputs) args. Fixes UR V3 swap
+            // token_in/out == 0x0.
+            derived: rederive_for_child(&ctx.derived, inputs_for_this),
             inputs: inputs_for_this,
         };
         let child_action = build_action_body(&child_ctx, body_template, None)
@@ -2175,7 +2179,11 @@ fn build_tagged_dispatch(
         args_json: ctx.args_json,
         raw_calldata: ctx.raw_calldata,
         resolved: ctx.resolved.clone(),
-        derived: ctx.derived.clone(),
+        // Defense-in-depth: today's one tagged manifest (HL core-writer) emits no
+        // $derived references, so re-deriving here is inert on the body (any stray
+        // injection is value-gated + unread); it pre-resolves $derived.* for a
+        // future tagged body that does reference it.
+        derived: rederive_for_child(&ctx.derived, Some(&decoded)),
         inputs: Some(&decoded),
     };
     build_action_body(&child_ctx, body_template, action_entry.get("live_inputs"))
@@ -2476,7 +2484,11 @@ fn build_parallel_tagged_dispatch(
             args_json: ctx.args_json,
             raw_calldata: ctx.raw_calldata,
             resolved: child_resolved,
-            derived: ctx.derived.clone(),
+            // Defense-in-depth: today's one parallel-tagged manifest (Compound
+            // Bulker) emits no $derived references, so re-deriving here is inert on
+            // the body; it pre-closes the same clone-without-re-derive footgun that
+            // hit the opcode-stream path for any future element body that uses $derived.*.
+            derived: rederive_for_child(&ctx.derived, Some(&decoded)),
             inputs: Some(&decoded),
         };
         let body = build_action_body(&child_ctx, body_template, entry.get("live_inputs"))
@@ -2861,6 +2873,39 @@ fn maybe_inject_uniswap_v3_path(
             serde_json::Value::Number(serde_json::Number::from(*fee)),
         );
     }
+}
+
+/// Re-derive the shape-gated `$derived.*` endpoints for a NESTED child leg.
+///
+/// The route-level injection (the `maybe_inject_*` calls in
+/// `declarative_route_request_v3_json`) only sees the OUTER call's decoded args.
+/// A nested leg (an opcode-stream opcode, a tagged sub-action) carries its own
+/// `path` / `marketParams` / `vault` in its OWN decoded inputs, so a child body
+/// that references `$derived.v3_path_first_token` / `$derived.morpho_market_id` /
+/// `$derived.metamorpho_underlying` would otherwise resolve against the parent's
+/// (often empty) `derived` map — that was the Universal Router V3 swap leg
+/// `token_in/out == 0x0` bug (the outer `execute(commands, inputs)` args have no
+/// `path`, and the per-opcode child merely cloned the empty parent `derived`).
+///
+/// Mirrors the per-opcode `maybe_inject_v4_pool_id` precedent: clone the parent
+/// `derived`, then re-run each injector against the child's inputs. Every
+/// injector keys off a UNIQUE argument name and early-returns (no mutation) on a
+/// shape mismatch, so calling all three is a safe no-op for any leg whose inputs
+/// don't carry the matching key (the three trigger keys are disjoint, so they
+/// cannot cross-fire). NOTE: `maybe_inject_uniswap_v3_path` gates on a `bytes`
+/// arg literally named `path` — a V2 `address[] path` fails its `as_str` gate, so
+/// `bytes path` is effectively reserved for V3 packed paths.
+fn rederive_for_child(
+    parent: &BTreeMap<String, serde_json::Value>,
+    inputs: Option<&serde_json::Value>,
+) -> BTreeMap<String, serde_json::Value> {
+    let mut derived = parent.clone();
+    if let Some(inputs) = inputs {
+        maybe_inject_morpho_market_id(inputs, &mut derived);
+        maybe_inject_metamorpho_underlying(inputs, &mut derived);
+        maybe_inject_uniswap_v3_path(inputs, &mut derived);
+    }
+    derived
 }
 
 /// `multicall_recurse` (Cat D) — flatten a self-`multicall(bytes[])` into one

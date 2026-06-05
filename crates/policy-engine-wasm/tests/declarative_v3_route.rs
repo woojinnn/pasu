@@ -579,6 +579,161 @@ fn t4_ur_execute_single_v3_swap() {
 }
 
 // ---------------------------------------------------------------------------
+// t4b — UR execute V3_SWAP_EXACT_IN derives token_in/out from the PACKED PATH
+// ---------------------------------------------------------------------------
+//
+// Regression for the "$derived re-derivation" bug: the UR opcode body resolves
+// token_in/out from `$derived.v3_path_first_token` / `$derived.v3_path_last_token`
+// (and `$derived.fee_tier_bp`), produced by `maybe_inject_uniswap_v3_path`. That
+// injector only ran at the TOP-LEVEL route (the outer `execute(commands, inputs)`
+// args have no `path` key), and the per-opcode child context merely CLONED the
+// (empty) parent `derived` — so every UR V3 swap leg decoded token_in ==
+// token_out == 0x0 regardless of the real path. The fix re-runs the injector per
+// opcode against the opcode's own decoded inputs (which carry the packed `path`).
+// This manifest uses the `$derived.v3_path_*` placeholders (mirroring the live
+// registry manifest, NOT t4's literal-token shortcut) and feeds a REAL
+// USDC|3000|WETH path; it FAILS before the fix (tokens 0x0) and passes after.
+
+const T4B_USDC: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+const T4B_WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+const T4B_UR_EXECUTE_V3_DERIVED: &str = r#"{
+  "type": "adapter_function",
+  "id": "uniswap/universal-router/execute-v2@2.0.1-derived-path-repro",
+  "publisher": "uniswap.eth",
+  "schema_version": "2",
+  "match": {
+    "chain_to_addresses": {
+      "1": ["0x66a9893cC07D91D95644AEDD05D03f95e1dBA8aF"]
+    },
+    "selector": "0x3593564c"
+  },
+  "abi_fragment": {
+    "function_name": "execute",
+    "abi": {
+      "name": "execute",
+      "type": "function",
+      "inputs": [
+        { "name": "commands", "type": "bytes" },
+        { "name": "inputs", "type": "bytes[]" },
+        { "name": "deadline", "type": "uint256" }
+      ]
+    }
+  },
+  "emit": {
+    "strategy": "opcode_stream_dispatch",
+    "mask": "0x3f",
+    "allow_revert_bit": "0x80",
+    "unknown_opcode_policy": "warn",
+    "per_opcode_body": {
+      "0x00": {
+        "name": "V3_SWAP_EXACT_IN",
+        "inputs_abi": "(address recipient, uint256 amountIn, uint256 amountOutMin, bytes path, bool payerIsUser)",
+        "body": {
+          "domain": "amm",
+          "amm": {
+            "action": "swap",
+            "swap": {
+              "venue": {
+                "name": "uniswap_v3",
+                "chain": "$chain",
+                "pool": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+                "fee_tier_bp": "$derived.fee_tier_bp"
+              },
+              "params": {
+                "token_in":  { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.v3_path_first_token" } },
+                "token_out": { "key": { "standard": "erc20", "chain": "$chain", "address": "$derived.v3_path_last_token" } },
+                "direction": {
+                  "kind": "exact_input",
+                  "amount_in": "$inputs.amountIn",
+                  "min_amount_out": "$inputs.amountOutMin"
+                },
+                "recipient": "$inputs.recipient",
+                "slippage_bp": 50
+              },
+              "live_inputs": {
+                "route":               { "source": { "kind": "onchain_view", "chain": "$chain", "contract": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640", "function": "slot0()", "decoder_id": "uniswap_v3_slot0" }, "ttl_s": 12 },
+                "expected_amount_out": { "source": { "kind": "venue_api", "endpoint": "https://api.example", "parser_id": "p" }, "ttl_s": 6 },
+                "price_impact_bp":     { "source": { "kind": "derived_from", "inputs": [{ "scope": "global", "name": "x" }], "calc_id": "y" }, "ttl_s": 12 },
+                "gas_estimate":        { "source": { "kind": "oracle_feed", "provider": "pyth", "feed_id": "gas/ethereum" }, "ttl_s": 6 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "requires": {
+    "imperative": ["opcode-stream-dispatch@^1.0"],
+    "adapter_capabilities": [],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}"#;
+
+#[test]
+fn t4b_ur_execute_v3_swap_derives_tokens_from_path() {
+    install_ok(T4B_UR_EXECUTE_V3_DERIVED);
+
+    // REAL packed V3 path: USDC | fee 3000 (0x000bb8) | WETH.
+    let mut path = Vec::new();
+    path.extend_from_slice(&hex::decode(T4B_USDC.trim_start_matches("0x")).unwrap());
+    path.extend_from_slice(&[0x00, 0x0b, 0xb8]); // fee 3000
+    path.extend_from_slice(&hex::decode(T4B_WETH.trim_start_matches("0x")).unwrap());
+
+    let inputs_blob = DynSolValue::Tuple(vec![
+        DynSolValue::Address(
+            "0x000000000000000000000000000000000000a01c"
+                .parse::<AlloyAddress>()
+                .unwrap(),
+        ),
+        DynSolValue::Uint(AlloyU256::from(1_000_000u64), 256),
+        DynSolValue::Uint(AlloyU256::from(1u64), 256),
+        DynSolValue::Bytes(path),
+        DynSolValue::Bool(true),
+    ])
+    .abi_encode_params();
+
+    let calldata = encode_calldata(
+        "0x3593564c",
+        &[
+            DynSolValue::Bytes(vec![0x00]),
+            DynSolValue::Array(vec![DynSolValue::Bytes(inputs_blob)]),
+            DynSolValue::Uint(AlloyU256::from(1_900_000_000u64), 256),
+        ],
+    );
+    let input = route_input(
+        1,
+        "0x66a9893cc07d91d95644aedd05d03f95e1dba8af",
+        "0x3593564c",
+        calldata,
+        "0x000000000000000000000000000000000000aaaa",
+    );
+
+    let parsed = route_ok(input);
+    let body = &parsed["data"]["actions"][0]["body"];
+    assert_eq!(body["domain"], "multicall");
+    let inner = &body["actions"][0];
+    assert_eq!(inner["domain"], "amm");
+    assert_eq!(inner["action"], "swap");
+
+    // The crux: token_in/out are derived from the PACKED PATH, not 0x0.
+    assert_eq!(
+        inner["params"]["token_in"]["key"]["address"], T4B_USDC,
+        "token_in must be derived from the packed path (was 0x0 before the per-opcode re-derivation fix): {parsed}"
+    );
+    assert_eq!(
+        inner["params"]["token_out"]["key"]["address"], T4B_WETH,
+        "token_out must be derived from the packed path: {parsed}"
+    );
+    // fee_tier_bp also comes from the path's first hop (3000) via the same injector.
+    assert_eq!(
+        inner["venue"]["fee_tier_bp"], 3000,
+        "fee_tier_bp from path: {parsed}"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // t5 — array_emit (Phase A.2): homogeneous calldata array → Multicall
 // ---------------------------------------------------------------------------
 //

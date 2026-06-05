@@ -47,7 +47,7 @@
                 "name": "uniswap_v3",
                 "chain": "$chain",
                 "pool": "$resolved.pool",
-                "fee_tier_bp": "$resolved.fee_tier_bp"
+                "fee_tier_bp": "$derived.fee_tier_bp"
               },
               "params": {
                 "token_in": {
@@ -129,7 +129,7 @@
                 "name": "uniswap_v3",
                 "chain": "$chain",
                 "pool": "$resolved.pool",
-                "fee_tier_bp": "$resolved.fee_tier_bp"
+                "fee_tier_bp": "$derived.fee_tier_bp"
               },
               "params": {
                 "token_in": {
