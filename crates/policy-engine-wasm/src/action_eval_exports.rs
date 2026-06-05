@@ -279,6 +279,39 @@ fn evaluate_matching_bundles(
     let view = action.view();
     let tx_view = tx_view(tx);
 
+    // Entity slice for Cedar's `Entities::from_json_value` (engine.rs:227).
+    //
+    // Cedar evaluates `principal.<attr>` accesses by looking the principal
+    // up in this slice and reading its attrs object. Pre-fix this was an
+    // empty array, so ANY policy that touched `principal.address` (or any
+    // other entity attribute) crashed with `entity does not exist` — the
+    // engine wrapped that as a `__schemaless_eval_error__` SystemFail. The
+    // `bridge-recipient-not-self-deny` policy is the canonical victim
+    // (`when { context.recipient != principal.address }`).
+    //
+    // We synthesize two entities:
+    //   - `Wallet::"<tx.from>"`   with `attrs.address = tx.from`
+    //   - `Protocol::"<tx.to>"`   attribute-less (Core::Protocol declares none)
+    //
+    // The wallet attrs mirror `core.cedarschema::entity Wallet { address: String }`.
+    // The lowering layer (`lowering_v2/dispatch.rs`) already formats
+    // `lowered.principal` as `Wallet::"<from>"` (matching the uid we build
+    // here) and `lowered.resource` as `Protocol::"<to>"`, so the principal /
+    // resource uids the evaluator passes downstream resolve cleanly against
+    // this slice without any further glue.
+    let entities = serde_json::json!([
+        {
+            "uid": { "type": "Wallet", "id": tx.from.as_str() },
+            "attrs": { "address": tx.from.as_str() },
+            "parents": [],
+        },
+        {
+            "uid": { "type": "Protocol", "id": tx.to.as_str() },
+            "attrs": {},
+            "parents": [],
+        }
+    ]);
+
     // Scope×position gate (mirrors `trigger_exports::manifest_matches`). The SW
     // dispatches the outer multicall AND each inner child as its own evaluate
     // envelope (see `orchestrator.ts::evaluateBodyTree`), so a bundle must fire
@@ -315,7 +348,7 @@ fn evaluate_matching_bundles(
                 &lowered.principal,
                 &lowered.action_uid,
                 &lowered.resource,
-                &Value::Array(Vec::new()),
+                &entities,
                 context,
             )
             .map_err(|error| EngineErrorDto::new("policy", error.to_string()))?;

@@ -26,6 +26,11 @@ import {
   listSets,
   upsertSet,
 } from "./sets-storage";
+import {
+  clearCurrentUserId,
+  getCurrentUserId,
+  setCurrentUserId,
+} from "./current-user";
 
 // Hard ceiling for audit-log responses so a wedged dashboard can't pull
 // the entire ring buffer in one shot. The underlying buffer is capped at
@@ -76,7 +81,10 @@ export type DashboardRequest =
       description?: string;
       memberIds: readonly string[];
     }
-  | { type: "dashboard:delete-set"; id: string };
+  | { type: "dashboard:delete-set"; id: string }
+  | { type: "dashboard:get-current-user" }
+  | { type: "dashboard:set-current-user"; userId: string }
+  | { type: "dashboard:clear-current-user" };
 
 export type DashboardResponse<T = unknown> =
   | { ok: true; data: T }
@@ -332,6 +340,36 @@ export async function handleDashboardRequest(
         }
         await deleteSet(req.id);
         return { ok: true, data: { id: req.id } };
+      }
+
+      case "dashboard:get-current-user": {
+        const userId = await getCurrentUserId();
+        return { ok: true, data: { userId } };
+      }
+
+      case "dashboard:set-current-user": {
+        if (typeof req.userId !== "string" || req.userId.length === 0) {
+          return fail("invalid_request", "userId must be a non-empty string");
+        }
+        const prior = await getCurrentUserId();
+        await setCurrentUserId(req.userId);
+        // Re-apply the new user's enabled set so the engine snaps to the
+        // freshly-active namespace. If the user just logged in for the first
+        // time, this collapses to "install zero managed policies".
+        if (prior !== req.userId) {
+          await applyEnabledIds(await getEnabledIds(), reinstallAllPolicies).catch(
+            () => undefined,
+          );
+        }
+        return { ok: true, data: { userId: req.userId } };
+      }
+
+      case "dashboard:clear-current-user": {
+        await clearCurrentUserId();
+        // Drop dashboard policies from the engine — the per-user namespace
+        // is no longer reachable. Baked policies keep applying.
+        await applyEnabledIds([], reinstallAllPolicies).catch(() => undefined);
+        return { ok: true, data: null };
       }
 
       default: {

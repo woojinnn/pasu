@@ -608,3 +608,419 @@
 .sim-wasm-probe .probe-rows .probe-grid {
   grid-template-columns: 1fr 1fr;
 }
+
+/* ── Structured step rendering (CalldataProbe) ─────────────────────────── */
+.sim-wasm-probe .probe-step-list {
+  list-style: none; padding: 0; margin: 8px 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sim-wasm-probe .probe-step-card {
+  border: 1px solid var(--fog-600);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+}
+.sim-wasm-probe .probe-step-head {
+  display: flex; align-items: center; gap: 10px;
+  font: 600 11px/1.2 var(--ff-mono);
+  color: var(--slate-700);
+}
+.sim-wasm-probe .probe-step-idx {
+  color: var(--slate-500);
+}
+.sim-wasm-probe .probe-step-pos {
+  color: var(--slate-500);
+  font-weight: 500;
+}
+.sim-wasm-probe .probe-step-badge {
+  margin-left: auto;
+  font: 700 10.5px/1 var(--ff-mono);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 999px;
+}
+.sim-wasm-probe .probe-step-badge-pass {
+  background: var(--pass-100, #e6f7ee);
+  color: var(--pass-800, #036b3f);
+}
+.sim-wasm-probe .probe-step-badge-warn {
+  background: var(--warn-100, #fff4d6);
+  color: var(--warn-800, #8a5a00);
+}
+.sim-wasm-probe .probe-step-badge-fail {
+  background: var(--fail-100, #fde6e6);
+  color: var(--fail-800, #8a1f1f);
+}
+.sim-wasm-probe .probe-step-badge-none {
+  background: var(--fog-200, #ececec);
+  color: var(--slate-500);
+}
+.sim-wasm-probe .probe-step-matched {
+  list-style: none; margin: 6px 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 3px;
+  font: 500 11px/1.4 var(--ff-mono);
+}
+.sim-wasm-probe .probe-step-matched li {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.sim-wasm-probe .probe-step-sev {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px;
+}
+.sim-wasm-probe .probe-step-sev-warn {
+  background: var(--warn-100, #fff4d6); color: var(--warn-800, #8a5a00);
+}
+.sim-wasm-probe .probe-step-sev-deny {
+  background: var(--fail-100, #fde6e6); color: var(--fail-800, #8a1f1f);
+}
+.sim-wasm-probe .probe-step-origin {
+  font-size: 10px; color: var(--slate-500);
+  padding: 1px 5px; background: var(--fog-200); border-radius: 3px;
+}
+.sim-wasm-probe .probe-step-reason {
+  color: var(--slate-700); font-weight: 400;
+}
+.sim-wasm-probe .probe-step-delta {
+  margin-top: 6px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.sim-wasm-probe .probe-step-empty {
+  margin-top: 6px;
+  font: 500 11px/1 var(--ff-mono); color: var(--slate-500);
+  font-style: italic;
+}
+.sim-wasm-probe .probe-step-row {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 11.5px/1.3 var(--ff-mono);
+}
+.sim-wasm-probe .probe-step-row-tag {
+  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--slate-500); min-width: 64px;
+}
+.sim-wasm-probe .probe-step-row-chain {
+  color: var(--slate-500); font-size: 10.5px;
+}
+.sim-wasm-probe .probe-step-row-amt {
+  margin-left: auto; font-weight: 700;
+}
+.sim-wasm-probe .probe-step-row-amt.pos { color: var(--pass-800, #036b3f); }
+.sim-wasm-probe .probe-step-row-amt.neg { color: var(--fail-800, #8a1f1f); }
+.sim-wasm-probe .probe-step-row-arrow,
+.sim-wasm-probe .probe-step-row-kind,
+.sim-wasm-probe .probe-step-row-scope {
+  color: var(--slate-500); font-size: 10.5px;
+}
+.sim-wasm-probe .probe-raw-json {
+  margin-top: 8px;
+  font: 500 11px/1 var(--ff-mono); color: var(--slate-500);
+}
+.sim-wasm-probe .probe-raw-json summary {
+  cursor: pointer; padding: 2px 0;
+}
+
+/* ── Account strip (wallet selector + account-level state) ─────────────── */
+.sim-account-strip {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(360px, 2fr);
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+@media (max-width: 1100px) {
+  .sim-account-strip { grid-template-columns: 1fr; }
+}
+
+/* ── Main 2×3 grid (replaces the prior .sim-account-strip + .sim-layout
+   pair). Three columns; the right column splits into a short verdict box
+   on top and a taller policy-toggle list below. Top row sizes to its
+   content so the verdict box stays compact even when the run hasn't
+   produced one yet. */
+.sim-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(380px, 1.6fr) minmax(280px, 1fr);
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  margin: 8px 0 24px;
+  align-items: stretch;
+}
+@media (max-width: 1100px) {
+  .sim-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto auto auto;
+  }
+}
+
+/* ── Wallet selector ──────────────────────────────────────────────────── */
+.wallet-selector-card .wallet-selector-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0 8px;
+  flex-wrap: wrap;
+}
+.wallet-selector-card .wallet-selector-chain {
+  display: flex; align-items: center; gap: 6px;
+  font: 600 11.5px/1 var(--ff-mono); color: var(--slate-700);
+}
+.wallet-selector-card .wallet-selector-chain select {
+  font: 500 11.5px/1.4 var(--ff-mono);
+  padding: 3px 6px;
+  border: 1px solid var(--fog-600); border-radius: 4px;
+  background: var(--surface);
+}
+.wallet-selector-card .wallet-selector-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 200px; overflow-y: auto;
+}
+.wallet-selector-card .wallet-row {
+  border: 1px solid var(--fog-600); border-radius: 5px;
+  padding: 6px 8px;
+  background: var(--surface);
+}
+.wallet-selector-card .wallet-row.is-on {
+  border-color: var(--brand-400, #6c8cff);
+  background: var(--brand-50, #f1f5ff);
+}
+.wallet-selector-card .wallet-row.is-off-chain.is-on {
+  border-color: var(--warn-400, #f0c060);
+  background: var(--warn-50, #fff8e6);
+}
+.wallet-selector-card .wallet-row-label {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+}
+.wallet-selector-card .wallet-row-addr {
+  font: 600 12px/1 var(--ff-mono);
+  color: var(--slate-900);
+}
+.wallet-selector-card .wallet-row-chains {
+  display: flex; gap: 4px; margin-left: auto;
+}
+.wallet-selector-card .wallet-chain-pill {
+  font: 600 10px/1 var(--ff-mono);
+  padding: 2px 6px; border-radius: 999px;
+  background: var(--fog-200); color: var(--slate-500);
+}
+.wallet-selector-card .wallet-chain-pill.is-active {
+  background: var(--brand-100, #d8e4ff);
+  color: var(--brand-800, #1e3aa8);
+}
+.wallet-selector-card .wallet-row-warn {
+  font: 500 10.5px/1.3 var(--ff-mono);
+  color: var(--warn-800, #8a5a00);
+  margin-top: 4px; display: block;
+}
+
+/* ── Account-level state panel ─────────────────────────────────────────── */
+.account-state-card .state-section {
+  margin-top: 6px;
+}
+.account-state-card .state-token-wcount {
+  margin-left: 4px;
+}
+
+/* ── Wallets-level state panel (multi-wallet) ──────────────────────────── */
+/* StepPicker — shared by .wallets-state-card and .account-state-card (any
+   card that drives the same page-level `cursorIdx`). Selectors are
+   card-agnostic so a new caller doesn't have to copy the rules. */
+.state-step-buttons {
+  display: flex; gap: 4px;
+  flex-wrap: wrap;
+  margin: 6px 0 4px;
+}
+.state-step-btn {
+  font: 600 12px/1 var(--ff-mono);
+  padding: 6px 12px;
+  border: 1px solid var(--fog-600); border-radius: 4px;
+  background: var(--surface);
+  color: var(--slate-700);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  min-width: 44px;
+}
+.state-step-btn:hover {
+  border-color: var(--slate-400);
+  background: var(--fog-100);
+}
+.state-step-btn.is-active {
+  background: var(--brand-600, #4263eb);
+  border-color: var(--brand-700, #364fc7);
+  color: white;
+}
+.state-step-label {
+  font: 500 11.5px/1.3 var(--ff-mono);
+  color: var(--slate-500);
+  margin: 0 0 8px;
+}
+
+/* ── per-row delta value (under the post-state balance) ─────────────────── */
+.state-token-delta {
+  font: 600 11.5px/1 var(--ff-mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+.state-token-delta-pos {
+  background: var(--pass-100, #e6f7ee);
+  color: var(--pass-800, #036b3f);
+}
+.state-token-delta-neg {
+  background: var(--fail-100, #fde6e6);
+  color: var(--fail-800, #8a1f1f);
+}
+.wallets-state-card .state-delta-summary {
+  display: flex; align-items: center; gap: 6px;
+  font: 500 11.5px/1.4 var(--ff-mono);
+  color: var(--slate-700);
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.wallets-state-card .state-delta-summary .meta { color: var(--slate-500); }
+.wallets-state-card .state-delta-summary .muted { color: var(--slate-400); font-style: italic; }
+.wallets-state-card .state-filter {
+  display: flex; align-items: center; gap: 6px;
+  font: 500 12px/1 var(--ff-mono); color: var(--slate-700);
+  margin-bottom: 8px;
+}
+.wallets-state-card .wallets-state-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.wallets-state-card .wallets-state-section {
+  border: 1px solid var(--fog-600); border-radius: 6px;
+  padding: 8px 10px; background: var(--surface);
+}
+.wallets-state-card .wallets-state-section.is-step-owner {
+  border-color: var(--brand-400, #6c8cff);
+  background: var(--brand-50, #f1f5ff);
+}
+.wallets-state-card .wallets-state-section.wallets-state-section-sum {
+  background: var(--fog-100, #f4f4f4);
+  border-color: var(--slate-300, #c8ccd0);
+}
+.wallets-state-card .wallets-state-section.wallets-state-section-sum
+  .wallets-state-head strong {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--slate-500);
+}
+.wallets-state-card .wallets-state-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+  font: 600 12px/1 var(--ff-mono); color: var(--slate-900);
+}
+.wallets-state-card .wallets-state-head .meta {
+  margin-left: auto; color: var(--slate-500);
+}
+
+/* ── State token list (shared by account + wallets panels) ─────────────── */
+.state-section { margin-bottom: 8px; }
+.state-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font: 700 11px/1 var(--ff-mono);
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--slate-500);
+  margin-bottom: 4px;
+}
+.state-token-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.state-token-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 4px;
+  background: var(--fog-50, #fafafa);
+}
+.state-token-row.is-changed {
+  background: var(--warn-50, #fff8e6);
+  border-left: 3px solid var(--warn-400, #f0c060);
+}
+.state-token-head {
+  display: flex; align-items: center; gap: 6px;
+  flex: 1; min-width: 0;
+  font: 500 11.5px/1.2 var(--ff-mono);
+}
+.state-token-head .muted { color: var(--slate-500); }
+.state-token-chain {
+  font-size: 10.5px;
+}
+.state-token-balance {
+  font: 600 12.5px/1.2 var(--ff-mono);
+  color: var(--slate-900);
+}
+.state-token-balance .state-token-symbol {
+  font-weight: 500;
+  margin-left: 2px;
+}
+.state-pills {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-top: 6px;
+}
+.state-pill {
+  font: 500 10.5px/1 var(--ff-mono);
+  padding: 3px 7px; border-radius: 999px;
+  background: var(--fog-100); color: var(--slate-700);
+}
+.muted-line {
+  font: 500 12px/1.4 var(--ff-mono);
+  color: var(--slate-500); padding: 6px 0;
+}
+.muted-line code {
+  font: 500 11.5px/1 var(--ff-mono);
+  background: var(--fog-100); padding: 1px 4px; border-radius: 3px;
+}
+
+/* ── Login gate ────────────────────────────────────────────────────────── */
+.sim-login-gate {
+  max-width: 480px; margin: 60px auto;
+  padding: 24px; border: 1px solid var(--fog-600); border-radius: 8px;
+  background: var(--surface);
+  text-align: center;
+}
+.sim-login-gate h2 { font-size: 18px; margin: 0 0 8px; }
+.sim-login-gate p {
+  font: 500 13.5px/1.6 var(--slate-600);
+  color: var(--slate-500); margin: 0 0 16px;
+}
+
+/* ── TX card engine-error banner ───────────────────────────────────────── */
+.tx-builder .tx-card.verdict-error {
+  border-color: var(--fail-400, #f0a0a0);
+  background: var(--fail-50, #fef4f4);
+}
+.tx-builder .vpill.error {
+  background: var(--fail-100, #fde6e6);
+  color: var(--fail-800, #8a1f1f);
+}
+.tx-builder .tx-card-error {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--fail-100, #fde6e6);
+  border: 1px solid var(--fail-300, #f0a0a0);
+  border-radius: 5px;
+  font: 500 12px/1.45 var(--ff-mono);
+  color: var(--fail-800, #8a1f1f);
+}
+.tx-builder .tx-card-error-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+/* ── Run-strip extras for new layout ───────────────────────────────────── */
+.sim-runstrip .rs-warn {
+  color: var(--warn-800, #8a5a00);
+  font-weight: 600;
+}
+
+/* ── TX grid — from-wallet row spans full width ────────────────────────── */
+.tx-builder .tx-grid-wide {
+  grid-column: 1 / -1;
+}
+.tx-builder .tx-grid-wide select {
+  font: 500 12px/1.4 var(--ff-mono);
+  padding: 4px 8px;
+  border: 1px solid var(--fog-600); border-radius: 4px;
+  background: var(--surface);
+}

@@ -1,0 +1,16 @@
+{
+  "id": "swap-usdc-amount-cap-deny",
+  "schema_version": 2,
+  "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+  "policy_rpc": [{
+    "id": "in-nano",
+    "method": "token.normalize_to_nano",
+    "params": {
+      "amount": "$.action.direction.amountIn",
+      "decimals": 6
+    },
+    "outputs": [{ "kind": "context", "field": "amountInNano", "type": "Long", "from": "$.result.nano", "required": true }],
+    "optional": false
+  }],
+  "custom_context": { "fields": { "amountInNano": "Long" } }
+}

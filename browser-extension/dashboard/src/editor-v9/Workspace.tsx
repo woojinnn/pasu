@@ -45,7 +45,15 @@ export interface WorkspaceV9Props {
   initialCedarText?: string | null;
   policyName?: string;
   locale?: "ko" | "en";
-  onChange?: (next: { cedarText: string; json: object; errors: EditorError[] }) => void;
+  onChange?: (next: {
+    cedarText: string;
+    json: object;
+    errors: EditorError[];
+    /** Validated policy IR for the current workspace (present only when the
+     *  policy compiled). Lets the save path auto-generate the enrichment
+     *  manifest from the `context.custom.*` fields the policy reads. */
+    ir?: PolicyIR;
+  }) => void;
 }
 
 export function WorkspaceV9({
@@ -138,7 +146,7 @@ export function WorkspaceV9({
         setCedarText(text);
         setErrors([]);
         setBridgeError(null);
-        onChange?.({ cedarText: text, json: wsJson, errors: [] });
+        onChange?.({ cedarText: text, json: wsJson, errors: [], ir: validated.ir });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         setBridgeError(msg);

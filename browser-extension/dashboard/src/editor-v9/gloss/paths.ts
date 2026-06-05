@@ -16,6 +16,8 @@
  * Scratch-style builder had pinned for users.
  */
 
+import { ENRICHMENT_FIELDS } from "../manifest-gen/registry";
+
 /** Coarse category for toolbox layout + block colour. Mirrors V7_GLOSS.group. */
 export type Role = "address" | "ref" | "numeric" | "enum" | "auth" | "derived";
 
@@ -47,7 +49,7 @@ export interface GlossEntry {
  * each role category. Keep alphabetical within a role for predictability,
  * with frequent-use entries lifted to the top.
  */
-export const GLOSS_ENTRIES: readonly GlossEntry[] = [
+const BASE_GLOSS_ENTRIES: readonly GlossEntry[] = [
   // ── address (8) ──────────────────────────────────────────────────────
   { path: "context.recipient", ko: "수신자", en: "Recipient",
     role: "address", fieldKind: "primitive.String",
@@ -184,6 +186,41 @@ export const GLOSS_ENTRIES: readonly GlossEntry[] = [
   { path: "context.expectedAmountOut", ko: "예상 출력", en: "Expected out",
     role: "derived", fieldKind: "primitive.String",
     desc: { ko: "실행 전 견적된 출력 토큰 양", en: "Pre-execution quote of output tokens" } },
+];
+
+/** custom_context type spelling → editor `FieldKind`. */
+const ENRICHMENT_FIELD_KIND: Record<string, FieldKind> = {
+  decimal: "primitive.decimal",
+  Long: "primitive.Long",
+  Bool: "primitive.Bool",
+  String: "primitive.String",
+};
+
+/**
+ * Enrichment fields surfaced as palette blocks, DERIVED from the manifest
+ * generator's registry so the field list and the auto-generated manifest share
+ * a single source of truth. The path is the real `context.custom.<field>` the
+ * generator detects and the engine reads — drop the block, write a threshold,
+ * save, and the manifest that fills it is generated automatically.
+ */
+const ENRICHMENT_GLOSS: readonly GlossEntry[] = Object.entries(ENRICHMENT_FIELDS).map(
+  ([field, def]) => ({
+    path: `context.custom.${field}`,
+    ko: def.label.ko,
+    en: def.label.en,
+    role: "derived" as const,
+    fieldKind: ENRICHMENT_FIELD_KIND[def.type] ?? "primitive.String",
+    desc: {
+      ko: def.note ?? "정책 저장 시 manifest가 자동 생성되어 채워지는 보강 값.",
+      en: def.note ?? "Auto-enriched by a generated manifest on save.",
+    },
+  }),
+);
+
+/** All gloss entries: the base table plus registry-derived enrichment fields. */
+export const GLOSS_ENTRIES: readonly GlossEntry[] = [
+  ...BASE_GLOSS_ENTRIES,
+  ...ENRICHMENT_GLOSS,
 ];
 
 /** Lookup by dotted path. O(1) via the materialised map below. */

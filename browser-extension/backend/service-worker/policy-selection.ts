@@ -1,10 +1,19 @@
 import Browser from 'webextension-polyfill';
 import { parsePolicyMeta, type Severity } from '@lib/policy-meta';
 import { listManaged } from './dashboard/storage';
+import { getCurrentUserId } from './dashboard/current-user';
 import { listInstalled } from './adapter-loader/storage';
 
-const ENABLED_KEY = 'policy-selection:enabled-ids';
-const APPLIED_KEY = 'policy-selection:applied-ids';
+const ENABLED_KEY_PREFIX = 'policy-selection:enabled-ids';
+const APPLIED_KEY_PREFIX = 'policy-selection:applied-ids';
+export const ENABLED_KEY_PREFIX_WITH_SEP = `${ENABLED_KEY_PREFIX}:`;
+export const APPLIED_KEY_PREFIX_WITH_SEP = `${APPLIED_KEY_PREFIX}:`;
+function enabledKey(uid: string): string {
+  return `${ENABLED_KEY_PREFIX}:${uid}`;
+}
+function appliedKey(uid: string): string {
+  return `${APPLIED_KEY_PREFIX}:${uid}`;
+}
 
 export interface CatalogPolicy {
   id: string;
@@ -36,11 +45,15 @@ async function writeStringArray(key: string, ids: string[]): Promise<void> {
 }
 
 export async function getEnabledIds(): Promise<string[]> {
-  return readStringArray(ENABLED_KEY);
+  const uid = await getCurrentUserId();
+  if (!uid) return [];
+  return readStringArray(enabledKey(uid));
 }
 
 export async function getAppliedIds(): Promise<string[]> {
-  return readStringArray(APPLIED_KEY);
+  const uid = await getCurrentUserId();
+  if (!uid) return [];
+  return readStringArray(appliedKey(uid));
 }
 
 let inflight: Promise<ApplyResult> | null = null;
@@ -61,11 +74,22 @@ function normalizeIds(ids: string[]): string[] {
 }
 
 async function runApply(ids: string[], reinstall: ReinstallFn): Promise<ApplyResult> {
+  const uid = await getCurrentUserId();
+  if (!uid) {
+    // No active user → no per-user enabled-ids namespace. Treat as a no-op
+    // success: the engine has nothing dashboard-specific to install.
+    try {
+      await reinstall([]);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: classifyError(err) };
+    }
+  }
   const sorted = normalizeIds(ids);
   try {
-    await writeStringArray(ENABLED_KEY, sorted);
+    await writeStringArray(enabledKey(uid), sorted);
     await reinstall(sorted);
-    await writeStringArray(APPLIED_KEY, sorted);
+    await writeStringArray(appliedKey(uid), sorted);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: classifyError(err) };

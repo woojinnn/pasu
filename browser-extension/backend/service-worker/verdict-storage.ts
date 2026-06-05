@@ -38,7 +38,13 @@ export interface VerdictRow {
   reason: { ko?: string | null; en?: string | null };
   user_decision: "trusted" | "cancelled" | null;
   decided_at: number | null;
-  delta_id: number | null;
+  /** Decision-level UUID linking this verdict row to a state-delta row
+   *  in `state-delta-storage`. N verdict rows (one per matched policy)
+   *  share the same delta_id when they came from the same decision. The
+   *  type widened from `number` to `string` to accommodate UUIDs; legacy
+   *  rows persisted before this change carry `null` and surface as
+   *  "no delta data" in the dashboard's HistoryPage detail. */
+  delta_id: string | null;
 }
 
 export type VerdictInsert = Omit<

@@ -38,18 +38,16 @@
 
 import Browser from "webextension-polyfill";
 
-import { type ManagedPolicy, listManaged } from "./dashboard/storage";
-import { getEnabledIds } from "./policy-selection";
-
-/** Storage key the dashboard writes managed policies under. Must stay in sync
- *  with `dashboard/storage.ts` `KEY`. */
-const DASHBOARD_STORAGE_KEY = "dashboard:policies";
-
-/** Storage key holding the enabled policy-id allow-list. Must stay in sync with
- *  `policy-selection.ts` `ENABLED_KEY`. Toggling a policy off in the popup
- *  rewrites THIS key (not `dashboard:policies`), so the cache must refresh on
- *  it too — otherwise a disabled policy keeps being enforced. */
-const ENABLED_IDS_STORAGE_KEY = "policy-selection:enabled-ids";
+import {
+  POLICIES_KEY_PREFIX,
+  type ManagedPolicy,
+  listManaged,
+} from "./dashboard/storage";
+import { CURRENT_USER_STORAGE_KEY } from "./dashboard/current-user";
+import {
+  ENABLED_KEY_PREFIX_WITH_SEP,
+  getEnabledIds,
+} from "./policy-selection";
 
 /**
  * On-disk asset row (one element of `policy-set-v2.json`). `manifest` is left
@@ -130,17 +128,24 @@ async function loadBakedSetV2(): Promise<V2Bundle[]> {
 }
 
 /**
- * Project one dashboard `ManagedPolicy` to a `V2Bundle` with a synthesized
- * minimal manifest. The empty trigger (no `where`) matches every action, so the
- * Cedar body's `action == ...` head is the sole filter; the engine composes the
- * full base schema (no `custom_context`), which is exactly what a base-context
- * policy like the dashboard authors needs to compile.
+ * Project one dashboard `ManagedPolicy` to a `V2Bundle`. When the stored
+ * `ManagedPolicy.manifest` is present (e.g. seeded default bundles that ship
+ * with their own `policy_rpc` + `custom_context`), it is used verbatim so the
+ * engine can compose the right schema. When absent (user-authored policies
+ * from the editor), a minimal manifest is synthesized: the empty trigger (no
+ * `where`) matches every action, so the Cedar body's `action == ...` head is
+ * the sole filter and the engine composes the full base schema (no
+ * `custom_context`) — what a base-context policy needs to compile.
  */
 function managedToV2Bundle(p: ManagedPolicy): V2Bundle {
+  const manifest =
+    p.manifest && typeof p.manifest === "object"
+      ? p.manifest
+      : { id: p.id, schema_version: 2 };
   return {
     id: p.id,
     policy: p.text,
-    manifest: { id: p.id, schema_version: 2 },
+    manifest,
   };
 }
 
@@ -183,10 +188,26 @@ function ensureDashboardListener(): void {
   if (!Browser.storage?.onChanged) return; // non-SW/test env
   Browser.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
-    // Refresh on a managed-policy edit (`dashboard:policies`) OR an enable/
-    // disable toggle (`policy-selection:enabled-ids`) — the latter is what the
-    // popup rewrites when a policy is switched off.
-    if (DASHBOARD_STORAGE_KEY in changes || ENABLED_IDS_STORAGE_KEY in changes) {
+    // Refresh when:
+    //  - The active user changes (`dashboard:current-user-id`) — different
+    //    namespace, completely different policy set.
+    //  - Any user's managed-policy list updates (`dashboard:policies:<uid>`).
+    //  - Any user's enabled-ids toggle updates
+    //    (`policy-selection:enabled-ids:<uid>`). The popup rewrites this when
+    //    a policy is switched off.
+    // Pre-namespacing the listener watched flat keys; post-namespacing we
+    // prefix-match every changed key so we don't miss namespaced writes that
+    // happen for a user other than the currently-active one (the active user
+    // may change between writes).
+    const changedKeys = Object.keys(changes);
+    const shouldRefresh =
+      changedKeys.includes(CURRENT_USER_STORAGE_KEY) ||
+      changedKeys.some(
+        (k) =>
+          k.startsWith(POLICIES_KEY_PREFIX) ||
+          k.startsWith(ENABLED_KEY_PREFIX_WITH_SEP),
+      );
+    if (shouldRefresh) {
       void refreshDashboardBundles();
     }
   });

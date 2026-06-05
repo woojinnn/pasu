@@ -10,6 +10,7 @@ import {
   getEnabledPolicyIds,
   listAuditVerdicts,
   listManagedPolicies,
+  listPolicySets,
   subscribeToBroadcast,
   syncWallet,
   type DashboardSummary,
@@ -53,6 +54,10 @@ export function HomePage() {
   const enabledQ = useQuery({
     queryKey: ["enabled-policy-ids"],
     queryFn: getEnabledPolicyIds,
+  });
+  const setsQ = useQuery({
+    queryKey: ["policy-sets"],
+    queryFn: listPolicySets,
   });
 
   // Refetch the enabled set when the popup writes it behind our back.
@@ -103,10 +108,20 @@ export function HomePage() {
   const todayTotal = countsQ.data ? countsQ.data.pass + countsQ.data.warn + countsQ.data.fail : null;
 
   const managed = managedQ.data ?? [];
+  const sets = setsQ.data ?? [];
   const enabledSet = useMemo(() => new Set(enabledQ.data ?? []), [enabledQ.data]);
   const enabledPolicyCount = managed.filter((p) => enabledSet.has(p.id)).length;
   const totalManagedCount = managed.length;
   const policiesLoading = managedQ.isLoading || enabledQ.isLoading;
+  // A package counts as "active" only when every member id is enabled and
+  // the package has at least one member. Empty packages stay inactive.
+  const activePackageCount = sets.filter(
+    (s) =>
+      s.memberIds.length > 0 &&
+      s.memberIds.every((id) => enabledSet.has(id)),
+  ).length;
+  const totalPackageCount = sets.length;
+  const packagesLoading = setsQ.isLoading || enabledQ.isLoading;
 
   return (
     <>
@@ -122,11 +137,20 @@ export function HomePage() {
         onAddWallet={() => setAddOpen(true)}
       />
 
-      <ActivePoliciesCard
-        enabledCount={enabledPolicyCount}
-        totalCount={totalManagedCount}
-        loading={policiesLoading}
-      />
+      <div className="active-cards">
+        <ActivePoliciesCard
+          label="활성 정책"
+          enabledCount={enabledPolicyCount}
+          totalCount={totalManagedCount}
+          loading={policiesLoading}
+        />
+        <ActivePoliciesCard
+          label="활성 패키지"
+          enabledCount={activePackageCount}
+          totalCount={totalPackageCount}
+          loading={packagesLoading}
+        />
+      </div>
 
       <WalletList
         wallets={wallets}
@@ -187,21 +211,23 @@ function ContextBar({
   );
 }
 
-// ── Active policies card ────────────────────────────────────────────────
+// ── Active policies / packages card ─────────────────────────────────────
 
 function ActivePoliciesCard({
+  label,
   enabledCount,
   totalCount,
   loading,
 }: {
+  label: string;
   enabledCount: number;
   totalCount: number;
   loading: boolean;
 }) {
   return (
-    <Link to="/editor" className="policies-card" aria-label="정책 편집기로 이동">
+    <Link to="/editor" className="policies-card" aria-label={`${label} — 정책 편집기로 이동`}>
       <div className="pc-left">
-        <span className="pc-label">활성 정책</span>
+        <span className="pc-label">{label}</span>
         <span className="pc-count">
           {loading ? "…" : enabledCount}
           {!loading && totalCount > 0 && (

@@ -22,10 +22,25 @@ import {
   chainToSegments,
   dottedPathToChain,
 } from "../mapping/attr-path";
+import { ENRICHMENT_FIELDS } from "../manifest-gen/registry";
+
+const ENRICHMENT_COUNT = Object.keys(ENRICHMENT_FIELDS).length;
 
 describe("gloss table integrity", () => {
-  it("has 39 entries (V7_GLOSS minus the meta.from alias)", () => {
-    expect(allGloss().length).toBe(39);
+  it("has 39 base entries plus the registry enrichment fields", () => {
+    expect(allGloss().length).toBe(39 + ENRICHMENT_COUNT);
+  });
+
+  it("surfaces every enrichment field as a context.custom.* palette path", () => {
+    for (const field of Object.keys(ENRICHMENT_FIELDS)) {
+      const path = `context.custom.${field}`;
+      const entry = allGloss().find((e) => e.path === path);
+      expect(entry, `missing palette entry for ${path}`).toBeDefined();
+      expect(entry?.role).toBe("derived");
+      // The path the palette inserts must be the one the generator detects.
+      const back = chainToDottedPath(dottedPathToChain(path)!);
+      expect(back).toBe(path);
+    }
   });
 
   it("every path starts with a Cedar request variable", () => {

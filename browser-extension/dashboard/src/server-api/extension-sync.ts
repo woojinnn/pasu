@@ -188,3 +188,48 @@ export async function deletePolicySet(id: string): Promise<void> {
     throw err;
   }
 }
+
+/**
+ * Tell the SW which user is now active. The SW uses this id to namespace
+ * every per-user storage key (`dashboard:policies:<id>`,
+ * `policy-selection:enabled-ids:<id>`, …) so a different account on the
+ * same Chrome profile sees a disjoint policy space. Call this after a
+ * successful `fetchMe()`. Idempotent — passing the same id is a no-op.
+ */
+export async function setCurrentUser(userId: string): Promise<void> {
+  try {
+    await sendToExtension({ type: "dashboard:set-current-user", userId });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+/**
+ * Drop the active-user discriminator. After this the SW behaves as if no
+ * user is logged in: managed-policy reads return `[]`, writes fail with
+ * `no_user`, and only baked default policies stay enforced. Call from
+ * the dashboard's logout path.
+ */
+export async function clearCurrentUser(): Promise<void> {
+  try {
+    await sendToExtension({ type: "dashboard:clear-current-user" });
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return;
+    throw err;
+  }
+}
+
+/** Read whatever current-user id the SW currently has stored. Useful for
+ *  bootstrap parity checks (dashboard fetched `Me`, does the SW agree?). */
+export async function getCurrentUser(): Promise<string | null> {
+  try {
+    const data = await sendToExtension<{ userId: string | null }>({
+      type: "dashboard:get-current-user",
+    });
+    return data?.userId ?? null;
+  } catch (err) {
+    if (err instanceof ExtensionBridgeTimeout) return null;
+    throw err;
+  }
+}

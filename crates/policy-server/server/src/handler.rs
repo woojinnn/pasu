@@ -13,12 +13,13 @@ use std::error::Error;
 use std::fmt;
 
 use policy_state::store::StoreError;
-use policy_state::WalletStore;
+use policy_state::{WalletState, WalletStore, U256};
 use policy_transition::apply;
 use policy_transition::error::ReducerError;
 use policy_transition::helpers::delta::apply_delta;
+use serde_json::{json, Value};
 
-use crate::dto::{Diagnostic, EvaluateRequest, EvaluateResponse, PolicyRequest};
+use crate::dto::{CallSpec, Diagnostic, EvaluateRequest, EvaluateResponse, PolicyRequest};
 
 /// Error surfaced by [`evaluate`].
 /// `Reducer` is a *client* error (the action could not be applied to the given
@@ -104,16 +105,22 @@ pub async fn evaluate(
         deltas.push(delta);
     }
 
-    // The browser extension owns policy and verdict evaluation. Server-side
-    // enrichment results are intentionally empty until a typed call-spec
-    // executor is introduced at the HTTP boundary.
-    let results = BTreeMap::new();
+    // Execute the manifest-planned enrichment calls server-side, sourcing facts
+    // from the wallet state we just loaded/simulated. `oracle.usd_value` reads the
+    // synced `price_usd` on the held token — no live network call — so a USD-cap
+    // policy's `context.custom.*Usd` field is populated from canonical state.
+    let (results, mut diagnostics) = execute_call_specs(&state_before, &req.call_specs);
 
     let note = if req.envelopes.is_empty() {
         "simulated 0 envelopes (state echoed)".to_owned()
     } else {
         format!("simulated {} envelope(s)", req.envelopes.len())
     };
+    diagnostics.push(Diagnostic {
+        level: "info".to_owned(),
+        message: note,
+        call_id: None,
+    });
 
     Ok(EvaluateResponse {
         policy_request: PolicyRequest {
@@ -123,12 +130,86 @@ pub async fn evaluate(
             state_after: state,
             results,
         },
-        diagnostics: vec![Diagnostic {
-            level: "info".to_owned(),
-            message: note,
-            call_id: None,
-        }],
+        diagnostics,
     })
+}
+
+/// Execute the request's enrichment call-specs against the (already-loaded)
+/// wallet state. Currently serves `oracle.usd_value` from the synced `price_usd`
+/// on the held token; unknown methods are surfaced as diagnostics and skipped.
+/// Returns the results map keyed by `call_id` plus non-fatal diagnostics. A call
+/// that cannot be served leaves its `call_id` absent from the map — the
+/// extension's materialize step fail-closes a *required* missing result and
+/// fail-opens an optional one, so this never fabricates a value.
+fn execute_call_specs(
+    state: &WalletState,
+    specs: &[CallSpec],
+) -> (BTreeMap<String, Value>, Vec<Diagnostic>) {
+    let mut results = BTreeMap::new();
+    let mut diagnostics = Vec::new();
+    for spec in specs {
+        match spec.method.as_str() {
+            "oracle.usd_value" => match oracle_usd_value(state, &spec.params) {
+                Some(usd) => {
+                    results.insert(spec.call_id.clone(), json!({ "usd": usd }));
+                }
+                None => diagnostics.push(Diagnostic {
+                    level: "warn".to_owned(),
+                    message: format!(
+                        "oracle.usd_value: no synced price for the requested asset \
+                         (call {}) — field left unset",
+                        spec.call_id
+                    ),
+                    call_id: Some(spec.call_id.clone()),
+                }),
+            },
+            other => diagnostics.push(Diagnostic {
+                level: "info".to_owned(),
+                message: format!(
+                    "enrichment method `{other}` not served server-side (call {})",
+                    spec.call_id
+                ),
+                call_id: Some(spec.call_id.clone()),
+            }),
+        }
+    }
+    (results, diagnostics)
+}
+
+/// Value an `oracle.usd_value` call from synced state: locate the held token by
+/// the `asset` param's address, then compute `amount / 10^decimals × price_usd`.
+/// f64-scale (display, mirrors [`TokenHolding::compute_value_usd`]) and formatted
+/// to 4 fractional digits so it parses as a Cedar `decimal`. Returns `None` when
+/// the asset is not held, has no synced price, or the amount cannot be parsed.
+fn oracle_usd_value(state: &WalletState, params: &Value) -> Option<String> {
+    let asset = params.get("asset").and_then(asset_address)?;
+    let amount_raw = params.get("amount").and_then(Value::as_str)?;
+    let amount = U256::from_str_radix(amount_raw.trim_start_matches("0x"), 16).ok()?;
+
+    let holding = state
+        .tokens
+        .values()
+        .find(|h| h.key.contract().map(|a| format!("{a:#x}")).as_deref() == Some(asset.as_str()))?;
+
+    let price_f: f64 = holding.price_usd.as_ref()?.value.as_str().parse().ok()?;
+    let amount_f: f64 = amount.to_string().parse().ok()?;
+    let divisor = 10f64.powi(i32::from(holding.decimals));
+    if divisor <= 0.0 {
+        return None;
+    }
+    let usd = amount_f / divisor * price_f;
+    Some(format!("{usd:.4}"))
+}
+
+/// Extract a lowercase hex address from an `asset` param that may be a bare
+/// address string or an `AssetRef` object carrying an `address` field.
+fn asset_address(v: &Value) -> Option<String> {
+    let raw = match v {
+        Value::String(s) => s.clone(),
+        Value::Object(_) => v.get("address").and_then(Value::as_str)?.to_owned(),
+        _ => return None,
+    };
+    Some(raw.to_lowercase())
 }
 
 #[cfg(test)]
@@ -140,12 +221,70 @@ mod tests {
 
     use policy_state::position::PositionKind;
     use policy_state::primitives::{Address, BlockHeight, ChainId, Decimal, Time};
-    use policy_state::{RequestKind, WalletId, WalletState};
+    use policy_state::{
+        Balance, BaseCategory, DataSource, FiatCurrency, LiveField, OracleProvider, PegTarget,
+        RequestKind, TokenHolding, TokenKey, TokenKind, WalletId, WalletState, U256,
+    };
     use policy_transition::action::hyperliquid_core::{HlOrderAction, HyperliquidCoreAction};
     use policy_transition::{Action, ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
-    use crate::dto::EvaluateRequest;
+    use crate::dto::{CallSpec, EvaluateRequest};
     use crate::store::InMemoryWalletStore;
+
+    /// A wallet holding 100 USDC on mainnet with a synced $1.0001 price — the
+    /// fact `oracle.usd_value` reads to value a swap that sells USDC.
+    fn state_with_usdc_price() -> (WalletState, TokenKey) {
+        let usdc = Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap();
+        let key = TokenKey::Erc20 {
+            chain: ChainId::ethereum_mainnet(),
+            address: usdc,
+        };
+        let holding = TokenHolding {
+            key: key.clone(),
+            kind: TokenKind::Base {
+                category: BaseCategory::Stable,
+                peg_to: Some(PegTarget::Fiat(FiatCurrency::Usd)),
+            },
+            symbol: "USDC".into(),
+            decimals: 6,
+            balance: Balance::fungible(U256::from(100_000_000u64)),
+            committed: Balance::zero_fungible(),
+            approved_to: None,
+            price_usd: Some(LiveField::new(
+                Decimal::new("1.0001"),
+                DataSource::OracleFeed {
+                    provider: OracleProvider::Chainlink,
+                    feed_id: "USDC/USD".into(),
+                },
+                Time::from_unix(1_700_000_000),
+            )),
+            metadata: None,
+            value_usd: None,
+            last_synced_at: Time::from_unix(1_700_000_000),
+            primitives_source: DataSource::OracleFeed {
+                provider: OracleProvider::Chainlink,
+                feed_id: "USDC/USD".into(),
+            },
+        };
+        let mut state = WalletState::new(sample_wallet_id());
+        state.tokens.insert(key.clone(), holding);
+        (state, key)
+    }
+
+    fn usd_call_spec(asset: &str, amount_hex: &str) -> CallSpec {
+        CallSpec {
+            manifest_id: "swap-usdc-usd-cap-deny".into(),
+            call_id: "swap-usdc-usd-cap-deny::usd".into(),
+            method: "oracle.usd_value".into(),
+            params: serde_json::json!({
+                "chain_id": "eip155:1",
+                "asset": asset,
+                "amount": amount_hex
+            }),
+            outputs: Vec::new(),
+            optional: false,
+        }
+    }
 
     fn sample_wallet_id() -> WalletId {
         WalletId::new(
@@ -280,6 +419,52 @@ mod tests {
             store.load(&sample_wallet_id()).await.unwrap(),
             seeded,
             "canonical state must wait for authoritative sync/report reconciliation"
+        );
+    }
+
+    /// `oracle.usd_value` is served from the synced holding price: 100 USDC at
+    /// $1.0001 → "100.0100", folded into `results` under the call_id.
+    #[tokio::test]
+    async fn oracle_usd_value_is_served_from_synced_price() {
+        let store = InMemoryWalletStore::new();
+        let (state, _) = state_with_usdc_price();
+        store.seed(state);
+
+        let mut req = empty_envelope_request();
+        // 100 USDC = 100_000_000 raw (6 decimals) = 0x5f5e100.
+        req.call_specs.push(usd_call_spec(
+            "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "0x5f5e100",
+        ));
+
+        let resp = evaluate(&store, req).await.unwrap();
+        assert_eq!(
+            resp.policy_request.results["swap-usdc-usd-cap-deny::usd"],
+            serde_json::json!({ "usd": "100.0100" })
+        );
+    }
+
+    /// A token the wallet does not hold (no synced price) yields no result — the
+    /// executor never fabricates a value; a diagnostic records the miss.
+    #[tokio::test]
+    async fn oracle_usd_value_skips_unpriced_asset() {
+        let store = InMemoryWalletStore::new();
+        let (state, _) = state_with_usdc_price();
+        store.seed(state);
+
+        let mut req = empty_envelope_request();
+        req.call_specs.push(usd_call_spec(
+            "0x1111111111111111111111111111111111111111", // not held
+            "0x5f5e100",
+        ));
+
+        let resp = evaluate(&store, req).await.unwrap();
+        assert!(resp.policy_request.results.is_empty(), "no price → no result");
+        assert!(
+            resp.diagnostics
+                .iter()
+                .any(|d| d.level == "warn" && d.message.contains("no synced price")),
+            "miss should surface a diagnostic"
         );
     }
 }

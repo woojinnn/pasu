@@ -22,8 +22,10 @@ import {
 
 import {
   ServerError,
+  clearCurrentUser,
   fetchMe,
   logout as serverLogout,
+  setCurrentUser,
   startGoogleLogin,
   type Me,
 } from "../server-api";
@@ -63,10 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const me = await fetchMe();
       setUser(me);
+      // Sync the SW's active-user discriminator so every per-user storage
+      // key (`dashboard:policies:<id>`, `policy-selection:enabled-ids:<id>`,
+      // …) reads/writes under the right namespace. Fire-and-forget — the
+      // bridge fails soft when the extension isn't installed.
+      if (me) {
+        void setCurrentUser(me.user_id);
+      } else {
+        void clearCurrentUser();
+      }
     } catch (e) {
       if (e instanceof ServerError && e.isUnauthorized) {
         // fetchMe already cleared the token.
         setUser(null);
+        void clearCurrentUser();
       } else {
         setError(e instanceof Error ? e : new Error(String(e)));
       }
@@ -108,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutCb = useCallback(() => {
     serverLogout();
+    void clearCurrentUser();
     setUser(null);
   }, []);
 

@@ -108,6 +108,9 @@ function createActionScopeBlock(ws: Blockly.WorkspaceSvg, scope: ActionScope): B
       return ws.newBlock(BLOCK_TYPES.action_scope_all) as Blockly.BlockSvg;
     case "scopeEq": {
       const b = ws.newBlock(BLOCK_TYPES.action_scope_eq) as Blockly.BlockSvg;
+      // Preserve full namespace path (e.g. "Token::Action") so a paste of
+      // `Token::Action::"Erc20Permit"` round-trips losslessly.
+      b.setFieldValue(scope.entity.type || "Action", "TYPE");
       b.setFieldValue(scope.entity.id, "ID");
       return b;
     }
