@@ -101,7 +101,15 @@ console.log("Pasu SW alive at", new Date().toISOString());
 // `decideMessage` retry. We do NOT block the runtime listeners below on
 // this promise — they should be installed synchronously so the SW can
 // queue messages while warmup is in flight.
-void bootSequence().catch((err) => {
+//
+// `bootReady` exposes boot completion so auth handlers can `await` it
+// before reading tokens. In MV3 the SW is woken BY a message and the
+// message listeners are installed synchronously — without this gate a
+// token read could run before the pasu-rename migration's `set` lands,
+// read an absent `pasu_jwt`, and show the user logged out. The `.catch`
+// keeps the promise non-rejecting, so awaiting it never throws (boot is
+// best-effort; a stalled stage must not brick the auth handlers).
+export const bootReady: Promise<void> = bootSequence().catch((err) => {
   console.warn("[Pasu] boot sequence failed:", err);
 });
 
@@ -645,7 +653,12 @@ Browser.runtime.onMessage.addListener(
     // Each handler returns `{ ok, data | error }` so the popup can match
     // uniformly.
     if (req.type === "pasu-auth-status") {
-      void fetchMe()
+      // Gate the token read on boot: the pasu-rename storage migration runs
+      // inside `bootSequence()` and must finish copying `scopeball_jwt` →
+      // `pasu_jwt` before we read the token, or a freshly-woken SW reports
+      // the user logged out. `bootReady` never rejects (boot is best-effort).
+      void bootReady
+        .then(() => fetchMe())
         .then((me: Me | null) => sendResponse({ ok: true, data: me }))
         .catch((err: unknown) =>
           sendResponse({
@@ -657,7 +670,10 @@ Browser.runtime.onMessage.addListener(
     }
 
     if (req.type === "pasu-auth-sign-in") {
-      void startGoogleLogin()
+      // Await boot before the sign-in flow so its post-login `fetchMe()`
+      // token read sees the migrated key (see `pasu-auth-status`).
+      void bootReady
+        .then(() => startGoogleLogin())
         .then(async () => {
           const me = await fetchMe();
           sendResponse({ ok: true, data: me });
@@ -672,7 +688,10 @@ Browser.runtime.onMessage.addListener(
     }
 
     if (req.type === "pasu-auth-sign-out") {
-      void clearTokens()
+      // Await boot so a sign-out can't race the migration re-populating
+      // `pasu_jwt` from the stale `scopeball_jwt` after we clear it.
+      void bootReady
+        .then(() => clearTokens())
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
           sendResponse({
@@ -685,7 +704,10 @@ Browser.runtime.onMessage.addListener(
 
     if (req.type === "pasu-auth-sync-tokens") {
       const r = req as PasuAuthSyncTokensRequest;
-      void setTokens(r.access, r.refresh)
+      // Await boot so the dashboard's token mirror can't be clobbered by
+      // the migration's late `set` (both write `pasu_jwt`).
+      void bootReady
+        .then(() => setTokens(r.access, r.refresh))
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
           sendResponse({
@@ -697,7 +719,9 @@ Browser.runtime.onMessage.addListener(
     }
 
     if (req.type === "pasu-list-wallets") {
-      void listWallets()
+      // Await boot before the token read (see `pasu-auth-status`).
+      void bootReady
+        .then(() => listWallets())
         .then((wallets: WalletId[]) =>
           sendResponse({ ok: true, data: wallets }),
         )
