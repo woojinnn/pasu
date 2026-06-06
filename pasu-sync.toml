@@ -148,10 +148,20 @@ orders_endpoint = "https://api.uniswap.org/v2"
 api_key = "${UNISWAP_KEY}"   # optional; only the v1 gateway uses it
 chains = ["eip155:1"]
 
-# 향후 추가 예시:
-# [venues.oneinch]
-# quote_endpoint = "https://api.1inch.dev/swap/v6.0"
-# api_key = "${ONEINCH_KEY}"
+[venues.cowswap]
+# CoW Protocol Orderbook API — fully public (no api-key). The {network} host
+# segment is derived per chain (mainnet / xdai / arbitrum_one / base / …), so
+# `chains` lists every CAIP-2 chain to poll.
+base_url = "https://api.cow.fi"
+chains = ["eip155:1"]
+
+[venues.one_inch_fusion]
+# 1inch Fusion (same-chain) order status via the Dev Portal. Requires a Bearer
+# api-key (ONEINCH_KEY); without it every request 401s. The chainId path segment
+# is derived from each `eip155:<n>` entry.
+base_url = "https://api.1inch.dev/fusion"
+api_key = "${ONEINCH_KEY}"
+chains = ["eip155:1"]
 
 
 # ===========================================================================

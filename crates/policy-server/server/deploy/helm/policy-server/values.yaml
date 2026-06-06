@@ -109,6 +109,16 @@ syncConfig: |-
   api_key = "${UNISWAP_KEY}"
   chains = ["eip155:1"]
 
+  [venues.cowswap]
+  # CoW Protocol Orderbook order-status — fully public (no api-key), safe in
+  # prod. The {network} host segment is derived per chain.
+  base_url = "https://api.cow.fi"
+  chains = ["eip155:1"]
+
+  # TODO(1inch prod): add [venues.one_inch_fusion] once ONEINCH_KEY is wired as a
+  # k8s secret. The fetcher code is fully there, but a keyless config would 401
+  # every tick — enable only after the Bearer key is available in the env.
+
 managedCertificate:
   enabled: false
 
