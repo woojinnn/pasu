@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: {} # allow manual re-runs from the Actions tab / `gh workflow run`
 
 permissions:
   contents: read
