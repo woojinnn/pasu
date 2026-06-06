@@ -87,7 +87,7 @@
     "host_capabilities": [],
     "extension": ">=0.1.0"
   },
-  "note": "Li.Fi startBridgeTokensViaOmniBridge (LiFiDiamond) \u2014 startBridge -> bridge::send from common ILiFi.BridgeData (param 0). venue=lifi_diamond; underlying bridge = BridgeData.bridge string (not differentiated V1). dst non-EVM/unmapped -> value-map miss -> warn-close (deferred). [single-tuple-param facet -> flattened args]",
+  "note": "Li.Fi startBridgeTokensViaOmniBridge (LiFiDiamond) \u2014 startBridge -> bridge::send from common ILiFi.BridgeData (param 0). venue=lifi_diamond; underlying bridge = BridgeData.bridge string (not differentiated V1). [single-tuple-param facet -> flattened args]",
   "emit": {
     "strategy": "single_emit",
     "body": {

@@ -86,6 +86,11 @@
           "value": "0x16345785d8a0000"
         },
         {
+          "path": "$.data.actions[0].body.dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.dst_recipient.address",
           "op": "hex_eq",
           "value": "0x5529e0608cfc0cab5bb86b59cba7e88f0f66dfef"
@@ -285,6 +290,11 @@
           "value": "0x12d1620"
         },
         {
+          "path": "$.data.actions[0].body.actions[1].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.actions[1].dst_recipient.address",
           "op": "hex_eq",
           "value": "0x29b384dbfe66a509bff4e0461f7c45bba05040a5"
@@ -336,6 +346,11 @@
           "path": "$.data.actions[0].body.input_amount",
           "op": "u256_hex_eq",
           "value": "0x2185cd85c"
+        },
+        {
+          "path": "$.data.actions[0].body.dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
         },
         {
           "path": "$.data.actions[0].body.dst_recipient.address",
@@ -431,6 +446,11 @@
           "value": "0x17763359a41b231"
         },
         {
+          "path": "$.data.actions[0].body.actions[2].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.actions[2].dst_recipient.address",
           "op": "hex_eq",
           "value": "0x5b44e3381fa00b52c2be0bbca93083e2a442bffd"
@@ -512,6 +532,11 @@
           "path": "$.data.actions[0].body.actions[2].input_amount",
           "op": "u256_hex_eq",
           "value": "0x2123e901"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
         },
         {
           "path": "$.data.actions[0].body.actions[2].dst_recipient.address",
@@ -660,6 +685,11 @@
           "value": "0x12d1620"
         },
         {
+          "path": "$.data.actions[0].body.actions[1].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.actions[1].dst_recipient.address",
           "op": "hex_eq",
           "value": "0x609f04fcfd5a58243fdedeaa112512d77c750891"
@@ -738,6 +768,11 @@
           "value": "0x235978e783e000"
         },
         {
+          "path": "$.data.actions[0].body.actions[1].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.actions[1].dst_recipient.address",
           "op": "hex_eq",
           "value": "0xc0b504fa3d00a526049af3424f4e339f5a21c71e"
@@ -784,6 +819,11 @@
           "path": "$.data.actions[0].body.input_amount",
           "op": "u256_hex_eq",
           "value": "0x558c2d6916a68e"
+        },
+        {
+          "path": "$.data.actions[0].body.dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
         },
         {
           "path": "$.data.actions[0].body.dst_recipient.address",
@@ -879,6 +919,11 @@
           "value": "0x55f49ecf219360000"
         },
         {
+          "path": "$.data.actions[0].body.actions[1].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.actions[1].dst_recipient.address",
           "op": "hex_eq",
           "value": "0x97b91abd1d48b3802bed4693f61c5ae14eaa6115"
@@ -972,6 +1017,11 @@
           "value": "0x5751b199"
         },
         {
+          "path": "$.data.actions[0].body.actions[2].dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.actions[2].dst_recipient.address",
           "op": "hex_eq",
           "value": "0x9fd56f02911a84c7d9525bad7ccc6a74c7ff6fa8"
@@ -1018,6 +1068,11 @@
           "path": "$.data.actions[0].body.input_amount",
           "op": "u256_hex_eq",
           "value": "0x11d053f36e92c"
+        },
+        {
+          "path": "$.data.actions[0].body.dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
         },
         {
           "path": "$.data.actions[0].body.dst_recipient.address",
@@ -1068,6 +1123,11 @@
           "value": "0x11c37937e08000"
         },
         {
+          "path": "$.data.actions[0].body.dst_recipient.kind",
+          "op": "equals",
+          "value": "evm"
+        },
+        {
           "path": "$.data.actions[0].body.dst_recipient.address",
           "op": "hex_eq",
           "value": "0xbfc95d2833b802d4d6bb2b50237b9e10c2c25e4f"
@@ -1080,8 +1140,9 @@
       ]
     },
     {
-      "intent": "swapAndStartBridgeTokensViaAcrossV4 -> Solana (NON-EVM dst): warn-close. BridgeData.receiver=0x11f1..f1 non-EVM sentinel; real recipient = AcrossV4Data.receiverAddress bytes32 (deferred per-facet Raw-recipient enhancement). dst_chain value-map is EVM-only -> ValueMapNoMatch -> decoder declines (no bogus EVM recipient emitted).",
-      "expect": "error",
+      "intent": "swapAndStartBridgeTokensViaAcrossV4 -> Solana (swap_bridge, non-EVM Raw recipient)",
+      "expect": "pass",
+      "expect_domain": "multicall",
       "tx_hash": "0x011f8d6ec0870f9eb3c1ebd5c4e55b3590277f92b68e5e630b5bdd4439205441",
       "chain_id": 1,
       "rpc": {
@@ -1092,7 +1153,177 @@
             "data": "0x1794958f0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000004602384237530183a2711d2624940bdcb767ba4c96ae1a2ee3d36b52b8b5d757d9c000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000011f111f111f111f111f111f111f111f111f111f10000000000000000000000000000000000000000000000000000000076d11147000000000000000000000000000000000000000000000000000416edef1601be0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000066163726f7373000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077068616e746f6d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000685527c551cc40ce1f1c9818cd8683307076e4ed000000000000000000000000685527c551cc40ce1f1c9818cd8683307076e4ed000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb480000000000000000000000000000000000000000000000000000000077d5d43b00000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000e4332d746b000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c06ebbefd94032b85424d51906e2a335efae264b00000000000000000000000000000000000000000000000000000000000d09bf000000000000000000000000a4d9d7068d84bbdf2e3caf1bbf2e1135bcd419840000000000000000000000000000000000000000000000000000000000f7b935000000000000000000000000000000000000000000000000000000000f64e4226322cd6908be7fe613f7f82ae2db8fc0ffaf0757e5e4839019170d7f000000000000000000000000b85cb64da1465d2e571c705f9f7ad9f5656b8627000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d610000000000000000000000000000000000000000000000000000000076cafaaa0000000000000000000000000000000000000000000000000de000a7de0744360000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006a237e5f000000000000000000000000000000000000000000000000000000006a23a299000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000000"
           }
         ]
-      }
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "aggregator_route"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.standard",
+          "op": "equals",
+          "value": "erc20"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.standard",
+          "op": "equals",
+          "value": "erc20"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0x77d5d43b"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].domain",
+          "op": "equals",
+          "value": "bridge"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].venue.name",
+          "op": "equals",
+          "value": "lifi_diamond"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].src_token.key.standard",
+          "op": "equals",
+          "value": "erc20"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].src_token.key.address",
+          "op": "hex_eq",
+          "value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].input_amount",
+          "op": "u256_hex_eq",
+          "value": "0x76d11147"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].dst_recipient.kind",
+          "op": "equals",
+          "value": "raw"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].dst_recipient.bytes32",
+          "op": "hex_eq",
+          "value": "0x0f64e4226322cd6908be7fe613f7f82ae2db8fc0ffaf0757e5e4839019170d7f"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[1].has_message",
+          "op": "equals",
+          "value": false
+        }
+      ]
+    },
+    {
+      "intent": "swapAndStartBridgeTokensViaMayan -> Solana (swap_bridge, non-EVM Raw recipient)",
+      "expect": "pass",
+      "expect_domain": "multicall",
+      "tx_hash": "0xbb9e0f068fd825596b5083b08d9f5c78d9a00087dc5c2ded8665746edb0c2a82",
+      "chain_id": 1,
+      "rpc": {
+        "params": [
+          {
+            "to": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+            "value": "800000000000000000",
+            "data": "0x30c48952000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000002200000000000000000000000000000000000000000000000000000000000000580fcec090e505c096b93acf5d0a73444f1baa6ddd06056061f138e758f5f3eb56c000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000011f111f111f111f111f111f111f111f111f111f10000000000000000000000000000000000000000000000000b0203328bd70000000000000000000000000000000000000000000000000000000416edef1601be0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000056d6179616e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000077068616e746f6d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000220000000000000000000000000685527c551cc40ce1f1c9818cd8683307076e4ed000000000000000000000000685527c551cc40ce1f1c9818cd8683307076e4ed000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b1a2bc2ec50000000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000c40e8ae67f00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c06ebbefd94032b85424d51906e2a335efae264b0000000000000000000000000000000000000000000000000001353a6b394000000000000000000000000000a4d9d7068d84bbdf2e3caf1bbf2e1135bcd419840000000000000000000000000000000000000000000000000016f355f53fc000000000000000000000000000000000000000000000000000000000000000000000000000000000005c57cf61e473ae865e733a3a23fbb7618b4621f60000000000000000000000005c57cf61e473ae865e733a3a23fbb7618b4621f60000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000b0203328bd7000000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004d0e30db000000000000000000000000000000000000000000000000000000000d3c22acb2c1a3ab74dd0265c6f733b4ba614b1bafb233b4b53366354790c685100000000000000000000000040ffe85a28dc9993541449464d7529a92214296000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000244a3a30834000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20000000000000000000000000000000000000000000000000b0203328bd7000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000009a4ba8f3ad6c879210d32aff90160ed9ede71f88d3c22acb2c1a3ab74dd0265c6f733b4ba614b1bafb233b4b53366354790c68510000000000000000000000000000000000000000000000000000000000000001000000000000000000000000adcc69b2c313c2d6bc637af80754bc51c9766e5100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000072ac87e30000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000010e4000000000000000000000000000000000000000000000000000000006a2382b1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000023b03f7c8be9b9ac15c2a02f5c5191cd20724acef4cff9b8d9bb24cdd00772efe0000000000000000000000000000000000000000000000000000000000000220000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect_body": [
+        {
+          "path": "$.data.actions[0].body.domain",
+          "op": "equals",
+          "value": "multicall"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].domain",
+          "op": "equals",
+          "value": "amm"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].venue.name",
+          "op": "equals",
+          "value": "aggregator_route"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_in.key.standard",
+          "op": "equals",
+          "value": "native"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.token_out.key.standard",
+          "op": "equals",
+          "value": "native"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[0].params.direction.amount_in",
+          "op": "u256_hex_eq",
+          "value": "0xb1a2bc2ec500000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].domain",
+          "op": "equals",
+          "value": "bridge"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].venue.name",
+          "op": "equals",
+          "value": "lifi_diamond"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].src_token.key.standard",
+          "op": "equals",
+          "value": "erc20"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].src_token.key.address",
+          "op": "hex_eq",
+          "value": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].input_amount",
+          "op": "u256_hex_eq",
+          "value": "0xb0203328bd70000"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].dst_recipient.kind",
+          "op": "equals",
+          "value": "raw"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].dst_recipient.bytes32",
+          "op": "hex_eq",
+          "value": "0xd3c22acb2c1a3ab74dd0265c6f733b4ba614b1bafb233b4b53366354790c6851"
+        },
+        {
+          "path": "$.data.actions[0].body.actions[2].has_message",
+          "op": "equals",
+          "value": false
+        }
+      ]
     }
   ]
 }

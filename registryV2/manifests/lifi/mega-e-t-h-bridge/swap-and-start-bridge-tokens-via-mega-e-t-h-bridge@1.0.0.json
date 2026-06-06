@@ -151,7 +151,7 @@
     "host_capabilities": [],
     "extension": ">=0.1.0"
   },
-  "note": "Li.Fi swapAndStartBridgeTokensViaMegaETHBridge (LiFiDiamond) \u2014 swapAndStartBridge -> composite_emit Multicall[ amm::Swap per source SwapData[] leg, bridge::send from BridgeData ]. Swap legs = user's real pre-bridge input (token/amount); bridge leg = the bridged asset + destination.",
+  "note": "Li.Fi swapAndStartBridgeTokensViaMegaETHBridge (LiFiDiamond) \u2014 swapAndStartBridge -> composite_emit Multicall[ amm::Swap per source SwapData[] leg, bridge::send from BridgeData ]. Swap legs = user's real pre-bridge input; bridge leg = bridged asset + destination.",
   "emit": {
     "strategy": "composite_emit",
     "parts": [

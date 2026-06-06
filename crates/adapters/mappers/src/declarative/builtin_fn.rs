@@ -62,6 +62,7 @@ pub const WHITELIST: &[&str] = &[
     "u64_saturating",
     "bytes_nonempty",
     "token_key_or_native_zero",
+    "bridge_recipient",
 ];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
@@ -92,6 +93,7 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "u64_saturating" => u64_saturating(args),
         "bytes_nonempty" => bytes_nonempty(args),
         "token_key_or_native_zero" => token_key_or_native_zero(args),
+        "bridge_recipient" => bridge_recipient(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -357,6 +359,43 @@ fn token_key_or_native_zero(args: &[JsonValue]) -> Result<JsonValue, String> {
         );
     }
     Ok(JsonValue::Object(key))
+}
+
+/// `bridge_recipient(evm_receiver, raw_bytes32_receiver) -> BridgeRecipient`.
+///
+/// Builds the discriminated `BridgeRecipient` for a Li.Fi bridge leg, handling
+/// non-EVM (Solana/Bitcoin/…) destinations correctly. Li.Fi sets
+/// `BridgeData.receiver` to its `LibAsset.NON_EVM_ADDRESS` sentinel
+/// (`0x11f111f111f111F111f111f111F111f111f111F1`) when the destination is
+/// non-EVM, and carries the REAL recipient as a 32-byte word in the
+/// facet-specific data (e.g. `AcrossV4Data.receiverAddress`,
+/// `MayanData.nonEVMReceiver`). So `evm_receiver == sentinel` yields
+/// `{kind:"raw", bytes32: raw_bytes32_receiver}`, otherwise (a real EVM
+/// address) `{kind:"evm", address: evm_receiver}`. The caller passes the
+/// facet-specific bytes32 field as arg 1; the sentinel check is uniform across
+/// facets.
+fn bridge_recipient(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 2 {
+        return Err(format!(
+            "bridge_recipient expects 2 args (evm_receiver, bytes32_receiver), got {}",
+            args.len()
+        ));
+    }
+    let evm = json_address(&args[0], "bridge_recipient: evm_receiver")?;
+    // Li.Fi LibAsset.NON_EVM_ADDRESS sentinel.
+    const NON_EVM_SENTINEL: &str = "0x11f111f111f111f111f111f111f111f111f111f1";
+    let mut m = serde_json::Map::new();
+    if format!("{evm:#x}") == NON_EVM_SENTINEL {
+        let bytes32 = args[1]
+            .as_str()
+            .ok_or("bridge_recipient: bytes32_receiver arg is not a string")?;
+        m.insert("kind".to_owned(), JsonValue::String("raw".to_owned()));
+        m.insert("bytes32".to_owned(), JsonValue::String(bytes32.to_owned()));
+    } else {
+        m.insert("kind".to_owned(), JsonValue::String("evm".to_owned()));
+        m.insert("address".to_owned(), JsonValue::String(format!("{evm:#x}")));
+    }
+    Ok(JsonValue::Object(m))
 }
 
 /// `uniswap_v3_pool_swap_field(amountSpecified, zeroForOne, token0, token1, field)`.
@@ -1602,6 +1641,33 @@ mod tests {
             json!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
         );
         assert!(token_key_or_native_zero(&[json!("0x0")]).is_err());
+    }
+
+    #[test]
+    fn bridge_recipient_sentinel_to_raw_else_evm() {
+        let b32 = "0x0f64e4226322cd6908be7fe613f7f82ae2db8fc0ffaf0757e5e4839019170d7f";
+        // Li.Fi non-EVM sentinel -> Raw{bytes32} from the facet field.
+        let raw = bridge_recipient(&[
+            json!("0x11f111f111f111F111f111f111F111f111f111F1"),
+            json!(b32),
+        ])
+        .unwrap();
+        assert_eq!(raw["kind"], json!("raw"));
+        assert_eq!(raw["bytes32"], json!(b32));
+        assert!(raw.get("address").is_none());
+        // A real EVM receiver -> Evm{address} (lowercased), bytes32 arg ignored.
+        let evm = bridge_recipient(&[
+            json!("0x5529e0608cFC0caB5Bb86B59CBa7E88F0F66dFeF"),
+            json!(b32),
+        ])
+        .unwrap();
+        assert_eq!(evm["kind"], json!("evm"));
+        assert_eq!(
+            evm["address"],
+            json!("0x5529e0608cfc0cab5bb86b59cba7e88f0f66dfef")
+        );
+        assert!(evm.get("bytes32").is_none());
+        assert!(bridge_recipient(&[json!("0x0")]).is_err());
     }
 
     #[test]
