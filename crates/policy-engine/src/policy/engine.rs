@@ -380,8 +380,8 @@ fn ingest_policy(
 mod tests {
     use super::super::{PolicyEngineBuilder, PolicyError, PolicyRequest};
     use super::*;
-    use crate::policy_rpc::PolicyManifest;
-    use crate::schema::PolicySchemaComposer;
+    use crate::policy_rpc::ManifestV2;
+    use crate::schema::compose_per_policy;
     use serde_json::json;
 
     fn entities() -> JsonValue {
@@ -401,75 +401,72 @@ mod tests {
         ])
     }
 
-    fn token(symbol: &str) -> JsonValue {
-        json!({
-            "kind": "erc20",
-            "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-            "symbol": symbol,
-            "decimals": 18,
-        })
-    }
+    // ----- v2 custom-context model (post-5fb5bedb namespace migration) -----
+    //
+    // These mirror `tests/swap_input_usd_cap_eval.rs`: a v2 manifest declaring a
+    // scalar `inputUsd: decimal` custom-context field, composed via
+    // `compose_per_policy`, with the USD value carried under
+    // `context.custom.inputUsd` (a Cedar `decimal` extension value) rather than
+    // the deleted top-level `totalInputUsd: UsdValuation` record.
 
-    fn context_swap(usd_value: &str) -> JsonValue {
-        json!({
-            "swapMode": "exact_in",
-            "inputToken": {
-                "asset": token("WETH"),
-                "amount": { "kind": "exact", "value": "1000" },
-            },
-            "outputToken": {
-                "asset": token("USDC"),
-                "amount": { "kind": "min", "value": "900" },
-            },
-            "recipient": "0x0000000000000000000000000000000000000001",
-            "totalInputUsd": {
-                "value": { "__extn": { "fn": "decimal", "arg": usd_value } },
-                "asOfTs": 1,
-                "staleSec": 5,
-                "sources": ["mock"],
-            },
-        })
-    }
-
-    fn total_input_usd_manifest() -> PolicyManifest {
+    /// A v2 manifest whose single `oracle.usd_value` policy-RPC projects into a
+    /// scalar `context.custom.inputUsd : decimal`, declared in `custom_context`.
+    fn input_usd_manifest() -> ManifestV2 {
         serde_json::from_value(json!({
-            "id": "test/total-input-usd",
-            "schema_version": 1,
-            "requires": [],
-            "context_extensions": {
-                "swap": {
-                    "totalInputUsd": "UsdValuation"
-                }
-            }
+            "id": "test/input-usd",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "swap" } } },
+            "policy_rpc": [{
+                "id": "in-usd",
+                "method": "oracle.usd_value",
+                "params": { "chain_id": "$.root.chain_id" },
+                "outputs": [{
+                    "kind": "context",
+                    "field": "inputUsd",
+                    "type": "Decimal",
+                    "from": "$.result.usd"
+                }]
+            }],
+            "custom_context": { "fields": { "inputUsd": "decimal" } }
         }))
         .unwrap()
     }
 
-    fn engine_with_total_input_usd_schema<I, S>(sources: I) -> PolicyEngine
+    /// The post-materialize swap context: `context.custom.inputUsd` holds the USD
+    /// value as a Cedar `decimal`. The base `Amm::SwapContext` calldata fields
+    /// are not needed here — the per-policy path evaluates schema-less, so only
+    /// the field the policy reads must be present.
+    fn context_swap(usd_value: &str) -> JsonValue {
+        json!({
+            "custom": {
+                "inputUsd": { "__extn": { "fn": "decimal", "arg": usd_value } }
+            }
+        })
+    }
+
+    /// Build an engine over the v2 custom-context schema (composed from
+    /// [`input_usd_manifest`]) via the per-policy path, with each source as its
+    /// own bundle sharing that schema.
+    fn engine_with_input_usd_schema<I, S>(sources: I) -> PolicyEngine
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        let manifest = total_input_usd_manifest();
-        let schema = PolicySchemaComposer::new()
-            .with_manifests(std::slice::from_ref(&manifest))
-            .unwrap()
-            .compose();
-        let mut builder = PolicyEngineBuilder::with_schema_text(schema);
-        for source in sources {
-            builder = builder.add_text(source);
-        }
-        builder.build().unwrap()
+        let schema = compose_per_policy(&input_usd_manifest()).expect("compose v2 schema");
+        let bundles: Vec<(String, String)> = sources
+            .into_iter()
+            .map(|s| (s.into(), schema.clone()))
+            .collect();
+        PolicyEngine::build_from_per_policy(&bundles).expect("build per-policy engine")
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn empty_policy_set_allows_everything() {
-        let engine = engine_with_total_input_usd_schema(Vec::<&str>::new());
+        let engine = engine_with_input_usd_schema(Vec::<&str>::new());
         let v = engine
             .evaluate(
                 r#"Wallet::"0xUser""#,
-                r#"Action::"swap""#,
+                r#"Amm::Action::"Swap""#,
                 r#"Protocol::"swap""#,
                 &entities(),
                 &context_swap("50.00"),
@@ -479,23 +476,23 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn deny_when_usd_exceeds_cap() {
         let policy = r#"
             @id("user/max-swap-usd-100")
             @severity("deny")
             @reason("USD value of swap exceeds 100")
-            forbid (principal, action == Action::"swap", resource)
+            forbid (principal, action == Amm::Action::"Swap", resource)
             when {
-              context has totalInputUsd &&
-              context.totalInputUsd.value.greaterThan(decimal("100.00"))
+              context has custom &&
+              context.custom has inputUsd &&
+              context.custom.inputUsd.greaterThan(decimal("100.00"))
             };
         "#;
-        let engine = engine_with_total_input_usd_schema([policy]);
+        let engine = engine_with_input_usd_schema([policy]);
         let v = engine
             .evaluate(
                 r#"Wallet::"0xUser""#,
-                r#"Action::"swap""#,
+                r#"Amm::Action::"Swap""#,
                 r#"Protocol::"swap""#,
                 &entities(),
                 &context_swap("200.00"),
@@ -516,22 +513,22 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn allow_when_usd_under_cap() {
         let policy = r#"
             @id("user/max-swap-usd-100")
             @severity("deny")
-            forbid (principal, action == Action::"swap", resource)
+            forbid (principal, action == Amm::Action::"Swap", resource)
             when {
-              context has totalInputUsd &&
-              context.totalInputUsd.value.greaterThan(decimal("100.00"))
+              context has custom &&
+              context.custom has inputUsd &&
+              context.custom.inputUsd.greaterThan(decimal("100.00"))
             };
         "#;
-        let engine = engine_with_total_input_usd_schema([policy]);
+        let engine = engine_with_input_usd_schema([policy]);
         let v = engine
             .evaluate(
                 r#"Wallet::"0xUser""#,
-                r#"Action::"swap""#,
+                r#"Amm::Action::"Swap""#,
                 r#"Protocol::"swap""#,
                 &entities(),
                 &context_swap("50.00"),
@@ -541,23 +538,23 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn warn_variant_when_only_warn_severity_fires() {
         let policy = r#"
             @id("user/large-swap-warning")
             @severity("warn")
             @reason("Large swap — please review")
-            forbid (principal, action == Action::"swap", resource)
+            forbid (principal, action == Amm::Action::"Swap", resource)
             when {
-              context has totalInputUsd &&
-              context.totalInputUsd.value.greaterThan(decimal("100.00"))
+              context has custom &&
+              context.custom has inputUsd &&
+              context.custom.inputUsd.greaterThan(decimal("100.00"))
             };
         "#;
-        let engine = engine_with_total_input_usd_schema([policy]);
+        let engine = engine_with_input_usd_schema([policy]);
         let v = engine
             .evaluate(
                 r#"Wallet::"0xUser""#,
-                r#"Action::"swap""#,
+                r#"Amm::Action::"Swap""#,
                 r#"Protocol::"swap""#,
                 &entities(),
                 &context_swap("200.00"),
@@ -574,30 +571,31 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn fail_preserves_warn_entries_alongside_deny() {
         let policy = r#"
             @id("user/large-swap-warning")
             @severity("warn")
-            forbid (principal, action == Action::"swap", resource)
+            forbid (principal, action == Amm::Action::"Swap", resource)
             when {
-              context has totalInputUsd &&
-              context.totalInputUsd.value.greaterThan(decimal("100.00"))
+              context has custom &&
+              context.custom has inputUsd &&
+              context.custom.inputUsd.greaterThan(decimal("100.00"))
             };
 
             @id("user/huge-swap-deny")
             @severity("deny")
-            forbid (principal, action == Action::"swap", resource)
+            forbid (principal, action == Amm::Action::"Swap", resource)
             when {
-              context has totalInputUsd &&
-              context.totalInputUsd.value.greaterThan(decimal("150.00"))
+              context has custom &&
+              context.custom has inputUsd &&
+              context.custom.inputUsd.greaterThan(decimal("150.00"))
             };
         "#;
-        let engine = engine_with_total_input_usd_schema([policy]);
+        let engine = engine_with_input_usd_schema([policy]);
         let v = engine
             .evaluate(
                 r#"Wallet::"0xUser""#,
-                r#"Action::"swap""#,
+                r#"Amm::Action::"Swap""#,
                 r#"Protocol::"swap""#,
                 &entities(),
                 &context_swap("200.00"),
@@ -688,23 +686,30 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn schema_validation_rejects_request_with_invalid_context_shape() {
+        // This exercises the UNIFIED (schema-retaining) engine path: `builder()`
+        // installs the bundled v2 schema, so request/context validation runs at
+        // evaluation time. `Amm::SwapContext` declares many REQUIRED fields
+        // (`meta`, `venue`, `tokenIn`, `direction`, `recipient`, ...), so an empty
+        // `{}` context is an invalid shape. (The per-policy path used by the other
+        // migrated tests evaluates schema-less and would NOT surface this error,
+        // so it cannot stand in here.)
         let policy = r#"
             @id("user/max-swap-usd-100")
             @severity("deny")
-            forbid (principal, action == Action::"swap", resource)
+            forbid (principal, action == Amm::Action::"Swap", resource)
             when {
-              context has totalInputUsd &&
-              context.totalInputUsd.value.greaterThan(decimal("100.00"))
+              context has custom &&
+              context.custom has inputUsd &&
+              context.custom.inputUsd.greaterThan(decimal("100.00"))
             };
         "#;
-        let engine = engine_with_total_input_usd_schema([policy]);
+        let engine = PolicyEngine::builder().add_text(policy).build().unwrap();
 
         let err = engine
             .evaluate(
                 r#"Wallet::"0xUser""#,
-                r#"Action::"swap""#,
+                r#"Amm::Action::"Swap""#,
                 r#"Protocol::"swap""#,
                 &entities(),
                 &json!({}),
@@ -718,17 +723,16 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy: schema composer can no longer resolve UsdValuation under namespaced schema; re-enable after composer migrates"]
     fn evaluate_request_marks_matches_as_single_action_origin() {
         let policy = r#"
             @id("user/action-deny")
             @severity("deny")
-            forbid (principal, action == Action::"swap", resource);
+            forbid (principal, action == Amm::Action::"Swap", resource);
         "#;
-        let engine = engine_with_total_input_usd_schema([policy]);
+        let engine = engine_with_input_usd_schema([policy]);
         let request = PolicyRequest::new(
             r#"Wallet::"0xUser""#,
-            r#"Action::"swap""#,
+            r#"Amm::Action::"Swap""#,
             r#"Protocol::"swap""#,
             entities(),
             context_swap("50.00"),

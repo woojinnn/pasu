@@ -612,6 +612,45 @@ mod tests_policy_rpc {
         })
     }
 
+    /// v2 custom-context model of `manifest_json()`: the same `oracle.usd_value`
+    /// requirement, but projecting into a SCALAR `context.custom.totalInputUsd :
+    /// decimal` instead of the deleted `UsdValuation` record type. Kept separate
+    /// from `manifest_json()` because two non-ignored tests
+    /// (`preview_schema_json_reports_schema_text_and_hash`,
+    /// `install_with_manifests_rejects_policy_against_wrong_custom_field_type`)
+    /// are intentionally pinned to the record-typed `UsdValuation` shape.
+    ///
+    /// Type spellings: `outputs[].type` uses the `ProjectionType` variant name
+    /// (`"Decimal"`), while `context_extensions.swap.<field>` must equal the
+    /// `cedar_type()` output (`"decimal"`) — `validate_context_extensions` does an
+    /// exact-string match between the two.
+    fn decimal_manifest_json() -> Value {
+        json!({
+            "id": "user/max-input-usd-100",
+            "schema_version": 1,
+            "requires": [{
+                "id": "swap-total-input-usd",
+                "when": { "action": "swap" },
+                "method": "oracle.usd_value",
+                "params": {
+                    "chain_id": "$.root.chain_id",
+                    "asset": "$.action.inputToken.asset",
+                    "amount": "$.action.inputToken.amount.value"
+                },
+                "outputs": [{
+                    "kind": "context",
+                    "field": "totalInputUsd",
+                    "type": "Decimal",
+                    "from": "$.result.usd",
+                    "required": true
+                }]
+            }],
+            "context_extensions": {
+                "swap": { "totalInputUsd": "decimal" }
+            }
+        })
+    }
+
     #[test]
     fn preview_schema_json_reports_schema_text_and_hash() {
         let output = preview_schema_json(json!({ "manifests": [manifest_json()] }).to_string());
@@ -662,23 +701,25 @@ mod tests_policy_rpc {
     /// envelope carries `enrichedSchemaHash` + per-action
     /// `addedCustomFields`. `preview_installed_schema_json` then echoes the
     /// same data through `customContexts` + `schemaHash` (camelCase).
-    // `manifest_json()` references `UsdValuation` which is no longer a
-    // resolvable type under the new namespaced schema. Re-enable after the
-    // manifest fixture is updated to the new custom-context types.
-    #[ignore]
+    // Migrated to the v2 custom-context model: `decimal_manifest_json()` projects
+    // a SCALAR `context.custom.totalInputUsd : decimal` (the `UsdValuation` record
+    // type was deleted in the namespace migration, 5fb5bedb), and the inline
+    // policy reads the scalar directly (no `.value`). The install path
+    // (`compose_enriched`) and the `addedCustomFields`/`customContexts` assertions
+    // are unchanged — only the field's TYPE moved from record to scalar.
     #[test]
     fn install_with_manifests_updates_installed_schema() {
-        let manifest = manifest_json();
-        // Inline policy reads `context.custom.totalInputUsd` — this only
-        // installs cleanly when the install path uses `compose_enriched`.
+        let manifest = decimal_manifest_json();
+        // Inline policy reads `context.custom.totalInputUsd` (a scalar decimal) —
+        // this only installs cleanly when the install path uses `compose_enriched`.
         let policy = r#"
             @severity("deny")
             @reason("too much USD")
-            forbid(principal, action == Action::"swap", resource)
+            forbid(principal, action == Amm::Action::"Swap", resource)
             when {
                 context has custom &&
                 context.custom has totalInputUsd &&
-                context.custom.totalInputUsd.value.greaterThan(decimal("100.00"))
+                context.custom.totalInputUsd.greaterThan(decimal("100.00"))
             };
         "#;
         let install_out = install_policies_json(
