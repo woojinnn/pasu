@@ -24,6 +24,17 @@ async fn storage_backend_lists_users_and_wallet_stores_for_worker() {
         .await
         .unwrap();
 
-    assert_eq!(storage.list_user_ids().await.unwrap(), vec![user_id]);
+    // Membership, not exact-global: this single integration Postgres is shared
+    // across every test in the `--ignored` run (read/write/server_with_postgres
+    // all seed their own users into `users` before this test runs), and it is
+    // not reset between binaries. Asserting `list_user_ids() == vec![user_id]`
+    // was order-dependent flakiness — it only held if this test happened to run
+    // first on a fresh DB. Assert this worker's user is PRESENT instead. The
+    // per-user wallet store is namespaced to this test's unique email, so its
+    // wallet listing stays genuinely isolated and is checked exactly.
+    assert!(
+        storage.list_user_ids().await.unwrap().contains(&user_id),
+        "worker user must be listed for the sync worker to pick it up"
+    );
     assert_eq!(store.list_wallets().await.unwrap(), vec![wallet_id]);
 }
