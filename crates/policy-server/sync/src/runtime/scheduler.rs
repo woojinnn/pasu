@@ -207,6 +207,27 @@ impl Scheduler {
                 }
             }
 
+            // Permit/permit2 lifecycle reconciliation runs alongside intent
+            // sync (a separate step, gated on the same flag) so signed permits
+            // are retired on the same cadence as venue orders.
+            if self.config.sync_intent_orders {
+                match self.orchestrator.reconcile_permits(&mut state, now).await {
+                    Ok(pr) => {
+                        w_updated += pr.permits_retired;
+                        w_failed += pr.errors.len();
+                        report.errors.extend(
+                            pr.errors
+                                .into_iter()
+                                .map(|e| format!("permit {}: {e}", wid.address)),
+                        );
+                    }
+                    Err(e) => {
+                        w_failed += 1;
+                        report.errors.push(format!("permit {}: {}", wid.address, e));
+                    }
+                }
+            }
+
             if self.config.refresh_live_fields {
                 match self.orchestrator.refresh(&mut state, now).await {
                     Ok(rr) => {

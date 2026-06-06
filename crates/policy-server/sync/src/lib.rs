@@ -200,7 +200,10 @@ pub use fetchers::rpc::{
 pub use manifest_v2::{
     parse_live_inputs, resolve_placeholders, LiveInputSpec, LiveInputsSpec, ResolveContext,
 };
-pub use orchestrator::{HyperliquidAccountReport, IntentOrdersReport, Orchestrator, RefreshReport};
+pub use orchestrator::{
+    HyperliquidAccountReport, IntentOrdersReport, Orchestrator, PermitReconcileReport,
+    RefreshReport,
+};
 pub use primitives_sync::PrimitivesReport;
 pub use resolver::{resolve_field, resolve_inputs, GlobalValues};
 pub use scheduler::{Scheduler, SchedulerConfig, TickReport, WalletSyncCounts};
