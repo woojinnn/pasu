@@ -4,11 +4,13 @@ import { Link, useNavigate } from "react-router-dom";
 
 import {
   ENABLED_IDS_STORAGE_KEY,
+  dashboardId,
   dashboardSetId,
   getEnabledPolicyIds,
   listListings,
   listManagedPolicies,
   listPolicySets,
+  putPolicy,
   putPolicySet,
   setEnabledPolicyIds,
   stripDashboardSetId,
@@ -274,21 +276,24 @@ export function EditorListPageV2() {
           listQ.data ? `${policies.length} policies · ${sets.length} packages` : "…"
         }
         right={
-          FEATURES.newChooser ? (
-            <button
-              type="button"
-              className="ev2-pri"
-              onClick={() => setChooserOpen(true)}
-            >
-              <PlusIcon />
-              새 정책
-            </button>
-          ) : (
-            <Link to="/editor/new" className="ev2-pri">
-              <PlusIcon />
-              새 정책
-            </Link>
-          )
+          <>
+            {import.meta.env.DEV && <SeedPhase1ADefaultsButton />}
+            {FEATURES.newChooser ? (
+              <button
+                type="button"
+                className="ev2-pri"
+                onClick={() => setChooserOpen(true)}
+              >
+                <PlusIcon />
+                새 정책
+              </button>
+            ) : (
+              <Link to="/editor/new" className="ev2-pri">
+                <PlusIcon />
+                새 정책
+              </Link>
+            )}
+          </>
         }
       />
 
@@ -487,6 +492,72 @@ export function EditorListPageV2() {
         onClose={() => setChooserOpen(false)}
       />
     </>
+  );
+}
+
+/* ─────────────── Seed example policies (DEV) ─────────────── */
+/**
+ * DEV-only topbar action that seeds the bundled phase1/A example
+ * policies into the same managed-policy store the v2 list reads from.
+ * Each bundle is written via `putPolicy` (carrying its manifest so the
+ * v2 loader can compose the policy's schema), then the `managed-policies`
+ * and `enabled-policy-ids` queries are invalidated so the list refreshes.
+ * Ported from the removed Legacy list page; behaviour is unchanged.
+ */
+function SeedPhase1ADefaultsButton() {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "running"; done: number; total: number }
+    | { kind: "done"; ok: number; failed: number }
+  >({ kind: "idle" });
+
+  async function runSeed() {
+    const { default: bundles } = (await import("../phase1A-seed.json")) as {
+      default: ReadonlyArray<{ id: string; cedar: string; manifest: unknown }>;
+    };
+    setStatus({ kind: "running", done: 0, total: bundles.length });
+    let ok = 0;
+    let failed = 0;
+    for (let i = 0; i < bundles.length; i++) {
+      const b = bundles[i];
+      try {
+        await putPolicy({
+          id: dashboardId(b.id),
+          cedarText: b.cedar,
+          manifest: b.manifest,
+          displayName: b.id,
+        });
+        ok += 1;
+      } catch (err) {
+        console.warn(`[seed phase1/A] ${b.id} failed:`, err);
+        failed += 1;
+      }
+      setStatus({ kind: "running", done: i + 1, total: bundles.length });
+    }
+    setStatus({ kind: "done", ok, failed });
+    await qc.invalidateQueries({ queryKey: ["managed-policies"] });
+    await qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+  }
+
+  const label =
+    status.kind === "idle"
+      ? "+ Seed phase1/A (dev)"
+      : status.kind === "running"
+        ? `Seeding ${status.done}/${status.total}…`
+        : `Seeded ${status.ok}${status.failed ? ` (${status.failed} failed)` : ""}`;
+
+  return (
+    <button
+      type="button"
+      className="btn-secondary"
+      disabled={status.kind === "running"}
+      onClick={runSeed}
+      title="phase1/A 36개 기본 정책을 chrome.storage.local에 시드 (DEV 전용)"
+      style={{ marginRight: 8 }}
+    >
+      {label}
+    </button>
   );
 }
 
