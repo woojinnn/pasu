@@ -1,0 +1,24 @@
+{
+ "protocol": "lifi",
+ "source": "DiamondLoupe.facets() (on-chain) + Etherscan getsourcecode (diamond) + github lifinance/contracts",
+ "url": "https://github.com/lifinance/contracts",
+ "fetchedAt": "2026-06-06",
+ "note": "Onboarding scope = LiFiDiamond user-facing bridge+swap surface (Ethereum mainnet). The diamond is the single user entry (users sign tx to it); its 49 facet implementations are delegatecall targets behind it, NOT separately user-callable -> their function surface is gated via the diamond merged-ABI snapshot (lifi-diamond.abi.json), not listed as separate contracts. LiFiDEXAggregator is a SEPARATE periphery contract (own address, command-stream processRoute) -> separate onboarding (deferred). Fee/Receiver/Executor periphery = destination-side / infra, not source pre-sign.",
+ "contracts": [
+  {
+   "name": "LiFiDiamond (EIP-2535)",
+   "chainId": 1,
+   "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+   "decision": "cover",
+   "reason": "sole user-facing entry; 105,012 fn-tx/30d across 51 active bridge+swap selectors (Dune q7665132)"
+  }
+ ],
+ "deferred_periphery_note": "LiFiDEXAggregator (separate swap-aggregator periphery contract, command-stream processRoute, own address != diamond) is a separate-onboarding follow-up; its mainnet address is not asserted here (not 1st-party-verified this session). Fee/Receiver/Executor periphery = destination-side/infra, out of source pre-sign scope.",
+ "facets_provenance": {
+  "count": 49,
+  "registered_selectors": 203,
+  "mutating": 128,
+  "view": 75,
+  "loupe": "facets() eth_call on diamond; all 49 facet impls Etherscan-verified (getabi); merged into lifi-diamond.abi.json"
+ }
+}
