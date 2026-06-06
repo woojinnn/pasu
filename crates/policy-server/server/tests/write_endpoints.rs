@@ -328,6 +328,88 @@ async fn sync_known_wallet_runs_hyperliquid_account_sync() {
     assert_eq!(hyperliquid_perp_usdc(&state), Some(Decimal::new("456.78")));
 }
 
+/// E2E: `POST /wallets/:addr/permits` records a signed permit as a `PendingTx`
+/// and is idempotent on re-POST (deterministic id → no duplicate).
+#[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
+async fn post_permit_records_pending_and_is_idempotent() {
+    let (addr, mu, token, user_id) = spawn_server().await;
+    let store = mu.for_user(&user_id).unwrap();
+    let id = WalletId::new(
+        Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+        [ChainId::ethereum_mainnet()],
+    );
+    store.save(&WalletState::new(id.clone())).await.unwrap();
+
+    let addr_lower = format!("{:#x}", id.address);
+    let body = json!({
+        "kind": "eip2612",
+        "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "spender": "0x00000000000000000000000000000000deadbeef",
+        "amount": "1000000000",
+        "deadline": 1_700_003_600u64,
+        "nonce": "7",
+        "chain_id": "eip155:1",
+    });
+
+    // First POST → 200 + one pending id.
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/wallets/{addr_lower}/permits"))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 200);
+    let parsed: Value = resp.json().await.unwrap();
+    assert_eq!(parsed["pending_ids"].as_array().unwrap().len(), 1);
+
+    let state = store.load(&id).await.unwrap();
+    assert_eq!(state.pending.len(), 1, "permit recorded as pending");
+    assert!(matches!(
+        state.pending[0].kind,
+        policy_state::pending::PendingKind::SignedEIP2612 { .. }
+    ));
+
+    // Re-POST the SAME permit → still 200, still exactly one pending (idempotent).
+    let resp2 = reqwest::Client::new()
+        .post(format!("http://{addr}/wallets/{addr_lower}/permits"))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp2.status(), 200);
+    let state2 = store.load(&id).await.unwrap();
+    assert_eq!(state2.pending.len(), 1, "re-POST must not duplicate");
+}
+
+/// `POST /wallets/:addr/permits` for a wallet this user does not track → 404
+/// (tracking-only: a permit report never mints a wallet).
+#[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
+async fn post_permit_unknown_wallet_returns_404() {
+    let (addr, _mu, token, _user_id) = spawn_server().await;
+    let other = "0x0000000000000000000000000000000000001111";
+    let body = json!({
+        "kind": "eip2612",
+        "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "spender": "0x00000000000000000000000000000000deadbeef",
+        "amount": "1",
+        "deadline": 1_700_003_600u64,
+        "nonce": "1",
+        "chain_id": "eip155:1",
+    });
+    let resp = reqwest::Client::new()
+        .post(format!("http://{addr}/wallets/{other}/permits"))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), 404);
+}
+
 /// E2E: the authenticated `POST /evaluate` serves an `oracle.usd_value` enrichment
 /// call from the signed-in user's synced holding price — the server half of the
 /// USD-cap swap policy (extension routes the call here once logged in).

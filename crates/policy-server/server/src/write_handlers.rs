@@ -18,10 +18,14 @@ use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
 
 use policy_state::live_field::{DataSource, LiveField, OracleProvider};
-use policy_state::primitives::{Address, ChainId, Duration, Price, Time};
-use policy_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
-use policy_state::{WalletId, WalletState, WalletStore};
+use policy_state::primitives::{Address, ChainId, Duration, Price, Time, U256};
+use policy_state::token::{Balance, TokenHolding, TokenKey, TokenKind, TokenRef};
+use policy_state::{EvalContext, PendingChange, RequestKind, WalletId, WalletState, WalletStore};
 use policy_sync::{discovery, CoinGeckoClient, DiscoveredToken, Orchestrator, RpcRouter};
+use policy_transition::action::token::{
+    Erc20PermitAction, Permit2SignAction, Permit2SignTransferAction, TokenAction,
+};
+use policy_transition::{apply, Action, ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
@@ -661,6 +665,331 @@ async fn sync_wallet_locked(state: AppState, user: AuthUser, addr: Address) -> R
     StatusCode::NO_CONTENT.into_response()
 }
 
+// ---------- permit ingest ----------
+
+/// `POST /wallets/:address/permits` body — a decoded off-chain permit /
+/// permit2 signature the extension holds *after* routing the EIP-712 payload.
+///
+/// Trust model (Phase 3, decided): client-asserted ingest. The server does
+/// NOT verify the wallet signature and does NOT store the raw EIP-712 sig —
+/// only the decoded params the reconciler needs (nonce / deadline / spender /
+/// amount). The reducer turns these into a `SignedEIP2612` / `SignedPermit2` /
+/// `SignedPermit2Transfer` pending entry; the sync reconciler later retires it.
+///
+/// The `kind` tag selects the variant; per-kind fields differ:
+/// * `eip2612`           — EIP-2612 token `permit`: `deadline` + scalar nonce.
+/// * `permit2_allowance` — Permit2 signed allowance: `expires_at` (+
+///   `sig_deadline`) and a `(word, bit)` bitmap nonce.
+/// * `permit2_transfer`  — Permit2 `SignatureTransfer`: `owner` + `sig_deadline`
+///   + `(word, bit)` nonce + optional `witness_type`.
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum IngestPermitReq {
+    /// EIP-2612 token `permit` signature.
+    Eip2612 {
+        /// ERC-20 token contract whose `permit` was signed.
+        token: String,
+        /// Address authorized to spend.
+        spender: String,
+        /// Allowance amount (decimal string).
+        amount: String,
+        /// Signature/permit deadline (unix secs).
+        deadline: u64,
+        /// Owner-level token nonce (decimal string).
+        nonce: String,
+        /// CAIP-2 chain id the token lives on (e.g. `"eip155:1"`).
+        chain_id: String,
+    },
+    /// Permit2 signed allowance (`PermitSingle`).
+    Permit2Allowance {
+        /// Underlying token whose allowance is delegated through Permit2.
+        token: String,
+        /// Address authorized to spend.
+        spender: String,
+        /// Allowance amount (decimal string).
+        amount: String,
+        /// Allowance expiration (unix secs).
+        expires_at: u64,
+        /// Signature deadline (unix secs).
+        sig_deadline: u64,
+        /// Permit2 unordered-nonce word (decimal string).
+        nonce_word: String,
+        /// Permit2 unordered-nonce bit within the word (0..=255).
+        nonce_bit: u8,
+        /// CAIP-2 chain id the token lives on.
+        chain_id: String,
+    },
+    /// Permit2 `SignatureTransfer` (`PermitTransferFrom` / witness variant).
+    Permit2Transfer {
+        /// Token whose one-time spend was authorized.
+        token: String,
+        /// Token owner / signer (must equal the path wallet address).
+        owner: String,
+        /// One-time spender named in the signature.
+        spender: String,
+        /// Maximum transfer amount (decimal string).
+        amount: String,
+        /// `SignatureTransfer` deadline (unix secs).
+        sig_deadline: u64,
+        /// Permit2 unordered-nonce word (decimal string).
+        nonce_word: String,
+        /// Permit2 unordered-nonce bit within the word (0..=255).
+        nonce_bit: u8,
+        /// Optional `PermitWitnessTransferFrom` witness type name.
+        #[serde(default)]
+        witness_type: Option<String>,
+        /// CAIP-2 chain id the token lives on.
+        chain_id: String,
+    },
+}
+
+/// `POST /wallets/:address/permits` response — the resulting pending id(s).
+#[derive(Debug, Serialize)]
+pub struct IngestPermitResp {
+    /// Deterministic pending id(s) the permit produced. Re-POSTing the same
+    /// permit is idempotent (no duplicate), so this is always the canonical id.
+    pub pending_ids: Vec<String>,
+}
+
+/// `POST /wallets/:address/permits` — record an off-chain permit / permit2
+/// signature the extension just observed as a `PendingTx` in the wallet state.
+///
+/// Reuses the same `policy_transition` reducer the verdict path uses: it builds
+/// the matching `ActionBody::Token(...)`, runs `apply()` to get the
+/// `PendingChange::Add`, then upserts that pending entry into `state.pending`
+/// **by id** and `save`s. Unlike `/evaluate`, this DOES persist — the signature
+/// is real-world authoritative the moment the user signs, and the only place it
+/// is observable is here (the extension at sign-time). Ids are deterministic
+/// (`pending_id_for_*` in `effect/token.rs`), so a re-POST is a true no-op.
+pub async fn ingest_permit(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(address): Path<String>,
+    Json(req): Json<IngestPermitReq>,
+) -> Response {
+    let addr = match Address::from_str(&address) {
+        Ok(a) => a,
+        Err(e) => return bad_request(&format!("invalid address `{address}`: {e}")),
+    };
+
+    let store = match state.multi_user.for_user(&user.user_id) {
+        Ok(s) => s,
+        Err(e) => return internal(&format!("open user store: {e}")),
+    };
+
+    // Resolve the canonical (multi-chain) WalletId by address — never key the
+    // store by the permit's single chain, which would risk a load-miss /
+    // clobber the stored chain set. Tracking-only: a permit for an untracked
+    // wallet is a 404, not a wallet-mint.
+    let known = match store.list_wallets().await {
+        Ok(w) => w,
+        Err(e) => return internal(&format!("list_wallets: {e}")),
+    };
+    let Some(id) = known.into_iter().find(|w| w.address == addr) else {
+        return not_found("wallet not tracked for this user");
+    };
+
+    // Build the matching off-chain-sig action, run the reducer, and pull the
+    // single pending Add it emits. The permit reducers read only `body` +
+    // `ctx.now`, so the meta is synthetic (mirrors handler.rs test fixtures).
+    let now = Time::from_unix(unix_now_u64());
+    let action = match build_permit_action(&req, addr, now) {
+        Ok(a) => a,
+        Err(e) => return bad_request(&e),
+    };
+    let ctx = EvalContext::new(action_chain(&action), now, RequestKind::Transaction);
+    let delta = match apply(&WalletState::new(id.clone()), &action, &ctx) {
+        Ok(d) => d,
+        Err(e) => return unprocessable(&format!("reducer rejected permit: {e}")),
+    };
+
+    let mut loaded = match store.load(&id).await {
+        Ok(s) => s,
+        Err(e) => return internal(&format!("load: {e}")),
+    };
+
+    let pending_ids = upsert_pending_from_delta(&mut loaded, &delta);
+
+    if let Err(e) = store.save(&loaded).await {
+        return internal(&format!("save: {e}"));
+    }
+
+    (StatusCode::OK, Json(IngestPermitResp { pending_ids })).into_response()
+}
+
+/// The chain the action's token lives on (for the `EvalContext`). Permit
+/// reducers don't read the ctx chain, but a real value keeps the context honest.
+fn action_chain(action: &Action) -> ChainId {
+    match &action.body {
+        ActionBody::Token(TokenAction::Erc20Permit(p)) => p.token.key.chain().clone(),
+        ActionBody::Token(TokenAction::Permit2SignAllowance(p)) => p.token.key.chain().clone(),
+        ActionBody::Token(TokenAction::Permit2SignTransfer(p)) => p.token.key.chain().clone(),
+        _ => ChainId::ethereum_mainnet(),
+    }
+}
+
+/// Build a decoded permit body into the off-chain-sig `Action` the reducer
+/// consumes. `owner` for the transfer variant is forced to the path wallet
+/// address — `Permit2SignTransferAction::apply` no-ops silently when
+/// `owner != state.wallet_id.address`, so a mismatched body would be dropped.
+fn build_permit_action(
+    req: &IngestPermitReq,
+    wallet: Address,
+    now: Time,
+) -> Result<Action, String> {
+    let (body, deadline) = match req {
+        IngestPermitReq::Eip2612 {
+            token,
+            spender,
+            amount,
+            deadline,
+            nonce,
+            chain_id,
+        } => {
+            let token_ref = erc20_token_ref(chain_id, token)?;
+            let spender = parse_addr("spender", spender)?;
+            let amount = parse_u256("amount", amount)?;
+            let nonce = parse_u256("nonce", nonce)?;
+            let deadline = Time::from_unix(*deadline);
+            let body = ActionBody::Token(TokenAction::Erc20Permit(Erc20PermitAction {
+                token: token_ref,
+                spender,
+                amount,
+                deadline,
+                nonce: LiveField::new(nonce, DataSource::UserSupplied, now),
+            }));
+            (body, deadline)
+        }
+        IngestPermitReq::Permit2Allowance {
+            token,
+            spender,
+            amount,
+            expires_at,
+            sig_deadline,
+            nonce_word,
+            nonce_bit,
+            chain_id,
+        } => {
+            let token_ref = erc20_token_ref(chain_id, token)?;
+            let spender = parse_addr("spender", spender)?;
+            let amount = parse_u256("amount", amount)?;
+            let word = parse_u256("nonce_word", nonce_word)?;
+            let sig_deadline = Time::from_unix(*sig_deadline);
+            let body = ActionBody::Token(TokenAction::Permit2SignAllowance(Permit2SignAction {
+                token: token_ref,
+                spender,
+                amount,
+                expires_at: Time::from_unix(*expires_at),
+                sig_deadline,
+                nonce: LiveField::new((word, *nonce_bit), DataSource::UserSupplied, now),
+            }));
+            (body, sig_deadline)
+        }
+        IngestPermitReq::Permit2Transfer {
+            token,
+            owner,
+            spender,
+            amount,
+            sig_deadline,
+            nonce_word,
+            nonce_bit,
+            witness_type,
+            chain_id,
+        } => {
+            let token_ref = erc20_token_ref(chain_id, token)?;
+            // The body carries an `owner`, but the reducer only emits a pending
+            // when it equals the wallet owner. The signer IS the path wallet, so
+            // force it — and reject an explicit mismatch as a client error
+            // rather than silently dropping the report.
+            let body_owner = parse_addr("owner", owner)?;
+            if body_owner != wallet {
+                return Err(format!(
+                    "permit2_transfer owner {body_owner:#x} does not match wallet {wallet:#x}"
+                ));
+            }
+            let spender = parse_addr("spender", spender)?;
+            let amount = parse_u256("amount", amount)?;
+            let word = parse_u256("nonce_word", nonce_word)?;
+            let sig_deadline = Time::from_unix(*sig_deadline);
+            let body = ActionBody::Token(TokenAction::Permit2SignTransfer(
+                Permit2SignTransferAction {
+                    token: token_ref,
+                    owner: wallet,
+                    spender,
+                    amount,
+                    nonce: LiveField::new((word, *nonce_bit), DataSource::UserSupplied, now),
+                    sig_deadline,
+                    witness_type: witness_type.clone(),
+                },
+            ));
+            (body, sig_deadline)
+        }
+    };
+
+    Ok(Action {
+        meta: ActionMeta {
+            submitted_at: now,
+            submitter: wallet,
+            nature: ActionNature::OffchainSig {
+                domain: Eip712Domain {
+                    name: "Permit".to_owned(),
+                    version: None,
+                    chain_id: None,
+                    verifying_contract: None,
+                    salt: None,
+                },
+                deadline,
+                nonce_key: None,
+            },
+        },
+        body,
+    })
+}
+
+/// Upsert every `PendingChange::Add` in `delta` into `state.pending`, keyed by
+/// the deterministic pending id. `apply_delta`'s `PendingChange::Add` blind-
+/// pushes (no dedup), so re-applying the same permit would duplicate — instead
+/// match by id and SKIP if already present (true idempotent no-op), else append.
+/// Mirrors `orchestrator::upsert_intent_orders`. Returns the upserted id(s).
+fn upsert_pending_from_delta(
+    state: &mut WalletState,
+    delta: &policy_state::StateDelta,
+) -> Vec<String> {
+    let mut ids = Vec::new();
+    for change in &delta.pending_changes {
+        let PendingChange::Add { pending } = change else {
+            continue;
+        };
+        ids.push(pending.id.clone());
+        if !state.pending.iter().any(|p| p.id == pending.id) {
+            state.pending.push((**pending).clone());
+        }
+    }
+    ids
+}
+
+fn erc20_token_ref(chain_id: &str, token: &str) -> Result<TokenRef, String> {
+    let address = parse_addr("token", token)?;
+    Ok(TokenRef {
+        key: TokenKey::Erc20 {
+            chain: ChainId::new(chain_id),
+            address,
+        },
+    })
+}
+
+fn parse_addr(field: &str, raw: &str) -> Result<Address, String> {
+    Address::from_str(raw).map_err(|e| format!("invalid {field} `{raw}`: {e}"))
+}
+
+fn parse_u256(field: &str, raw: &str) -> Result<U256, String> {
+    U256::from_str(raw).map_err(|e| format!("invalid {field} `{raw}`: {e}"))
+}
+
+fn unprocessable(reason: &str) -> Response {
+    (StatusCode::UNPROCESSABLE_ENTITY, reason.to_owned()).into_response()
+}
+
 // ---------- internals ----------
 
 /// Load the wallet state, perform authoritative venue/RPC sync, refresh stale
@@ -693,6 +1022,13 @@ async fn run_sync(
         .await
         .map_err(|e| format!("orchestrator.sync_intent_orders: {e}"))?;
 
+    // Separate step from intent reconciliation: retire signed permit/permit2
+    // pendings that have expired or been consumed (a distinct lifecycle).
+    let permits = orchestrator
+        .reconcile_permits(&mut state, now)
+        .await
+        .map_err(|e| format!("orchestrator.reconcile_permits: {e}"))?;
+
     let refresh = orchestrator
         .refresh(&mut state, now)
         .await
@@ -710,10 +1046,12 @@ async fn run_sync(
         fields_updated: prim_updated
             + usize::from(hl.account_updated)
             + intent.orders_updated
+            + permits.permits_retired
             + refresh.fields_updated,
         fields_failed: prim.errors.len()
             + hl.errors.len()
             + intent.errors.len()
+            + permits.errors.len()
             + refresh.fields_failed,
     })
 }
@@ -829,5 +1167,165 @@ mod tests {
 
         assert_eq!(inserted, 0);
         assert!(state.approvals.erc20.is_empty());
+    }
+
+    // ---------- permit ingest ----------
+
+    use policy_state::pending::PendingKind;
+
+    fn wallet_addr() -> Address {
+        Address::from_str("0x000000000000000000000000000000000000a01c").unwrap()
+    }
+
+    fn spender_hex() -> &'static str {
+        "0x00000000000000000000000000000000deadbeef"
+    }
+
+    fn usdc_hex() -> &'static str {
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    }
+
+    /// Mirror `ingest_permit`'s core: build the action, run the reducer, upsert
+    /// the resulting pending into a fresh state. Returns `(state, ids)`.
+    fn ingest_into(state: &mut WalletState, req: &IngestPermitReq) -> Vec<String> {
+        let now = Time::from_unix(1_700_000_000);
+        let action = build_permit_action(req, wallet_addr(), now).expect("build action");
+        let ctx = EvalContext::new(action_chain(&action), now, RequestKind::Transaction);
+        let delta =
+            apply(&WalletState::new(state.wallet_id.clone()), &action, &ctx).expect("apply");
+        upsert_pending_from_delta(state, &delta)
+    }
+
+    fn fresh_state() -> WalletState {
+        WalletState::new(WalletId::new(wallet_addr(), [ChainId::ethereum_mainnet()]))
+    }
+
+    #[test]
+    fn ingest_eip2612_adds_signed_eip2612_pending_and_is_idempotent() {
+        let req = IngestPermitReq::Eip2612 {
+            token: usdc_hex().into(),
+            spender: spender_hex().into(),
+            amount: "1000000000".into(),
+            deadline: 1_700_003_600,
+            nonce: "7".into(),
+            chain_id: "eip155:1".into(),
+        };
+        let mut state = fresh_state();
+
+        let ids = ingest_into(&mut state, &req);
+        assert_eq!(ids.len(), 1);
+        assert_eq!(state.pending.len(), 1);
+        assert!(matches!(
+            state.pending[0].kind,
+            PendingKind::SignedEIP2612 { .. }
+        ));
+        assert_eq!(state.pending[0].id, ids[0]);
+
+        // Re-ingest the SAME permit → deterministic id → no duplicate.
+        let ids2 = ingest_into(&mut state, &req);
+        assert_eq!(ids2, ids, "re-POST returns the same canonical id");
+        assert_eq!(state.pending.len(), 1, "re-POST must be idempotent");
+    }
+
+    #[test]
+    fn ingest_permit2_allowance_adds_signed_permit2_pending_and_is_idempotent() {
+        let req = IngestPermitReq::Permit2Allowance {
+            token: usdc_hex().into(),
+            spender: spender_hex().into(),
+            amount: "2000000".into(),
+            expires_at: 1_700_090_000,
+            sig_deadline: 1_700_003_600,
+            nonce_word: "3".into(),
+            nonce_bit: 7,
+            chain_id: "eip155:1".into(),
+        };
+        let mut state = fresh_state();
+
+        let ids = ingest_into(&mut state, &req);
+        assert_eq!(state.pending.len(), 1);
+        assert!(matches!(
+            state.pending[0].kind,
+            PendingKind::SignedPermit2 { .. }
+        ));
+
+        let ids2 = ingest_into(&mut state, &req);
+        assert_eq!(ids2, ids);
+        assert_eq!(state.pending.len(), 1);
+    }
+
+    #[test]
+    fn ingest_permit2_transfer_adds_signed_transfer_pending_and_is_idempotent() {
+        let req = IngestPermitReq::Permit2Transfer {
+            token: usdc_hex().into(),
+            // Owner MUST match the wallet — `Permit2SignTransferAction::apply`
+            // silently no-ops otherwise.
+            owner: format!("{:#x}", wallet_addr()),
+            spender: spender_hex().into(),
+            amount: "4000000".into(),
+            sig_deadline: 1_700_003_600,
+            nonce_word: "9".into(),
+            nonce_bit: 12,
+            witness_type: Some("PermitTransferFrom".into()),
+            chain_id: "eip155:1".into(),
+        };
+        let mut state = fresh_state();
+
+        let ids = ingest_into(&mut state, &req);
+        assert_eq!(ids.len(), 1, "transfer must emit a pending (owner matched)");
+        assert_eq!(state.pending.len(), 1);
+        assert!(matches!(
+            state.pending[0].kind,
+            PendingKind::SignedPermit2Transfer { .. }
+        ));
+
+        let ids2 = ingest_into(&mut state, &req);
+        assert_eq!(ids2, ids);
+        assert_eq!(state.pending.len(), 1);
+    }
+
+    #[test]
+    fn ingest_permit2_transfer_owner_mismatch_is_client_error() {
+        let req = IngestPermitReq::Permit2Transfer {
+            token: usdc_hex().into(),
+            owner: "0x0000000000000000000000000000000000000bad".into(),
+            spender: spender_hex().into(),
+            amount: "4000000".into(),
+            sig_deadline: 1_700_003_600,
+            nonce_word: "9".into(),
+            nonce_bit: 12,
+            witness_type: None,
+            chain_id: "eip155:1".into(),
+        };
+        let now = Time::from_unix(1_700_000_000);
+        let err = build_permit_action(&req, wallet_addr(), now).unwrap_err();
+        assert!(err.contains("does not match wallet"), "got: {err}");
+    }
+
+    #[test]
+    fn ingest_two_distinct_permits_coexist() {
+        let mut state = fresh_state();
+        ingest_into(
+            &mut state,
+            &IngestPermitReq::Eip2612 {
+                token: usdc_hex().into(),
+                spender: spender_hex().into(),
+                amount: "1".into(),
+                deadline: 1_700_003_600,
+                nonce: "1".into(),
+                chain_id: "eip155:1".into(),
+            },
+        );
+        ingest_into(
+            &mut state,
+            &IngestPermitReq::Eip2612 {
+                token: usdc_hex().into(),
+                spender: spender_hex().into(),
+                amount: "1".into(),
+                deadline: 1_700_003_600,
+                nonce: "2".into(), // different nonce → different id
+                chain_id: "eip155:1".into(),
+            },
+        );
+        assert_eq!(state.pending.len(), 2);
     }
 }
