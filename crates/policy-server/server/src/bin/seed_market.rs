@@ -393,16 +393,14 @@ fn infer_category(slug: &str, manifest: &Value) -> &'static str {
     let where_ = manifest.get("trigger").and_then(|t| t.get("where"));
 
     // action.tag may be `{ "eq": "x" }` or `{ "in": ["x", …] }`.
-    let tag = where_
-        .and_then(|w| w.get("action.tag"))
-        .and_then(|t| {
-            t.get("eq").and_then(Value::as_str).or_else(|| {
-                t.get("in")
-                    .and_then(Value::as_array)
-                    .and_then(|a| a.first())
-                    .and_then(Value::as_str)
-            })
-        });
+    let tag = where_.and_then(|w| w.get("action.tag")).and_then(|t| {
+        t.get("eq").and_then(Value::as_str).or_else(|| {
+            t.get("in")
+                .and_then(Value::as_array)
+                .and_then(|a| a.first())
+                .and_then(Value::as_str)
+        })
+    });
 
     if let Some(t) = tag {
         return match t {
