@@ -18,9 +18,12 @@
 //! → `Filled`, and a past `makerTraits` expiry → `Expired`.
 //!
 //! **Prune safety.** Because the snapshot-prune trusts the returned set as
-//! complete, `fetch_orders` MUST return `Err` on ANY incompleteness — a failed
-//! chain or a mid-walk pagination error — never a partial `Ok`. This is enforced
-//! by `?`-propagation: the first failing request aborts the whole fetch.
+//! complete, `fetch_orders` returns `Err` on ANY incompleteness — never a partial
+//! `Ok`. This covers more than transport errors: `?` handles a failed chain /
+//! non-2xx / decode error, and `fetch_chain` additionally fails closed on a 200
+//! whose body is an unrecognized shape, on `meta.hasMore` with no usable cursor,
+//! and on `MAX_PAGES` exhaustion. A non-empty book is only ever treated as
+//! complete after an explicit `hasMore == false`.
 //!
 //! Field names + the `makerTraits` expiration bit layout are verified against
 //! `@1inch/limit-order-sdk` (`LimitOrderApiItem` in `src/api/types.ts`;
@@ -94,8 +97,16 @@ impl OneInchLopFetcher {
     }
 
     /// Poll one chain: cursor-paginate `GET {base}/v4.1/{chainId}/address/{maker}`
-    /// until `meta.hasMore` is false. Any request error propagates (`?`) and
-    /// aborts the whole fetch — the snapshot-prune must never see a partial set.
+    /// until `meta.hasMore` is false.
+    ///
+    /// **Fail-closed for snapshot-prune safety.** Returns `Err` on ANY
+    /// incompleteness so a partial walk never reaches the snapshot-prune: a
+    /// transport/non-2xx/decode error (via `?` in `get`); a 200 whose body is an
+    /// unrecognized shape (`parse_orders` → `None`, e.g. a 200-wrapped error
+    /// envelope or schema drift — `?`-propagation does NOT cover this, so it is
+    /// handled explicitly); `meta.hasMore == true` with no usable `nextCursor`;
+    /// or exhausting `MAX_PAGES` while more pages remain. Only an explicit
+    /// `hasMore == false` (or no pagination envelope) is a clean completion.
     async fn fetch_chain(
         &self,
         chain: &ChainId,
@@ -116,19 +127,23 @@ impl OneInchLopFetcher {
                 url.push_str(c);
             }
             let body = self.get(&url).await?;
-            let Some(orders) = parse_orders(&body) else {
-                break;
-            };
-            let empty = orders.is_empty();
+            let orders = parse_orders(&body).ok_or_else(|| SyncError::FetchFailed {
+                source_id: "one_inch_lop".into(),
+                reason: "unrecognized orderbook response shape (not an array or {items:[...]})"
+                    .into(),
+            })?;
             for o in &orders {
                 out.push(o.to_pending_tx(chain, chain_id, now));
             }
-            match next_cursor(&body) {
-                Some(c) if !empty => cursor = Some(c),
-                _ => break,
+            match page_continuation(&body)? {
+                Some(c) => cursor = Some(c),
+                None => return Ok(()),
             }
         }
-        Ok(())
+        Err(SyncError::FetchFailed {
+            source_id: "one_inch_lop".into(),
+            reason: format!("orderbook walk exceeded {MAX_PAGES} pages; treating as incomplete"),
+        })
     }
 
     async fn get(&self, url: &str) -> Result<serde_json::Value, SyncError> {
@@ -304,18 +319,31 @@ fn u256_field(o: &serde_json::Value, key: &str) -> Option<U256> {
     v.as_u64().map(U256::from)
 }
 
-fn next_cursor(body: &serde_json::Value) -> Option<String> {
-    let meta = body.get("meta")?;
+/// Decide whether to continue paginating, fail-closed.
+/// * `Ok(None)` — clean completion: no `meta` envelope (single-page / bare array)
+///   or an explicit `meta.hasMore == false`.
+/// * `Ok(Some(cursor))` — `hasMore == true` with a usable next cursor.
+/// * `Err(_)` — `hasMore == true` but no usable `nextCursor`: the API asserts
+///   more pages exist yet gives no way to fetch them, so the walk is incomplete
+///   and must NOT be treated as a complete set by the snapshot-prune.
+fn page_continuation(body: &serde_json::Value) -> Result<Option<String>, SyncError> {
+    let Some(meta) = body.get("meta") else {
+        return Ok(None);
+    };
     if !meta
         .get("hasMore")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(false)
     {
-        return None;
+        return Ok(None);
     }
-    meta.get("nextCursor")
-        .and_then(serde_json::Value::as_str)
-        .map(str::to_owned)
+    match meta.get("nextCursor").and_then(serde_json::Value::as_str) {
+        Some(c) if !c.is_empty() => Ok(Some(c.to_owned())),
+        _ => Err(SyncError::FetchFailed {
+            source_id: "one_inch_lop".into(),
+            reason: "meta.hasMore=true but no usable nextCursor; orderbook walk incomplete".into(),
+        }),
+    }
 }
 
 fn token_ref(chain: &ChainId, address: Address) -> TokenRef {
@@ -505,7 +533,7 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(ORDERS).unwrap();
         let orders = parse_orders(&value).unwrap();
         assert_eq!(orders.len(), 2);
-        assert!(next_cursor(&value).is_none());
+        assert!(matches!(page_continuation(&value), Ok(None)));
 
         let chain = ChainId::new("eip155:1");
         let now = Time::from_unix(1_699_000_000); // before the 1_700_000_000 expiry
@@ -550,5 +578,103 @@ mod tests {
             p2.lifecycle.raw_status.as_deref(),
             Some("insufficient-balance")
         );
+    }
+
+    // --- producer-side tests: the real fetcher against a stub HTTP server,
+    // proving fetch_orders is fail-closed (never a truncated/empty Ok). ---
+
+    async fn spawn_seq_server(responses: Vec<serde_json::Value>) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            for body in responses {
+                let Ok((mut stream, _)) = listener.accept().await else {
+                    break;
+                };
+                let mut buf = Vec::new();
+                let mut tmp = [0u8; 1024];
+                loop {
+                    let n = stream.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                    if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                        break;
+                    }
+                }
+                let s = body.to_string();
+                let resp = format!(
+                    "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+                    s.len(),
+                    s
+                );
+                let _ = stream.write_all(resp.as_bytes()).await;
+            }
+        });
+        format!("http://{addr}")
+    }
+
+    fn fetcher(base_url: String) -> OneInchLopFetcher {
+        OneInchLopFetcher::from_sync_config(&OneInchLopConfig {
+            base_url,
+            api_key: String::new(),
+            chains: vec![ChainId::new("eip155:1")],
+        })
+    }
+
+    fn lop_item(hash: &str) -> serde_json::Value {
+        serde_json::json!({
+            "orderHash": hash,
+            "remainingMakerAmount": "1000000000",
+            "orderInvalidReason": null,
+            "data": {
+                "makerAsset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                "takerAsset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "makingAmount": "1000000000",
+                "takingAmount": "300000000000000000",
+                "makerTraits": "0x0"
+            }
+        })
+    }
+
+    #[tokio::test]
+    async fn malformed_200_body_is_err_not_empty_ok() {
+        let base = spawn_seq_server(vec![serde_json::json!({ "unexpected": true })]).await;
+        let r = fetcher(base)
+            .fetch_orders(&Address::ZERO, Time::from_unix(0))
+            .await;
+        assert!(r.is_err(), "unrecognized 200 body must be Err, got {r:?}");
+    }
+
+    #[tokio::test]
+    async fn has_more_without_cursor_is_err() {
+        // The API asserts more pages but gives no cursor → incomplete → Err
+        // (never a partial Ok that would snapshot-prune the un-fetched orders).
+        let body = serde_json::json!({ "items": [lop_item("0xa")], "meta": { "hasMore": true } });
+        let base = spawn_seq_server(vec![body]).await;
+        let r = fetcher(base)
+            .fetch_orders(&Address::ZERO, Time::from_unix(0))
+            .await;
+        assert!(
+            r.is_err(),
+            "hasMore=true with no nextCursor must be Err, got {r:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn clean_single_page_is_ok() {
+        let body = serde_json::json!({ "items": [lop_item("0xa"), lop_item("0xb")], "meta": { "hasMore": false } });
+        let base = spawn_seq_server(vec![body]).await;
+        let out = fetcher(base)
+            .fetch_orders(&Address::ZERO, Time::from_unix(0))
+            .await
+            .unwrap();
+        assert_eq!(out.len(), 2);
+        assert!(out
+            .iter()
+            .any(|p| p.id == "intent:one_inch_limit_order:0xa"));
     }
 }
