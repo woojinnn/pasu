@@ -72,6 +72,7 @@ browser-extension/public/wasm/
 *.md
 !README.md
 !crates/policy-server/server/deploy/local/README.md
+!crates/policy-server/server/deploy/PROD_RESET_RUNBOOK.md
 # Policy-catalog shared aggregator-method impl-spec library — tracked so the RPC
 # server implementer (and auditors) get each method's spec alongside the policies.
 !**/policy_catalog_v2/_methods/*.md
