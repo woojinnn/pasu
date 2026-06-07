@@ -180,6 +180,12 @@ pub struct VenuesConfig {
     /// 1inch Fusion API (same-chain Fusion order status).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub one_inch_fusion: Option<OneInchFusionConfig>,
+    /// 1inch Fusion+ API (cross-chain swap order status).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub one_inch_fusion_plus: Option<OneInchFusionPlusConfig>,
+    /// 1inch Limit Order Protocol v4 Orderbook (limit order status).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub one_inch_lop: Option<OneInchLopConfig>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -237,6 +243,31 @@ pub struct CowSwapConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OneInchFusionConfig {
     /// Base URL for the Dev Portal Fusion API, e.g. `https://api.1inch.dev/fusion`.
+    pub base_url: String,
+    /// `Authorization: Bearer <key>` value. `${VAR}` is expanded from the
+    /// environment by `SyncConfig::load_*` before this struct is built.
+    pub api_key: String,
+    /// Chains to poll (CAIP-2). The numeric `chainId` path segment is derived
+    /// from each entry's `eip155:<n>` suffix.
+    #[serde(default)]
+    pub chains: Vec<ChainId>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OneInchFusionPlusConfig {
+    /// Base URL for the Dev Portal Fusion+ API, e.g. `https://api.1inch.dev/fusion-plus`.
+    pub base_url: String,
+    /// `Authorization: Bearer <key>` value. `${VAR}` is expanded from the
+    /// environment by `SyncConfig::load_*` before this struct is built.
+    pub api_key: String,
+    // No `chains`: the by-maker Fusion+ endpoint is queried globally (one call,
+    // no chainId in the path); each returned order carries its own src/dst
+    // chain ids. Non-eip155 chains (e.g. Solana) on an order are skipped.
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OneInchLopConfig {
+    /// Base URL for the Dev Portal Orderbook (LOP v4) API, e.g. `https://api.1inch.dev/orderbook`.
     pub base_url: String,
     /// `Authorization: Bearer <key>` value. `${VAR}` is expanded from the
     /// environment by `SyncConfig::load_*` before this struct is built.
@@ -391,6 +422,34 @@ chains = ["eip155:1"]
         assert_eq!(fusion.base_url, "https://api.1inch.dev/fusion");
         assert_eq!(fusion.api_key, "oneinch_secret_9");
         assert_eq!(fusion.chains, vec![ChainId::ethereum_mainnet()]);
+    }
+
+    #[test]
+    fn parses_one_inch_fusion_plus_and_lop_venues() {
+        std::env::set_var("TEST_ONEINCH_KEY_P2", "oneinch_secret_p2");
+        let toml_text = r#"
+[venues.one_inch_fusion_plus]
+base_url = "https://api.1inch.dev/fusion-plus"
+api_key = "${TEST_ONEINCH_KEY_P2}"
+
+[venues.one_inch_lop]
+base_url = "https://api.1inch.dev/orderbook"
+api_key = "${TEST_ONEINCH_KEY_P2}"
+chains = ["eip155:1", "eip155:42161"]
+"#;
+        let cfg = SyncConfig::load_str(toml_text).unwrap();
+
+        let fp = cfg.venues.one_inch_fusion_plus.as_ref().unwrap();
+        assert_eq!(fp.base_url, "https://api.1inch.dev/fusion-plus");
+        assert_eq!(fp.api_key, "oneinch_secret_p2");
+
+        let lop = cfg.venues.one_inch_lop.as_ref().unwrap();
+        assert_eq!(lop.base_url, "https://api.1inch.dev/orderbook");
+        assert_eq!(lop.api_key, "oneinch_secret_p2");
+        assert_eq!(
+            lop.chains,
+            vec![ChainId::ethereum_mainnet(), ChainId::arbitrum()]
+        );
     }
 
     #[test]

@@ -12,6 +12,6 @@ pub use onchain::{OnchainCall, OnchainOutcome, OnchainViewFetcher};
 pub use oracle::{ChainlinkFeed, ChainlinkFeedRegistry, ChainlinkFetcher};
 pub use registry::RegistryFetcher;
 pub use venue::{
-    CowSwapFetcher, HyperliquidFetcher, IntentFetcher, OneInchFusionFetcher, UniswapFetcher,
-    UniswapXFetcher, UniswapXOrder,
+    CowSwapFetcher, HyperliquidFetcher, IntentFetcher, OneInchFusionFetcher,
+    OneInchFusionPlusFetcher, OneInchLopFetcher, UniswapFetcher, UniswapXFetcher, UniswapXOrder,
 };

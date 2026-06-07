@@ -23,7 +23,8 @@ use crate::fetchers::onchain::OnchainCall;
 use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
 use crate::fetchers::{
     ChainlinkFetcher, CowSwapFetcher, HyperliquidFetcher, IntentFetcher, OnchainViewFetcher,
-    OneInchFusionFetcher, RegistryFetcher, UniswapFetcher, UniswapXFetcher,
+    OneInchFusionFetcher, OneInchFusionPlusFetcher, OneInchLopFetcher, RegistryFetcher,
+    UniswapFetcher, UniswapXFetcher,
 };
 use crate::walker::{walk_stale, ActionSlot, FieldLocation, WalkStats};
 
@@ -45,6 +46,9 @@ pub struct HyperliquidAccountReport {
 #[derive(Debug, Default, Clone)]
 pub struct IntentOrdersReport {
     pub orders_updated: usize,
+    /// Orders snapshot-pruned because they left an active-orderbook venue's
+    /// listing (see `IntentFetcher::authoritative_prefix`).
+    pub orders_pruned: usize,
     pub errors: Vec<String>,
 }
 
@@ -58,6 +62,8 @@ pub struct Orchestrator {
     uniswap_x: Option<UniswapXFetcher>,
     cow_swap: Option<CowSwapFetcher>,
     one_inch_fusion: Option<OneInchFusionFetcher>,
+    one_inch_fusion_plus: Option<OneInchFusionPlusFetcher>,
+    one_inch_lop: Option<OneInchLopFetcher>,
     calc: CalcRegistry,
     // Global values used by derived live-field inputs.
     globals: crate::resolver::GlobalValues,
@@ -77,6 +83,8 @@ impl Orchestrator {
             uniswap_x: None,
             cow_swap: None,
             one_inch_fusion: None,
+            one_inch_fusion_plus: None,
+            one_inch_lop: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: None,
@@ -146,6 +154,18 @@ impl Orchestrator {
         self
     }
 
+    #[must_use]
+    pub fn with_one_inch_fusion_plus(mut self, fusion_plus: OneInchFusionPlusFetcher) -> Self {
+        self.one_inch_fusion_plus = Some(fusion_plus);
+        self
+    }
+
+    #[must_use]
+    pub fn with_one_inch_lop(mut self, lop: OneInchLopFetcher) -> Self {
+        self.one_inch_lop = Some(lop);
+        self
+    }
+
     /// Collect every configured intent-order fetcher as `&dyn IntentFetcher`.
     /// An unconfigured venue (`None` Option) is simply absent from the list, so
     /// `sync_intent_orders` polls exactly the venues that are wired.
@@ -158,6 +178,12 @@ impl Orchestrator {
             fetchers.push(f);
         }
         if let Some(f) = self.one_inch_fusion.as_ref() {
+            fetchers.push(f);
+        }
+        if let Some(f) = self.one_inch_fusion_plus.as_ref() {
+            fetchers.push(f);
+        }
+        if let Some(f) = self.one_inch_lop.as_ref() {
             fetchers.push(f);
         }
         fetchers
@@ -184,6 +210,8 @@ impl Orchestrator {
             uniswap_x: None,
             cow_swap: None,
             one_inch_fusion: None,
+            one_inch_fusion_plus: None,
+            one_inch_lop: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -226,6 +254,16 @@ impl Orchestrator {
             .one_inch_fusion
             .as_ref()
             .map(OneInchFusionFetcher::from_sync_config);
+        let one_inch_fusion_plus = cfg
+            .venues
+            .one_inch_fusion_plus
+            .as_ref()
+            .map(OneInchFusionPlusFetcher::from_sync_config);
+        let one_inch_lop = cfg
+            .venues
+            .one_inch_lop
+            .as_ref()
+            .map(OneInchLopFetcher::from_sync_config);
         Ok(Self {
             onchain,
             price_fetchers,
@@ -235,6 +273,8 @@ impl Orchestrator {
             uniswap_x,
             cow_swap,
             one_inch_fusion,
+            one_inch_fusion_plus,
+            one_inch_lop,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -322,17 +362,8 @@ impl Orchestrator {
         now: Time,
     ) -> Result<IntentOrdersReport, SyncError> {
         let swapper = state.wallet_id.address;
-        let mut report = IntentOrdersReport::default();
-        for fetcher in self.intent_fetchers() {
-            match fetcher.fetch_orders(&swapper, now).await {
-                Ok(orders) => {
-                    report.orders_updated += orders.len();
-                    upsert_intent_orders(state, &orders);
-                }
-                Err(e) => report.errors.push(format!("{e}")),
-            }
-        }
-        Ok(report)
+        let fetchers = self.intent_fetchers();
+        Ok(run_intent_sync(&fetchers, state, &swapper, now).await)
     }
 
     /// Best-effort **core** account sync (every tick): fetch the native-dex core,
@@ -918,6 +949,58 @@ fn upsert_hyperliquid_account(
 /// order id embedded in `PendingTx.id`. Existing entries are replaced in place
 /// (status transitions); new ones are appended. Each fetcher has already
 /// projected its venue's orders into the canonical `PendingTx` shape.
+/// Run the intent-order sync loop over `fetchers`, mutating `state` and
+/// returning a report. Extracted from `sync_intent_orders` so the loop —
+/// including the snapshot-prune safety property — is unit-testable with stub
+/// fetchers (the public `Orchestrator` exposes no fetcher injection).
+///
+/// Per fetcher: a successful fetch is applied via `apply_intent_orders` (which
+/// upserts and, when authoritative, snapshot-prunes); a failed fetch is recorded
+/// and **never prunes** (the snapshot-prune lives only on the `Ok` arm), so a
+/// transient venue error can never drop live tracked orders.
+pub(crate) async fn run_intent_sync(
+    fetchers: &[&dyn IntentFetcher],
+    state: &mut WalletState,
+    swapper: &policy_state::primitives::Address,
+    now: Time,
+) -> IntentOrdersReport {
+    let mut report = IntentOrdersReport::default();
+    for fetcher in fetchers {
+        match fetcher.fetch_orders(swapper, now).await {
+            Ok(orders) => {
+                report.orders_updated += orders.len();
+                report.orders_pruned +=
+                    apply_intent_orders(state, &orders, fetcher.authoritative_prefix());
+            }
+            Err(e) => report.errors.push(format!("{e}")),
+        }
+    }
+    report
+}
+
+/// Apply one fetcher's **successful** result to `state`: `upsert_intent_orders`
+/// (prune terminal, upsert active/partial), then — when the fetcher is
+/// snapshot-authoritative for `prefix` — prune any tracked id under `prefix`
+/// absent from `orders` (it left the active listing → no longer open). Returns
+/// the number snapshot-pruned. MUST only be called for an `Ok` fetch; see
+/// `IntentFetcher::authoritative_prefix` for the completeness contract.
+pub(crate) fn apply_intent_orders(
+    state: &mut WalletState,
+    orders: &[PendingTx],
+    authoritative_prefix: Option<&str>,
+) -> usize {
+    upsert_intent_orders(state, orders);
+    let Some(prefix) = authoritative_prefix else {
+        return 0;
+    };
+    let returned: std::collections::HashSet<&str> = orders.iter().map(|o| o.id.as_str()).collect();
+    let before = state.pending.len();
+    state
+        .pending
+        .retain(|p| !p.id.starts_with(prefix) || returned.contains(p.id.as_str()));
+    before - state.pending.len()
+}
+
 pub(crate) fn upsert_intent_orders(state: &mut WalletState, orders: &[PendingTx]) {
     use policy_state::pending::PendingStatus;
     for pending in orders {
@@ -1253,6 +1336,176 @@ mod tests {
         assert_eq!(state.pending.len(), 2);
         assert!(state.pending.iter().any(|p| p.id == "intent:stub:a"));
         assert!(state.pending.iter().any(|p| p.id == "intent:stub:b"));
+    }
+
+    // --- snapshot-prune (authoritative_prefix) for active-orderbook venues ---
+
+    fn snapshot_pending(id: &str) -> PendingTx {
+        use policy_state::pending::{
+            AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus,
+        };
+        use policy_state::primitives::{Address, ChainId, Time, VenueRef, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::{DataSource, StateDelta};
+
+        let token = TokenRef {
+            key: TokenKey::Native {
+                chain: ChainId::ethereum_mainnet(),
+            },
+        };
+        PendingTx {
+            id: id.into(),
+            kind: PendingKind::OffchainLimitOrder {
+                venue: VenueRef::new("one_inch_limit_order"),
+                sell: token.clone(),
+                buy: token.clone(),
+                sell_max: U256::from(1u64),
+                buy_min: U256::from(1u64),
+                order_kind: OrderKind::Limit,
+            },
+            commitment: AssetCommitment::PermitCap {
+                token,
+                spender: Address::ZERO,
+                max_out: U256::from(1u64),
+            },
+            fill_effect: Box::new(StateDelta::new()),
+            lifecycle: PendingLifecycle {
+                status: PendingStatus::Active,
+                valid_until: None,
+                nonce: None,
+                on_chain_tx: None,
+                raw_status: None,
+            },
+            sync: DataSource::UserSupplied,
+            signed_at: Time::from_unix(0),
+            signature_payload: Vec::new(),
+        }
+    }
+
+    /// A configurable stub: returns a fixed `Ok`/`Err`, with a configurable
+    /// `authoritative_prefix`.
+    struct PrefixStub {
+        result: Result<Vec<PendingTx>, ()>,
+        prefix: Option<&'static str>,
+    }
+
+    #[async_trait::async_trait]
+    impl IntentFetcher for PrefixStub {
+        async fn fetch_orders(
+            &self,
+            _swapper: &policy_state::primitives::Address,
+            _now: Time,
+        ) -> Result<Vec<PendingTx>, SyncError> {
+            self.result.clone().map_err(|()| SyncError::FetchFailed {
+                source_id: "prefix_stub".into(),
+                reason: "boom".into(),
+            })
+        }
+        fn authoritative_prefix(&self) -> Option<&str> {
+            self.prefix
+        }
+    }
+
+    fn state_with(ids: &[&str]) -> WalletState {
+        use policy_state::primitives::{Address, ChainId};
+        use policy_state::WalletId;
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        for id in ids {
+            state.pending.push(snapshot_pending(id));
+        }
+        state
+    }
+
+    #[tokio::test]
+    async fn snapshot_prune_retires_orders_absent_from_authoritative_fetch() {
+        // Two LOP orders tracked; the fetch returns only `a` (b left the book) +
+        // a non-LOP order is untouched.
+        let mut state = state_with(&[
+            "intent:one_inch_limit_order:a",
+            "intent:one_inch_limit_order:b",
+            "intent:cow_swap:z",
+        ]);
+        let fetcher = PrefixStub {
+            result: Ok(vec![snapshot_pending("intent:one_inch_limit_order:a")]),
+            prefix: Some("intent:one_inch_limit_order:"),
+        };
+        let report = run_intent_sync(
+            &[&fetcher],
+            &mut state,
+            &policy_state::primitives::Address::ZERO,
+            Time::from_unix(0),
+        )
+        .await;
+
+        assert_eq!(report.orders_pruned, 1);
+        assert!(report.errors.is_empty());
+        let ids: Vec<&str> = state.pending.iter().map(|p| p.id.as_str()).collect();
+        assert!(ids.contains(&"intent:one_inch_limit_order:a"));
+        assert!(
+            !ids.contains(&"intent:one_inch_limit_order:b"),
+            "b left the active book → pruned"
+        );
+        assert!(
+            ids.contains(&"intent:cow_swap:z"),
+            "a different venue's order is never touched by this prefix"
+        );
+    }
+
+    #[tokio::test]
+    async fn failed_authoritative_fetch_never_prunes() {
+        // THE load-bearing safety test: a venue error must NOT drop live orders.
+        let mut state = state_with(&[
+            "intent:one_inch_limit_order:a",
+            "intent:one_inch_limit_order:b",
+        ]);
+        let fetcher = PrefixStub {
+            result: Err(()),
+            prefix: Some("intent:one_inch_limit_order:"),
+        };
+        let report = run_intent_sync(
+            &[&fetcher],
+            &mut state,
+            &policy_state::primitives::Address::ZERO,
+            Time::from_unix(0),
+        )
+        .await;
+
+        assert_eq!(report.orders_pruned, 0);
+        assert_eq!(report.errors.len(), 1, "the error is recorded");
+        assert_eq!(
+            state.pending.len(),
+            2,
+            "a transient fetch error must leave every tracked order in place"
+        );
+    }
+
+    #[tokio::test]
+    async fn no_prefix_fetcher_does_not_snapshot_prune() {
+        // A default (None-prefix) fetcher returning a subset must NOT prune the
+        // orders it didn't return — only `upsert_intent_orders` semantics apply.
+        let mut state = state_with(&[
+            "intent:one_inch_limit_order:a",
+            "intent:one_inch_limit_order:b",
+        ]);
+        let fetcher = PrefixStub {
+            result: Ok(vec![snapshot_pending("intent:one_inch_limit_order:a")]),
+            prefix: None,
+        };
+        let report = run_intent_sync(
+            &[&fetcher],
+            &mut state,
+            &policy_state::primitives::Address::ZERO,
+            Time::from_unix(0),
+        )
+        .await;
+
+        assert_eq!(report.orders_pruned, 0);
+        assert_eq!(
+            state.pending.len(),
+            2,
+            "without an authoritative prefix, absent orders are left as-is"
+        );
     }
 
     #[tokio::test]
