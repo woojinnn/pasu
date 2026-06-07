@@ -17,6 +17,7 @@ api:
   oauthAllowedRedirectUris: "https://fbadoakiikjmgdpdhpcohaddifhaggki.chromiumapp.org/"
   corsAllowedOrigins:
     - https://pasu-policy.duckdns.org
+    - chrome-extension://fbadoakiikjmgdpdhpcohaddifhaggki
 
 # GCE Ingress backend → ClusterIP (no external LB on the Service itself).
 service:
@@ -42,3 +43,64 @@ managedCertificate:
 backendConfig:
   enabled: true
   timeoutSec: 3600
+
+syncConfig: |-
+  [rpc.failover]
+  strategy = "priority"
+  retry_attempts = 3
+  retry_delay_ms = 200
+  mark_unhealthy_after = 5
+  unhealthy_cooldown_sec = 60
+
+  [rpc.chains."eip155:1"]
+  multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+  [[rpc.chains."eip155:1".providers]]
+  name = "publicnode"
+  kind = "public"
+  url = "https://ethereum-rpc.publicnode.com"
+  priority = 1
+  ws = false
+
+  [rpc.chains."eip155:42161"]
+  multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+  [[rpc.chains."eip155:42161".providers]]
+  name = "publicnode-arb"
+  kind = "public"
+  url = "https://arbitrum-one-rpc.publicnode.com"
+  priority = 1
+  ws = false
+
+  [rpc.chains."eip155:8453"]
+  multicall_addr = "0xcA11bde05977b3631167028862bE2a173976CA11"
+
+  [[rpc.chains."eip155:8453".providers]]
+  name = "publicnode-base"
+  kind = "public"
+  url = "https://base-rpc.publicnode.com"
+  priority = 1
+  ws = false
+
+  [oracles.rest.coingecko]
+  base_url = "https://api.coingecko.com/api/v3"
+  timeout_sec = 10
+
+  [oracles.rest.coingecko.feeds]
+  "USDC/USD" = { path = "/simple/price?ids=usd-coin&vs_currencies=usd", json_pointer = "/usd-coin/usd" }
+  "USDT/USD" = { path = "/simple/price?ids=tether&vs_currencies=usd", json_pointer = "/tether/usd" }
+  "ETH/USD" = { path = "/simple/price?ids=ethereum&vs_currencies=usd", json_pointer = "/ethereum/usd" }
+  "WETH/USD" = { path = "/simple/price?ids=weth&vs_currencies=usd", json_pointer = "/weth/usd" }
+  "BTC/USD" = { path = "/simple/price?ids=bitcoin&vs_currencies=usd", json_pointer = "/bitcoin/usd" }
+  "WBTC/USD" = { path = "/simple/price?ids=wrapped-bitcoin&vs_currencies=usd", json_pointer = "/wrapped-bitcoin/usd" }
+  "DAI/USD" = { path = "/simple/price?ids=dai&vs_currencies=usd", json_pointer = "/dai/usd" }
+  "MATIC/USD" = { path = "/simple/price?ids=matic-network&vs_currencies=usd", json_pointer = "/matic-network/usd" }
+  "ARB/USD" = { path = "/simple/price?ids=arbitrum&vs_currencies=usd", json_pointer = "/arbitrum/usd" }
+
+  [venues.hyperliquid]
+  endpoint = "https://api.hyperliquid.xyz"
+
+  [venues.uniswap]
+  orders_endpoint = "https://api.uniswap.org/v2"
+  api_key = "${UNISWAP_KEY}"
+  chains = ["eip155:1"]

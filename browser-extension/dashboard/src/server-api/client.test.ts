@@ -57,4 +57,22 @@ describe("dashboard server-api client", () => {
       },
     });
   });
+
+  it("preserves plain-text error bodies", async () => {
+    const { request, ServerError } = await import("./client");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          new Response("no chains configured on the server", { status: 400 }),
+        ),
+    );
+
+    await expect(request("/wallets", { method: "POST", body: {} })).rejects.toMatchObject({
+      name: "ServerError",
+      status: 400,
+      body: "no chains configured on the server",
+    } satisfies Partial<InstanceType<typeof ServerError>>);
+  });
 });

@@ -159,14 +159,14 @@ function managedToV2Bundle(p: ManagedPolicy): V2Bundle {
 async function refreshDashboardBundles(): Promise<void> {
   if (!Browser.storage?.local) return;
   try {
-    // Respect the enabled-id allow-list: a managed policy toggled OFF in the
-    // popup is removed from `policy-selection:enabled-ids` (NOT deleted from
-    // `dashboard:policies`), so include only ids the user has enabled. This
-    // mirrors the v1 `installFiltered(getEnabledIds())` gate.
+    // Respect both lifecycle and enabled-id gates: drafts are never enforced,
+    // and a published managed policy toggled OFF in the popup is removed from
+    // `policy-selection:enabled-ids` (NOT deleted from `dashboard:policies`).
+    // This mirrors the v1 `installFiltered(getEnabledIds())` gate.
     const [list, enabledIds] = await Promise.all([listManaged(), getEnabledIds()]);
     const enabled = new Set(enabledIds);
     cachedDashboardBundles = list
-      .filter((p) => enabled.has(p.id))
+      .filter((p) => p.life !== "draft" && enabled.has(p.id))
       .map(managedToV2Bundle);
   } catch (err) {
     console.warn(

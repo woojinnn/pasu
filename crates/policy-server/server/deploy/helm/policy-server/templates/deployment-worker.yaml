@@ -16,6 +16,8 @@ spec:
       labels:
         {{- include "policy-server.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: worker
+      annotations:
+        checksum/sync-config: {{ .Values.syncConfig | sha256sum | quote }}
     spec:
       serviceAccountName: {{ include "policy-server.serviceAccountName" . }}
       containers:

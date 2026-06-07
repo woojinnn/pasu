@@ -147,7 +147,8 @@ async function autoApplyEnabled(
  * Sequence (success path):
  *   1. Snapshot prior storage + enabled-set state.
  *   2. upsertManaged(policy)
- *   3. applyEnabledIds(currentEnabled ∪ {id}, reinstall) — WASM validates here.
+ *   3. applyEnabledIds(nextEnabled, reinstall) — publish adds `id`, draft
+ *      removes `id`, and WASM validates the resulting enforced set here.
  *   4. Read catalog and return { policy, catalog }.
  *
  * Sequence (failure path — WASM rejected):
@@ -168,7 +169,11 @@ async function persistThenApply(
 
   await upsertManaged(policy);
   const apply = await autoApplyEnabled((cur) => {
-    cur.add(policy.id);
+    if (policy.life === "draft") {
+      cur.delete(policy.id);
+    } else {
+      cur.add(policy.id);
+    }
     return cur;
   });
 

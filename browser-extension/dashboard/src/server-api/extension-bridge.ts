@@ -2,16 +2,14 @@
  * `extension-bridge` — page-side counterpart to
  * `browser-extension/backend/content-scripts/dashboard-bridge.ts`.
  *
- * Sends one request through `window.postMessage` (tagged
- * `source: "pasu-dashboard"`), waits for the matching response (tagged
- * `source: "pasu-extension"` with the same `id`), and resolves with the
- * SW handler's `{ ok, data | error }` envelope.
+ * Sends one request to the extension service worker and resolves with the SW
+ * handler's `{ ok, data | error }` envelope.
  *
  * Why a thin module?
- * - Verdict / execution-report storage lives outside the
- *   policy-server and into `chrome.storage.local`. The dashboard talks to
- *   the SW for those reads — the bridge is the only available channel
- *   (`chrome.runtime.sendMessage` isn't reachable from a regular web page).
+ * - Verdict / execution-report storage lives outside the policy-server and
+ *   into `chrome.storage.local`. The dashboard talks to the SW for those
+ *   reads. Extension pages can call `chrome.runtime.sendMessage` directly;
+ *   localhost dev pages need the content-script `window.postMessage` bridge.
  * - Keeps the dashboard's React Query hooks unchanged: they still call
  *   `listAuditVerdicts(opts)` and get back a typed array; the implementation
  *   just changed from `fetch("/audit/verdicts?…")` to
@@ -54,10 +52,43 @@ interface BridgeResponseEnvelope {
   response: unknown;
 }
 
+type SwResponse<T> =
+  | { ok: true; data: T }
+  | { ok: false; error?: { kind?: string; message?: string } };
+
+interface ChromeRuntimeShim {
+  runtime?: {
+    sendMessage(message: unknown): Promise<unknown>;
+  };
+}
+
 function isBridgeResponse(value: unknown): value is BridgeResponseEnvelope {
   if (!value || typeof value !== "object") return false;
   const o = value as Record<string, unknown>;
   return o.source === RES_TAG && typeof o.id === "string" && "response" in o;
+}
+
+function getRuntime(): ChromeRuntimeShim["runtime"] | null {
+  const chrome = (globalThis as unknown as { chrome?: ChromeRuntimeShim })
+    .chrome;
+  const runtime = chrome?.runtime;
+  if (typeof runtime?.sendMessage !== "function") return null;
+  return runtime;
+}
+
+function unwrapSwResponse<T>(response: unknown): T {
+  const r = response as SwResponse<T> | undefined;
+  if (!r) {
+    throw new ExtensionBridgeError(
+      "bridge_failed",
+      "empty response from extension",
+    );
+  }
+  if (r.ok) return r.data;
+  throw new ExtensionBridgeError(
+    r.error?.kind ?? "bridge_failed",
+    r.error?.message ?? "extension returned error",
+  );
 }
 
 /** Default 10s. The SW evaluates locally so calls usually return in <50ms;
@@ -78,6 +109,28 @@ export async function sendToExtension<T>(
   payload: unknown,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<T> {
+  const runtime = getRuntime();
+  if (runtime) {
+    let timer: number | undefined;
+    try {
+      const response = await Promise.race([
+        runtime.sendMessage(payload),
+        new Promise<never>((_, reject) => {
+          timer = window.setTimeout(() => {
+            reject(
+              new ExtensionBridgeTimeout(
+                `extension did not respond within ${timeoutMs}ms`,
+              ),
+            );
+          }, timeoutMs);
+        }),
+      ]);
+      return unwrapSwResponse<T>(response);
+    } finally {
+      if (timer !== undefined) window.clearTimeout(timer);
+    }
+  }
+
   // crypto.randomUUID() is in the browser baseline since 2022 — the dashboard
   // already targets modern Chrome (extension MV3). No fallback needed.
   const id = crypto.randomUUID();
@@ -94,28 +147,10 @@ export async function sendToExtension<T>(
       if (event.data.id === BROADCAST_ID) return;
       if (event.data.id !== id) return;
       settle();
-      const r = event.data.response as
-        | { ok: true; data: T }
-        | { ok: false; error: { kind?: string; message?: string } }
-        | undefined;
-      if (!r) {
-        reject(
-          new ExtensionBridgeError(
-            "bridge_failed",
-            "empty response from extension",
-          ),
-        );
-        return;
-      }
-      if (r.ok) {
-        resolve(r.data);
-      } else {
-        reject(
-          new ExtensionBridgeError(
-            r.error?.kind ?? "bridge_failed",
-            r.error?.message ?? "extension returned error",
-          ),
-        );
+      try {
+        resolve(unwrapSwResponse<T>(event.data.response));
+      } catch (err) {
+        reject(err);
       }
     };
     const timer = window.setTimeout(() => {

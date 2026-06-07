@@ -8,9 +8,10 @@
  * with a slim, Promise-based API that the dashboard pages call
  * instead of HTTP fetches.
  *
- * All calls fail soft when the extension isn't installed
- * (`ExtensionBridgeTimeout`) so the page renders empty state instead
- * of an error wall.
+ * Read calls fail soft when the extension isn't installed
+ * (`ExtensionBridgeTimeout`) so the page renders empty state instead of an
+ * error wall. Writes surface bridge failures so callers do not navigate as if
+ * a policy was saved when the extension never accepted it.
  */
 
 import { sendToExtension, ExtensionBridgeTimeout } from "./extension-bridge";
@@ -87,27 +88,22 @@ export interface PutPolicyOpts {
 
 /** Install/update a policy in the extension's local store + wasm engine. */
 export async function putPolicy(opts: PutPolicyOpts): Promise<void> {
-  try {
-    await sendToExtension({
-      type: "dashboard:put-raw",
-      id: opts.id,
-      text: opts.cedarText,
-      ...(opts.policyTree != null ? { policyTree: opts.policyTree } : {}),
-      ...(opts.displayName ? { displayName: opts.displayName } : {}),
-      ...(opts.manifest !== undefined ? { manifest: opts.manifest } : {}),
-      ...(opts.life ? { life: opts.life } : {}),
-      ...(opts.source ? { source: opts.source } : {}),
-      ...(opts.cat ? { cat: opts.cat } : {}),
-      ...(opts.method ? { method: opts.method } : {}),
-      ...(opts.dupKey ? { dupKey: opts.dupKey } : {}),
-      ...(opts.memo !== undefined ? { memo: opts.memo } : {}),
-      ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
-      ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
-    });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return; // extension not installed
-    throw err;
-  }
+  await sendToExtension({
+    type: "dashboard:put-raw",
+    id: opts.id,
+    text: opts.cedarText,
+    ...(opts.policyTree != null ? { policyTree: opts.policyTree } : {}),
+    ...(opts.displayName ? { displayName: opts.displayName } : {}),
+    ...(opts.manifest !== undefined ? { manifest: opts.manifest } : {}),
+    ...(opts.life ? { life: opts.life } : {}),
+    ...(opts.source ? { source: opts.source } : {}),
+    ...(opts.cat ? { cat: opts.cat } : {}),
+    ...(opts.method ? { method: opts.method } : {}),
+    ...(opts.dupKey ? { dupKey: opts.dupKey } : {}),
+    ...(opts.memo !== undefined ? { memo: opts.memo } : {}),
+    ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
+    ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
+  });
 }
 
 /** Delete a policy from the extension's local store. */

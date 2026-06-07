@@ -256,6 +256,28 @@ describe("policies-loader-v2 (stateless fetch-and-hold)", () => {
     expect(getDefaultPolicyBundlesV2()).toHaveLength(2);
   });
 
+  it("excludes draft dashboard policies even if their id is enabled", async () => {
+    mocks.managed = [
+      {
+        id: "dashboard::draft",
+        kind: "raw",
+        text: "forbid(principal, action, resource);\n",
+        life: "draft",
+        updatedAtMs: 0,
+        schemaVersion: 1,
+      },
+    ];
+    mocks.enabledIds = ["dashboard::draft"];
+
+    const { loadDefaultPolicySetV2 } = await import("../policies-loader-v2");
+    const bundles = await loadDefaultPolicySetV2();
+
+    expect(bundles.map((b) => b.id)).toEqual([
+      "high-slippage-warning",
+      "large-swap-usd-warning",
+    ]);
+  });
+
   it("includes only the ENABLED subset when some dashboard policies are toggled off", async () => {
     mocks.managed = [
       { id: "dashboard::on", kind: "raw", text: "forbid(principal, action, resource);\n", updatedAtMs: 0, schemaVersion: 1 },

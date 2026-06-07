@@ -139,15 +139,13 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
 
 async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    const text = await res.text().catch(() => "");
     let body: unknown = null;
-    try {
-      body = await res.json();
-    } catch {
-      // not JSON — fall back to text
+    if (text) {
       try {
-        body = await res.text();
+        body = JSON.parse(text);
       } catch {
-        /* leave body null */
+        body = text;
       }
     }
     throw new ServerError(res.status, `${res.status} ${res.statusText}`, body);
