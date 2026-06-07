@@ -1,4 +1,5 @@
 const { merge } = require("webpack-merge");
+process.env.NODE_ENV = process.env.NODE_ENV || "production";
 const common = require("./webpack.common.js");
 
 // Audit Round 7+ (P1) — production builds must point at a real HTTPS

@@ -8,11 +8,12 @@ const tokenStore = vi.hoisted(() => ({
 
 vi.mock("../pasu-auth/tokenStore", () => tokenStore);
 
-import { request } from "../pasu-auth/client";
+import { request, ServerError } from "../pasu-auth/client";
 
 describe("pasu-auth client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("refreshes the access token once and retries after a 401", async () => {
@@ -43,5 +44,25 @@ describe("pasu-auth client", () => {
         Authorization: "Bearer new-access",
       },
     });
+  });
+
+  it("preserves plain-text error bodies", async () => {
+    tokenStore.getAccessToken.mockResolvedValue("access-token");
+    tokenStore.getRefreshToken.mockResolvedValue(null);
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          new Response("no chains configured on the server", { status: 400 }),
+        ),
+    );
+
+    await expect(request("/wallets", { method: "POST", body: {} })).rejects.toMatchObject({
+      name: "ServerError",
+      status: 400,
+      body: "no chains configured on the server",
+    } satisfies Partial<InstanceType<typeof ServerError>>);
   });
 });

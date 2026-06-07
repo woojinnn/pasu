@@ -30,7 +30,7 @@ The loadable extension is produced by **two** pipelines into `dist/<browser>/`:
 
 ### Configuration (build-time env vars)
 
-Passed on the command line (or via a gitignored `browser-extension/.env`):
+Passed on the command line, or via a mode-specific gitignored env file:
 
 | var                                  | what                                                                                                | default                  |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------ |
@@ -41,9 +41,16 @@ Passed on the command line (or via a gitignored `browser-extension/.env`):
 The server URL can also be switched at **runtime** from the dashboard's
 **Settings** page (writes `localStorage` + `chrome.storage`) — no rebuild.
 
-> The SW (webpack) reads `.env`, but the dashboard (Vite) is a *separate*
-> process, so to point the **whole** extension at one server, `export`
-> `PASU_SERVER_URL` on the command line — don't rely on `.env` alone.
+Env-file convention:
+
+- production builds read `browser-extension/.env`
+- development builds read `browser-extension/.env.development`
+- command-line env vars still win in both modes
+
+This keeps a local production `.env` from accidentally pointing `yarn
+dev:chrome` or `cd dashboard && yarn dev` at prod. If you want dev to target a
+non-local server, export `PASU_SERVER_URL=...` for that command or put it in
+`.env.development`.
 
 ### Production build (full, loadable)
 
@@ -60,13 +67,17 @@ firefox webpack only, no dashboard; `build:ext` is the chrome loadable one.)
 ### Dev build (full, loadable, unminified)
 
 ```bash
-export PASU_SERVER_URL=https://<your-server-host>
 yarn prepare:defaults && yarn prepare:wasm
 # webpack.dev.js sets `watch: true`, so --no-watch forces a one-shot build
 # (otherwise webpack never exits and the dashboard step below never runs).
 TARGET_BROWSER=chrome yarn webpack --config webpack/webpack.dev.js --no-watch
 yarn workspace pasu-dashboard exec vite build --mode development
 ```
+
+That dev build targets `http://127.0.0.1:8788` by default. To point it
+elsewhere for a specific run, prefix both build commands with
+`PASU_SERVER_URL=https://<your-server-host>`, or write that value to
+`.env.development`.
 
 Or, for live iteration, run the two halves separately: `yarn dev:chrome`
 (webpack watch) **and** `cd dashboard && yarn dev` (dashboard at `:5173`, reached

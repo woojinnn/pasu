@@ -54,6 +54,13 @@ export interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function logCurrentUserSyncFailure(err: unknown): void {
+  console.warn(
+    "[Pasu] sync current user to extension failed:",
+    err instanceof Error ? err.message : String(err),
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
   const [isLoading, setLoading] = useState(true);
@@ -68,17 +75,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Sync the SW's active-user discriminator so every per-user storage
       // key (`dashboard:policies:<id>`, `policy-selection:enabled-ids:<id>`,
       // …) reads/writes under the right namespace. Fire-and-forget — the
-      // bridge fails soft when the extension isn't installed.
+      // dashboard auth state must not depend on extension-local storage sync.
       if (me) {
-        void setCurrentUser(me.user_id);
+        void setCurrentUser(me.user_id).catch(logCurrentUserSyncFailure);
       } else {
-        void clearCurrentUser();
+        void clearCurrentUser().catch(logCurrentUserSyncFailure);
       }
     } catch (e) {
       if (e instanceof ServerError && e.isUnauthorized) {
         // fetchMe already cleared the token.
         setUser(null);
-        void clearCurrentUser();
+        void clearCurrentUser().catch(logCurrentUserSyncFailure);
       } else {
         setError(e instanceof Error ? e : new Error(String(e)));
       }
@@ -120,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutCb = useCallback(() => {
     serverLogout();
-    void clearCurrentUser();
+    void clearCurrentUser().catch(logCurrentUserSyncFailure);
     setUser(null);
   }, []);
 

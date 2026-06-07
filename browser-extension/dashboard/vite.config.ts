@@ -2,6 +2,21 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+export function resolveServerUrlEnv(mode: string, dashboardDir: string = __dirname): string {
+  const extensionRoot = path.resolve(dashboardDir, "..");
+  const dashboardEnv = loadEnv(mode, dashboardDir, "");
+  const rootEnv = mode === "production" ? loadEnv(mode, extensionRoot, "") : {};
+  return (
+    process.env.PASU_SERVER_URL ||
+    process.env.VITE_PASU_SERVER_URL ||
+    dashboardEnv.PASU_SERVER_URL ||
+    dashboardEnv.VITE_PASU_SERVER_URL ||
+    rootEnv.PASU_SERVER_URL ||
+    rootEnv.VITE_PASU_SERVER_URL ||
+    ""
+  );
+}
+
 // Two output modes share this single config:
 //
 //   dev (`vite` / `yarn dev`): standalone SPA at http://127.0.0.1:5173.
@@ -26,9 +41,7 @@ export default defineConfig(({ mode }) => {
   //   PASU_SERVER_URL=https://pasu-policy.duckdns.org yarn build:ext
   // `loadEnv(mode, dir, "")` reads .env files + process.env with no prefix
   // filter; legacy `VITE_PASU_SERVER_URL` is still honored as a fallback.
-  const env = loadEnv(mode, process.cwd(), "");
-  const serverUrl =
-    env.PASU_SERVER_URL || env.VITE_PASU_SERVER_URL || "";
+  const serverUrl = resolveServerUrlEnv(mode);
 
   return {
     plugins: [react()],
