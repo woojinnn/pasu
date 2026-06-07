@@ -3,24 +3,34 @@ const webpack = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
 const Dotenv = require("dotenv-webpack");
 const WextManifestWebpackPlugin = require("wext-manifest-webpack-plugin");
+const {
+  buildMode,
+  envPathForMode,
+  loadBuildEnv,
+  resolveServerUrl,
+} = require("./env");
 
 const targetBrowser = process.env.TARGET_BROWSER || "chrome";
 const extRoot = path.resolve(__dirname, "..");
+const mode = buildMode();
 
-// Load `.env` into Node's `process.env` BEFORE any config-time env reads
+// Load the mode-specific env file into Node's `process.env` BEFORE config-time
+// env reads
 // (`serverUrl` below, the DefinePlugin, and — critically — the prod
 // `REGISTRY_BASE_URL` https guard in webpack.prod.js, which `require()`s this
-// file first). `dotenv-webpack` only injects `.env` into the *bundle*; it does
-// not populate `process.env`, so without this the guard / DefinePlugin would
-// read a different source than the bundle ships. `.config()` does not override
-// an already-exported var, so exports still win — matching the `systemvars`
-// precedence used for the bundle below. One source of truth: merged process.env.
-require("dotenv").config({ path: path.join(extRoot, ".env") });
+// file first). Production reads `.env`; development reads `.env.development`
+// so a local production `.env` cannot accidentally point dev builds at prod.
+// `dotenv-webpack` only injects env files into the *bundle*; it does not
+// populate `process.env`, so without this the guard / DefinePlugin would read a
+// different source than the bundle ships. `.config()` does not override an
+// already-exported var, so exports still win — matching the `systemvars`
+// precedence used for the bundle below.
+loadBuildEnv(extRoot, mode);
 
 const backendDir = path.join(extRoot, "backend");
 const frontendDir = path.join(extRoot, "frontend");
 const distDir = path.join(extRoot, "dist", targetBrowser);
-const serverUrl = process.env.PASU_SERVER_URL || "http://127.0.0.1:8788";
+const serverUrl = resolveServerUrl();
 
 // Shared bits of the webpack config — the actual exported configs differ
 // only in `entry`, `target`, and which build-time plugins they own.
@@ -65,7 +75,7 @@ const sharedModule = {
 
 const sharedPlugins = () => [
   new Dotenv({
-    path: path.join(extRoot, ".env"),
+    path: envPathForMode(extRoot, mode),
     safe: false,
     silent: true,
     // Resolve `process.env.*` references in the bundle from the merged

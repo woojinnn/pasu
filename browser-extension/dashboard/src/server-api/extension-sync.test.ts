@@ -19,7 +19,16 @@ import {
   ExtensionBridgeTimeout,
   sendToExtension,
 } from "./extension-bridge";
-import { listManagedPolicies, putPolicy } from "./extension-sync";
+import {
+  clearCurrentUser,
+  deletePolicy,
+  deletePolicySet,
+  listManagedPolicies,
+  putPolicy,
+  putPolicySet,
+  setCurrentUser,
+  setEnabledPolicyIds,
+} from "./extension-sync";
 
 describe("extension sync", () => {
   afterEach(() => {
@@ -45,5 +54,28 @@ describe("extension sync", () => {
         cedarText: "forbid (principal, action, resource);",
       }),
     ).rejects.toMatchObject({ name: "ExtensionBridgeTimeout" });
+  });
+
+  it.each([
+    ["deletePolicy", () => deletePolicy("dashboard::draft-cedar-test")],
+    ["setEnabledPolicyIds", () => setEnabledPolicyIds(["dashboard::draft-cedar-test"])],
+    [
+      "putPolicySet",
+      () =>
+        putPolicySet({
+          id: "dashboard-set::market-pack",
+          displayName: "Market pack",
+          memberIds: ["dashboard::draft-cedar-test"],
+        }),
+    ],
+    ["deletePolicySet", () => deletePolicySet("dashboard-set::market-pack")],
+    ["setCurrentUser", () => setCurrentUser("user-1")],
+    ["clearCurrentUser", () => clearCurrentUser()],
+  ])("does not treat %s timeouts as successful writes", async (_name, act) => {
+    vi.mocked(sendToExtension).mockRejectedValue(
+      new ExtensionBridgeTimeout("missing bridge"),
+    );
+
+    await expect(act()).rejects.toMatchObject({ name: "ExtensionBridgeTimeout" });
   });
 });
