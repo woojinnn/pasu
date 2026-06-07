@@ -21,9 +21,11 @@
 //! observed directly and pruned by `upsert_intent_orders`. We still expose an
 //! `authoritative_prefix` so that any order which ages off the list entirely
 //! (the Dev Portal's retention window is undocumented) is snapshot-pruned rather
-//! than lingering as a stale `Active` entry. Because this is a single paginated
-//! endpoint, completeness is guaranteed by `?`-propagation: any page error
-//! returns `Err` (never a partial `Ok`), so the snapshot-prune is safe.
+//! than lingering as a stale `Active` entry. For that prune to be safe the fetch
+//! is fail-closed: `fetch_orders` returns `Err` on any incompleteness (transport/
+//! non-2xx/decode via `?`, an unrecognized 200 body shape, or `MAX_PAGES`
+//! exhaustion) and sizes pagination by the RAW page length, so it never returns a
+//! truncated `Ok` that the snapshot-prune would mistake for the complete set.
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -52,6 +54,9 @@ const SOLANA_NETWORK_ID: u64 = 501;
 
 /// Page size per request.
 const PAGE_LIMIT: usize = 100;
+
+/// Pagination safety bound (never expect this many pages for one maker).
+const MAX_PAGES: usize = 1000;
 
 /// Fetches 1inch Fusion+ cross-chain order status from the Dev Portal.
 pub struct OneInchFusionPlusFetcher {
@@ -100,37 +105,43 @@ impl OneInchFusionPlusFetcher {
 #[async_trait]
 impl IntentFetcher for OneInchFusionPlusFetcher {
     /// Paginate the by-maker endpoint until a short page; project each order.
-    /// Returns `Err` on ANY page failure (incomplete fetch), never a partial
-    /// `Ok` — required by the `authoritative_prefix` completeness contract.
+    ///
+    /// Fail-closed for snapshot-prune safety — returns `Err` on ANY incompleteness
+    /// (never a partial `Ok`): a transport/non-2xx/decode error via `?`, a 200
+    /// whose body is an unrecognized shape (`parse_orders` → `None`), or
+    /// `MAX_PAGES` exhaustion. The short-page terminator uses the RAW element
+    /// count (not the count after dropping undecodable items / non-EVM legs), so a
+    /// single bad item on a full page can never truncate the walk.
     async fn fetch_orders(
         &self,
         swapper: &Address,
         now: Time,
     ) -> Result<Vec<PendingTx>, SyncError> {
         let mut out = Vec::new();
-        let mut page = 1usize;
-        loop {
+        for page in 1..=MAX_PAGES {
             let url = format!(
                 "{}/orders/v1.2/order/maker/{:#x}/?page={page}&limit={PAGE_LIMIT}",
                 self.base_url.trim_end_matches('/'),
                 swapper,
             );
             let body = self.get(&url).await?;
-            let Some(orders) = parse_orders(&body) else {
-                break;
-            };
-            let page_len = orders.len();
-            for o in &orders {
+            let raw_len = raw_page_len(&body).ok_or_else(|| SyncError::FetchFailed {
+                source_id: "one_inch_fusion_plus".into(),
+                reason: "unrecognized response shape (not an array or {items:[...]})".into(),
+            })?;
+            for o in &parse_orders(&body).unwrap_or_default() {
                 if let Some(p) = o.to_pending_tx(now) {
                     out.push(p);
                 }
             }
-            if page_len < PAGE_LIMIT {
-                break;
+            if raw_len < PAGE_LIMIT {
+                return Ok(out);
             }
-            page += 1;
         }
-        Ok(out)
+        Err(SyncError::FetchFailed {
+            source_id: "one_inch_fusion_plus".into(),
+            reason: format!("order walk exceeded {MAX_PAGES} pages; treating as incomplete"),
+        })
     }
 
     fn authoritative_prefix(&self) -> Option<&str> {
@@ -193,15 +204,29 @@ pub struct OneInchFusionPlusOrder {
     pub auction_duration: Option<u64>,
 }
 
+/// The list array of the Fusion+ response (a bare array or the `items` array).
+/// `None` for an unrecognized envelope (used both to fail closed and to size
+/// pagination by the RAW element count, before any defensive item drops).
+fn list_array(value: &serde_json::Value) -> Option<&Vec<serde_json::Value>> {
+    value
+        .as_array()
+        .or_else(|| value.get("items").and_then(serde_json::Value::as_array))
+}
+
+/// Raw element count of the list page (pre-filter). `None` if the body is an
+/// unrecognized shape — the caller treats that as an incomplete fetch (`Err`).
+#[must_use]
+pub fn raw_page_len(value: &serde_json::Value) -> Option<usize> {
+    list_array(value).map(Vec::len)
+}
+
 /// Decode the Fusion+ list response (bare array or `{ "items": [...] }`).
+///
 /// Elements lacking a decodable `orderHash` / `status` / assets / chain ids are
-/// skipped (defensive serde).
+/// skipped (defensive serde). `None` only for an unrecognized envelope.
 #[must_use]
 pub fn parse_orders(value: &serde_json::Value) -> Option<Vec<OneInchFusionPlusOrder>> {
-    let arr = value
-        .as_array()
-        .or_else(|| value.get("items").and_then(serde_json::Value::as_array))?;
-    Some(arr.iter().filter_map(parse_one).collect())
+    Some(list_array(value)?.iter().filter_map(parse_one).collect())
 }
 
 fn parse_one(o: &serde_json::Value) -> Option<OneInchFusionPlusOrder> {
@@ -478,5 +503,101 @@ mod tests {
 
         // Solana destination leg → skipped (cannot model as eip155).
         assert!(orders[2].to_pending_tx(now).is_none());
+    }
+
+    // --- producer-side tests: the real fetcher against a stub HTTP server,
+    // proving fetch_orders is fail-closed (never a truncated/empty Ok). ---
+
+    async fn spawn_seq_server(responses: Vec<serde_json::Value>) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            for body in responses {
+                let Ok((mut stream, _)) = listener.accept().await else {
+                    break;
+                };
+                let mut buf = Vec::new();
+                let mut tmp = [0u8; 1024];
+                loop {
+                    let n = stream.read(&mut tmp).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&tmp[..n]);
+                    if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                        break;
+                    }
+                }
+                let s = body.to_string();
+                let resp = format!(
+                    "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+                    s.len(),
+                    s
+                );
+                let _ = stream.write_all(resp.as_bytes()).await;
+            }
+        });
+        format!("http://{addr}")
+    }
+
+    fn fetcher(base_url: String) -> OneInchFusionPlusFetcher {
+        OneInchFusionPlusFetcher::from_sync_config(&OneInchFusionPlusConfig {
+            base_url,
+            api_key: String::new(),
+        })
+    }
+
+    fn order_item(hash: &str) -> serde_json::Value {
+        serde_json::json!({
+            "orderHash": hash,
+            "status": "pending",
+            "validation": "valid",
+            "makerAsset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            "takerAsset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "makerAmount": "1000",
+            "minTakerAmount": "1",
+            "srcChainId": 1,
+            "dstChainId": 1
+        })
+    }
+
+    #[tokio::test]
+    async fn malformed_200_body_is_err_not_empty_ok() {
+        // An unrecognized 200 body must be Err — NOT a silent empty Ok that would
+        // snapshot-prune every live order.
+        let base = spawn_seq_server(vec![serde_json::json!({ "unexpected": true })]).await;
+        let r = fetcher(base)
+            .fetch_orders(&Address::ZERO, Time::from_unix(0))
+            .await;
+        assert!(r.is_err(), "unrecognized 200 body must be Err, got {r:?}");
+    }
+
+    #[tokio::test]
+    async fn full_page_with_one_undecodable_item_does_not_truncate_walk() {
+        // page 1: 99 valid + 1 undecodable (missing orderHash) ⇒ raw_len 100,
+        // parsed 99. The walk MUST continue to page 2 (terminator is the RAW
+        // count, not 99 < 100).
+        let mut items: Vec<serde_json::Value> =
+            (0..99).map(|i| order_item(&format!("0xp1-{i}"))).collect();
+        items.push(serde_json::json!({ "status": "pending", "srcChainId": 1, "dstChainId": 1 }));
+        let page1 = serde_json::json!({ "items": items });
+        let page2 = serde_json::json!({ "items": [order_item("0xp2-0")] });
+
+        let base = spawn_seq_server(vec![page1, page2]).await;
+        let out = fetcher(base)
+            .fetch_orders(&Address::ZERO, Time::from_unix(0))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            out.len(),
+            100,
+            "99 from page 1 + 1 from page 2 (page 2 was fetched)"
+        );
+        assert!(out
+            .iter()
+            .any(|p| p.id == "intent:one_inch_fusion_plus:0xp2-0"));
     }
 }
