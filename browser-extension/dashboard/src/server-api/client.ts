@@ -10,13 +10,13 @@
  * - Stay tiny and dependency-free — no axios, no React.
  */
 
-const DEFAULT_BASE = import.meta.env.VITE_SCOPEBALL_SERVER_URL || "http://127.0.0.1:8788";
+const DEFAULT_BASE = import.meta.env.VITE_PASU_SERVER_URL || "http://127.0.0.1:8788";
 
 /** Resolve the server URL — env > localStorage > default. Read once at
  * import time; we don't expect users to swap servers mid-session. */
 function resolveBaseUrl(): string {
   if (typeof window !== "undefined") {
-    const stored = window.localStorage.getItem("scopeball_server_url");
+    const stored = window.localStorage.getItem("pasu_server_url");
     if (stored) return stored;
   }
   return DEFAULT_BASE;
@@ -24,8 +24,8 @@ function resolveBaseUrl(): string {
 
 export const SERVER_BASE_URL = resolveBaseUrl();
 
-const TOKEN_KEY = "scopeball_jwt";
-const REFRESH_KEY = "scopeball_jwt_refresh";
+const TOKEN_KEY = "pasu_jwt";
+const REFRESH_KEY = "pasu_jwt_refresh";
 
 /** Persisted access token. Returns `null` when the user is logged out. */
 export function getStoredToken(): string | null {
@@ -139,15 +139,13 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
 
 async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    const text = await res.text().catch(() => "");
     let body: unknown = null;
-    try {
-      body = await res.json();
-    } catch {
-      // not JSON — fall back to text
+    if (text) {
       try {
-        body = await res.text();
+        body = JSON.parse(text);
       } catch {
-        /* leave body null */
+        body = text;
       }
     }
     throw new ServerError(res.status, `${res.status} ${res.statusText}`, body);

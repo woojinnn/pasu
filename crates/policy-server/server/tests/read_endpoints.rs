@@ -39,9 +39,24 @@ async fn spawn_server() -> (
     MultiUserStore,
     tempfile::TempDir,
     String,
+    String,
 ) {
     let tmp = tempfile::tempdir().unwrap();
     let global_db = GlobalDb::open(tmp.path().join("global.db")).unwrap();
+    // Seed the user so wallet saves satisfy `wallets_user_id_fkey` (enforced by
+    // the Postgres integration backend). Each spawn gets a UNIQUE email so the
+    // derived user_id is distinct per test: these tests share one Postgres that
+    // is NOT reset between binaries, so a shared email would collide on the same
+    // `users` row and let leftover rows break the exact-state assertions. Reuse
+    // the returned user_id for the token + wallet seeding so they all reference
+    // one real, isolated user. The `read-endpoints-` prefix keeps these ids
+    // disjoint from other test files sharing the same DB.
+    static USER_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = USER_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let user_id = global_db
+        .upsert_user(&format!("read-endpoints-{n}@example.com"), "test")
+        .await
+        .unwrap();
     let multi_user = MultiUserStore::new(tmp.path().join("users"));
     let event_bus = EventBus::new();
     let state = AppState {
@@ -61,8 +76,8 @@ async fn spawn_server() -> (
     tokio::spawn(async move {
         axum::serve(listener, router).await.unwrap();
     });
-    let token = mint_token("u_test_alice");
-    (addr, multi_user, tmp, token)
+    let token = mint_token(&user_id);
+    (addr, multi_user, tmp, token, user_id)
 }
 
 fn seeded_state() -> WalletState {
@@ -107,8 +122,8 @@ async fn seed_for(multi_user: &MultiUserStore, user_id: &str, state: WalletState
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn list_wallets_returns_seeded() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
-    seed_for(&mu, "u_test_alice", seeded_state()).await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_for(&mu, &user_id, seeded_state()).await;
 
     let listed: Vec<WalletId> = reqwest::Client::new()
         .get(format!("http://{addr}/wallets"))
@@ -125,9 +140,9 @@ async fn list_wallets_returns_seeded() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn get_state_returns_full_wallet() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
     let seed = seeded_state();
-    seed_for(&mu, "u_test_alice", seed.clone()).await;
+    seed_for(&mu, &user_id, seed.clone()).await;
 
     let lower = format!("{:#x}", sample_id().address);
     let got: WalletState = reqwest::Client::new()
@@ -145,8 +160,8 @@ async fn get_state_returns_full_wallet() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn get_approvals_returns_approval_set() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
-    seed_for(&mu, "u_test_alice", seeded_state()).await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_for(&mu, &user_id, seeded_state()).await;
 
     let lower = format!("{:#x}", sample_id().address);
     let got: ApprovalSet = reqwest::Client::new()
@@ -164,8 +179,8 @@ async fn get_approvals_returns_approval_set() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn get_block_heights_returns_array() {
-    let (addr, mu, _tmp, token) = spawn_server().await;
-    seed_for(&mu, "u_test_alice", seeded_state()).await;
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_for(&mu, &user_id, seeded_state()).await;
 
     let lower = format!("{:#x}", sample_id().address);
     let body = reqwest::Client::new()
@@ -184,7 +199,7 @@ async fn get_block_heights_returns_array() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn invalid_address_returns_400() {
-    let (addr, _mu, _tmp, token) = spawn_server().await;
+    let (addr, _mu, _tmp, token, _user_id) = spawn_server().await;
     let resp = reqwest::Client::new()
         .get(format!("http://{addr}/wallets/not-an-address/state"))
         .bearer_auth(&token)
@@ -197,7 +212,7 @@ async fn invalid_address_returns_400() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn unseen_address_returns_empty_state() {
-    let (addr, _mu, _tmp, token) = spawn_server().await;
+    let (addr, _mu, _tmp, token, _user_id) = spawn_server().await;
     let other = "0x0000000000000000000000000000000000001111";
     let got: WalletState = reqwest::Client::new()
         .get(format!("http://{addr}/wallets/{other}/state"))
@@ -215,9 +230,12 @@ async fn unseen_address_returns_empty_state() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn isolated_user_cannot_see_others_wallets() {
-    let (addr, mu, _tmp, _token_alice) = spawn_server().await;
-    seed_for(&mu, "u_test_alice", seeded_state()).await;
+    let (addr, mu, _tmp, _token_alice, user_id) = spawn_server().await;
+    seed_for(&mu, &user_id, seeded_state()).await;
 
+    // Bob is a different user who never seeded a wallet. Auth validates the JWT
+    // signature without requiring the subject to exist in `users`, and bob never
+    // writes a wallet, so no FK is touched — he simply sees an empty list.
     let bob_token = mint_token("u_test_bob");
     let listed: Vec<WalletId> = reqwest::Client::new()
         .get(format!("http://{addr}/wallets"))

@@ -40,7 +40,7 @@ stream.on("data", async (message: Message) => {
     // loud console.error so the user can see why their tx didn't go through
     // and knows to reload the tab.
     console.error(
-      "[Scopeball] cannot reach service worker (extension reloaded?) — " +
+      "[Pasu] cannot reach service worker (extension reloaded?) — " +
         "transaction blocked. Reload this tab to restore policy evaluation.",
       err,
     );

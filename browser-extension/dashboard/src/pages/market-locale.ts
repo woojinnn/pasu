@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 export type MarketLocale = "ko" | "en";
 
-const STORAGE_KEY = "scopeball:market-locale";
+const STORAGE_KEY = "pasu:market-locale";
 
 function read(): MarketLocale {
   if (typeof window === "undefined") return "ko";
@@ -25,13 +25,13 @@ export function useMarketLocale(): [MarketLocale, (next: MarketLocale) => void] 
 
   useEffect(() => {
     const onChange = () => setLocaleState(read());
-    window.addEventListener("scopeball:locale-change", onChange);
-    return () => window.removeEventListener("scopeball:locale-change", onChange);
+    window.addEventListener("pasu:locale-change", onChange);
+    return () => window.removeEventListener("pasu:locale-change", onChange);
   }, []);
 
   const setLocale = (next: MarketLocale) => {
     window.localStorage.setItem(STORAGE_KEY, next);
-    window.dispatchEvent(new Event("scopeball:locale-change"));
+    window.dispatchEvent(new Event("pasu:locale-change"));
     setLocaleState(next);
   };
 

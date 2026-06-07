@@ -98,6 +98,40 @@ describe("dashboard/api", () => {
     expect(reinstallFn).toBe(mocks.reinstallAllPolicies);
   });
 
+  it("put-raw stores drafts without enabling them", async () => {
+    const res = await handleDashboardRequest({
+      type: "dashboard:put-raw",
+      id: "dashboard::draft/x",
+      text: RAW_TEXT,
+      life: "draft",
+    });
+
+    expect(res.ok).toBe(true);
+    expect(await listManaged()).toMatchObject([
+      { id: "dashboard::draft/x", life: "draft" },
+    ]);
+    expect(mocks.applyEnabledIds).toHaveBeenCalledTimes(1);
+    const [ids] = mocks.applyEnabledIds.mock.calls[0];
+    expect(ids).not.toContain("dashboard::draft/x");
+  });
+
+  it("put-raw removes an existing enabled id when saving as draft", async () => {
+    mocks.localStore.set("policy-selection:enabled-ids:test-user", [
+      "dashboard::draft/x",
+    ]);
+
+    const res = await handleDashboardRequest({
+      type: "dashboard:put-raw",
+      id: "dashboard::draft/x",
+      text: RAW_TEXT,
+      life: "draft",
+    });
+
+    expect(res.ok).toBe(true);
+    const [ids] = mocks.applyEnabledIds.mock.calls[0];
+    expect(ids).not.toContain("dashboard::draft/x");
+  });
+
   it("put-raw rejects unparseable text", async () => {
     const res = await handleDashboardRequest({
       type: "dashboard:put-raw",

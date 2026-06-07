@@ -8,9 +8,10 @@
  * with a slim, Promise-based API that the dashboard pages call
  * instead of HTTP fetches.
  *
- * All calls fail soft when the extension isn't installed
- * (`ExtensionBridgeTimeout`) so the page renders empty state instead
- * of an error wall.
+ * Read calls fail soft when the extension isn't installed
+ * (`ExtensionBridgeTimeout`) so the page renders empty state instead of an
+ * error wall. Writes surface bridge failures so callers do not navigate as if
+ * a policy was saved when the extension never accepted it.
  */
 
 import { sendToExtension, ExtensionBridgeTimeout } from "./extension-bridge";
@@ -87,37 +88,27 @@ export interface PutPolicyOpts {
 
 /** Install/update a policy in the extension's local store + wasm engine. */
 export async function putPolicy(opts: PutPolicyOpts): Promise<void> {
-  try {
-    await sendToExtension({
-      type: "dashboard:put-raw",
-      id: opts.id,
-      text: opts.cedarText,
-      ...(opts.policyTree != null ? { policyTree: opts.policyTree } : {}),
-      ...(opts.displayName ? { displayName: opts.displayName } : {}),
-      ...(opts.manifest !== undefined ? { manifest: opts.manifest } : {}),
-      ...(opts.life ? { life: opts.life } : {}),
-      ...(opts.source ? { source: opts.source } : {}),
-      ...(opts.cat ? { cat: opts.cat } : {}),
-      ...(opts.method ? { method: opts.method } : {}),
-      ...(opts.dupKey ? { dupKey: opts.dupKey } : {}),
-      ...(opts.memo !== undefined ? { memo: opts.memo } : {}),
-      ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
-      ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
-    });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return; // extension not installed
-    throw err;
-  }
+  await sendToExtension({
+    type: "dashboard:put-raw",
+    id: opts.id,
+    text: opts.cedarText,
+    ...(opts.policyTree != null ? { policyTree: opts.policyTree } : {}),
+    ...(opts.displayName ? { displayName: opts.displayName } : {}),
+    ...(opts.manifest !== undefined ? { manifest: opts.manifest } : {}),
+    ...(opts.life ? { life: opts.life } : {}),
+    ...(opts.source ? { source: opts.source } : {}),
+    ...(opts.cat ? { cat: opts.cat } : {}),
+    ...(opts.method ? { method: opts.method } : {}),
+    ...(opts.dupKey ? { dupKey: opts.dupKey } : {}),
+    ...(opts.memo !== undefined ? { memo: opts.memo } : {}),
+    ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
+    ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
+  });
 }
 
 /** Delete a policy from the extension's local store. */
 export async function deletePolicy(id: string): Promise<void> {
-  try {
-    await sendToExtension({ type: "dashboard:delete", id });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return;
-    throw err;
-  }
+  await sendToExtension({ type: "dashboard:delete", id });
 }
 
 /** Read every dashboard-managed policy from the SW. Returns an empty
@@ -152,12 +143,7 @@ export async function getEnabledPolicyIds(): Promise<string[]> {
  *  SW handler is a setter, not a toggle) so the caller must compute
  *  `next = current.with/without(id)` before calling. */
 export async function setEnabledPolicyIds(ids: string[]): Promise<void> {
-  try {
-    await sendToExtension({ type: "set-enabled-ids", ids });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return;
-    throw err;
-  }
+  await sendToExtension({ type: "set-enabled-ids", ids });
 }
 
 /** Prefix the SW expects on dashboard-managed set ids. Distinct from
@@ -211,32 +197,22 @@ export interface PutPolicySetOpts {
 }
 
 export async function putPolicySet(opts: PutPolicySetOpts): Promise<void> {
-  try {
-    await sendToExtension({
-      type: "dashboard:put-set",
-      id: opts.id,
-      displayName: opts.displayName,
-      memberIds: opts.memberIds,
-      ...(opts.description != null ? { description: opts.description } : {}),
-      ...(opts.source ? { source: opts.source } : {}),
-      ...(opts.readOnly !== undefined ? { readOnly: opts.readOnly } : {}),
-      ...(opts.cat ? { cat: opts.cat } : {}),
-      ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
-      ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
-    });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return;
-    throw err;
-  }
+  await sendToExtension({
+    type: "dashboard:put-set",
+    id: opts.id,
+    displayName: opts.displayName,
+    memberIds: opts.memberIds,
+    ...(opts.description != null ? { description: opts.description } : {}),
+    ...(opts.source ? { source: opts.source } : {}),
+    ...(opts.readOnly !== undefined ? { readOnly: opts.readOnly } : {}),
+    ...(opts.cat ? { cat: opts.cat } : {}),
+    ...(opts.sourceListingId ? { sourceListingId: opts.sourceListingId } : {}),
+    ...(opts.sourceVersion ? { sourceVersion: opts.sourceVersion } : {}),
+  });
 }
 
 export async function deletePolicySet(id: string): Promise<void> {
-  try {
-    await sendToExtension({ type: "dashboard:delete-set", id });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return;
-    throw err;
-  }
+  await sendToExtension({ type: "dashboard:delete-set", id });
 }
 
 /**
@@ -247,12 +223,7 @@ export async function deletePolicySet(id: string): Promise<void> {
  * successful `fetchMe()`. Idempotent — passing the same id is a no-op.
  */
 export async function setCurrentUser(userId: string): Promise<void> {
-  try {
-    await sendToExtension({ type: "dashboard:set-current-user", userId });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return;
-    throw err;
-  }
+  await sendToExtension({ type: "dashboard:set-current-user", userId });
 }
 
 /**
@@ -262,12 +233,7 @@ export async function setCurrentUser(userId: string): Promise<void> {
  * the dashboard's logout path.
  */
 export async function clearCurrentUser(): Promise<void> {
-  try {
-    await sendToExtension({ type: "dashboard:clear-current-user" });
-  } catch (err) {
-    if (err instanceof ExtensionBridgeTimeout) return;
-    throw err;
-  }
+  await sendToExtension({ type: "dashboard:clear-current-user" });
 }
 
 /** Read whatever current-user id the SW currently has stored. Useful for

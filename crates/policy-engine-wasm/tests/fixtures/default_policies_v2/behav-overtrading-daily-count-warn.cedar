@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: F2 / ORDER (over-trading / churn).
+// pasu default v2 policy — explorer id: F2 / ORDER (over-trading / churn).
 // Personal-trading (TradFi pre-trade) family.
 //
 // Rule: warn when the wallet has already executed more than the user's daily

@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AIR-02 (claiming from a distributor
+// pasu default v2 policy — explorer id: AIR-02 (claiming from a distributor
 // contract that is not the legitimate source I am eligible from).
 //
 // METHOD-BACKED (Aggregator type 9 + state read; sv = PART). Wallet state holds

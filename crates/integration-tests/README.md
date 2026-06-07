@@ -97,7 +97,7 @@ cargo run -p policy-engine-integration-tests --bin v3-harness -- replay \
 
 ```bash
 # 키 설정 — .env 에 보관(커밋 안 됨). 최초 1회: 샘플 복사 후 키 채우기.
-cp crates/integration-tests/.env.sample crates/integration-tests/.env   # 그리고 ETHERSCAN_API_KEY 채우기
+cp crates/integration-tests/.env.example crates/integration-tests/.env   # 그리고 ETHERSCAN_API_KEY 채우기
 set -a; source crates/integration-tests/.env; set +a                    # 셸에 로드
 # (키 발급: https://etherscan.io/myapikey — v2 는 키 1개로 전 체인)
 

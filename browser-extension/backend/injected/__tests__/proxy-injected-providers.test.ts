@@ -746,14 +746,14 @@ describe("inpage provider proxy", () => {
       }),
     );
 
-    const scopeballAnnouncements = dispatchSpy.mock.calls.filter(([event]) => {
+    const pasuAnnouncements = dispatchSpy.mock.calls.filter(([event]) => {
       return (
         event instanceof CustomEvent &&
         event.type === "eip6963:announceProvider" &&
         event.detail?.info?.rdns === "dev.scopeball.wrapper"
       );
     });
-    expect(scopeballAnnouncements).toHaveLength(0);
+    expect(pasuAnnouncements).toHaveLength(0);
 
     dispatchSpy.mockRestore();
   });
@@ -786,7 +786,7 @@ describe("inpage provider proxy", () => {
       }),
     );
 
-    const scopeballAnnouncement = dispatchSpy.mock.calls.find(([event]) => {
+    const pasuAnnouncement = dispatchSpy.mock.calls.find(([event]) => {
       return (
         event instanceof CustomEvent &&
         event.type === "eip6963:announceProvider" &&
@@ -794,10 +794,10 @@ describe("inpage provider proxy", () => {
       );
     })?.[0] as CustomEvent | undefined;
 
-    expect(scopeballAnnouncement?.detail.provider).toBe(provider);
+    expect(pasuAnnouncement?.detail.provider).toBe(provider);
 
     await expect(
-      scopeballAnnouncement?.detail.provider.request({
+      pasuAnnouncement?.detail.provider.request({
         method: "eth_sendTransaction",
         params: [
           {

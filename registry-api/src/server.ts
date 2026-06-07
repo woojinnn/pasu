@@ -1,7 +1,8 @@
 /**
  * registry-api — HTTP server (caching authenticated reverse-proxy).
  *
- * policy-rpc/src/server.ts 미러: Node stdlib http.createServer, 단일
+ * 구 standalone Node policy-rpc 의 server 미러 (policy-rpc 는 은퇴하고
+ * crates/policy-server 로 대체됨): Node stdlib http.createServer, 단일
  * routeRequest dispatcher, writeJson helper, top-level try/catch → 500.
  *
  * Routes:

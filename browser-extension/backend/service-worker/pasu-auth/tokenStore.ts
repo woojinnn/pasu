@@ -1,10 +1,17 @@
 /**
- * Persistent JWT storage for the Scopeball (Rust) policy-rpc server.
+ * Persistent JWT storage for the Pasu (Rust) policy-rpc server.
  *
  * Stored in `chrome.storage.local` (≈5 MB quota, plenty for a couple of
- * tokens). Reads are memoised after the first lookup so hot-path code
- * (every request adds the `Authorization` header) doesn't pay async
+ * tokens). A NON-null token is memoised after the first lookup so hot-path
+ * code (every request adds the `Authorization` header) doesn't pay async
  * cost on each call.
+ *
+ * We deliberately do NOT cache a `null` (logged-out) read. The pasu-rename
+ * storage migration copies `scopeball_jwt` → `pasu_jwt` on SW boot; if a
+ * token read raced ahead of that `set` we'd otherwise poison the cache with
+ * `null` for the whole SW lifetime and show the user logged out until the SW
+ * recycled. Caching only real tokens means a later read (after the migration
+ * lands) still hits storage and succeeds.
  *
  * This is intentionally separate from the legacy 8787 policy-rpc client
  * — that path remains unauthenticated. Only the new
@@ -13,25 +20,29 @@
 
 import Browser from "webextension-polyfill";
 
-const ACCESS_KEY = "scopeball_jwt";
-const REFRESH_KEY = "scopeball_jwt_refresh";
+const ACCESS_KEY = "pasu_jwt";
+const REFRESH_KEY = "pasu_jwt_refresh";
 
-let accessCache: string | null | undefined;
-let refreshCache: string | null | undefined;
+// Only ever holds a real token: a logged-out / not-yet-migrated read leaves
+// the cache `null` so it stays a cache MISS and re-reads storage next time.
+let accessCache: string | null = null;
+let refreshCache: string | null = null;
 
 /** Read the access token. `null` when logged out. */
 export async function getAccessToken(): Promise<string | null> {
-  if (accessCache !== undefined) return accessCache;
+  if (accessCache !== null) return accessCache;
   const out = (await Browser.storage.local.get(ACCESS_KEY)) as Record<string, unknown>;
-  accessCache = typeof out[ACCESS_KEY] === "string" ? (out[ACCESS_KEY] as string) : null;
+  // Cache only a real token; never memoise the empty/logged-out result.
+  if (typeof out[ACCESS_KEY] === "string") accessCache = out[ACCESS_KEY] as string;
   return accessCache;
 }
 
 /** Read the refresh token. Optional — fall back to access only. */
 export async function getRefreshToken(): Promise<string | null> {
-  if (refreshCache !== undefined) return refreshCache;
+  if (refreshCache !== null) return refreshCache;
   const out = (await Browser.storage.local.get(REFRESH_KEY)) as Record<string, unknown>;
-  refreshCache = typeof out[REFRESH_KEY] === "string" ? (out[REFRESH_KEY] as string) : null;
+  // Cache only a real token; never memoise the empty/logged-out result.
+  if (typeof out[REFRESH_KEY] === "string") refreshCache = out[REFRESH_KEY] as string;
   return refreshCache;
 }
 
@@ -57,6 +68,6 @@ export async function clearTokens(): Promise<void> {
 /** Test hook — reset the in-memory cache so unit tests see fresh
  * storage reads. */
 export function _resetCacheForTests(): void {
-  accessCache = undefined;
-  refreshCache = undefined;
+  accessCache = null;
+  refreshCache = null;
 }

@@ -1,6 +1,6 @@
 # Throwaway in-cluster PostgreSQL for local Kubernetes testing only.
 # The Service name `postgres` is used by the local DATABASE_URL:
-# postgres://scopeball:scopeball@postgres:5432/scopeball
+# postgres://pasu:pasu@postgres:5432/pasu
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,11 +22,11 @@ spec:
           image: postgres:16-alpine
           env:
             - name: POSTGRES_USER
-              value: scopeball
+              value: pasu
             - name: POSTGRES_PASSWORD
-              value: scopeball
+              value: pasu
             - name: POSTGRES_DB
-              value: scopeball
+              value: pasu
             - name: POSTGRES_INITDB_ARGS
               value: "--no-sync"
           ports:
@@ -34,7 +34,7 @@ spec:
               containerPort: 5432
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "scopeball", "-d", "scopeball"]
+              command: ["pg_isready", "-U", "pasu", "-d", "pasu"]
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:

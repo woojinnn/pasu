@@ -14,6 +14,8 @@
 use std::str::FromStr;
 use std::time::Duration;
 
+use async_trait::async_trait;
+
 use policy_state::pending::{
     AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
 };
@@ -23,6 +25,7 @@ use policy_state::{DataSource, StateDelta};
 
 use crate::config::UniswapConfig;
 use crate::error::SyncError;
+use crate::fetchers::venue::IntentFetcher;
 
 /// Default public v2 order-service base URL (no api-key required).
 pub const UNISWAP_V2_ORDERS_BASE: &str = "https://api.uniswap.org/v2";
@@ -76,6 +79,35 @@ impl UniswapXFetcher {
             reason: format!("decode: {e}"),
         })?;
         Ok(parse_orders(&body).unwrap_or_default())
+    }
+}
+
+/// `UniswapX` V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
+/// reactors can be threaded through config later (spec §12).
+#[must_use]
+pub fn uniswap_x_reactor() -> Address {
+    Address::from_str("0x00000011f84b9aa48e5f8aa8b9897600006289be").unwrap_or(Address::ZERO)
+}
+
+#[async_trait]
+impl IntentFetcher for UniswapXFetcher {
+    /// Discover this swapper's `UniswapX` orders and project each into a
+    /// `PendingTx`. The inherent `fetch_orders(swapper)` (1-arg) lists the raw
+    /// orders; this trait method (3-arg) layers the projection on top so the
+    /// orchestrator can dispatch over `&dyn IntentFetcher`.
+    async fn fetch_orders(
+        &self,
+        swapper: &Address,
+        now: Time,
+    ) -> Result<Vec<PendingTx>, SyncError> {
+        let reactor = uniswap_x_reactor();
+        // 1-arg method-call resolves to the inherent `fetch_orders` (the trait
+        // method takes 3 args), so this is not a recursive self-call.
+        let raw = self.fetch_orders(swapper).await?;
+        Ok(raw
+            .iter()
+            .map(|o| o.to_pending_tx(reactor, swapper, now))
+            .collect())
     }
 }
 

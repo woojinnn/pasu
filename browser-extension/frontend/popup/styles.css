@@ -226,8 +226,8 @@ main {
   color: var(--deny);
 }
 
-/* Scopeball server (Rust policy-rpc) auth strip. Sits above the catalog. */
-.scopeball-auth-strip {
+/* Pasu server (Rust policy-rpc) auth strip. Sits above the catalog. */
+.pasu-auth-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -239,7 +239,7 @@ main {
   border-bottom: 1px solid #2a2a35;
 }
 
-.scopeball-auth-strip button {
+.pasu-auth-strip button {
   font-size: 11px;
   padding: 2px 8px;
 }

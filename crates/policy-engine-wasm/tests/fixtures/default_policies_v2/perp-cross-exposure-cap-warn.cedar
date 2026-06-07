@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: PERP-10 (total cross-margin exposure
+// pasu default v2 policy — explorer id: PERP-10 (total cross-margin exposure
 // over your account-wide limit).
 //
 // Cross positions all share one collateral pool, so a new entry stacks on top of

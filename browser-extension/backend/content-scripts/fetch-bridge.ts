@@ -52,7 +52,7 @@ stream.on("data", async (message: Message) => {
   } catch (err) {
     // Fail-CLOSED: no SW ⇒ no verdict ⇒ block the order.
     console.error(
-      "[Scopeball] cannot reach service worker (extension reloaded?) — " +
+      "[Pasu] cannot reach service worker (extension reloaded?) — " +
         "venue order blocked. Reload this tab to restore policy evaluation.",
       err,
     );

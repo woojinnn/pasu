@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: PERP-03 (position concentration).
+// pasu default v2 policy — explorer id: PERP-03 (position concentration).
 //
 // Rule: warn if this position's notional is large relative to the account's
 // total collateral (ratio > 5.0000 = "risking too much per trade"). The ratio

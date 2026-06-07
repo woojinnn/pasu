@@ -9,7 +9,7 @@ import { useState } from "react";
  * rebuild. The SW picks it up live (its `chrome.storage.onChanged`
  * listener); the dashboard reads it on next load — hence the reload hint.
  */
-const KEY = "scopeball_server_url";
+const KEY = "pasu_server_url";
 
 const PRESETS = [
   { label: "로컬 (테스트)", url: "http://127.0.0.1:8788" },
@@ -49,7 +49,7 @@ export function SettingsPage() {
       <h1 style={{ fontSize: 20, marginBottom: 6 }}>설정 — 서버 환경</h1>
       <p style={{ opacity: 0.7, fontSize: 13, marginTop: 0 }}>
         대시보드 + 서비스워커가 호출할 policy-server 주소. 비우면 빌드 기본값
-        (<code>SCOPEBALL_SERVER_URL</code>)을 사용합니다.
+        (<code>PASU_SERVER_URL</code>)을 사용합니다.
       </p>
 
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>

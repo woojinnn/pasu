@@ -5,21 +5,15 @@
  * mypolicy redesign one screen at a time. Default is off; flip to
  * `true` (in-code) once the corresponding phase ships and bakes.
  *
- * Dev override: set `VITE_FEATURES=newListView,newChooser` in your
- * env to force flags on at build time. Unrecognised names are
+ * Dev override: set `VITE_FEATURES=newChooser,marketUpdateBadge` in
+ * your env to force flags on at build time. Unrecognised names are
  * silently ignored.
  */
 
-type FeatureName =
-  | "newListView"
-  | "newChooser"
-  | "newEditorView"
-  | "marketUpdateBadge";
+type FeatureName = "newChooser" | "marketUpdateBadge";
 
 const DEFAULTS: Record<FeatureName, boolean> = {
-  newListView: true,
   newChooser: true,
-  newEditorView: true,
   marketUpdateBadge: true,
 };
 

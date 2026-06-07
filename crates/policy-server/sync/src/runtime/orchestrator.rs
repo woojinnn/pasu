@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
+use policy_state::pending::{PendingKind, PendingTx};
 use policy_state::{
     Confidence, DataSource, LiveField, Position, PositionKind, Price, ProtocolRef, SignedI256,
     Time, WalletState, U256,
@@ -21,8 +22,9 @@ use crate::error::SyncError;
 use crate::fetchers::onchain::OnchainCall;
 use crate::fetchers::oracle::{provider_key, PriceFetcher, RestJsonOracleFetcher};
 use crate::fetchers::{
-    ChainlinkFetcher, HyperliquidFetcher, OnchainViewFetcher, RegistryFetcher, UniswapFetcher,
-    UniswapXFetcher, UniswapXOrder,
+    ChainlinkFetcher, CowSwapFetcher, HyperliquidFetcher, IntentFetcher, OnchainViewFetcher,
+    OneInchFusionFetcher, OneInchFusionPlusFetcher, OneInchLopFetcher, RegistryFetcher,
+    UniswapFetcher, UniswapXFetcher,
 };
 use crate::walker::{walk_stale, ActionSlot, FieldLocation, WalkStats};
 
@@ -44,6 +46,19 @@ pub struct HyperliquidAccountReport {
 #[derive(Debug, Default, Clone)]
 pub struct IntentOrdersReport {
     pub orders_updated: usize,
+    /// Orders snapshot-pruned because they left an active-orderbook venue's
+    /// listing (see `IntentFetcher::authoritative_prefix`).
+    pub orders_pruned: usize,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct PermitReconcileReport {
+    /// Signed permit/permit2 pending entries retired this tick (expired or
+    /// consumed) and pruned from `state.pending`.
+    pub permits_retired: usize,
+    /// Non-fatal errors (e.g. a Permit2 nonce-bitmap RPC read failed). The
+    /// affected entry is left `Active` and retried next tick.
     pub errors: Vec<String>,
 }
 
@@ -55,6 +70,10 @@ pub struct Orchestrator {
     hyperliquid: Option<HyperliquidFetcher>,
     uniswap: Option<UniswapFetcher>,
     uniswap_x: Option<UniswapXFetcher>,
+    cow_swap: Option<CowSwapFetcher>,
+    one_inch_fusion: Option<OneInchFusionFetcher>,
+    one_inch_fusion_plus: Option<OneInchFusionPlusFetcher>,
+    one_inch_lop: Option<OneInchLopFetcher>,
     calc: CalcRegistry,
     // Global values used by derived live-field inputs.
     globals: crate::resolver::GlobalValues,
@@ -72,6 +91,10 @@ impl Orchestrator {
             hyperliquid: None,
             uniswap: Some(UniswapFetcher::new()),
             uniswap_x: None,
+            cow_swap: None,
+            one_inch_fusion: None,
+            one_inch_fusion_plus: None,
+            one_inch_lop: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: None,
@@ -130,6 +153,53 @@ impl Orchestrator {
     }
 
     #[must_use]
+    pub fn with_cowswap(mut self, cow: CowSwapFetcher) -> Self {
+        self.cow_swap = Some(cow);
+        self
+    }
+
+    #[must_use]
+    pub fn with_one_inch_fusion(mut self, fusion: OneInchFusionFetcher) -> Self {
+        self.one_inch_fusion = Some(fusion);
+        self
+    }
+
+    #[must_use]
+    pub fn with_one_inch_fusion_plus(mut self, fusion_plus: OneInchFusionPlusFetcher) -> Self {
+        self.one_inch_fusion_plus = Some(fusion_plus);
+        self
+    }
+
+    #[must_use]
+    pub fn with_one_inch_lop(mut self, lop: OneInchLopFetcher) -> Self {
+        self.one_inch_lop = Some(lop);
+        self
+    }
+
+    /// Collect every configured intent-order fetcher as `&dyn IntentFetcher`.
+    /// An unconfigured venue (`None` Option) is simply absent from the list, so
+    /// `sync_intent_orders` polls exactly the venues that are wired.
+    fn intent_fetchers(&self) -> Vec<&dyn IntentFetcher> {
+        let mut fetchers: Vec<&dyn IntentFetcher> = Vec::new();
+        if let Some(f) = self.uniswap_x.as_ref() {
+            fetchers.push(f);
+        }
+        if let Some(f) = self.cow_swap.as_ref() {
+            fetchers.push(f);
+        }
+        if let Some(f) = self.one_inch_fusion.as_ref() {
+            fetchers.push(f);
+        }
+        if let Some(f) = self.one_inch_fusion_plus.as_ref() {
+            fetchers.push(f);
+        }
+        if let Some(f) = self.one_inch_lop.as_ref() {
+            fetchers.push(f);
+        }
+        fetchers
+    }
+
+    #[must_use]
     pub fn with_calc(mut self, calc: CalcRegistry) -> Self {
         self.calc = calc;
         self
@@ -148,6 +218,10 @@ impl Orchestrator {
             hyperliquid: Some(HyperliquidFetcher::new()),
             uniswap: Some(UniswapFetcher::new()),
             uniswap_x: None,
+            cow_swap: None,
+            one_inch_fusion: None,
+            one_inch_fusion_plus: None,
+            one_inch_lop: None,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -180,6 +254,26 @@ impl Orchestrator {
             .uniswap
             .as_ref()
             .map(UniswapXFetcher::from_sync_config);
+        let cow_swap = cfg
+            .venues
+            .cowswap
+            .as_ref()
+            .map(CowSwapFetcher::from_sync_config);
+        let one_inch_fusion = cfg
+            .venues
+            .one_inch_fusion
+            .as_ref()
+            .map(OneInchFusionFetcher::from_sync_config);
+        let one_inch_fusion_plus = cfg
+            .venues
+            .one_inch_fusion_plus
+            .as_ref()
+            .map(OneInchFusionPlusFetcher::from_sync_config);
+        let one_inch_lop = cfg
+            .venues
+            .one_inch_lop
+            .as_ref()
+            .map(OneInchLopFetcher::from_sync_config);
         Ok(Self {
             onchain,
             price_fetchers,
@@ -187,6 +281,10 @@ impl Orchestrator {
             hyperliquid,
             uniswap: Some(UniswapFetcher::new()),
             uniswap_x,
+            cow_swap,
+            one_inch_fusion,
+            one_inch_fusion_plus,
+            one_inch_lop,
             calc: CalcRegistry::with_builtins(),
             globals: crate::resolver::GlobalValues::new(),
             router: Some(router),
@@ -261,33 +359,122 @@ impl Orchestrator {
         })
     }
 
-    /// Discover and reconcile `UniswapX` (intent) order status for this wallet.
-    /// Venue is the source of truth: each configured chain is polled and the
-    /// returned orders are upserted into `state.pending` (keyed by `orderHash`).
+    /// Discover and reconcile off-chain intent-order status for this wallet
+    /// across every configured venue (`UniswapX` / `CowSwap` / `1inch Fusion`).
+    /// Each fetcher is the source of truth for its venue: it is polled and the
+    /// returned orders are upserted into `state.pending` (keyed by the venue
+    /// order id embedded in `PendingTx.id`). A single fetcher error is recorded
+    /// in `report.errors` and the tick continues — one dead venue never aborts
+    /// the others.
     pub async fn sync_intent_orders(
         &self,
         state: &mut WalletState,
         now: Time,
     ) -> Result<IntentOrdersReport, SyncError> {
-        let Some(uni) = self.uniswap_x.as_ref() else {
-            return Ok(IntentOrdersReport {
-                orders_updated: 0,
-                errors: vec!["uniswap_x fetcher is not configured".into()],
-            });
-        };
         let swapper = state.wallet_id.address;
-        let mut report = IntentOrdersReport::default();
-        let reactor = uniswap_x_reactor();
-        // v2 lists by swapper across all chains in one call; each order carries
-        // its own chainId, so there is no per-chain loop.
-        match uni.fetch_orders(&swapper).await {
-            Ok(orders) => {
-                report.orders_updated = orders.len();
-                upsert_intent_orders(state, &orders, reactor, &swapper, now);
+        let fetchers = self.intent_fetchers();
+        Ok(run_intent_sync(&fetchers, state, &swapper, now).await)
+    }
+
+    /// Reconcile signed off-chain permit / permit2 entries in `state.pending`
+    /// and retire (prune) the ones that have settled.
+    ///
+    /// This is the lifecycle-closer for the permits the extension reports via
+    /// `POST /wallets/:address/permits`. It runs as a **separate** per-tick step
+    /// from `sync_intent_orders` (it must not disturb the intent-fetcher flow)
+    /// and touches ONLY the three `Signed*` `PendingKind` variants — intent
+    /// orders share `state.pending`, so a loose filter would prune live intents.
+    ///
+    /// Two retire rules:
+    /// * **Expiry** (all three kinds, no RPC): `valid_until < now` → mark
+    ///   `Expired` and prune. Always runs.
+    /// * **Consumed** (`SignedPermit2Transfer` only): read the Permit2 unordered
+    ///   nonce bitmap on-chain (`nonceBitmap(owner, word)`); if the signed bit is
+    ///   set the `SignatureTransfer` was executed → mark `Filled` and prune. Best-
+    ///   effort: with no `RpcRouter` (or on RPC error) the entry is left `Active`
+    ///   and retried next tick — never aborts the tick.
+    ///
+    /// FOLLOW-UP (deliberately NOT built here): the Permit2 `AllowanceTransfer`
+    /// internal-allowance reader. `SignedPermit2` (allowance) and `SignedEIP2612`
+    /// use a sequential allowance/nonce model, not the unordered bitmap, so their
+    /// "consumed" detection needs an `allowance(owner, token, spender)` read
+    /// against Permit2 / the token — a sibling to `discovery/approvals.rs`. Until
+    /// then those two kinds are expiry-only.
+    pub async fn reconcile_permits(
+        &self,
+        state: &mut WalletState,
+        now: Time,
+    ) -> Result<PermitReconcileReport, SyncError> {
+        let mut report = PermitReconcileReport::default();
+        let owner = state.wallet_id.address;
+
+        // Collect retire decisions first (immutable walk), then mutate. Pure
+        // expiry needs no I/O; the consumed-check fetches the bitmap inline but
+        // the decision logic is factored into pure helpers for unit testing.
+        let mut to_prune: Vec<String> = Vec::new();
+
+        for pending in &state.pending {
+            // Only signed permit/permit2 entries — intents are reconciled by
+            // `sync_intent_orders`, perp/limit pendings by their own paths.
+            if !is_signed_permit_kind(&pending.kind) {
+                continue;
             }
-            Err(e) => report.errors.push(format!("uniswap_x: {e}")),
+
+            // 1) Expiry — uniform across all three kinds, no RPC.
+            if permit_is_expired(pending.lifecycle.valid_until, now) {
+                to_prune.push(pending.id.clone());
+                report.permits_retired += 1;
+                continue;
+            }
+
+            // 2) Consumed — SignatureTransfer only (unordered nonce bitmap).
+            if let PendingKind::SignedPermit2Transfer { token, nonce, .. } = &pending.kind {
+                let (word, bit) = *nonce;
+                let chain = token.key.chain();
+                match self.permit2_nonce_consumed(chain, owner, word, bit).await {
+                    Ok(true) => {
+                        to_prune.push(pending.id.clone());
+                        report.permits_retired += 1;
+                    }
+                    Ok(false) => {}
+                    Err(e) => report
+                        .errors
+                        .push(format!("permit2 nonce-bitmap read for {}: {e}", pending.id)),
+                }
+            }
+        }
+
+        if !to_prune.is_empty() {
+            state.pending.retain(|p| !to_prune.contains(&p.id));
         }
         Ok(report)
+    }
+
+    /// Read the Permit2 unordered-nonce bitmap word for `(owner, word)` on
+    /// `chain` and report whether `bit` is set (i.e. the `SignatureTransfer` was
+    /// consumed). Best-effort: returns `Ok(false)` only on a clear "not set";
+    /// any inability to read (no router, RPC error, short return) is an `Err`
+    /// the caller records and the entry stays `Active`.
+    async fn permit2_nonce_consumed(
+        &self,
+        chain: &policy_state::ChainId,
+        owner: policy_state::primitives::Address,
+        word: U256,
+        bit: u8,
+    ) -> Result<bool, SyncError> {
+        let router = self.router.as_ref().ok_or_else(|| SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: "no RpcRouter configured".into(),
+        })?;
+        let permit2 = permit2_contract_address()?;
+        let req =
+            crate::fetchers::rpc::EthCallRequest::new(permit2, encode_nonce_bitmap(owner, word));
+        let return_data = router.eth_call(chain, req).await?;
+        let bitmap = decode_u256_be(&return_data).ok_or_else(|| SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: format!("short nonceBitmap return ({} bytes)", return_data.len()),
+        })?;
+        Ok(bitmap_bit_is_set(bitmap, bit))
     }
 
     /// Best-effort **core** account sync (every tick): fetch the native-dex core,
@@ -869,30 +1056,68 @@ fn upsert_hyperliquid_account(
     Ok(())
 }
 
-/// `UniswapX` V2 reactor on Ethereum mainnet (the permit-cap spender). Per-chain
-/// reactors can be threaded through config later (spec §12).
-fn uniswap_x_reactor() -> policy_state::Address {
-    use std::str::FromStr;
-    policy_state::Address::from_str("0x00000011f84b9aa48e5f8aa8b9897600006289be")
-        .unwrap_or(policy_state::Address::ZERO)
+/// Upsert discovered intent orders into `state.pending`, keyed by the venue
+/// order id embedded in `PendingTx.id`. Existing entries are replaced in place
+/// (status transitions); new ones are appended. Each fetcher has already
+/// projected its venue's orders into the canonical `PendingTx` shape.
+/// Run the intent-order sync loop over `fetchers`, mutating `state` and
+/// returning a report. Extracted from `sync_intent_orders` so the loop —
+/// including the snapshot-prune safety property — is unit-testable with stub
+/// fetchers (the public `Orchestrator` exposes no fetcher injection).
+///
+/// Per fetcher: a successful fetch is applied via `apply_intent_orders` (which
+/// upserts and, when authoritative, snapshot-prunes); a failed fetch is recorded
+/// and **never prunes** (the snapshot-prune lives only on the `Ok` arm), so a
+/// transient venue error can never drop live tracked orders.
+pub(crate) async fn run_intent_sync(
+    fetchers: &[&dyn IntentFetcher],
+    state: &mut WalletState,
+    swapper: &policy_state::primitives::Address,
+    now: Time,
+) -> IntentOrdersReport {
+    let mut report = IntentOrdersReport::default();
+    for fetcher in fetchers {
+        match fetcher.fetch_orders(swapper, now).await {
+            Ok(orders) => {
+                report.orders_updated += orders.len();
+                report.orders_pruned +=
+                    apply_intent_orders(state, &orders, fetcher.authoritative_prefix());
+            }
+            Err(e) => report.errors.push(format!("{e}")),
+        }
+    }
+    report
 }
 
-/// Upsert discovered `UniswapX` orders into `state.pending`, keyed by the venue
-/// `orderHash` embedded in `PendingTx.id`. Existing entries are replaced in
-/// place (status transitions); new ones are appended.
-pub(crate) fn upsert_intent_orders(
+/// Apply one fetcher's **successful** result to `state`: `upsert_intent_orders`
+/// (prune terminal, upsert active/partial), then — when the fetcher is
+/// snapshot-authoritative for `prefix` — prune any tracked id under `prefix`
+/// absent from `orders` (it left the active listing → no longer open). Returns
+/// the number snapshot-pruned. MUST only be called for an `Ok` fetch; see
+/// `IntentFetcher::authoritative_prefix` for the completeness contract.
+pub(crate) fn apply_intent_orders(
     state: &mut WalletState,
-    orders: &[UniswapXOrder],
-    reactor: policy_state::Address,
-    swapper: &policy_state::Address,
-    now: Time,
-) {
+    orders: &[PendingTx],
+    authoritative_prefix: Option<&str>,
+) -> usize {
+    upsert_intent_orders(state, orders);
+    let Some(prefix) = authoritative_prefix else {
+        return 0;
+    };
+    let returned: std::collections::HashSet<&str> = orders.iter().map(|o| o.id.as_str()).collect();
+    let before = state.pending.len();
+    state
+        .pending
+        .retain(|p| !p.id.starts_with(prefix) || returned.contains(p.id.as_str()));
+    before - state.pending.len()
+}
+
+pub(crate) fn upsert_intent_orders(state: &mut WalletState, orders: &[PendingTx]) {
     use policy_state::pending::PendingStatus;
-    for order in orders {
-        let pending = order.to_pending_tx(reactor, swapper, now);
+    for pending in orders {
         // Terminal orders are pruned from `pending` — filled / cancelled /
-        // expired / failed no longer need tracking. Active ones are upserted in
-        // place (status transitions) or appended.
+        // expired / failed no longer need tracking. Active / partially-filled
+        // ones are upserted in place (status transitions) or appended.
         let terminal = matches!(
             pending.lifecycle.status,
             PendingStatus::Filled
@@ -903,9 +1128,9 @@ pub(crate) fn upsert_intent_orders(
         if terminal {
             state.pending.retain(|p| p.id != pending.id);
         } else if let Some(existing) = state.pending.iter_mut().find(|p| p.id == pending.id) {
-            *existing = pending;
+            *existing = pending.clone();
         } else {
-            state.pending.push(pending);
+            state.pending.push(pending.clone());
         }
     }
 }
@@ -1021,6 +1246,68 @@ fn bitmap_bit_is_set(bitmap: U256, bit: u8) -> bool {
     (bytes[byte_index] & (1u8 << bit_index)) != 0
 }
 
+// ---------------------------------------------------------------------------
+// Permit reconciler helpers (pure decision logic, factored for unit tests).
+// ---------------------------------------------------------------------------
+
+/// Canonical Permit2 contract address — same on every EVM chain (matches the
+/// hardcoded spender in `discovery/known_spenders.rs`).
+const PERMIT2_ADDRESS_HEX: &str = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+
+/// `nonceBitmap(address,uint256)` selector — `keccak256(sig)[..4]`. Verified by
+/// `nonce_bitmap_selector_is_correct`.
+const NONCE_BITMAP_SELECTOR: [u8; 4] = [0x4f, 0xe0, 0x2b, 0x44];
+
+fn permit2_contract_address() -> Result<policy_state::primitives::Address, SyncError> {
+    use std::str::FromStr;
+    policy_state::primitives::Address::from_str(PERMIT2_ADDRESS_HEX).map_err(|e| {
+        SyncError::FetchFailed {
+            source_id: "permit2_nonce_bitmap".into(),
+            reason: format!("bad Permit2 address constant: {e}"),
+        }
+    })
+}
+
+/// ABI-encode `nonceBitmap(owner, word)` calldata: selector + owner (left-
+/// padded) + word.
+fn encode_nonce_bitmap(owner: policy_state::primitives::Address, word: U256) -> Vec<u8> {
+    let mut out = Vec::with_capacity(4 + 32 + 32);
+    out.extend_from_slice(&NONCE_BITMAP_SELECTOR);
+    out.extend_from_slice(&[0u8; 12]);
+    out.extend_from_slice(owner.as_slice());
+    out.extend_from_slice(&word.to_be_bytes::<32>());
+    out
+}
+
+/// Decode a single `uint256` return value (the bitmap word). `None` when the
+/// return is shorter than 32 bytes (treat as unreadable, not "unset").
+fn decode_u256_be(return_data: &[u8]) -> Option<U256> {
+    if return_data.len() < 32 {
+        return None;
+    }
+    let mut bytes = [0u8; 32];
+    bytes.copy_from_slice(&return_data[..32]);
+    Some(U256::from_be_bytes(bytes))
+}
+
+/// True for the three signed off-chain permit/permit2 pending kinds the
+/// reconciler owns. Excludes intent/perp/limit pendings that share `pending`.
+const fn is_signed_permit_kind(kind: &PendingKind) -> bool {
+    matches!(
+        kind,
+        PendingKind::SignedEIP2612 { .. }
+            | PendingKind::SignedPermit2 { .. }
+            | PendingKind::SignedPermit2Transfer { .. }
+    )
+}
+
+/// A signed permit is expired when it has a `valid_until` strictly before `now`.
+/// A `None` deadline (shouldn't happen for these kinds — the reducers always set
+/// it) is treated as never-expiring.
+fn permit_is_expired(valid_until: Option<Time>, now: Time) -> bool {
+    matches!(valid_until, Some(until) if until.as_unix() < now.as_unix())
+}
+
 fn action_body_for_location<'a>(
     action: &'a Action,
     location: &FieldLocation,
@@ -1129,13 +1416,7 @@ mod tests {
             buy_token: Address::ZERO,
             buy_min: U256::from(1u64),
         };
-        super::upsert_intent_orders(
-            &mut state,
-            std::slice::from_ref(&open),
-            reactor,
-            &swapper,
-            now,
-        );
+        super::upsert_intent_orders(&mut state, &[open.to_pending_tx(reactor, &swapper, now)]);
         assert_eq!(state.pending.len(), 1);
         assert_eq!(state.pending[0].id, "intent:uniswap_x:0xhash1");
         assert_eq!(state.pending[0].lifecycle.status, PendingStatus::Active);
@@ -1145,10 +1426,258 @@ mod tests {
             order_status: "filled".into(),
             ..open
         };
-        super::upsert_intent_orders(&mut state, &[filled], reactor, &swapper, now);
+        super::upsert_intent_orders(&mut state, &[filled.to_pending_tx(reactor, &swapper, now)]);
         assert!(
             state.pending.is_empty(),
             "terminal order pruned from pending"
+        );
+    }
+
+    #[tokio::test]
+    async fn intent_fetcher_trait_dispatch_persists_orders() {
+        use crate::fetchers::IntentFetcher;
+        use async_trait::async_trait;
+        use policy_state::pending::{
+            AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
+        };
+        use policy_state::primitives::{Address, ChainId, Time, VenueRef, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::{DataSource, StateDelta, WalletId};
+
+        fn make_pending(id: &str) -> PendingTx {
+            let token = TokenRef {
+                key: TokenKey::Native {
+                    chain: ChainId::ethereum_mainnet(),
+                },
+            };
+            PendingTx {
+                id: id.into(),
+                kind: PendingKind::OffchainLimitOrder {
+                    venue: VenueRef {
+                        name: "stub".into(),
+                        chain: Some(ChainId::ethereum_mainnet()),
+                    },
+                    sell: token.clone(),
+                    buy: token.clone(),
+                    sell_max: U256::from(1u64),
+                    buy_min: U256::from(1u64),
+                    order_kind: OrderKind::Limit,
+                },
+                commitment: AssetCommitment::PermitCap {
+                    token,
+                    spender: Address::ZERO,
+                    max_out: U256::from(1u64),
+                },
+                fill_effect: Box::new(StateDelta::new()),
+                lifecycle: PendingLifecycle {
+                    status: PendingStatus::Active,
+                    valid_until: None,
+                    nonce: None,
+                    on_chain_tx: None,
+                    raw_status: None,
+                },
+                sync: DataSource::UserSupplied,
+                signed_at: Time::from_unix(0),
+                signature_payload: Vec::new(),
+            }
+        }
+
+        struct StubFetcher;
+        #[async_trait]
+        impl IntentFetcher for StubFetcher {
+            async fn fetch_orders(
+                &self,
+                _swapper: &Address,
+                _now: Time,
+            ) -> Result<Vec<PendingTx>, SyncError> {
+                Ok(vec![
+                    make_pending("intent:stub:a"),
+                    make_pending("intent:stub:b"),
+                ])
+            }
+        }
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        let orders = StubFetcher
+            .fetch_orders(&Address::ZERO, Time::from_unix(0))
+            .await
+            .unwrap();
+        assert_eq!(orders.len(), 2);
+        super::upsert_intent_orders(&mut state, &orders);
+
+        assert_eq!(state.pending.len(), 2);
+        assert!(state.pending.iter().any(|p| p.id == "intent:stub:a"));
+        assert!(state.pending.iter().any(|p| p.id == "intent:stub:b"));
+    }
+
+    // --- snapshot-prune (authoritative_prefix) for active-orderbook venues ---
+
+    fn snapshot_pending(id: &str) -> PendingTx {
+        use policy_state::pending::{
+            AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus,
+        };
+        use policy_state::primitives::{Address, ChainId, Time, VenueRef, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::{DataSource, StateDelta};
+
+        let token = TokenRef {
+            key: TokenKey::Native {
+                chain: ChainId::ethereum_mainnet(),
+            },
+        };
+        PendingTx {
+            id: id.into(),
+            kind: PendingKind::OffchainLimitOrder {
+                venue: VenueRef::new("one_inch_limit_order"),
+                sell: token.clone(),
+                buy: token.clone(),
+                sell_max: U256::from(1u64),
+                buy_min: U256::from(1u64),
+                order_kind: OrderKind::Limit,
+            },
+            commitment: AssetCommitment::PermitCap {
+                token,
+                spender: Address::ZERO,
+                max_out: U256::from(1u64),
+            },
+            fill_effect: Box::new(StateDelta::new()),
+            lifecycle: PendingLifecycle {
+                status: PendingStatus::Active,
+                valid_until: None,
+                nonce: None,
+                on_chain_tx: None,
+                raw_status: None,
+            },
+            sync: DataSource::UserSupplied,
+            signed_at: Time::from_unix(0),
+            signature_payload: Vec::new(),
+        }
+    }
+
+    /// A configurable stub: returns a fixed `Ok`/`Err`, with a configurable
+    /// `authoritative_prefix`.
+    struct PrefixStub {
+        result: Result<Vec<PendingTx>, ()>,
+        prefix: Option<&'static str>,
+    }
+
+    #[async_trait::async_trait]
+    impl IntentFetcher for PrefixStub {
+        async fn fetch_orders(
+            &self,
+            _swapper: &policy_state::primitives::Address,
+            _now: Time,
+        ) -> Result<Vec<PendingTx>, SyncError> {
+            self.result.clone().map_err(|()| SyncError::FetchFailed {
+                source_id: "prefix_stub".into(),
+                reason: "boom".into(),
+            })
+        }
+        fn authoritative_prefix(&self) -> Option<&str> {
+            self.prefix
+        }
+    }
+
+    fn state_with(ids: &[&str]) -> WalletState {
+        use policy_state::primitives::{Address, ChainId};
+        use policy_state::WalletId;
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        for id in ids {
+            state.pending.push(snapshot_pending(id));
+        }
+        state
+    }
+
+    #[tokio::test]
+    async fn snapshot_prune_retires_orders_absent_from_authoritative_fetch() {
+        // Two LOP orders tracked; the fetch returns only `a` (b left the book) +
+        // a non-LOP order is untouched.
+        let mut state = state_with(&[
+            "intent:one_inch_limit_order:a",
+            "intent:one_inch_limit_order:b",
+            "intent:cow_swap:z",
+        ]);
+        let fetcher = PrefixStub {
+            result: Ok(vec![snapshot_pending("intent:one_inch_limit_order:a")]),
+            prefix: Some("intent:one_inch_limit_order:"),
+        };
+        let report = run_intent_sync(
+            &[&fetcher],
+            &mut state,
+            &policy_state::primitives::Address::ZERO,
+            Time::from_unix(0),
+        )
+        .await;
+
+        assert_eq!(report.orders_pruned, 1);
+        assert!(report.errors.is_empty());
+        let ids: Vec<&str> = state.pending.iter().map(|p| p.id.as_str()).collect();
+        assert!(ids.contains(&"intent:one_inch_limit_order:a"));
+        assert!(
+            !ids.contains(&"intent:one_inch_limit_order:b"),
+            "b left the active book → pruned"
+        );
+        assert!(
+            ids.contains(&"intent:cow_swap:z"),
+            "a different venue's order is never touched by this prefix"
+        );
+    }
+
+    #[tokio::test]
+    async fn failed_authoritative_fetch_never_prunes() {
+        // THE load-bearing safety test: a venue error must NOT drop live orders.
+        let mut state = state_with(&[
+            "intent:one_inch_limit_order:a",
+            "intent:one_inch_limit_order:b",
+        ]);
+        let fetcher = PrefixStub {
+            result: Err(()),
+            prefix: Some("intent:one_inch_limit_order:"),
+        };
+        let report = run_intent_sync(
+            &[&fetcher],
+            &mut state,
+            &policy_state::primitives::Address::ZERO,
+            Time::from_unix(0),
+        )
+        .await;
+
+        assert_eq!(report.orders_pruned, 0);
+        assert_eq!(report.errors.len(), 1, "the error is recorded");
+        assert_eq!(
+            state.pending.len(),
+            2,
+            "a transient fetch error must leave every tracked order in place"
+        );
+    }
+
+    #[tokio::test]
+    async fn no_prefix_fetcher_does_not_snapshot_prune() {
+        // A default (None-prefix) fetcher returning a subset must NOT prune the
+        // orders it didn't return — only `upsert_intent_orders` semantics apply.
+        let mut state = state_with(&[
+            "intent:one_inch_limit_order:a",
+            "intent:one_inch_limit_order:b",
+        ]);
+        let fetcher = PrefixStub {
+            result: Ok(vec![snapshot_pending("intent:one_inch_limit_order:a")]),
+            prefix: None,
+        };
+        let report = run_intent_sync(
+            &[&fetcher],
+            &mut state,
+            &policy_state::primitives::Address::ZERO,
+            Time::from_unix(0),
+        )
+        .await;
+
+        assert_eq!(report.orders_pruned, 0);
+        assert_eq!(
+            state.pending.len(),
+            2,
+            "without an authoritative prefix, absent orders are left as-is"
         );
     }
 
@@ -1692,5 +2221,251 @@ priority = 1
             Decimal::new("44.69692314")
         );
         assert_eq!(account.agents.len(), 1);
+    }
+
+    // ---------- permit reconciler ----------
+
+    mod permit_reconcile {
+        use super::super::*;
+        use policy_state::pending::{
+            AssetCommitment, NonceKey, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
+        };
+        use policy_state::primitives::{Address, ChainId, Time, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::{DataSource, StateDelta, WalletId, WalletState};
+
+        fn usdc() -> TokenRef {
+            TokenRef {
+                key: TokenKey::Erc20 {
+                    chain: ChainId::ethereum_mainnet(),
+                    address: Address::from([0x11; 20]),
+                },
+            }
+        }
+
+        fn lifecycle(valid_until: Option<Time>) -> PendingLifecycle {
+            PendingLifecycle {
+                status: PendingStatus::Active,
+                valid_until,
+                nonce: None,
+                on_chain_tx: None,
+                raw_status: None,
+            }
+        }
+
+        fn signed_eip2612(id: &str, valid_until: Option<Time>) -> PendingTx {
+            PendingTx {
+                id: id.into(),
+                kind: PendingKind::SignedEIP2612 {
+                    token: usdc(),
+                    spender: Address::from([0x22; 20]),
+                    amount: U256::from(1u64),
+                    expires_at: valid_until.unwrap_or(Time::from_unix(0)),
+                    nonce: U256::from(7u64),
+                },
+                commitment: AssetCommitment::PermitCap {
+                    token: usdc(),
+                    spender: Address::from([0x22; 20]),
+                    max_out: U256::from(1u64),
+                },
+                fill_effect: Box::new(StateDelta::new()),
+                lifecycle: lifecycle(valid_until),
+                sync: DataSource::UserSupplied,
+                signed_at: Time::from_unix(0),
+                signature_payload: Vec::new(),
+            }
+        }
+
+        fn signed_permit2_transfer(
+            id: &str,
+            owner: Address,
+            word: U256,
+            bit: u8,
+            valid_until: Option<Time>,
+        ) -> PendingTx {
+            PendingTx {
+                id: id.into(),
+                kind: PendingKind::SignedPermit2Transfer {
+                    token: usdc(),
+                    owner,
+                    spender: Address::from([0x22; 20]),
+                    amount: U256::from(1u64),
+                    expires_at: valid_until.unwrap_or(Time::from_unix(0)),
+                    nonce: (word, bit),
+                    witness_type: None,
+                },
+                commitment: AssetCommitment::PermitCap {
+                    token: usdc(),
+                    spender: Address::from([0x22; 20]),
+                    max_out: U256::from(1u64),
+                },
+                fill_effect: Box::new(StateDelta::new()),
+                lifecycle: PendingLifecycle {
+                    nonce: Some(NonceKey::Permit2 { word, bit }),
+                    ..lifecycle(valid_until)
+                },
+                sync: DataSource::UserSupplied,
+                signed_at: Time::from_unix(0),
+                signature_payload: Vec::new(),
+            }
+        }
+
+        /// An intent order sharing `state.pending` — the reconciler must NOT
+        /// touch it (only `Signed*` kinds are in scope).
+        fn intent_order(id: &str) -> PendingTx {
+            use policy_state::pending::OrderKind;
+            use policy_state::primitives::VenueRef;
+            PendingTx {
+                id: id.into(),
+                kind: PendingKind::OffchainLimitOrder {
+                    venue: VenueRef {
+                        name: "uniswap_x".into(),
+                        chain: Some(ChainId::ethereum_mainnet()),
+                    },
+                    sell: usdc(),
+                    buy: usdc(),
+                    sell_max: U256::from(1u64),
+                    buy_min: U256::from(1u64),
+                    order_kind: OrderKind::Dutch,
+                },
+                commitment: AssetCommitment::PermitCap {
+                    token: usdc(),
+                    spender: Address::ZERO,
+                    max_out: U256::from(1u64),
+                },
+                fill_effect: Box::new(StateDelta::new()),
+                // Already expired by clock, to prove the reconciler ignores it.
+                lifecycle: lifecycle(Some(Time::from_unix(1))),
+                sync: DataSource::UserSupplied,
+                signed_at: Time::from_unix(0),
+                signature_payload: Vec::new(),
+            }
+        }
+
+        fn state_with(pendings: Vec<PendingTx>) -> WalletState {
+            let mut s = WalletState::new(WalletId::new(
+                Address::from([0xaa; 20]),
+                [ChainId::ethereum_mainnet()],
+            ));
+            s.pending = pendings;
+            s
+        }
+
+        // --- pure decision helpers ---
+
+        #[test]
+        fn nonce_bitmap_selector_is_correct() {
+            // keccak256("nonceBitmap(address,uint256)")[..4] = 0x4fe02b44.
+            let hash = alloy_primitives::keccak256(b"nonceBitmap(address,uint256)");
+            assert_eq!(&hash[..4], &NONCE_BITMAP_SELECTOR);
+        }
+
+        #[test]
+        fn encode_nonce_bitmap_layout() {
+            let owner = Address::from([0x33; 20]);
+            let data = encode_nonce_bitmap(owner, U256::from(5u64));
+            assert_eq!(&data[..4], &NONCE_BITMAP_SELECTOR);
+            assert_eq!(&data[4..16], &[0u8; 12]);
+            assert_eq!(&data[16..36], &[0x33u8; 20]);
+            assert_eq!(data[67], 5u8); // word = 5, big-endian last byte
+            assert_eq!(data.len(), 68);
+        }
+
+        #[test]
+        fn permit_is_expired_uses_strict_less_than() {
+            let now = Time::from_unix(1000);
+            assert!(permit_is_expired(Some(Time::from_unix(999)), now));
+            assert!(!permit_is_expired(Some(Time::from_unix(1000)), now));
+            assert!(!permit_is_expired(Some(Time::from_unix(1001)), now));
+            assert!(!permit_is_expired(None, now));
+        }
+
+        #[test]
+        fn is_signed_permit_kind_excludes_intents() {
+            assert!(is_signed_permit_kind(&signed_eip2612("a", None).kind));
+            assert!(!is_signed_permit_kind(&intent_order("intent:x").kind));
+        }
+
+        #[test]
+        fn bitmap_bit_set_matches_consumed_nonce() {
+            // word with bit 7 set.
+            let bitmap = U256::from(1u64 << 7);
+            assert!(bitmap_bit_is_set(bitmap, 7));
+            assert!(!bitmap_bit_is_set(bitmap, 6));
+        }
+
+        // --- end-to-end reconcile (expiry path needs no RPC) ---
+
+        #[tokio::test]
+        async fn expired_signed_permit_is_pruned() {
+            // Orchestrator with no RPC providers — expiry must still retire
+            // entries (no chain read needed).
+            let orch = Orchestrator::from_sync_config(&crate::SyncConfig::default()).unwrap();
+            let now = Time::from_unix(1_000_000);
+            let mut state = state_with(vec![signed_eip2612(
+                "eip2612:expired",
+                Some(Time::from_unix(999_999)),
+            )]);
+
+            let report = orch.reconcile_permits(&mut state, now).await.unwrap();
+            assert_eq!(report.permits_retired, 1);
+            assert!(state.pending.is_empty(), "expired permit pruned");
+        }
+
+        #[tokio::test]
+        async fn active_signed_permit_is_untouched_and_intents_ignored() {
+            // No reachable RPC → the transfer's consumed-check errors (recorded),
+            // but the entry stays Active; the EIP-2612 entry is in-window; the
+            // intent is out of scope. Nothing is pruned.
+            let orch = Orchestrator::from_sync_config(&crate::SyncConfig::default()).unwrap();
+            let now = Time::from_unix(1_000_000);
+            let mut state = state_with(vec![
+                signed_eip2612("eip2612:active", Some(Time::from_unix(2_000_000))),
+                signed_permit2_transfer(
+                    "permit2-transfer:active",
+                    Address::from([0xaa; 20]),
+                    U256::from(3u64),
+                    7,
+                    Some(Time::from_unix(2_000_000)),
+                ),
+                intent_order("intent:uniswap_x:0xdead"),
+            ]);
+
+            let report = orch.reconcile_permits(&mut state, now).await.unwrap();
+            assert_eq!(report.permits_retired, 0, "nothing retired");
+            assert_eq!(state.pending.len(), 3, "all entries preserved");
+            // The no-router transfer consumed-check is recorded as a non-fatal
+            // error, never an abort.
+            assert_eq!(report.errors.len(), 1);
+            assert!(report.errors[0].contains("permit2-transfer:active"));
+        }
+
+        /// The "nonce bit set → Filled+pruned" decision, exercised purely (the
+        /// I/O fetch is the only un-tested seam and needs a live chain). A set
+        /// bit means the `SignatureTransfer` was consumed.
+        #[test]
+        fn consumed_transfer_decision_prunes() {
+            // Simulate the reconciler's consumed branch: bit is set in the bitmap.
+            let p = signed_permit2_transfer(
+                "permit2-transfer:consumed",
+                Address::from([0xaa; 20]),
+                U256::from(0u64),
+                12,
+                Some(Time::from_unix(2_000_000)), // not expired
+            );
+            assert!(!permit_is_expired(
+                p.lifecycle.valid_until,
+                Time::from_unix(1_000_000)
+            ));
+            // bitmap returned from chain with bit 12 set → consumed.
+            let bitmap = U256::from(1u64) << 12;
+            let PendingKind::SignedPermit2Transfer {
+                nonce: (_, bit), ..
+            } = &p.kind
+            else {
+                panic!("expected transfer kind");
+            };
+            assert!(bitmap_bit_is_set(bitmap, *bit), "consumed bit detected");
+        }
     }
 }

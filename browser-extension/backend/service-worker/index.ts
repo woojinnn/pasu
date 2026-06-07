@@ -4,6 +4,7 @@ import { handleDashboardRequest, isDashboardRequest } from "./dashboard/api";
 import { handleManifestRequest, isManifestRequest } from "./manifests/handlers";
 import { hydrateManifests } from "./manifests/hydrate";
 import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-storage-migration";
+import { migratePasuRenameStorageKeys } from "./manifests/pasu-rename-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
 import { decideMessage } from "./orchestrator";
 import { reportExecutionOutcome } from "./execution-report";
@@ -32,7 +33,7 @@ import {
   startGoogleLogin,
   type Me,
   type WalletId,
-} from "./scopeball-auth";
+} from "./pasu-auth";
 import {
   declarativeRouteRequestV3,
   estToPolicyText,
@@ -83,7 +84,7 @@ const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.VENUE_ORDER,
 ]);
 
-console.log("Scopeball SW alive at", new Date().toISOString());
+console.log("Pasu SW alive at", new Date().toISOString());
 
 // SW boot sequence (Phase 6, carry-over G):
 //
@@ -100,11 +101,31 @@ console.log("Scopeball SW alive at", new Date().toISOString());
 // `decideMessage` retry. We do NOT block the runtime listeners below on
 // this promise — they should be installed synchronously so the SW can
 // queue messages while warmup is in flight.
-void bootSequence().catch((err) => {
-  console.warn("[Scopeball] boot sequence failed:", err);
+//
+// `bootReady` exposes boot completion so auth handlers can `await` it
+// before reading tokens. In MV3 the SW is woken BY a message and the
+// message listeners are installed synchronously — without this gate a
+// token read could run before the pasu-rename migration's `set` lands,
+// read an absent `pasu_jwt`, and show the user logged out. The `.catch`
+// keeps the promise non-rejecting, so awaiting it never throws (boot is
+// best-effort; a stalled stage must not brick the auth handlers).
+export const bootReady: Promise<void> = bootSequence().catch((err) => {
+  console.warn("[Pasu] boot sequence failed:", err);
 });
 
 async function bootSequence(): Promise<void> {
+  // Pasu rename storage-key migration (one-time, idempotent). Runs FIRST so
+  // the renamed auth/server-url/diagnostics keys (scopeball_* → pasu_*) are
+  // populated before any boot step — or any incoming message handler — reads
+  // the new keys. Without it the rename would silently log existing users out
+  // and drop their chosen server URL. Touches chrome.storage only (no WASM).
+  try {
+    await migratePasuRenameStorageKeys();
+  } catch (err) {
+    console.warn("[Pasu] rename storage migration failed:", err);
+    // Non-fatal — a logged-out user can simply sign in again.
+  }
+
   // Fix R: run the migration detector BEFORE the install passes. The
   // detector strips v0 policy ids out of `policy-selection:enabled-ids`
   // and snapshots their prior enabled-state into
@@ -120,7 +141,7 @@ async function bootSequence(): Promise<void> {
   try {
     await detectPendingMigrations();
   } catch (err) {
-    console.warn("[Scopeball] migration auto-detect failed:", err);
+    console.warn("[Pasu] migration auto-detect failed:", err);
   }
 
   // Adapter-loader storage key migration (one-time, idempotent).
@@ -135,13 +156,13 @@ async function bootSequence(): Promise<void> {
   try {
     await migrateAdapterLoaderStorageKey();
   } catch (err) {
-    console.warn("[Scopeball] adapter-loader storage migration failed:", err);
+    console.warn("[Pasu] adapter-loader storage migration failed:", err);
     // Non-fatal — first JIT fetch will populate the new key anyway.
   }
 
   // B4 cleanup (commits 6aa3cc0 / b6f3ac9) — v1 routing 의 `registry:adapter-bundles`
   // chrome.storage namespace 가 deprecated. v3 = 별 namespace
-  // (`scopeball:declarative-v3-bundle:*`). 보존된 v1 key 가 storage 용량 차지하므로
+  // (`pasu:declarative-v3-bundle:*`). 보존된 v1 key 가 storage 용량 차지하므로
   // boot 시 한 번 제거. SW restart 후 entry 부재 → 영향 0.
   try {
     await Browser.storage.local.remove("registry:adapter-bundles");
@@ -157,7 +178,7 @@ async function bootSequence(): Promise<void> {
   try {
     await ensureDefaultPoliciesInstalled();
   } catch (err) {
-    console.warn("[Scopeball] cold-start prewarm failed:", err);
+    console.warn("[Pasu] cold-start prewarm failed:", err);
   }
 
   // Phase 6 / Task 6.3: hydrate the manifest-driven schema on SW boot.
@@ -173,7 +194,7 @@ async function bootSequence(): Promise<void> {
   try {
     await hydrateManifests();
   } catch (err) {
-    console.warn("[Scopeball] manifest hydration failed:", err);
+    console.warn("[Pasu] manifest hydration failed:", err);
   }
 
   // Default v3 decoder bundles — used by the simulation page so the
@@ -186,9 +207,9 @@ async function bootSequence(): Promise<void> {
   // leave the engine in a half-installed manifest state.
   try {
     const v3Count = await ensureDefaultV3BundlesInstalled();
-    console.log(`[Scopeball] v3 default bundles installed (${v3Count})`);
+    console.log(`[Pasu] v3 default bundles installed (${v3Count})`);
   } catch (err) {
-    console.warn("[Scopeball] v3 default bundle install failed:", err);
+    console.warn("[Pasu] v3 default bundle install failed:", err);
   }
 
   // Phase 1 / P2: warm the in-memory default v2 policy set so the first
@@ -203,11 +224,11 @@ async function bootSequence(): Promise<void> {
     // this SW. If this logs `[]`, the policy asset failed to fetch (check the
     // warning above) and nothing will be enforced.
     console.log(
-      `[Scopeball] v2 default policies loaded (${v2.length}):`,
+      `[Pasu] v2 default policies loaded (${v2.length}):`,
       v2.map((b) => b.id),
     );
   } catch (err) {
-    console.warn("[Scopeball] v2 default policy load failed:", err);
+    console.warn("[Pasu] v2 default policy load failed:", err);
   }
 }
 
@@ -226,11 +247,11 @@ async function handleMessage(
   // Raw / frozen advisories: log only (Plan 5 doesn't gate, but surfaces
   // them so the user can see something happened).
   if (message.data.type === "raw-transaction-advisory") {
-    console.warn("[Scopeball] raw-tx advisory", message.data);
+    console.warn("[Pasu] raw-tx advisory", message.data);
     return;
   }
   if (message.data.type === "provider-frozen-warning") {
-    console.error("[Scopeball] provider frozen", message.data);
+    console.error("[Pasu] provider frozen", message.data);
     return;
   }
 
@@ -282,14 +303,14 @@ interface SetEnabledIdsRequest {
   type: "set-enabled-ids";
   ids: string[];
 }
-interface ScopeballAuthStatusRequest {
-  type: "scopeball-auth-status";
+interface PasuAuthStatusRequest {
+  type: "pasu-auth-status";
 }
-interface ScopeballAuthSignInRequest {
-  type: "scopeball-auth-sign-in";
+interface PasuAuthSignInRequest {
+  type: "pasu-auth-sign-in";
 }
-interface ScopeballAuthSignOutRequest {
-  type: "scopeball-auth-sign-out";
+interface PasuAuthSignOutRequest {
+  type: "pasu-auth-sign-out";
 }
 /** Dashboard → SW token mirror. The dashboard's OAuth flow lands tokens in
  *  page `localStorage`; the SW reads tokens from `chrome.storage.local`.
@@ -298,13 +319,13 @@ interface ScopeballAuthSignOutRequest {
  *  silently at its `hasToken` guard — leaving the HistoryPage's state-diff
  *  panel permanently empty. The dashboard calls this after every
  *  `fetchMe()` that resolves to a real user, so the sync is idempotent. */
-interface ScopeballAuthSyncTokensRequest {
-  type: "scopeball-auth-sync-tokens";
+interface PasuAuthSyncTokensRequest {
+  type: "pasu-auth-sync-tokens";
   access: string;
   refresh: string | null;
 }
-interface ScopeballListWalletsRequest {
-  type: "scopeball-list-wallets";
+interface PasuListWalletsRequest {
+  type: "pasu-list-wallets";
 }
 /** apps/web Editor + Simulation pages route Cedar through the
  *  service worker rather than bundling wasm themselves. Three
@@ -433,11 +454,11 @@ type PopupRequest =
   | PolicyCatalogRequest
   | SetEnabledIdsRequest
   | PolicySelectionGetRequest
-  | ScopeballAuthStatusRequest
-  | ScopeballAuthSignInRequest
-  | ScopeballAuthSignOutRequest
-  | ScopeballAuthSyncTokensRequest
-  | ScopeballListWalletsRequest
+  | PasuAuthStatusRequest
+  | PasuAuthSignInRequest
+  | PasuAuthSignOutRequest
+  | PasuAuthSyncTokensRequest
+  | PasuListWalletsRequest
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
@@ -628,23 +649,31 @@ Browser.runtime.onMessage.addListener(
       return true;
     }
 
-    // Scopeball (Rust server) auth — separate from the legacy 8787 path.
+    // Pasu (Rust server) auth — separate from the legacy 8787 path.
     // Each handler returns `{ ok, data | error }` so the popup can match
     // uniformly.
-    if (req.type === "scopeball-auth-status") {
-      void fetchMe()
+    if (req.type === "pasu-auth-status") {
+      // Gate the token read on boot: the pasu-rename storage migration runs
+      // inside `bootSequence()` and must finish copying `scopeball_jwt` →
+      // `pasu_jwt` before we read the token, or a freshly-woken SW reports
+      // the user logged out. `bootReady` never rejects (boot is best-effort).
+      void bootReady
+        .then(() => fetchMe())
         .then((me: Me | null) => sendResponse({ ok: true, data: me }))
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "scopeball_auth_failed", message: String(err) },
+            error: { kind: "pasu_auth_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "scopeball-auth-sign-in") {
-      void startGoogleLogin()
+    if (req.type === "pasu-auth-sign-in") {
+      // Await boot before the sign-in flow so its post-login `fetchMe()`
+      // token read sees the migrated key (see `pasu-auth-status`).
+      void bootReady
+        .then(() => startGoogleLogin())
         .then(async () => {
           const me = await fetchMe();
           sendResponse({ ok: true, data: me });
@@ -652,46 +681,54 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "scopeball_sign_in_failed", message: String(err) },
+            error: { kind: "pasu_sign_in_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "scopeball-auth-sign-out") {
-      void clearTokens()
+    if (req.type === "pasu-auth-sign-out") {
+      // Await boot so a sign-out can't race the migration re-populating
+      // `pasu_jwt` from the stale `scopeball_jwt` after we clear it.
+      void bootReady
+        .then(() => clearTokens())
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "scopeball_sign_out_failed", message: String(err) },
+            error: { kind: "pasu_sign_out_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "scopeball-auth-sync-tokens") {
-      const r = req as ScopeballAuthSyncTokensRequest;
-      void setTokens(r.access, r.refresh)
+    if (req.type === "pasu-auth-sync-tokens") {
+      const r = req as PasuAuthSyncTokensRequest;
+      // Await boot so the dashboard's token mirror can't be clobbered by
+      // the migration's late `set` (both write `pasu_jwt`).
+      void bootReady
+        .then(() => setTokens(r.access, r.refresh))
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "scopeball_sync_tokens_failed", message: String(err) },
+            error: { kind: "pasu_sync_tokens_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "scopeball-list-wallets") {
-      void listWallets()
+    if (req.type === "pasu-list-wallets") {
+      // Await boot before the token read (see `pasu-auth-status`).
+      void bootReady
+        .then(() => listWallets())
         .then((wallets: WalletId[]) =>
           sendResponse({ ok: true, data: wallets }),
         )
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "scopeball_list_wallets_failed", message: String(err) },
+            error: { kind: "pasu_list_wallets_failed", message: String(err) },
           }),
         );
       return true;

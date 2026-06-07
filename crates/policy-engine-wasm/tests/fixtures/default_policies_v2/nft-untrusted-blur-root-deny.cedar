@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: NFT-03 (Blur "Root" bulk-listing
+// pasu default v2 policy — explorer id: NFT-03 (Blur "Root" bulk-listing
 // signature whose EIP-712 domain is not the genuine Blur exchange).
 //
 // Blur lets a single "Root" signature list an entire collection at once; the

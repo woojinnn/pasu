@@ -1,7 +1,7 @@
 {
-  "name": "scopeball",
+  "name": "pasu",
   "private": true,
-  "description": "Scopeball monorepo — Rust backend (crates/), browser extension. Frontend lives in browser-extension/dashboard/ for now.",
+  "description": "Pasu monorepo — Rust backend (crates/), browser extension. Frontend lives in browser-extension/dashboard/ for now.",
   "packageManager": "yarn@4.14.1",
   "scripts": {
     "server:local": "bash scripts/start-policy-server.sh local",

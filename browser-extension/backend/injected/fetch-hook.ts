@@ -51,10 +51,10 @@ import {
 } from "./hl-exchange-parse";
 
 const FETCH_INSTALL_STATE = Symbol.for(
-  "__scopeball_fetch_hook_install_state__",
+  "__pasu_fetch_hook_install_state__",
 );
 /** Per-XHR-instance metadata captured at `open()` for use in `send()`. */
-const XHR_META = Symbol.for("__scopeball_xhr_meta__");
+const XHR_META = Symbol.for("__pasu_xhr_meta__");
 
 type WritableStream = WindowPostMessageStream & { write(data: unknown): void };
 
@@ -84,9 +84,9 @@ function install(): void {
     // error. Harmless in production.
     try {
       const ww = window as unknown as Record<string, unknown>;
-      ww.__scopeball_intercepts__ =
-        ((ww.__scopeball_intercepts__ as number) ?? 0) + 1;
-      ww.__scopeball_last_verdict__ = { url, venue, allowed, at: Date.now() };
+      ww.__pasu_intercepts__ =
+        ((ww.__pasu_intercepts__ as number) ?? 0) + 1;
+      ww.__pasu_last_verdict__ = { url, venue, allowed, at: Date.now() };
     } catch {
       /* ignore */
     }
@@ -99,14 +99,14 @@ function install(): void {
   ): void {
     // Devtools: the in-page parsed result (one entry per guarded leg), visible
     // in the PAGE console on the venue site + queryable from a probe via
-    // `window.__scopeball_last_parse__`. (The fully-normalized ActionBody is
+    // `window.__pasu_last_parse__`. (The fully-normalized ActionBody is
     // logged SW-side; this is the wire-level parse the page actually produced.)
     const actions = payloads.map((p) => ({ ...p.hlAction }));
     // eslint-disable-next-line no-console
-    console.info("[Scopeball] HL /exchange parsed (in-page):", { url, venue, actions });
+    console.info("[Pasu] HL /exchange parsed (in-page):", { url, venue, actions });
     try {
       const ww = window as unknown as Record<string, unknown>;
-      ww.__scopeball_last_parse__ = { url, venue, actions, at: Date.now() };
+      ww.__pasu_last_parse__ = { url, venue, actions, at: Date.now() };
     } catch {
       /* ignore */
     }
@@ -289,8 +289,8 @@ function install(): void {
               if (decision.payloads) logInPageParse(url, venue, decision.payloads);
               throw new Error(
                 decision.reason === "unreadable_body"
-                  ? "Scopeball: venue order blocked (unreadable body)"
-                  : "Scopeball: venue order blocked by policy",
+                  ? "Pasu: venue order blocked (unreadable body)"
+                  : "Pasu: venue order blocked by policy",
               );
             }
             if (decision.kind === "allow") {
@@ -302,7 +302,7 @@ function install(): void {
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.message.startsWith("Scopeball:")) {
+        if (err instanceof Error && err.message.startsWith("Pasu:")) {
           throw err; // the block — must propagate
         }
         // Fail-CLOSED (D6): a venue-order POST whose evaluation FAULTED (bridge
@@ -318,12 +318,12 @@ function install(): void {
               : (input as Request)?.url ?? "";
         if (matchVenue(url)) {
           console.error(
-            "[Scopeball] fetch-hook fault on a venue request — blocking (fail-closed)",
+            "[Pasu] fetch-hook fault on a venue request — blocking (fail-closed)",
             err,
           );
-          throw new Error("Scopeball: venue order blocked (fail-closed)");
+          throw new Error("Pasu: venue order blocked (fail-closed)");
         }
-        console.warn("[Scopeball] fetch-hook non-fatal error", err);
+        console.warn("[Pasu] fetch-hook non-fatal error", err);
       }
       try {
         const response = (await Reflect.apply(
@@ -419,7 +419,7 @@ function install(): void {
           // order through — matches the fetch path + the SW lifecycle's
           // deny-closed contract.
           console.error(
-            "[Scopeball] xhr-hook fault — blocking (fail-closed)",
+            "[Pasu] xhr-hook fault — blocking (fail-closed)",
             err,
           );
           decision = { kind: "deny", reason: "policy", payloads: null };
@@ -468,7 +468,7 @@ try {
   // actually executed in the page realm, independent of install success.
   (
     window as unknown as Record<PropertyKey, unknown>
-  ).__scopeball_fetch_hook_loaded__ = true;
+  ).__pasu_fetch_hook_loaded__ = true;
 } catch {
   /* no window (SW/node) — ignore */
 }
@@ -479,10 +479,10 @@ try {
   try {
     (
       window as unknown as Record<PropertyKey, unknown>
-    ).__scopeball_fetch_hook_error__ =
+    ).__pasu_fetch_hook_error__ =
       err instanceof Error ? err.message : String(err);
   } catch {
     /* ignore */
   }
-  console.error("[Scopeball] fetch-hook install failed", err);
+  console.error("[Pasu] fetch-hook install failed", err);
 }

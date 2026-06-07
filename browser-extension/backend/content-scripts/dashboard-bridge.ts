@@ -5,8 +5,8 @@ import Browser from "webextension-polyfill";
 // without an exact source tag match. The manifest's `matches` (localhost/127.0.0.1)
 // is the first gate; this is defense in depth so a non-dashboard localhost
 // page can't hijack the channel.
-const REQ_TAG = "scopeball-dashboard";
-const RES_TAG = "scopeball-extension";
+const REQ_TAG = "pasu-dashboard";
+const RES_TAG = "pasu-extension";
 const BROADCAST_ID = "__broadcast__";
 
 // Origins that the page bridge accepts. The manifest already restricts where

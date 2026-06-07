@@ -14,8 +14,8 @@
 #   $DB_PATH  → sourcify.sqlite, ready for the resolver to attach.
 #
 # Env knobs:
-#   SCOPEBALL_DUMP_DIR  default /tmp/sourcify_dump
-#   SCOPEBALL_VENV      default /tmp/parquet_venv
+#   PASU_DUMP_DIR  default /tmp/sourcify_dump
+#   PASU_VENV      default /tmp/parquet_venv
 #
 # Flags:
 #   --force   rebuild even if $DB_PATH exists
@@ -27,8 +27,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
-DUMP_DIR="${SCOPEBALL_DUMP_DIR:-/tmp/sourcify_dump}"
-VENV="${SCOPEBALL_VENV:-/tmp/parquet_venv}"
+DUMP_DIR="${PASU_DUMP_DIR:-/tmp/sourcify_dump}"
+VENV="${PASU_VENV:-/tmp/parquet_venv}"
 DB_PATH="$DUMP_DIR/sourcify.sqlite"
 
 FORCE=0

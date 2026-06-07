@@ -2,6 +2,21 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+export function resolveServerUrlEnv(mode: string, dashboardDir: string = __dirname): string {
+  const extensionRoot = path.resolve(dashboardDir, "..");
+  const dashboardEnv = loadEnv(mode, dashboardDir, "");
+  const rootEnv = mode === "production" ? loadEnv(mode, extensionRoot, "") : {};
+  return (
+    process.env.PASU_SERVER_URL ||
+    process.env.VITE_PASU_SERVER_URL ||
+    dashboardEnv.PASU_SERVER_URL ||
+    dashboardEnv.VITE_PASU_SERVER_URL ||
+    rootEnv.PASU_SERVER_URL ||
+    rootEnv.VITE_PASU_SERVER_URL ||
+    ""
+  );
+}
+
 // Two output modes share this single config:
 //
 //   dev (`vite` / `yarn dev`): standalone SPA at http://127.0.0.1:5173.
@@ -21,22 +36,20 @@ import path from "node:path";
 // webpack config has `clean: true`, which would wipe the vite output.
 export default defineConfig(({ mode }) => {
   // Server base URL is UNIFIED with the webpack (service-worker) build:
-  // both read `SCOPEBALL_SERVER_URL`, so a single env var switches the whole
+  // both read `PASU_SERVER_URL`, so a single env var switches the whole
   // extension (dashboard + service worker) between local/test and prod —
-  //   SCOPEBALL_SERVER_URL=https://pasu-policy.duckdns.org yarn build:ext
+  //   PASU_SERVER_URL=https://pasu-policy.duckdns.org yarn build:ext
   // `loadEnv(mode, dir, "")` reads .env files + process.env with no prefix
-  // filter; legacy `VITE_SCOPEBALL_SERVER_URL` is still honored as a fallback.
-  const env = loadEnv(mode, process.cwd(), "");
-  const serverUrl =
-    env.SCOPEBALL_SERVER_URL || env.VITE_SCOPEBALL_SERVER_URL || "";
+  // filter; legacy `VITE_PASU_SERVER_URL` is still honored as a fallback.
+  const serverUrl = resolveServerUrlEnv(mode);
 
   return {
     plugins: [react()],
     base: "./",
     // Feed the unified server URL to the dashboard client (client.ts reads
-    // `import.meta.env.VITE_SCOPEBALL_SERVER_URL`).
+    // `import.meta.env.VITE_PASU_SERVER_URL`).
     define: {
-      "import.meta.env.VITE_SCOPEBALL_SERVER_URL": JSON.stringify(serverUrl),
+      "import.meta.env.VITE_PASU_SERVER_URL": JSON.stringify(serverUrl),
     },
     build: {
       outDir: path.resolve(__dirname, "../dist/chrome"),
@@ -67,7 +80,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        "@scopeball/sdk": path.resolve(__dirname, "../sdk/extension-client.ts"),
+        "@pasu/sdk": path.resolve(__dirname, "../sdk/extension-client.ts"),
       },
     },
   };

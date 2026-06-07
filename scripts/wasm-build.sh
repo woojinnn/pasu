@@ -9,12 +9,20 @@ if [ ! -d crates/policy-engine-wasm ]; then
   exit 0
 fi
 
-echo "==> wasm-pack build (target=web, release)"
-wasm-pack build crates/policy-engine-wasm \
-  --target web \
-  --release \
-  --out-dir pkg \
-  --out-name policy_engine_wasm
+# CI dedupe hook: when SKIP_WASM_BUILD=1 and a prebuilt pkg/ already exists
+# (e.g. downloaded as a workflow artifact), skip the expensive wasm-pack build
+# and reuse it. The copy step below still runs so consumers get their artifacts.
+# A developer running this directly (flag unset) always gets a fresh build.
+if [ "${SKIP_WASM_BUILD:-}" = "1" ] && [ -f crates/policy-engine-wasm/pkg/policy_engine_wasm_bg.wasm ]; then
+  echo "==> SKIP_WASM_BUILD=1 and prebuilt pkg/ found — reusing wasm-pack output"
+else
+  echo "==> wasm-pack build (target=web, release)"
+  wasm-pack build crates/policy-engine-wasm \
+    --target web \
+    --release \
+    --out-dir pkg \
+    --out-name policy_engine_wasm
+fi
 
 if [ -d browser-extension ]; then
   mkdir -p browser-extension/backend/wasm browser-extension/public/wasm

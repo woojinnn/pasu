@@ -8051,6 +8051,142 @@
     }
   },
   {
+    "name": "swap-min-intoken-cap-deny",
+    "est": {
+      "effect": "forbid",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "==",
+        "entity": {
+          "type": "Amm::Action",
+          "id": "Swap"
+        }
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "has": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "direction"
+                    }
+                  },
+                  "attr": "amountInNano"
+                }
+              },
+              "right": {
+                ">=": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "direction"
+                        }
+                      },
+                      "attr": "amountInNano"
+                    }
+                  },
+                  "right": {
+                    "Value": 50000000
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "annotations": {
+        "id": "swap-min-intoken-cap-deny",
+        "reason": "This swap sells 0.05 or more of the input token and is not allowed",
+        "severity": "deny"
+      }
+    }
+  },
+  {
+    "name": "swap-min-usd-cap-deny",
+    "est": {
+      "effect": "forbid",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "==",
+        "entity": {
+          "type": "Amm::Action",
+          "id": "Swap"
+        }
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "has": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        "Var": "context"
+                      },
+                      "attr": "direction"
+                    }
+                  },
+                  "attr": "amountInUsd"
+                }
+              },
+              "right": {
+                "greaterThanOrEqual": [
+                  {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "direction"
+                        }
+                      },
+                      "attr": "amountInUsd"
+                    }
+                  },
+                  {
+                    "decimal": [
+                      {
+                        "Value": "0.0500"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "annotations": {
+        "id": "swap-min-usd-cap-deny",
+        "reason": "This swap's value is at or above the $0.05 cap and is not allowed",
+        "severity": "deny"
+      }
+    }
+  },
+  {
     "name": "swap-out-token-honeypot-warn",
     "est": {
       "effect": "forbid",
@@ -8666,6 +8802,101 @@
         "id": "swap-uni-v3v4-effective-fee-warn",
         "reason": "The effective fee on this swap route exceeds your fee ceiling",
         "severity": "warn"
+      }
+    }
+  },
+  {
+    "name": "swap-usdc-input-deny",
+    "est": {
+      "effect": "forbid",
+      "principal": {
+        "op": "All"
+      },
+      "action": {
+        "op": "==",
+        "entity": {
+          "type": "Amm::Action",
+          "id": "Swap"
+        }
+      },
+      "resource": {
+        "op": "All"
+      },
+      "conditions": [
+        {
+          "kind": "when",
+          "body": {
+            "&&": {
+              "left": {
+                "has": {
+                  "left": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "tokenIn"
+                        }
+                      },
+                      "attr": "key"
+                    }
+                  },
+                  "attr": "address"
+                }
+              },
+              "right": {
+                "contains": {
+                  "left": {
+                    "Set": [
+                      {
+                        "Value": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                      },
+                      {
+                        "Value": "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+                      },
+                      {
+                        "Value": "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+                      },
+                      {
+                        "Value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+                      },
+                      {
+                        "Value": "0x0b2c639c533813f4aa9d7837caf62653d097ff85"
+                      },
+                      {
+                        "Value": "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"
+                      }
+                    ]
+                  },
+                  "right": {
+                    ".": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "tokenIn"
+                            }
+                          },
+                          "attr": "key"
+                        }
+                      },
+                      "attr": "address"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "annotations": {
+        "id": "swap-usdc-input-deny",
+        "reason": "Swapping out of USDC is blocked by your policy",
+        "severity": "deny"
       }
     }
   },

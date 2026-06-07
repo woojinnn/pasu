@@ -19,15 +19,15 @@ type CatalogResponse =
   | { ok: true; data: Catalog }
   | { ok: false; error: { kind: string; message: string } };
 
-interface ScopeballMe {
+interface PasuMe {
   user_id: string;
   email: string;
 }
-type ScopeballAuthStatus =
+type PasuAuthStatus =
   | { kind: 'unknown' }
   | { kind: 'signed-out' }
   | { kind: 'signing-in' }
-  | { kind: 'signed-in'; me: ScopeballMe; walletCount: number | null }
+  | { kind: 'signed-in'; me: PasuMe; walletCount: number | null }
   | { kind: 'error'; message: string };
 
 const state: {
@@ -36,90 +36,90 @@ const state: {
   status: 'idle' | 'applying' | 'error';
   errorText: string;
   expanded: Set<string>;
-  scopeballAuth: ScopeballAuthStatus;
+  pasuAuth: PasuAuthStatus;
 } = {
   catalog: null,
   searchTerm: '',
   status: 'idle',
   errorText: '',
   expanded: new Set(),
-  scopeballAuth: { kind: 'unknown' },
+  pasuAuth: { kind: 'unknown' },
 };
 
-interface ScopeballEnvelope<T> {
+interface PasuEnvelope<T> {
   ok: boolean;
   data?: T;
   error?: { kind: string; message: string };
 }
 
-async function scopeballSend<T>(type: string): Promise<T> {
-  const res = (await Browser.runtime.sendMessage({ type })) as ScopeballEnvelope<T> | undefined;
+async function pasuSend<T>(type: string): Promise<T> {
+  const res = (await Browser.runtime.sendMessage({ type })) as PasuEnvelope<T> | undefined;
   if (!res) throw new Error('empty response from service worker');
   if (!res.ok) throw new Error(`${res.error?.kind}: ${res.error?.message}`);
   return res.data as T;
 }
 
-async function refreshScopeballAuth(): Promise<void> {
+async function refreshPasuAuth(): Promise<void> {
   try {
-    const me = await scopeballSend<ScopeballMe | null>('scopeball-auth-status');
+    const me = await pasuSend<PasuMe | null>('pasu-auth-status');
     if (me) {
       // Wallet count is optional — keep the chip rendering even if the
       // count fetch fails (e.g. server is down).
       let walletCount: number | null = null;
       try {
-        const wallets = await scopeballSend<unknown[]>('scopeball-list-wallets');
+        const wallets = await pasuSend<unknown[]>('pasu-list-wallets');
         walletCount = wallets.length;
       } catch {
         // leave null
       }
-      state.scopeballAuth = { kind: 'signed-in', me, walletCount };
+      state.pasuAuth = { kind: 'signed-in', me, walletCount };
     } else {
-      state.scopeballAuth = { kind: 'signed-out' };
+      state.pasuAuth = { kind: 'signed-out' };
     }
   } catch (err) {
-    state.scopeballAuth = { kind: 'error', message: String(err) };
+    state.pasuAuth = { kind: 'error', message: String(err) };
   }
   render();
 }
 
-async function scopeballSignIn(): Promise<void> {
-  state.scopeballAuth = { kind: 'signing-in' };
+async function pasuSignIn(): Promise<void> {
+  state.pasuAuth = { kind: 'signing-in' };
   render();
   try {
-    await scopeballSend<ScopeballMe | null>('scopeball-auth-sign-in');
-    await refreshScopeballAuth();
+    await pasuSend<PasuMe | null>('pasu-auth-sign-in');
+    await refreshPasuAuth();
   } catch (err) {
-    state.scopeballAuth = { kind: 'error', message: String(err) };
+    state.pasuAuth = { kind: 'error', message: String(err) };
     render();
   }
 }
 
-async function scopeballSignOut(): Promise<void> {
+async function pasuSignOut(): Promise<void> {
   try {
-    await scopeballSend<null>('scopeball-auth-sign-out');
+    await pasuSend<null>('pasu-auth-sign-out');
   } catch (err) {
-    state.scopeballAuth = { kind: 'error', message: String(err) };
+    state.pasuAuth = { kind: 'error', message: String(err) };
     render();
     return;
   }
-  state.scopeballAuth = { kind: 'signed-out' };
+  state.pasuAuth = { kind: 'signed-out' };
   render();
 }
 
-function renderScopeballAuthStrip(): HTMLDivElement {
-  const auth = state.scopeballAuth;
-  const strip = el('div', { class: 'scopeball-auth-strip' });
+function renderPasuAuthStrip(): HTMLDivElement {
+  const auth = state.pasuAuth;
+  const strip = el('div', { class: 'pasu-auth-strip' });
   switch (auth.kind) {
     case 'unknown':
-      strip.appendChild(el('span', { text: 'Scopeball server: checking…' }));
+      strip.appendChild(el('span', { text: 'Pasu server: checking…' }));
       break;
     case 'signing-in':
-      strip.appendChild(el('span', { text: 'Scopeball server: signing in…' }));
+      strip.appendChild(el('span', { text: 'Pasu server: signing in…' }));
       break;
     case 'signed-out': {
-      strip.appendChild(el('span', { text: 'Scopeball server: signed out' }));
+      strip.appendChild(el('span', { text: 'Pasu server: signed out' }));
       const btn = el('button', { text: 'Sign in with Google' });
-      btn.addEventListener('click', () => void scopeballSignIn());
+      btn.addEventListener('click', () => void pasuSignIn());
       strip.appendChild(btn);
       break;
     }
@@ -128,18 +128,18 @@ function renderScopeballAuthStrip(): HTMLDivElement {
         auth.walletCount === null
           ? auth.me.email
           : `${auth.me.email} · ${auth.walletCount} wallet${auth.walletCount === 1 ? '' : 's'}`;
-      strip.appendChild(el('span', { text: `Scopeball: ${summary}` }));
+      strip.appendChild(el('span', { text: `Pasu: ${summary}` }));
       const out = el('button', { text: 'Sign out' });
-      out.addEventListener('click', () => void scopeballSignOut());
+      out.addEventListener('click', () => void pasuSignOut());
       strip.appendChild(out);
       break;
     }
     case 'error': {
       strip.appendChild(
-        el('span', { class: 'status error', text: `Scopeball error: ${auth.message}` }),
+        el('span', { class: 'status error', text: `Pasu error: ${auth.message}` }),
       );
       const retry = el('button', { text: 'Retry' });
-      retry.addEventListener('click', () => void refreshScopeballAuth());
+      retry.addEventListener('click', () => void refreshPasuAuth());
       strip.appendChild(retry);
       break;
     }
@@ -318,10 +318,10 @@ function render(): void {
   if (!root) return;
   root.replaceChildren();
 
-  // Scopeball server auth strip — rendered on every state, including the
+  // Pasu server auth strip — rendered on every state, including the
   // initial "Loading…" shell, so the user can sign in before the
   // catalog finishes loading.
-  root.appendChild(renderScopeballAuthStrip());
+  root.appendChild(renderPasuAuthStrip());
 
   if (!state.catalog) {
     const placeholder = state.status === 'error'
@@ -436,6 +436,6 @@ void (async () => {
   render();
 })();
 
-// Resolve Scopeball auth status in parallel with the catalog. Failure is
+// Resolve Pasu auth status in parallel with the catalog. Failure is
 // non-fatal (the catalog UI works without it).
-void refreshScopeballAuth();
+void refreshPasuAuth();

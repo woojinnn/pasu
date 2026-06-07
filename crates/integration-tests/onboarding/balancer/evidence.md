@@ -9,7 +9,7 @@
 |---|---|
 | protocol | balancer |
 | branch | feat/balancer-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-balancer |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-balancer |
 | date | 2026-06-03 |
 | main agent | Claude (Opus 4.8) |
 | base commit | 79d8ae90 (feat/registry-v2) |
@@ -126,7 +126,7 @@
 | exact staged files and commit hash recorded | done | P0+P1 `81ed50eb` (4 builtins+fn_whitelist, 7 manifests, _deployments+2 coverage, evidence); P2+P3 `2d85deba` (corpus); P4 fmt+evidence commit (below). Files listed in P1 row. |
 | remaining WARNs/deferred selectors/actions listed with reason | done | #1 V3 proportional/unbalanced liquidity (~89% of V3) — pool-token resolver needed; #2-3 additional V3 routers (BatchRouter/CompositeLiquidityRouter/etc) + V2 BalancerRelayer v6; #4 multichain (V2 7-chain new fns, V3 base); #5 V2 flashLoan/manageUserBalance; permitBatchAndCall Permit2-grant not separately surfaced. All with measured usage in _deployments/coverage. Pre-existing non-balancer build-index WARNs unaffected. |
 | final completion label recorded without overclaiming wallet-facing/full-universe/multichain scope | done | **PARTIAL ~90% protocol-level (volume-weighted, mainnet): V2 Vault ≈99% + V3 Router-v2 ≈99.6% (swaps + single-token & proportional/unbalanced liquidity + permitBatchAndCall children, the dominant ~76% surface). Deferred ~9%: V3 BatchRouter (#2), CompositeLiquidityRouter v2 (#3), V2 BalancerRelayer v6 (#4), multichain (#5). NOT full-surface, NOT multichain.** |
-| no base/worktree merge performed unless user explicitly requested it | done | no merge performed — work isolated on feat/balancer-onboarding (worktree scopeball-balancer); base/registry-v2 untouched (the accidental builtin_fn pollution there was surgically reverted, preserving the other session's unoswap/1inch work). |
+| no base/worktree merge performed unless user explicitly requested it | done | no merge performed — work isolated on feat/balancer-onboarding (worktree pasu-balancer); base/registry-v2 untouched (the accidental builtin_fn pollution there was surgically reverted, preserving the other session's unoswap/1inch work). |
 
 ## Blockers
 

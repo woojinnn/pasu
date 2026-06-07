@@ -638,9 +638,8 @@ pub async fn connect_pool(
 }
 
 fn lazy_test_pool() -> Result<PgPool, SqlxError> {
-    let url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://scopeball:scopeball@127.0.0.1:5432/scopeball_test".to_owned()
-    });
+    let url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://pasu:pasu@127.0.0.1:5432/pasu_test".to_owned());
     PgPoolOptions::new().max_connections(5).connect_lazy(&url)
 }
 

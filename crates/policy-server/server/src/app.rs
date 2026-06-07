@@ -129,6 +129,7 @@ pub struct ShutdownRx(pub tokio::sync::watch::Receiver<bool>);
 /// - `POST /wallets`                        — start tracking a new wallet.
 /// - `PATCH/DELETE /wallets/:address`       — label/owned + archive.
 /// - `POST /wallets/:address/sync`          — refresh via RPC/oracle.
+/// - `POST /wallets/:address/permits`       — record a signed permit/permit2.
 /// - `GET  /wallets/:address/state`         — full wallet state.
 /// - `GET  /wallets/:address/holdings`      — token holdings.
 /// - `GET  /wallets/:address/approvals`     — approval set.
@@ -163,6 +164,10 @@ pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Route
                 .delete(write_handlers::delete_wallet),
         )
         .route("/wallets/:address/sync", post(write_handlers::sync_wallet))
+        .route(
+            "/wallets/:address/permits",
+            post(write_handlers::ingest_permit),
+        )
         .route("/wallets/:address/state", get(read_handlers::get_state))
         .route(
             "/wallets/:address/holdings",

@@ -9,8 +9,8 @@ import { createExtensionClient } from "./extension-client";
 // `window.postMessage` to deliver synthetic responses directly to the
 // SDK's listener via `window.dispatchEvent`.
 
-const REQ_TAG = "scopeball-dashboard";
-const RES_TAG = "scopeball-extension";
+const REQ_TAG = "pasu-dashboard";
+const RES_TAG = "pasu-extension";
 
 interface Mocked {
   type: string;

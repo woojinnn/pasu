@@ -1,0 +1,53 @@
+# gitleaks config for pasu.
+# Extends the built-in rules; allowlists known non-secret high-entropy data so
+# the scan flags REAL secrets only. (A full-history scan of the default ruleset
+# produced ~3.3k findings, all `generic-api-key` entropy hits on blockchain data
+# — addresses, tx hashes, EIP-712 signatures, calldata — the Chrome extension
+# PUBLIC key, and the vendored yarn binary. None were real secrets.)
+title = "pasu gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Non-secret high-entropy data: vendored deps, blockchain fixtures/ABIs/signatures, the Chrome extension public key, env templates, EVM addresses, and the labelled test secret."
+paths = [
+  # vendored / generated / lockfiles
+  '''\.yarn/releases/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)(yarn\.lock|package-lock\.json|Cargo\.lock)$''',
+  '''\.cjs$''',
+  '''\.min\.js$''',
+  '''\.map$''',
+  # test data / fixtures / golden corpora / ABI dumps / signature vectors
+  '''(^|/)__tests__/''',
+  '''(^|/)integration-tests/tests/''',
+  '''/fixtures/''',
+  '''/golden/''',
+  '''/data/golden/''',
+  '''/data/signatures/''',
+  '''corpus''',
+  '''\.abi\.json$''',
+  '''/surface/''',
+  '''(^|/)swap_samples/''',
+  '''/onboarding/''',
+  # curated on-chain data blobs (addresses/pools — high-entropy hex, not secrets)
+  '''(^|/)registry/.*\.json$''',
+  '''example-transactions\.json$''',
+  '''address-universe.*\.json$''',
+  '''.*inventory-summary\.json$''',
+  '''curve-pools.*\.json$''',
+  # Chrome extension manifest carries the PUBLIC __chrome__key by design
+  '''(^|/)browser-extension/backend/manifest\.json$''',
+  # env templates ship placeholders only (real values come from env / k8s secrets)
+  '''\.env(\..*)?\.(example|sample)$''',
+  '''(^|/)\.?example\.env$''',
+  # retired pre-port trees kept only in history
+  '''(^|/)crates/simulation/''',
+  '''(^|/)crates/adapter/''',
+  '''(^|/)schema/schema/''',
+]
+regexes = [
+  '''0x[a-fA-F0-9]{40}\b''',                          # EVM addresses are never secrets
+  '''test-secret-only-do-not-use-in-production''',    # explicit throwaway test JWT secret
+]

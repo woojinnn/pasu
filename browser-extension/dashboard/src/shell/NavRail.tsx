@@ -24,10 +24,10 @@ export function NavRail() {
   };
 
   return (
-    <nav className="nav-rail" tabIndex={0} aria-label="Scopeball global nav">
+    <nav className="nav-rail" tabIndex={0} aria-label="Pasu global nav">
       <div className="nav-logo">
         <div className="mark">sb</div>
-        <div className="word">scopeball</div>
+        <div className="word">pasu</div>
       </div>
 
       <div className="nav-divider" />

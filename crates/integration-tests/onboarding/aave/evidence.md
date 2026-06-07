@@ -11,7 +11,7 @@
 |---|---|
 | protocol | aave |
 | branch | test/aave-fw-dogfood |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-morpho |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-morpho |
 | date | 2026-06-03 |
 | main agent | Claude Opus 4.8 (1M context) — framework dogfood (♻️ re-entry + governance axis-1), then **GHO/GSM/safety-module increment** (amm::GsmSwap + staking domain, axis-2) |
 | base commit | d06ea467 (baseline); GHO/GSM/safety increment on `test/aave-fw-dogfood` @ 7572418a (baseline P4) |

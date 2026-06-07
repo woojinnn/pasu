@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: GOV-01 (governance voting power
+// pasu default v2 policy — explorer id: GOV-01 (governance voting power
 // delegated to an unknown/unexpected address).
 //
 // LITERAL SET-MEMBERSHIP (no enrichment). Delegation phishing is the #1

@@ -126,7 +126,7 @@ export function HomePage() {
   return (
     <>
       <Topbar
-        here="Scopeball Home"
+        here="Pasu Home"
         subtitle={summaryQ.data ? `${summaryQ.data.wallet_count} wallets` : "…"}
         counts={countsQ.data}
       />

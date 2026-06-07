@@ -1,6 +1,6 @@
 # Morpho — Onboarding Evidence Ledger
 
-> Greenfield **re-run** of the ScopeBall protocol-onboarding framework on Morpho
+> Greenfield **re-run** of the Pasu protocol-onboarding framework on Morpho
 > (`ONBOARDING_PROMPT.md`), this time under the **SCOPE-ORACLE-hardened** framework.
 > Treated as a fresh onboarding; prior artifacts (which had expanded to mainnet **+ Base**
 > and deferred Bundler3 on an *unverified* premise) are re-derived from 1st-party sources
@@ -18,7 +18,7 @@
 |---|---|
 | protocol | morpho |
 | branch | feat/morpho-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-morpho |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-morpho |
 | date | 2026-06-02 (re-run); **2026-06-03 (Q1 vault long-tail promotion → all 73 listed mainnet vaults cover)** |
 | main agent | Claude Opus 4.8 (1M context), this session |
 | base commit | a8909023 (feat/registry-v2); hardening cherry-picked at 67426771; mainnet-only reconciliation at 4116ce65; **Q1 on c9916daf** |

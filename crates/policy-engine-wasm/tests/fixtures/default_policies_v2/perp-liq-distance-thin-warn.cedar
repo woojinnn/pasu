@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: PERP-02 (entry leaves the
+// pasu default v2 policy — explorer id: PERP-02 (entry leaves the
 // liquidation price too close to mark).
 //
 // Even with the right direction, a liq_price that sits right against mark gets

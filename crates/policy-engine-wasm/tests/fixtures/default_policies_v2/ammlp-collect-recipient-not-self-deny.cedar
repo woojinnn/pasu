@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: AMMLP-1 (collect_fees output
+// pasu default v2 policy — explorer id: AMMLP-1 (collect_fees output
 // redirected to an address other than the signer).
 //
 // The sibling of the remove_liquidity recipient-redirect: harvesting accrued LP

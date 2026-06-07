@@ -84,9 +84,17 @@ async fn spawn_server(state: AppState) -> std::net::SocketAddr {
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn postgres_backed_evaluate_persists_state_across_requests() {
     // 1. Build state, seed user store directly via the multi_user router.
+    // Upsert the user FIRST so the wallet save satisfies `wallets_user_id_fkey`
+    // (enforced by the Postgres backend). A unique email keeps the derived id
+    // disjoint from other test files sharing the single integration DB. Reuse
+    // the returned id for both the wallet store and the token so they match.
     let (state, _tmp) = spawn_state();
-    let user_id = "u_test_alice";
-    let user_store = state.multi_user.for_user(user_id).unwrap();
+    let user_id = state
+        .global_db
+        .upsert_user("server-pg-evaluate@example.com", "test")
+        .await
+        .unwrap();
+    let user_store = state.multi_user.for_user(&user_id).unwrap();
 
     let id = sample_wallet_id();
     let mut seeded = WalletState::new(id.clone());
@@ -100,7 +108,7 @@ async fn postgres_backed_evaluate_persists_state_across_requests() {
     user_store.save(&seeded).await.unwrap();
 
     // 2. Start the server.
-    let token = mint_token(user_id);
+    let token = mint_token(&user_id);
     let addr = spawn_server(state).await;
 
     // 3. POST /evaluate with the seeded user's token.

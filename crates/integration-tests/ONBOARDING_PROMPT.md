@@ -7,8 +7,8 @@
 아래 블록을 새 세션에 그대로 붙여넣고 `<PROTOCOL>` 만 바꾼다.
 
 ```
-ScopeBall 의 V3 ActionBody 디코드 경로에 <PROTOCOL> 를 온보딩하라.
-repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
+Pasu 의 V3 ActionBody 디코드 경로에 <PROTOCOL> 를 온보딩하라.
+repo woojinnn/pasu, cwd /Users/jhy/Desktop/Pasu/pasu-registry-v2.
 
 [작업 워크플로 — 먼저 셋업]
  · **fresh state 면 먼저 한 번**: `cd registryV2 && npm install && npm run build` — `registryV2/index/` 는
@@ -19,7 +19,7 @@ repo woojinnn/scopeball, cwd /Users/jhy/Desktop/ScopeBall/scopeball-registry-v2.
    git switch -c feat/<PROTOCOL>-onboarding
    (이미 있으면 git switch feat/<PROTOCOL>-onboarding)
    사용자가 별도 worktree 를 지정하지 않았을 때만 새 worktree + 브랜치를 만든다:
-   git worktree add -b feat/<PROTOCOL>-onboarding ../scopeball-<PROTOCOL> <base>
+   git worktree add -b feat/<PROTOCOL>-onboarding ../pasu-<PROTOCOL> <base>
    (base = 현 온보딩 base 브랜치. 그 브랜치가 다른 worktree 에 점유/dirty 면 그 worktree 비접촉.)
    완료·검증 후에도 base/worktree 머지는 사용자가 명시적으로 요청할 때만 진행.
  · **각 phase(P0/P1/P2/P3/P4, 또는 더 잘게 컨트랙트·함수군별)가 끝나면 explicit-stage 커밋**

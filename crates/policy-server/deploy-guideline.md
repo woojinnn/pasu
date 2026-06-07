@@ -405,6 +405,10 @@ terraform destroy        # yes 입력
 > **남는 것**(거의 무료): GCS 상태 버킷, 켜둔 API, DuckDNS 서브도메인. 그래서 다시 켤 때 빠름.
 > ⚠️ `terraform destroy`는 **Cloud SQL 데이터도 삭제**합니다. 중요 데이터가 있으면 먼저 백업하세요.
 
+### 배포 전 DB만 깨끗하게 초기화하기
+
+GKE/Ingress/Secret/Redis/Cloud SQL instance는 유지하고, 애플리케이션 DB 데이터만 비운 뒤 Helm migration hook으로 schema를 다시 올리는 절차는 [`server/deploy/PROD_RESET_RUNBOOK.md`](server/deploy/PROD_RESET_RUNBOOK.md)를 따르세요. 외부 배포 전 개발 데이터 초기화용 절차이며, 운영 데이터가 있으면 먼저 백업해야 합니다.
+
 ### 다시 켜기
 ```bash
 cd crates/policy-server/server/deploy/terraform && terraform apply   # ~25분

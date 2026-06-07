@@ -25,10 +25,10 @@ import {
   type PolicyRpcAuditMeta,
 } from "./policy-rpc";
 import {
-  evaluate as scopeballEvaluate,
-  getAccessToken as scopeballGetAccessToken,
-  ServerError as ScopeballServerError,
-} from "./scopeball-auth";
+  evaluate as pasuEvaluate,
+  getAccessToken as pasuGetAccessToken,
+  ServerError as PasuServerError,
+} from "./pasu-auth";
 import {
   getDefaultPolicyBundlesV2,
   loadDefaultPolicySetV2,
@@ -47,6 +47,7 @@ import {
   type Message,
 } from "@lib/types";
 import { hlOrderToAction, HL_TO_SENTINEL } from "./hl-order-to-action";
+import { reportPermitIfApplicable } from "./permit-report";
 import { collectTokenDecimals } from "./registry/collect-token-decimals";
 import {
   collectHlLeverage,
@@ -308,7 +309,7 @@ async function decideInner(
           data: message.data.transaction.data,
         }
       : undefined;
-    logAt("[Scopeball] decideMessage threw", {
+    logAt("[Pasu] decideMessage threw", {
       requestId: message.requestId,
       hostname: message.data.hostname,
       type: pending.type,
@@ -358,7 +359,7 @@ async function appendAudit(
   // state for policy evaluation; the extension owns policy verdicts and audit
   // history, so this replaces the old server `/verdicts` write path.
   void appendVerdictsForMessage(message, verdict, userDecision).catch((err) => {
-    console.warn("[Scopeball] verdict-storage append failed", err);
+    console.warn("[Pasu] verdict-storage append failed", err);
   });
 }
 
@@ -456,7 +457,7 @@ function logIncoming(message: Message): void {
 
   if (isTransaction(message)) {
     const data = message.data.transaction.data;
-    console.info("[Scopeball] tx.incoming", {
+    console.info("[Pasu] tx.incoming", {
       ...common,
       chainId: message.data.chainId,
       to: message.data.transaction.to,
@@ -471,7 +472,7 @@ function logIncoming(message: Message): void {
 
   if (isTypedSignature(message)) {
     const typedData = normalizeTypedDataPayload(message.data.typedData);
-    console.info("[Scopeball] typed-sig.incoming", {
+    console.info("[Pasu] typed-sig.incoming", {
       ...common,
       chainId: message.data.chainId,
       address: message.data.address,
@@ -482,7 +483,7 @@ function logIncoming(message: Message): void {
   }
 
   if (isUntypedSignature(message)) {
-    console.info("[Scopeball] personal-sign.incoming", {
+    console.info("[Pasu] personal-sign.incoming", {
       ...common,
       messageLen: message.data.message.length,
       message: message.data.message,
@@ -506,7 +507,7 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 
   if (isTransaction(message)) {
     const data = message.data.transaction.data;
-    console.info("[Scopeball] tx", {
+    console.info("[Pasu] tx", {
       ...common,
       chainId: message.data.chainId,
       to: message.data.transaction.to,
@@ -519,7 +520,7 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 
   if (isTypedSignature(message)) {
     const typedData = normalizeTypedDataPayload(message.data.typedData);
-    console.info("[Scopeball] typed-sig", {
+    console.info("[Pasu] typed-sig", {
       ...common,
       chainId: message.data.chainId,
       primaryType: typedData?.primaryType,
@@ -528,7 +529,7 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   }
 
   if (isUntypedSignature(message)) {
-    console.info("[Scopeball] personal-sign", {
+    console.info("[Pasu] personal-sign", {
       ...common,
       messageLen: message.data.message.length,
     });
@@ -599,7 +600,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       // DevTools audit log for the v3 route outcome. On route hits this includes
       // the decoded ActionBody tree so the service-worker log shows each
       // action's domain, tag, payload, and live_inputs.
-      console.info("[Scopeball] declarative-route-v3", {
+      console.info("[Pasu] declarative-route-v3", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         outcome: v3Outcome.kind,
@@ -634,12 +635,12 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       // (amounts/addresses) serialize cleanly — no BigInt in the v3 envelope.
       if (v3Outcome.kind === "hit") {
         console.info(
-          `[Scopeball] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
+          `[Pasu] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
             JSON.stringify(v3Outcome.value.actions, null, 2),
         );
       }
     } catch (err) {
-      console.warn("[Scopeball] declarative-route-v3 threw", {
+      console.warn("[Pasu] declarative-route-v3 threw", {
         requestId: message.requestId,
         err: err instanceof Error ? err.message : String(err),
       });
@@ -669,7 +670,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   if (v3Outcome && v3Outcome.kind === "hit" && isTransaction(message)) {
     const v2 = await tryV2VerdictPath(message, v3Outcome.value.actions);
     if (v2) {
-      console.info("[Scopeball] declarative-verdict", {
+      console.info("[Pasu] declarative-verdict", {
         requestId: message.requestId,
         verdictSource: "declarative-v2",
         verdict: v2.kind,
@@ -701,7 +702,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   // user must explicitly approve via the verdict window (mirrors the untyped
   // signature short-circuit). This replaces the deleted legacy
   // `evaluateWithPolicyRpc` fallback.
-  console.info("[Scopeball] declarative-verdict", {
+  console.info("[Pasu] declarative-verdict", {
     requestId: message.requestId,
     verdictSource: "fail_closed",
     verdict: "warn",
@@ -772,8 +773,8 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     ({ action, meta } = hlOrderToAction(message.data));
     // Devtools: the canonical parsed representation (the `ActionBody` the policy
     // engine evaluates). Visible in the service-worker console
-    // (chrome://extensions → ScopeBall → "Inspect views: service worker").
-    console.info("[Scopeball] HL /exchange parsed →", {
+    // (chrome://extensions → Pasu → "Inspect views: service worker").
+    console.info("[Pasu] HL /exchange parsed →", {
       requestId: message.requestId,
       venue: message.data.venue,
       wireKind: message.data.hlAction?.kind,
@@ -783,7 +784,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     });
   } catch (err) {
     // Malformed order wire → deny-closed (do NOT let an unparseable order pass).
-    console.warn("[Scopeball] venue-order convert threw", {
+    console.warn("[Pasu] venue-order convert threw", {
       requestId: message.requestId,
       err: err instanceof Error ? err.message : String(err),
     });
@@ -851,12 +852,12 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       results,
       account_leverage,
     });
-    console.info("[Scopeball] venue-order-verdict", {
+    console.info("[Pasu] venue-order-verdict", {
       requestId: message.requestId,
       venue: message.data.venue,
       verdict: verdict.kind,
       // Injected order-time leverage (empty `{}` ⇒ enrichment dormant for this
-      // order — see the `[Scopeball] HL order-leverage ...` line for why).
+      // order — see the `[Pasu] HL order-leverage ...` line for why).
       account_leverage,
       matched: verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
     });
@@ -873,7 +874,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   } catch (err) {
     // A plan/dispatch/evaluate throw is a fault → deny-closed (a flaky
     // WASM/RPC call must NOT waive a venue order through).
-    console.warn("[Scopeball] venue-order-verdict threw", {
+    console.warn("[Pasu] venue-order-verdict threw", {
       requestId: message.requestId,
       err: err instanceof Error ? err.message : String(err),
     });
@@ -943,7 +944,7 @@ function leafBodies(body: unknown): unknown[] {
 
 /**
  * Emit a signature-tailored, readable summary of a decoded off-chain payload to
- * the ScopeBall DevTools console: the EIP-712 `domain` / `primaryType` that was
+ * the Pasu DevTools console: the EIP-712 `domain` / `primaryType` that was
  * signed, the routing decoder, and one `domain/action  field=value …` line per
  * decoded (leaf) `ActionBody`. Complements the full JSON dump.
  */
@@ -961,7 +962,7 @@ function logParsedSignature(message: Message, routed: { actions: unknown[]; deco
     return `  #${i} ${b?.domain ?? "?"}/${b?.action ?? "?"}  ${summarizeBodyFields(body)}`;
   });
   console.info(
-    `[Scopeball] off-chain signature parsed — ${domainName} / ${primaryType} ` +
+    `[Pasu] off-chain signature parsed — ${domainName} / ${primaryType} ` +
       `(${leaves.length} action${leaves.length === 1 ? "" : "s"}) via ${routed.decoderId}\n` +
       lines.join("\n"),
   );
@@ -1000,7 +1001,7 @@ async function typedSignatureLifecycle(
       submittedAt: Math.floor(Date.now() / 1000),
     });
   } catch (err) {
-    console.warn("[Scopeball] typed-sig route threw", {
+    console.warn("[Pasu] typed-sig route threw", {
       requestId: message.requestId,
       err: err instanceof Error ? err.message : String(err),
     });
@@ -1027,7 +1028,7 @@ async function typedSignatureLifecycle(
   // ActionBody[] JSON dump (mirrors the tx-path dump) for complete detail.
   logParsedSignature(message, routed);
   console.info(
-    `[Scopeball] decoded ActionBody[] (${routed.actions.length})\n` +
+    `[Pasu] decoded ActionBody[] (${routed.actions.length})\n` +
       JSON.stringify(routed.actions, null, 2),
   );
   const declarativeV3: DeclarativeV3AuditMeta = {
@@ -1043,6 +1044,9 @@ async function typedSignatureLifecycle(
   const bundles = getDefaultPolicyBundlesV2();
   // No policies ⇒ baseline pass (you cannot deny without a policy).
   if (bundles.length === 0) {
+    // Baseline-pass is still a PASS — report any permit/permit2 sig for backend
+    // tracking (fire-and-forget; never blocks signing).
+    void reportPermitIfApplicable(routed.actions, message);
     return {
       verdict: { kind: "pass" },
       verdictSource: "declarative-v2",
@@ -1118,7 +1122,7 @@ async function typedSignatureLifecycle(
       // fault but KEEP aggregating siblings — the old early-return discarded
       // every already-computed verdict and demoted a sibling leg's computed Fail
       // to an approvable warn (WASM-1). Resolution below honours deny-overrides.
-      console.warn("[Scopeball] typed-sig-verdict leg threw", {
+      console.warn("[Pasu] typed-sig-verdict leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
@@ -1139,7 +1143,7 @@ async function typedSignatureLifecycle(
       declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
     };
   }
-  console.info("[Scopeball] typed-sig-verdict", {
+  console.info("[Pasu] typed-sig-verdict", {
     requestId: message.requestId,
     verdictSource: "declarative-v2",
     verdict: aggregate.kind,
@@ -1150,6 +1154,11 @@ async function typedSignatureLifecycle(
         severity: m.severity,
       })) ?? [],
   });
+  // On PASS only, report any permit/permit2 sig for backend tracking
+  // (fire-and-forget; never blocks signing).
+  if (aggregate.kind === "pass") {
+    void reportPermitIfApplicable(routed.actions, message);
+  }
   return { verdict: aggregate, verdictSource: "declarative-v2", declarativeV3 };
 }
 
@@ -1247,7 +1256,7 @@ async function evaluateBodyTree(
         results,
       }).catch((err) =>
         console.warn(
-          "[Scopeball] diagnosis-context append failed",
+          "[Pasu] diagnosis-context append failed",
           err instanceof Error ? err.message : err,
         ),
       );
@@ -1260,7 +1269,7 @@ async function evaluateBodyTree(
     // DENY still outranks this warn via deny-overrides. (A single dropped opcode
     // in an otherwise-decoded stream is NOT surfaced — registry `warn`=skip
     // intent — so this fires only for the all-empty case.)
-    console.debug("[Scopeball] per-child unknown leg → partial-decode warn", {
+    console.debug("[Pasu] per-child unknown leg → partial-decode warn", {
       requestId,
     });
     verdicts.push(partialDecodeVerdict());
@@ -1361,12 +1370,12 @@ async function tryV2VerdictPath(
         )),
       );
 
-      // RECORD (Phase 8B/8C): replay the simulation against the Scopeball
+      // RECORD (Phase 8B/8C): replay the simulation against the Pasu
       // server so the action + state-delta land in the authenticated user's
       // server-side state. Best-effort — the verdict above is the source of
       // truth for fail-closed decisions; recording is purely for the
       // dashboard's history view. Skipped silently when the user isn't signed
-      // in to Scopeball. Recorded per TOP-LEVEL action (granularity unchanged).
+      // in to Pasu. Recorded per TOP-LEVEL action (granularity unchanged).
       // Phase 8C also captures the server's `deltas[0]` onto the SW's
       // `state-deltas:log` keyed by `message.requestId` so the verdict log's
       // `delta_id` joins without a server round-trip on the HistoryPage.
@@ -1389,7 +1398,7 @@ async function tryV2VerdictPath(
       // every already-computed verdict and dropped the whole tx into the warn
       // tail, silently demoting a sibling leg's computed Fail to an approvable
       // warn (WASM-1). Resolution below honours deny-overrides.
-      console.warn("[Scopeball] declarative-verdict-v2 leg threw", {
+      console.warn("[Pasu] declarative-verdict-v2 leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
@@ -1651,7 +1660,7 @@ async function openVerdictWindow(
       focused: true,
     });
   } catch (err) {
-    console.error("[Scopeball] openVerdictWindow failed", {
+    console.error("[Pasu] openVerdictWindow failed", {
       requestId,
       hostname,
       verdict: verdict.kind,
@@ -1720,7 +1729,7 @@ async function openVerdictWindowAndAwait(
         requestId?: string;
         ok?: boolean;
       } | null;
-      if (!m || m.type !== "scopeball:verdict-decision") return;
+      if (!m || m.type !== "pasu:verdict-decision") return;
       if (m.requestId !== requestId) return;
       settle(!!m.ok);
     };
@@ -1773,7 +1782,7 @@ function buildConfirmUrl(
 }
 
 /**
- * Phase 8B — replay the just-evaluated simulation against the Scopeball
+ * Phase 8B — replay the just-evaluated simulation against the Pasu
  * Rust server so the action + state-delta land in the authenticated
  * user's server-side state.
  *
@@ -1810,7 +1819,7 @@ async function recordSimulationOnServer(input: {
   readonly value?: string;
 }): Promise<void> {
   // Skip silently for signed-out users — recording is opt-in via login.
-  const hasToken = await scopeballGetAccessToken().catch(() => null);
+  const hasToken = await pasuGetAccessToken().catch(() => null);
   if (!hasToken) return;
 
   // Mirror the Rust `EvaluateRequest` shape:
@@ -1838,7 +1847,7 @@ async function recordSimulationOnServer(input: {
   };
 
   try {
-    const response = await scopeballEvaluate({
+    const response = await pasuEvaluate({
       wallet_id: walletId,
       envelopes: [envelope as unknown as Record<string, unknown>],
       eval_context: evalContext,
@@ -1880,18 +1889,18 @@ async function recordSimulationOnServer(input: {
         // — the server has the canonical delta, dashboard just won't
         // join until a future record succeeds.
         console.warn(
-          "[Scopeball] state-delta local append failed",
+          "[Pasu] state-delta local append failed",
           storageErr instanceof Error ? storageErr.message : storageErr,
         );
       }
     }
   } catch (err) {
-    if (err instanceof ScopeballServerError && err.isUnauthorized) {
+    if (err instanceof PasuServerError && err.isUnauthorized) {
       // Token expired between getAccessToken() and the call — swallow.
-      console.debug("[Scopeball] record skipped: server returned 401");
+      console.debug("[Pasu] record skipped: server returned 401");
       return;
     }
-    console.warn("[Scopeball] record on server failed (non-fatal)", {
+    console.warn("[Pasu] record on server failed (non-fatal)", {
       chain: input.tx.chain_id,
       from: input.tx.from,
       err: err instanceof Error ? err.message : String(err),

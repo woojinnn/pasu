@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Block commits that would introduce a secret. Scans only the STAGED changes.
+# Enable once per clone:  scripts/setup-git-hooks.sh
+# Bypass a known false positive:  git commit --no-verify
+set -euo pipefail
+
+if command -v gitleaks >/dev/null 2>&1; then
+  root="$(git rev-parse --show-toplevel)"
+  gitleaks protect --staged --redact --no-banner --config "${root}/.gitleaks.toml"
+else
+  echo "[pre-commit] gitleaks not installed — skipping secret scan." >&2
+  echo "             install:  brew install gitleaks   (CI still scans every PR)" >&2
+fi

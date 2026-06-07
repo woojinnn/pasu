@@ -166,10 +166,12 @@ export async function aggregatedManagedPolicySet(): Promise<
   RenderedPolicyEntry[]
 > {
   const list = await listManaged();
-  return list.map((p) => ({
-    id: p.id,
-    text: p.text,
-    ...(p.manifest !== undefined ? { manifest: p.manifest } : {}),
-    ...(p.manifests !== undefined ? { manifests: p.manifests } : {}),
-  }));
+  return list
+    .filter((p) => p.life !== "draft")
+    .map((p) => ({
+      id: p.id,
+      text: p.text,
+      ...(p.manifest !== undefined ? { manifest: p.manifest } : {}),
+      ...(p.manifests !== undefined ? { manifests: p.manifests } : {}),
+    }));
 }

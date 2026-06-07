@@ -7689,6 +7689,79 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pasu-dashboard@workspace:dashboard":
+  version: 0.0.0-use.local
+  resolution: "pasu-dashboard@workspace:dashboard"
+  dependencies:
+    "@codemirror/commands": "npm:^6.10.3"
+    "@codemirror/language": "npm:^6.12.3"
+    "@codemirror/state": "npm:^6.6.0"
+    "@codemirror/view": "npm:^6.43.0"
+    "@dnd-kit/core": "npm:^6.3.1"
+    "@dnd-kit/sortable": "npm:^8.0.0"
+    "@dnd-kit/utilities": "npm:^3.2.2"
+    "@tanstack/react-query": "npm:^5.59.0"
+    "@types/react": "npm:^18.3.3"
+    "@types/react-dom": "npm:^18.3.0"
+    "@vitejs/plugin-react": "npm:^4.3.1"
+    blockly: "npm:^11.2.2"
+    clsx: "npm:^2.1.1"
+    cmdk: "npm:^1.1.1"
+    codemirror: "npm:^6.0.2"
+    fuse.js: "npm:^7.4.1"
+    jsdom: "npm:^25.0.0"
+    lucide-react: "npm:^0.460.0"
+    react: "npm:^18.3.1"
+    react-dom: "npm:^18.3.1"
+    react-router-dom: "npm:^6.26.0"
+    typescript: "npm:^5.4.0"
+    vite: "npm:^5.4.0"
+    vitest: "npm:^2.1.0"
+  languageName: unknown
+  linkType: soft
+
+"pasu-extension@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "pasu-extension@workspace:."
+  dependencies:
+    "@metamask/post-message-stream": "npm:^8.1.0"
+    "@noble/curves": "npm:^2.2.0"
+    "@noble/hashes": "npm:^2.2.0"
+    "@testing-library/dom": "npm:^10"
+    "@testing-library/react": "npm:^16"
+    "@types/chrome": "npm:^0.0.268"
+    "@types/object-hash": "npm:^3.0.6"
+    "@types/webextension-polyfill": "npm:^0.10.7"
+    "@vitest/ui": "npm:^4.1.5"
+    buffer: "npm:^6.0.3"
+    canonicalize: "npm:^3.0.0"
+    copy-webpack-plugin: "npm:^12.0.2"
+    cross-env: "npm:^7.0.3"
+    css-loader: "npm:^7.1.4"
+    dotenv-webpack: "npm:^8.1.0"
+    eth-rpc-errors: "npm:^4.0.3"
+    happy-dom: "npm:^20.9.0"
+    jszip: "npm:^3.10.1"
+    npm-run-all: "npm:^4.1.5"
+    object-hash: "npm:^3.0.0"
+    prettier: "npm:^3.3.1"
+    process: "npm:^0.11.10"
+    rimraf: "npm:^5.0.7"
+    style-loader: "npm:^4.0.0"
+    ts-loader: "npm:^9.5.1"
+    typescript: "npm:^5.7.3"
+    viem: "npm:^2.13.7"
+    vitest: "npm:^4.1.5"
+    web-ext: "npm:^8.0.0"
+    webextension-polyfill: "npm:^0.12.0"
+    webpack: "npm:^5.91.0"
+    webpack-cli: "npm:^5.1.4"
+    webpack-merge: "npm:^5.10.0"
+    wext-manifest-loader: "npm:^2.4.2"
+    wext-manifest-webpack-plugin: "npm:^1.4.1"
+  languageName: unknown
+  linkType: soft
+
 "path-exists@npm:^4.0.0":
   version: 4.0.0
   resolution: "path-exists@npm:4.0.0"
@@ -8789,79 +8862,6 @@ __metadata:
   checksum: 10/808784735eeb153ab7f3f787f840aa3bc63f423d2a5a7e96c9e70a0e53d0bc62d7b37ea396fc598ce19196e4fb86a72f897154b7c6ce2358bbc426166f205e14
   languageName: node
   linkType: hard
-
-"scopeball-dashboard@workspace:dashboard":
-  version: 0.0.0-use.local
-  resolution: "scopeball-dashboard@workspace:dashboard"
-  dependencies:
-    "@codemirror/commands": "npm:^6.10.3"
-    "@codemirror/language": "npm:^6.12.3"
-    "@codemirror/state": "npm:^6.6.0"
-    "@codemirror/view": "npm:^6.43.0"
-    "@dnd-kit/core": "npm:^6.3.1"
-    "@dnd-kit/sortable": "npm:^8.0.0"
-    "@dnd-kit/utilities": "npm:^3.2.2"
-    "@tanstack/react-query": "npm:^5.59.0"
-    "@types/react": "npm:^18.3.3"
-    "@types/react-dom": "npm:^18.3.0"
-    "@vitejs/plugin-react": "npm:^4.3.1"
-    blockly: "npm:^11.2.2"
-    clsx: "npm:^2.1.1"
-    cmdk: "npm:^1.1.1"
-    codemirror: "npm:^6.0.2"
-    fuse.js: "npm:^7.4.1"
-    jsdom: "npm:^25.0.0"
-    lucide-react: "npm:^0.460.0"
-    react: "npm:^18.3.1"
-    react-dom: "npm:^18.3.1"
-    react-router-dom: "npm:^6.26.0"
-    typescript: "npm:^5.4.0"
-    vite: "npm:^5.4.0"
-    vitest: "npm:^2.1.0"
-  languageName: unknown
-  linkType: soft
-
-"scopeball-extension@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "scopeball-extension@workspace:."
-  dependencies:
-    "@metamask/post-message-stream": "npm:^8.1.0"
-    "@noble/curves": "npm:^2.2.0"
-    "@noble/hashes": "npm:^2.2.0"
-    "@testing-library/dom": "npm:^10"
-    "@testing-library/react": "npm:^16"
-    "@types/chrome": "npm:^0.0.268"
-    "@types/object-hash": "npm:^3.0.6"
-    "@types/webextension-polyfill": "npm:^0.10.7"
-    "@vitest/ui": "npm:^4.1.5"
-    buffer: "npm:^6.0.3"
-    canonicalize: "npm:^3.0.0"
-    copy-webpack-plugin: "npm:^12.0.2"
-    cross-env: "npm:^7.0.3"
-    css-loader: "npm:^7.1.4"
-    dotenv-webpack: "npm:^8.1.0"
-    eth-rpc-errors: "npm:^4.0.3"
-    happy-dom: "npm:^20.9.0"
-    jszip: "npm:^3.10.1"
-    npm-run-all: "npm:^4.1.5"
-    object-hash: "npm:^3.0.0"
-    prettier: "npm:^3.3.1"
-    process: "npm:^0.11.10"
-    rimraf: "npm:^5.0.7"
-    style-loader: "npm:^4.0.0"
-    ts-loader: "npm:^9.5.1"
-    typescript: "npm:^5.7.3"
-    viem: "npm:^2.13.7"
-    vitest: "npm:^4.1.5"
-    web-ext: "npm:^8.0.0"
-    webextension-polyfill: "npm:^0.12.0"
-    webpack: "npm:^5.91.0"
-    webpack-cli: "npm:^5.1.4"
-    webpack-merge: "npm:^5.10.0"
-    wext-manifest-loader: "npm:^2.4.2"
-    wext-manifest-webpack-plugin: "npm:^1.4.1"
-  languageName: unknown
-  linkType: soft
 
 "semver-diff@npm:^4.0.0":
   version: 4.0.0

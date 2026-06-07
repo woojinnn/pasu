@@ -9,7 +9,7 @@
 |---|---|
 | protocol | seaport |
 | branch | feat/seaport-onboarding |
-| worktree | /Users/jhy/Desktop/ScopeBall/scopeball-seaport |
+| worktree | /Users/jhy/Desktop/Pasu/pasu-seaport |
 | date | 2026-06-04 |
 | main agent | Claude Opus 4.8 (1M) |
 | base commit | feabb369 (feat/registry-v2) |

@@ -1,5 +1,5 @@
 /**
- * Thin fetch wrapper for the Scopeball (Rust) policy-rpc server,
+ * Thin fetch wrapper for the Pasu (Rust) policy-rpc server,
  * service-worker edition.
  *
  * Mirrors `browser-extension/dashboard/src/server-api/client.ts` but:
@@ -8,26 +8,26 @@
  * - Doesn't carry the dashboard's `urlWithTokenQuery` SSE helper —
  *   the extension never opens SSE.
  *
- * The server URL comes from `SCOPEBALL_SERVER_URL` at build time
+ * The server URL comes from `PASU_SERVER_URL` at build time
  * (webpack DefinePlugin) and can be swapped at runtime via
- * `chrome.storage.local["scopeball_server_url"]` — the service-worker
- * mirror of the dashboard's `localStorage["scopeball_server_url"]`
+ * `chrome.storage.local["pasu_server_url"]` — the service-worker
+ * mirror of the dashboard's `localStorage["pasu_server_url"]`
  * override. Falls back to the local-dev default.
  */
 
 import { getAccessToken, getRefreshToken, setTokens } from "./tokenStore";
 
-declare const SCOPEBALL_SERVER_URL: string | undefined;
+declare const PASU_SERVER_URL: string | undefined;
 
-/** Build-time default (webpack DefinePlugin → `SCOPEBALL_SERVER_URL`). */
+/** Build-time default (webpack DefinePlugin → `PASU_SERVER_URL`). */
 const BUILD_BASE_URL =
-  (typeof SCOPEBALL_SERVER_URL !== "undefined" && SCOPEBALL_SERVER_URL) ||
+  (typeof PASU_SERVER_URL !== "undefined" && PASU_SERVER_URL) ||
   "http://127.0.0.1:8788";
 
 /** Runtime override key — mirrors the dashboard's
- * `localStorage["scopeball_server_url"]`, in `chrome.storage.local`
+ * `localStorage["pasu_server_url"]`, in `chrome.storage.local`
  * (service workers have no `localStorage`). */
-const SERVER_URL_KEY = "scopeball_server_url";
+const SERVER_URL_KEY = "pasu_server_url";
 
 let runtimeBaseUrl: string | null = null;
 
@@ -131,14 +131,13 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
 
 async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    const text = await res.text().catch(() => "");
     let body: unknown = null;
-    try {
-      body = await res.json();
-    } catch {
+    if (text) {
       try {
-        body = await res.text();
+        body = JSON.parse(text);
       } catch {
-        /* leave body null */
+        body = text;
       }
     }
     throw new ServerError(res.status, `${res.status} ${res.statusText}`, body);
@@ -203,6 +202,67 @@ export interface EvaluateResponseDto {
 
 export async function evaluate(req: EvaluateRequestDto): Promise<EvaluateResponseDto> {
   return request<EvaluateResponseDto>("/evaluate", {
+    method: "POST",
+    body: req,
+  });
+}
+
+/**
+ * `POST /wallets/:address/permits` body — a decoded off-chain permit/permit2
+ * signature. Mirrors the server's `IngestPermitReq` tagged union
+ * (`crates/policy-server/server/src/write_handlers.rs`). Decoded params only;
+ * the raw EIP-712 signature is intentionally NOT sent (less sensitive — the
+ * reconciler needs nonce/deadline, not the sig).
+ */
+export type IngestPermitReq =
+  | {
+      kind: "eip2612";
+      token: string;
+      spender: string;
+      amount: string;
+      deadline: number;
+      nonce: string;
+      chain_id: string;
+    }
+  | {
+      kind: "permit2_allowance";
+      token: string;
+      spender: string;
+      amount: string;
+      expires_at: number;
+      sig_deadline: number;
+      nonce_word: string;
+      nonce_bit: number;
+      chain_id: string;
+    }
+  | {
+      kind: "permit2_transfer";
+      token: string;
+      owner: string;
+      spender: string;
+      amount: string;
+      sig_deadline: number;
+      nonce_word: string;
+      nonce_bit: number;
+      witness_type?: string | null;
+      chain_id: string;
+    };
+
+export interface IngestPermitResp {
+  pending_ids: string[];
+}
+
+/**
+ * `POST /wallets/:address/permits` — record a signed permit/permit2 the
+ * extension just observed, so the server tracks it as a `PendingTx` (and the
+ * sync reconciler later closes its lifecycle). Best-effort at the call site;
+ * errors surface as `ServerError` for the caller to swallow.
+ */
+export async function ingestPermit(
+  address: string,
+  req: IngestPermitReq,
+): Promise<IngestPermitResp> {
+  return request<IngestPermitResp>(`/wallets/${address}/permits`, {
     method: "POST",
     body: req,
   });

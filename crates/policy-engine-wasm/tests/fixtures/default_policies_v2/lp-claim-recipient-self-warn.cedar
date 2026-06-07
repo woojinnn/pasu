@@ -1,4 +1,4 @@
-// scopeball default v2 policy — explorer id: LP-05 (claim/refund recipient is
+// pasu default v2 policy — explorer id: LP-05 (claim/refund recipient is
 // an address other than me).
 //
 // ACTION-FIELD comparison. A phishing UI quietly swaps the "recipient" of a
