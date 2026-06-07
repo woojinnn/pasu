@@ -292,6 +292,7 @@ function PackageCard({ listing, locale }: { listing: ListingSummary; locale: Mar
         {desc && <p className="featured-card-desc">{desc}</p>}
         <div className="featured-card-foot">
           <InstallCount n={listing.install_count} />
+          <Rating avg={listing.rating_avg} count={listing.rating_count} locale={locale} />
           <span className={`mc-install-badge featured-card-cta${listing.is_installed ? " is-installed" : ""}`}>
             {listing.is_installed
               ? locale === "ko" ? "설치됨" : "Installed"
@@ -404,6 +405,9 @@ function RankingSidebar({ locale }: { locale: MarketLocale }) {
                 </div>
                 <div className="rs-count">
                   <InstallCount n={l.install_count} />
+                  {l.rating_count > 0 && l.rating_avg != null && (
+                    <Rating avg={l.rating_avg} count={l.rating_count} locale={locale} showCount={false} />
+                  )}
                 </div>
               </Link>
             </li>
@@ -706,6 +710,30 @@ function SeveritySymbol({ sev, locale }: { sev: "deny" | "warn"; locale: MarketL
   );
 }
 
+/** Compact rating: ★ avg (count). Shows "★ 신규" when there are no reviews. */
+function Rating({
+  avg,
+  count,
+  locale,
+  showCount = true,
+}: {
+  avg: number | null;
+  count: number;
+  locale: MarketLocale;
+  showCount?: boolean;
+}) {
+  const ko = locale === "ko";
+  if (!count || avg == null) {
+    return <span className="lv-rating is-none">{ko ? "★ 신규" : "★ New"}</span>;
+  }
+  return (
+    <span className="lv-rating" title={`${avg.toFixed(1)} / 5 · ${count}`}>
+      <span className="lv-rating-star">★</span> {avg.toFixed(1)}
+      {showCount && <span className="lv-rating-n"> ({count})</span>}
+    </span>
+  );
+}
+
 /** Install count as a download glyph + number (replaces "설치 N" text). */
 function InstallCount({ n }: { n: number }) {
   return (
@@ -880,6 +908,7 @@ function PolicyListCard({
       {oneLine && <p className="lv-card-line">{oneLine}</p>}
       <div className="lv-card-foot">
         <InstallCount n={listing.install_count} />
+        <Rating avg={listing.rating_avg} count={listing.rating_count} locale={locale} showCount={false} />
         <InstallBadge installed={listing.is_installed} locale={locale} onClick={() => onInstall(listing)} />
       </div>
     </Link>
@@ -942,6 +971,7 @@ function PackageListCard({
       )}
       <div className="lv-card-foot">
         <InstallCount n={listing.install_count} />
+        <Rating avg={listing.rating_avg} count={listing.rating_count} locale={locale} showCount={false} />
         <InstallBadge installed={listing.is_installed} locale={locale} onClick={() => onInstall(listing)} />
       </div>
     </Link>
