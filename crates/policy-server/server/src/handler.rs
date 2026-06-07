@@ -253,6 +253,26 @@ async fn execute_call_specs(
                     call_id: Some(spec.call_id.clone()),
                 }),
             },
+            "intent.pending_cap_over_balance" => {
+                match crate::methods::pending_cap_over_balance(state, &spec.params) {
+                    Some(value) => {
+                        tracing::debug!(
+                            call_id = %spec.call_id,
+                            "intent.pending_cap_over_balance: OK"
+                        );
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "intent.pending_cap_over_balance: unparseable params or unsynced \
+                             sell-token balance (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
             other => diagnostics.push(Diagnostic {
                 level: "info".to_owned(),
                 message: format!(
@@ -813,6 +833,100 @@ mod tests {
         assert_eq!(
             resp.policy_request.results["swap-intoken-cap-deny::nano"],
             serde_json::json!({ "nano": 1_000_000_000 })
+        );
+    }
+
+    /// `intent.pending_cap_over_balance` served from loaded state: an 80-cap open
+    /// order selling USDC + a new 30 sell exceed the 100 balance → `true`.
+    #[tokio::test]
+    async fn pending_cap_over_balance_served_from_state() {
+        use policy_state::pending::{
+            AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
+        };
+        use policy_state::primitives::VenueRef;
+        use policy_state::StateDelta;
+
+        let key = TokenKey::Erc20 {
+            chain: ChainId::ethereum_mainnet(),
+            address: Address::from_str("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").unwrap(),
+        };
+        let holding = TokenHolding {
+            key: key.clone(),
+            kind: TokenKind::Base {
+                category: BaseCategory::Stable,
+                peg_to: Some(PegTarget::Fiat(FiatCurrency::Usd)),
+            },
+            symbol: "USDC".into(),
+            decimals: 6,
+            balance: Balance::fungible(U256::from(100u64)),
+            committed: Balance::zero_fungible(),
+            approved_to: None,
+            price_usd: None,
+            metadata: None,
+            value_usd: None,
+            last_synced_at: Time::from_unix(1_700_000_000),
+            primitives_source: DataSource::UserSupplied,
+        };
+        let token = TokenRef { key: key.clone() };
+        let pending = PendingTx {
+            id: "intent:one_inch_fusion:0xopen".into(),
+            kind: PendingKind::OffchainLimitOrder {
+                venue: VenueRef::new("one_inch_fusion"),
+                sell: token.clone(),
+                buy: token.clone(),
+                sell_max: U256::from(80u64),
+                buy_min: U256::from(1u64),
+                order_kind: OrderKind::Dutch,
+            },
+            commitment: AssetCommitment::PermitCap {
+                token,
+                spender: Address::ZERO,
+                max_out: U256::from(80u64),
+            },
+            fill_effect: Box::new(StateDelta::new()),
+            lifecycle: PendingLifecycle {
+                status: PendingStatus::Active,
+                valid_until: None,
+                nonce: None,
+                on_chain_tx: None,
+                raw_status: None,
+            },
+            sync: DataSource::UserSupplied,
+            signed_at: Time::from_unix(0),
+            signature_payload: Vec::new(),
+        };
+        let mut state = WalletState::new(sample_wallet_id());
+        state.tokens.insert(key, holding);
+        state.pending = vec![pending];
+
+        // new order sells 30 → 80 + 30 = 110 > balance 100.
+        let spec = CallSpec {
+            manifest_id: "ammlp-intent-cap-over-balance-warn".into(),
+            call_id: "ammlp-intent-cap-over-balance-warn::pending-cap-over-balance".into(),
+            method: "intent.pending_cap_over_balance".into(),
+            // The exact params shape the manifest + lowering emit: the sell token
+            // nested under `action.sell.key.address`, amount at `action.sellAmount`.
+            params: serde_json::json!({
+                "chain_id": "eip155:1",
+                "owner": "0x0000000000000000000000000000000000000000",
+                "action": {
+                    "sell": { "key": {
+                        "standard": "erc20",
+                        "chain": "eip155:1",
+                        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                    } },
+                    "sellAmount": "0x1e"
+                }
+            }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+
+        let (results, _diag) =
+            execute_call_specs(&state, std::slice::from_ref(&spec), &no_price_book()).await;
+        assert_eq!(
+            results.get(&spec.call_id),
+            Some(&serde_json::json!({ "capSumOverBalance": true }))
         );
     }
 }

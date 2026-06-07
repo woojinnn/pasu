@@ -43,6 +43,7 @@ pub mod handler;
 pub mod logging;
 pub mod market_dto;
 pub mod market_handlers;
+pub(crate) mod methods;
 pub mod read_handlers;
 pub mod readiness;
 pub mod storage;
