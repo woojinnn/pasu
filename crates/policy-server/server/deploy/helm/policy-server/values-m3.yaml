@@ -104,3 +104,21 @@ syncConfig: |-
   orders_endpoint = "https://api.uniswap.org/v2"
   api_key = "${UNISWAP_KEY}"
   chains = ["eip155:1"]
+
+  # 1inch venues — all share the one Dev Portal Bearer key (ONEINCH_KEY, wired as
+  # an optional secretKeyRef on the worker). REQUIRES the ONEINCH_KEY secret value
+  # to be present: a keyless ${ONEINCH_KEY} expands to "" and 401s every tick.
+  [venues.one_inch_fusion]
+  base_url = "https://api.1inch.dev/fusion"
+  api_key = "${ONEINCH_KEY}"
+  chains = ["eip155:1", "eip155:42161", "eip155:8453"]
+
+  # Fusion+ is cross-chain: queried globally by maker (no chains list).
+  [venues.one_inch_fusion_plus]
+  base_url = "https://api.1inch.dev/fusion-plus"
+  api_key = "${ONEINCH_KEY}"
+
+  [venues.one_inch_lop]
+  base_url = "https://api.1inch.dev/orderbook"
+  api_key = "${ONEINCH_KEY}"
+  chains = ["eip155:1", "eip155:42161", "eip155:8453"]
