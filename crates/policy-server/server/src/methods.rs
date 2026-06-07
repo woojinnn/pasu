@@ -83,6 +83,81 @@ pub(crate) fn pending_cap_over_balance(state: &WalletState, params: &Value) -> O
     Some(json!({ "capSumOverBalance": over }))
 }
 
+/// Lowercase hex of `action.<field>.key.address` (a lowered token ref). `None`
+/// for a native/missing token (no `address`).
+fn action_token_address(action: &Value, field: &str) -> Option<String> {
+    action
+        .get(field)
+        .and_then(|t| t.get("key"))
+        .and_then(|k| k.get("address"))
+        .and_then(asset_hex)
+}
+
+/// `intent.near_duplicate_pending`: is the new signed order a near-duplicate of an
+/// already-open one — same venue + sell token + buy token? Re-signing a "did it go
+/// through?" order is common and double-fills. Returns `{ "duplicate": bool }`.
+///
+/// Params are the manifest's `{ chain_id, owner, action }`. Reads the venue name
+/// (`action.venue.name`) and the sell/buy token addresses (`action.<>.key.address`)
+/// and tests membership against the active `OffchainLimitOrder` set. Matches tokens
+/// by `(chain_id, address)`; a native token (no address) yields `None` → fail-open.
+pub(crate) fn near_duplicate_pending(state: &WalletState, params: &Value) -> Option<Value> {
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let action = params.get("action")?;
+    let venue = action
+        .get("venue")
+        .and_then(|v| v.get("name"))
+        .and_then(Value::as_str)?;
+    let sell = action_token_address(action, "sell")?;
+    let buy = action_token_address(action, "buy")?;
+
+    let token_matches = |t: &policy_state::token::TokenRef, addr: &str| -> bool {
+        t.key.chain().as_str() == chain
+            && t.key.contract().map(|a| format!("{a:#x}")).as_deref() == Some(addr)
+    };
+
+    let duplicate = state.pending.iter().any(|p| {
+        matches!(
+            p.lifecycle.status,
+            PendingStatus::Active | PendingStatus::PartiallyFilled
+        ) && match &p.kind {
+            PendingKind::OffchainLimitOrder {
+                venue: pv,
+                sell: psell,
+                buy: pbuy,
+                ..
+            } => pv.name == venue && token_matches(psell, &sell) && token_matches(pbuy, &buy),
+            _ => false,
+        }
+    });
+    Some(json!({ "duplicate": duplicate }))
+}
+
+/// `intent.validity_horizon_sec`: seconds from now until the order's `validUntil`
+/// deadline — a long horizon means a long-lived off-chain signature (blind-sign /
+/// stale-fill risk). Params: `valid_until` (unix-seconds `Long`); an optional `now`
+/// (unix seconds) overrides the wall clock for deterministic tests. Returns
+/// `{ "horizonSec": Long }`, clamped to ≥ 0. State is unused (pure on params).
+pub(crate) fn validity_horizon_sec(_state: &WalletState, params: &Value) -> Option<Value> {
+    let valid_until = params.get("valid_until").and_then(Value::as_i64)?;
+    let now = params
+        .get("now")
+        .and_then(Value::as_i64)
+        .unwrap_or_else(unix_now);
+    let horizon = (valid_until - now).max(0);
+    Some(json!({ "horizonSec": horizon }))
+}
+
+/// Current unix time in seconds (wall clock).
+fn unix_now() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|d| i64::try_from(d.as_secs()).ok())
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -267,5 +342,159 @@ mod tests {
         }
         let st = state(vec![holding(SELL, 100)], vec![p]);
         assert_eq!(over(&st, &params(SELL, 5)), Some(true));
+    }
+
+    // --- intent.near_duplicate_pending ---
+
+    /// An active `OffchainLimitOrder` with a chosen venue / sell / buy.
+    fn dup_pending(
+        id: &str,
+        venue_name: &str,
+        sell: &str,
+        buy: &str,
+        status: PendingStatus,
+    ) -> PendingTx {
+        let mut p = intent_pending(id, sell, 1, status);
+        if let PendingKind::OffchainLimitOrder {
+            venue, buy: pbuy, ..
+        } = &mut p.kind
+        {
+            *venue = VenueRef::new(venue_name);
+            *pbuy = TokenRef { key: key(buy) };
+        }
+        p
+    }
+
+    /// Manifest-shaped params for the new order: `action.{venue.name, sell, buy}`.
+    fn dup_params(venue: &str, sell: &str, buy: &str) -> Value {
+        serde_json::json!({
+            "chain_id": "eip155:1",
+            "owner": "0x0000000000000000000000000000000000000000",
+            "action": {
+                "venue": { "name": venue },
+                "sell": { "key": { "standard": "erc20", "chain": "eip155:1", "address": sell } },
+                "buy": { "key": { "standard": "erc20", "chain": "eip155:1", "address": buy } },
+                "sellAmount": "0x1",
+                "validUntil": 2_000_000_000_i64,
+            }
+        })
+    }
+
+    fn dup(state: &WalletState, p: &Value) -> Option<bool> {
+        super::near_duplicate_pending(state, p).map(|v| v["duplicate"].as_bool().unwrap())
+    }
+
+    #[test]
+    fn same_venue_sell_buy_is_duplicate() {
+        let st = state(
+            vec![],
+            vec![dup_pending(
+                "a",
+                "one_inch_fusion",
+                SELL,
+                OTHER,
+                PendingStatus::Active,
+            )],
+        );
+        assert_eq!(
+            dup(&st, &dup_params("one_inch_fusion", SELL, OTHER)),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn different_venue_is_not_duplicate() {
+        let st = state(
+            vec![],
+            vec![dup_pending(
+                "a",
+                "cow_swap",
+                SELL,
+                OTHER,
+                PendingStatus::Active,
+            )],
+        );
+        assert_eq!(
+            dup(&st, &dup_params("one_inch_fusion", SELL, OTHER)),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn different_buy_is_not_duplicate() {
+        let st = state(
+            vec![],
+            vec![dup_pending(
+                "a",
+                "one_inch_fusion",
+                SELL,
+                SELL,
+                PendingStatus::Active,
+            )],
+        );
+        assert_eq!(
+            dup(&st, &dup_params("one_inch_fusion", SELL, OTHER)),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn terminal_pending_is_not_duplicate() {
+        let st = state(
+            vec![],
+            vec![dup_pending(
+                "a",
+                "one_inch_fusion",
+                SELL,
+                OTHER,
+                PendingStatus::Filled,
+            )],
+        );
+        assert_eq!(
+            dup(&st, &dup_params("one_inch_fusion", SELL, OTHER)),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn no_open_orders_is_not_duplicate() {
+        let st = state(vec![], vec![]);
+        assert_eq!(
+            dup(&st, &dup_params("one_inch_fusion", SELL, OTHER)),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn near_duplicate_unparseable_action_is_none() {
+        let st = state(vec![], vec![]);
+        assert!(
+            super::near_duplicate_pending(&st, &serde_json::json!({ "chain_id": "eip155:1" }))
+                .is_none()
+        );
+    }
+
+    // --- intent.validity_horizon_sec ---
+
+    fn horizon(valid_until: i64, now: i64) -> Option<i64> {
+        let st = state(vec![], vec![]);
+        let p = serde_json::json!({ "valid_until": valid_until, "now": now });
+        super::validity_horizon_sec(&st, &p).map(|v| v["horizonSec"].as_i64().unwrap())
+    }
+
+    #[test]
+    fn horizon_is_valid_until_minus_now() {
+        assert_eq!(horizon(5000, 1000), Some(4000));
+    }
+
+    #[test]
+    fn horizon_clamped_to_zero_when_already_past() {
+        assert_eq!(horizon(1000, 5000), Some(0));
+    }
+
+    #[test]
+    fn horizon_missing_valid_until_is_none() {
+        let st = state(vec![], vec![]);
+        assert!(super::validity_horizon_sec(&st, &serde_json::json!({ "now": 1000 })).is_none());
     }
 }

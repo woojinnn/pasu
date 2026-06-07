@@ -273,6 +273,38 @@ async fn execute_call_specs(
                     }),
                 }
             }
+            "intent.near_duplicate_pending" => {
+                match crate::methods::near_duplicate_pending(state, &spec.params) {
+                    Some(value) => {
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "intent.near_duplicate_pending: unparseable action params \
+                             (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
+            "intent.validity_horizon_sec" => {
+                match crate::methods::validity_horizon_sec(state, &spec.params) {
+                    Some(value) => {
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "intent.validity_horizon_sec: missing valid_until param \
+                             (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
             other => diagnostics.push(Diagnostic {
                 level: "info".to_owned(),
                 message: format!(
@@ -927,6 +959,97 @@ mod tests {
         assert_eq!(
             results.get(&spec.call_id),
             Some(&serde_json::json!({ "capSumOverBalance": true }))
+        );
+    }
+
+    /// Both new intent methods dispatch correctly through `execute_call_specs`
+    /// over manifest-shaped params: near-duplicate (state membership) + validity
+    /// horizon (pure params).
+    #[tokio::test]
+    async fn near_duplicate_and_validity_horizon_served() {
+        use policy_state::pending::{
+            AssetCommitment, OrderKind, PendingKind, PendingLifecycle, PendingStatus, PendingTx,
+        };
+        use policy_state::primitives::VenueRef;
+        use policy_state::token::TokenRef;
+        use policy_state::StateDelta;
+
+        let usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+        let weth = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+        let tref = |a: &str| TokenRef {
+            key: TokenKey::Erc20 {
+                chain: ChainId::ethereum_mainnet(),
+                address: Address::from_str(a).unwrap(),
+            },
+        };
+        let pending = PendingTx {
+            id: "intent:one_inch_fusion:0xopen".into(),
+            kind: PendingKind::OffchainLimitOrder {
+                venue: VenueRef::new("one_inch_fusion"),
+                sell: tref(usdc),
+                buy: tref(weth),
+                sell_max: U256::from(1u64),
+                buy_min: U256::from(1u64),
+                order_kind: OrderKind::Dutch,
+            },
+            commitment: AssetCommitment::PermitCap {
+                token: tref(usdc),
+                spender: Address::ZERO,
+                max_out: U256::from(1u64),
+            },
+            fill_effect: Box::new(StateDelta::new()),
+            lifecycle: PendingLifecycle {
+                status: PendingStatus::Active,
+                valid_until: None,
+                nonce: None,
+                on_chain_tx: None,
+                raw_status: None,
+            },
+            sync: DataSource::UserSupplied,
+            signed_at: Time::from_unix(0),
+            signature_payload: Vec::new(),
+        };
+        let mut state = WalletState::new(sample_wallet_id());
+        state.pending = vec![pending];
+
+        let dup_spec = CallSpec {
+            manifest_id: "ammlp-intent-duplicate-warn".into(),
+            call_id: "ammlp-intent-duplicate-warn::near-duplicate-pending".into(),
+            method: "intent.near_duplicate_pending".into(),
+            params: serde_json::json!({
+                "chain_id": "eip155:1",
+                "owner": "0x0000000000000000000000000000000000000000",
+                "action": {
+                    "venue": { "name": "one_inch_fusion" },
+                    "sell": { "key": { "standard": "erc20", "chain": "eip155:1", "address": usdc } },
+                    "buy": { "key": { "standard": "erc20", "chain": "eip155:1", "address": weth } }
+                }
+            }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+        let horizon_spec = CallSpec {
+            manifest_id: "intent-validity-horizon-warn".into(),
+            call_id: "intent-validity-horizon-warn::validity-horizon".into(),
+            method: "intent.validity_horizon_sec".into(),
+            params: serde_json::json!({ "valid_until": 5000, "now": 1000 }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+
+        let (results, _diag) = execute_call_specs(
+            &state,
+            &[dup_spec.clone(), horizon_spec.clone()],
+            &no_price_book(),
+        )
+        .await;
+        assert_eq!(
+            results.get(&dup_spec.call_id),
+            Some(&serde_json::json!({ "duplicate": true }))
+        );
+        assert_eq!(
+            results.get(&horizon_spec.call_id),
+            Some(&serde_json::json!({ "horizonSec": 4000 }))
         );
     }
 }

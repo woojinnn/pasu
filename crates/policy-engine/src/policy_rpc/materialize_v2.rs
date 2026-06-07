@@ -701,4 +701,163 @@ mod tests {
             "cap-over-balance must warn, got {verdict:?}"
         );
     }
+
+    #[test]
+    fn near_duplicate_result_materializes_and_warns() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x1111111111111111111111111111111111111111";
+        const TO: &str = "0x2222222222222222222222222222222222222222";
+
+        let manifest: ManifestV2 = serde_json::from_value(json!({
+            "id": "ammlp-intent-duplicate-warn",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "sign_intent_order" } } },
+            "policy_rpc": [{
+                "id": "near-duplicate-pending",
+                "method": "intent.near_duplicate_pending",
+                "params": { "chain_id": "$.root.chain_id", "owner": "$.root.from", "action": "$.action" },
+                "outputs": [{ "kind": "context", "field": "duplicateIntent", "type": "Bool", "from": "$.result.duplicate" }],
+                "optional": true
+            }],
+            "custom_context": { "fields": { "duplicateIntent": "Bool" } }
+        }))
+        .expect("manifest parses");
+
+        let (body, meta) = sign_intent_sample();
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let view = body.view();
+        let tx = TxView {
+            chain_id: "eip155:1",
+            from: FROM,
+            to: TO,
+        };
+        let planned = plan_policy_rpc_v2(
+            std::slice::from_ref(&manifest),
+            &view,
+            &lowered.context,
+            &tx,
+        )
+        .unwrap();
+        assert_eq!(planned.len(), 1);
+
+        // Producer-side seam guard for the venue + buy paths the method reads.
+        let pp = &planned[0].params;
+        assert!(
+            pp["action"]["venue"]["name"].is_string(),
+            "need action.venue.name; got {pp}"
+        );
+        assert!(
+            pp["action"]["sell"]["key"]["address"].is_string(),
+            "need action.sell.key.address"
+        );
+        assert!(
+            pp["action"]["buy"]["key"]["address"].is_string(),
+            "need action.buy.key.address"
+        );
+
+        let mut context = lowered.context.clone();
+        let mut results = BTreeMap::new();
+        results.insert(planned[0].call_id.clone(), json!({ "duplicate": true }));
+        materialize_v2(&mut context, &planned, &results).unwrap();
+        assert_eq!(context["custom"]["duplicateIntent"], json!(true));
+
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let policy = "@id(\"ammlp-intent-duplicate-warn\")\n@severity(\"warn\")\n\
+            forbid(principal, action == Amm::Action::\"SignIntentOrder\", resource)\n\
+            when { context has custom && context.custom has duplicateIntent \
+            && context.custom.duplicateIntent };\n";
+        let engine =
+            crate::policy::PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema_text)])
+                .unwrap();
+        let verdict = engine
+            .evaluate(
+                &lowered.principal,
+                &lowered.action_uid,
+                &lowered.resource,
+                &json!([]),
+                &context,
+            )
+            .unwrap();
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Warn(_)),
+            "duplicate must warn, got {verdict:?}"
+        );
+    }
+
+    #[test]
+    fn validity_horizon_result_materializes_and_warns() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x1111111111111111111111111111111111111111";
+        const TO: &str = "0x2222222222222222222222222222222222222222";
+
+        let manifest: ManifestV2 = serde_json::from_value(json!({
+            "id": "intent-validity-horizon-warn",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "sign_intent_order" } } },
+            "policy_rpc": [{
+                "id": "validity-horizon",
+                "method": "intent.validity_horizon_sec",
+                "params": { "valid_until": "$.action.validUntil" },
+                "outputs": [{ "kind": "context", "field": "validityHorizonSec", "type": "Long", "from": "$.result.horizonSec" }],
+                "optional": true
+            }],
+            "custom_context": { "fields": { "validityHorizonSec": "Long" } }
+        }))
+        .expect("manifest parses");
+
+        let (body, meta) = sign_intent_sample();
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let view = body.view();
+        let tx = TxView {
+            chain_id: "eip155:1",
+            from: FROM,
+            to: TO,
+        };
+        let planned = plan_policy_rpc_v2(
+            std::slice::from_ref(&manifest),
+            &view,
+            &lowered.context,
+            &tx,
+        )
+        .unwrap();
+        assert_eq!(planned.len(), 1);
+
+        // Producer-side seam guard: the method reads `valid_until` (a Long).
+        assert!(
+            planned[0].params["valid_until"].is_number(),
+            "need numeric valid_until; got {}",
+            planned[0].params
+        );
+
+        let mut context = lowered.context.clone();
+        let mut results = BTreeMap::new();
+        // A long horizon (> 3600s) — what the method would compute for a far deadline.
+        results.insert(planned[0].call_id.clone(), json!({ "horizonSec": 99_999 }));
+        materialize_v2(&mut context, &planned, &results).unwrap();
+        assert_eq!(context["custom"]["validityHorizonSec"], json!(99_999));
+
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let policy = "@id(\"intent-validity-horizon-warn\")\n@severity(\"warn\")\n\
+            forbid(principal, action == Amm::Action::\"SignIntentOrder\", resource)\n\
+            when { context has custom && context.custom has validityHorizonSec \
+            && context.custom.validityHorizonSec > 3600 };\n";
+        let engine =
+            crate::policy::PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema_text)])
+                .unwrap();
+        let verdict = engine
+            .evaluate(
+                &lowered.principal,
+                &lowered.action_uid,
+                &lowered.resource,
+                &json!([]),
+                &context,
+            )
+            .unwrap();
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Warn(_)),
+            "long horizon must warn, got {verdict:?}"
+        );
+    }
 }
