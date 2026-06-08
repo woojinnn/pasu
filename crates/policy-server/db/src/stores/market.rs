@@ -44,6 +44,7 @@ pub struct ListingRow {
     pub display_name: Value,
     pub description: Option<Value>,
     pub domain: Option<String>,
+    pub category: Option<String>,
     pub intents: Option<Value>,
     pub severity: Option<String>,
     pub status: String,
@@ -103,6 +104,7 @@ pub enum ListingSort {
 pub struct ListingFilter {
     pub kind: Option<String>,
     pub domain: Option<String>,
+    pub category: Option<String>,
     pub publisher_id: Option<String>,
     pub publisher_tier: Option<String>,
     /// Substring match against `display_name` jsonb fields (en + ko).
@@ -127,6 +129,7 @@ pub struct NewListing {
     pub display_name: Value,
     pub description: Option<Value>,
     pub domain: Option<String>,
+    pub category: Option<String>,
     pub intents: Option<Value>,
     pub severity: Option<String>,
     pub forked_from: Option<Uuid>,
@@ -189,7 +192,7 @@ pub async fn list_listings(
 
     let sql = format!(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
-                l.display_name, l.description, l.domain, l.intents, l.severity,
+                l.display_name, l.description, l.domain, l.category, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
                 stats.install_count, stats.rating_avg, stats.rating_count,
                 stats.is_installed,
@@ -201,26 +204,28 @@ pub async fn list_listings(
              (SELECT COUNT(*) FROM market_installs i WHERE i.listing_id = l.id) AS install_count,
              (SELECT AVG(rating)::float8 FROM market_reviews r WHERE r.listing_id = l.id) AS rating_avg,
              (SELECT COUNT(*) FROM market_reviews r WHERE r.listing_id = l.id) AS rating_count,
-             ($8::text IS NOT NULL AND EXISTS (
+             ($9::text IS NOT NULL AND EXISTS (
                 SELECT 1 FROM market_installs i
-                WHERE i.listing_id = l.id AND i.user_id = $8
+                WHERE i.listing_id = l.id AND i.user_id = $9
              )) AS is_installed
          ) stats
          WHERE l.status = 'published'
            AND ($1::text IS NULL OR l.kind = $1)
            AND ($2::text IS NULL OR l.domain = $2)
-           AND ($3::text IS NULL OR l.publisher_id = $3)
-           AND ($4::text IS NULL OR l.publisher_tier = $4)
-           AND ($5::text IS NULL OR
-                l.display_name->>'en' ILIKE '%' || $5 || '%' OR
-                l.display_name->>'ko' ILIKE '%' || $5 || '%')
+           AND ($3::text IS NULL OR l.category = $3)
+           AND ($4::text IS NULL OR l.publisher_id = $4)
+           AND ($5::text IS NULL OR l.publisher_tier = $5)
+           AND ($6::text IS NULL OR
+                l.display_name->>'en' ILIKE '%' || $6 || '%' OR
+                l.display_name->>'ko' ILIKE '%' || $6 || '%')
          ORDER BY {order}
-         LIMIT $6 OFFSET $7"
+         LIMIT $7 OFFSET $8"
     );
 
     let rows = query(&sql)
         .bind(filter.kind.as_deref())
         .bind(filter.domain.as_deref())
+        .bind(filter.category.as_deref())
         .bind(filter.publisher_id.as_deref())
         .bind(filter.publisher_tier.as_deref())
         .bind(filter.q.as_deref())
@@ -241,7 +246,7 @@ pub async fn get_listing_by_slug(
 ) -> DbResult<Option<ListingRow>> {
     let row = query(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
-                l.display_name, l.description, l.domain, l.intents, l.severity,
+                l.display_name, l.description, l.domain, l.category, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
                 stats.install_count, stats.rating_avg, stats.rating_count,
                 stats.is_installed,
@@ -275,7 +280,7 @@ pub async fn get_listing_by_id(
 ) -> DbResult<Option<ListingRow>> {
     let row = query(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
-                l.display_name, l.description, l.domain, l.intents, l.severity,
+                l.display_name, l.description, l.domain, l.category, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
                 stats.install_count, stats.rating_avg, stats.rating_count,
                 stats.is_installed,
@@ -352,9 +357,9 @@ pub async fn create_listing(pool: &PgPool, n: NewListing, now: i64) -> DbResult<
     query(
         "INSERT INTO market_listings (
            id, slug, kind, publisher_id, publisher_tier, display_name, description,
-           domain, intents, severity, status, current_version, forked_from,
+           domain, category, intents, severity, status, current_version, forked_from,
            created_at, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'published', $11, $12, $13, $13)",
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'published', $12, $13, $14, $14)",
     )
     .bind(id)
     .bind(&n.slug)
@@ -364,6 +369,7 @@ pub async fn create_listing(pool: &PgPool, n: NewListing, now: i64) -> DbResult<
     .bind(&n.display_name)
     .bind(n.description.as_ref())
     .bind(n.domain.as_deref())
+    .bind(n.category.as_deref())
     .bind(n.intents.as_ref())
     .bind(n.severity.as_deref())
     .bind(&n.initial_version)
@@ -627,7 +633,7 @@ pub async fn unwatch(pool: &PgPool, user_id: &str, listing_id: Uuid) -> DbResult
 pub async fn list_watches(pool: &PgPool, user_id: &str) -> DbResult<Vec<ListingRow>> {
     let rows = query(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,
-                l.display_name, l.description, l.domain, l.intents, l.severity,
+                l.display_name, l.description, l.domain, l.category, l.intents, l.severity,
                 l.status, l.current_version, l.forked_from, l.created_at, l.updated_at,
                 stats.install_count, stats.rating_avg, stats.rating_count,
                 stats.is_installed,
@@ -665,6 +671,7 @@ fn row_to_listing(row: &PgRow) -> ListingRow {
         display_name: row.get("display_name"),
         description: row.get("description"),
         domain: row.get("domain"),
+        category: row.get("category"),
         intents: row.get("intents"),
         severity: row.get("severity"),
         status: row.get("status"),

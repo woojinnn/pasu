@@ -37,10 +37,12 @@ struct SeedEntry {
     manifest: serde_json::Value,
 }
 
-/// Embed the editor seed JSON at compile time so the binary stays
-/// self-contained — no runtime path arg, no cwd dependence.
-const PHASE1A_JSON: &str =
-    include_str!("../../../../../browser-extension/dashboard/src/pages/editor/phase1A-seed.json");
+/// Embed the phase1 default-policy seed at compile time so the binary stays
+/// self-contained — no runtime path arg, no cwd dependence. Generated from
+/// `crates/policy-engine/tests/fixtures/default_policies_v2/phase1/` (35 policies,
+/// each `{ id, cedar, manifest }`). The curated packages below reference these
+/// slugs, so the policy set and the package set stay in lock-step.
+const PHASE1_JSON: &str = include_str!("phase1-seed.json");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -61,13 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("seeding marketplace into {database_url}");
 
     ensure_official_user(&pool).await?;
-    let entries: Vec<SeedEntry> = serde_json::from_str(PHASE1A_JSON)?;
-    tracing::info!("loaded {} phase1A entries", entries.len());
+    let entries: Vec<SeedEntry> = serde_json::from_str(PHASE1_JSON)?;
+    tracing::info!("loaded {} phase1 entries", entries.len());
 
     // ── Insert each policy as its own listing ────────────────────────────
     let mut inserted_policies = 0usize;
     for entry in &entries {
         let domain = infer_domain(&entry.id);
+        let category = infer_category(&entry.id, &entry.manifest);
         let severity = infer_severity(&entry.id);
         let (en, ko) = derive_display_name(&entry.id);
         let intents = infer_intents(&entry.id);
@@ -75,6 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             &pool,
             &entry.id,
             domain,
+            category,
             severity,
             &en,
             &ko,
@@ -91,50 +95,102 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Insert three curated sets ────────────────────────────────────────
     let known: BTreeSet<&str> = entries.iter().map(|e| e.id.as_str()).collect();
+    // Six curated packages from `agentBase/policy-packages/` (phase1 only).
+    // Members reference phase1 slugs; each set version snapshots their cedar.
     let curations = [
         Curation {
-            slug: "compliance-essentials",
-            name_en: "Compliance Essentials",
-            name_ko: "컴플라이언스 셋",
-            desc_en: "Recipient checks + sanctions baseline for every wallet.",
-            desc_ko: "수신자 검증 + 제재 주소 차단 기본 세트.",
+            slug: "wallet-first-shield",
+            name_en: "Wallet First Shield",
+            name_ko: "지갑 첫 방패",
+            desc_en: "The 10 must-haves for a brand-new trading wallet.",
+            desc_ko: "트레이딩 입문자가 가장 먼저 깔아야 할 필수 10종.",
             member_slugs: &[
-                "air-recipient-not-self-deny",
-                "swap-recipient-not-self-deny",
-                "bridge-recipient-not-self-deny",
-                "values-recipient-denylist-deny",
+                "unlimited-approval-deny",
+                "increase-allowance-cap-warn",
+                "reapprove-already-granted-warn",
+                "permit2-sign-allowance-confirm",
+                "multicall-hidden-approval-warn",
+                "setapprovalforall-operator-warning",
                 "send-first-time-or-burn-recipient-warn",
+                "swap-recipient-not-self-deny",
+                "holding-pct-outflow-warn",
+                "unknown-blind-sign-warning",
             ],
         },
         Curation {
-            slug: "risk-limits",
-            name_en: "Risk Limits",
-            name_ko: "리스크 한도",
-            desc_en: "Slippage, gas and leverage ceilings to stop runaway losses.",
-            desc_ko: "슬리피지·가스·레버리지 상한으로 폭주를 막는 세트.",
+            slug: "no-mistake-swap",
+            name_en: "No-Mistake Swap",
+            name_ko: "노미스 스왑",
+            desc_en: "Stop funds leaking to the wrong place in swaps & LP.",
+            desc_ko: "스왑·LP에서 돈이 엉뚱한 데로 새는 실수 차단.",
             member_slugs: &[
-                "swap-slippage-high-warn",
-                "gas-cost-usd-cap-deny",
-                "gas-cost-ratio-warn",
-                "perp-leverage-cap-deny",
-                "perp-leverage-increase-warn",
+                "multicall-hidden-approval-warn",
+                "transfer-to-token-own-contract-deny",
+                "swap-recipient-not-self-deny",
+                "values-recipient-denylist-deny",
+                "ammlp-collect-recipient-not-self-deny",
+                "ammlp-remove-recipient-not-self-deny",
                 "holding-pct-outflow-warn",
             ],
         },
         Curation {
-            slug: "drainer-shield",
-            name_en: "Drainer & Phishing Shield",
-            name_ko: "드레이너·피싱 차단",
-            desc_en: "Block malicious approvals, signature spoofing, and permit drains.",
-            desc_ko: "악성 승인, 서명 위조, permit 드레인을 입구에서 막는 세트.",
+            slug: "never-again",
+            name_en: "Never Again",
+            name_ko: "그날의 해킹",
+            desc_en: "Policies that would have stopped real-world mega-hacks.",
+            desc_ko: "실제 대형 탈취 사고를 막을 수 있었던 정책집.",
             member_slugs: &[
-                "air-permit-on-held-token-deny",
                 "unlimited-approval-deny",
-                "increase-allowance-cap-warn",
-                "multicall-hidden-approval-warn",
-                "unknown-blind-sign-warning",
+                "bridge-unlimited-approval-deny",
+                "permit2-sign-allowance-far-expiry-warn",
                 "signature-chain-mismatch-permit-warn",
-                "permit-allowance-horizon-warn",
+                "bridge-recipient-not-self-deny",
+                "bridge-refund-not-self-warn",
+                "bridge-target-not-allowlisted-deny",
+            ],
+        },
+        Curation {
+            slug: "nft-vault-guard",
+            name_en: "NFT Vault Guard",
+            name_ko: "NFT 금고",
+            desc_en: "Protect NFTs from collection-wide approvals and burns.",
+            desc_ko: "컬렉션 전체 위임·소각 분실로부터 NFT 보호.",
+            member_slugs: &[
+                "nft-bid-weth-unlimited-warn",
+                "multicall-hidden-approval-warn",
+                "setapprovalforall-operator-warning",
+                "nft-setapprovalforall-conduit-warn",
+                "nft-transfer-burn-recipient-deny",
+            ],
+        },
+        Curation {
+            slug: "leverage-safety",
+            name_en: "Leverage Safety",
+            name_ko: "레버리지 세이프티",
+            desc_en: "Gate risky moves on Hyperliquid perps.",
+            desc_ko: "Hyperliquid 선물 거래의 위험 동작 게이트.",
+            member_slugs: &[
+                "hl-confirm-approve-agent",
+                "hl-confirm-high-leverage",
+                "hl-confirm-unknown",
+                "hl-confirm-usd-send",
+                "hl-confirm-withdraw",
+                "hl-no-short-perp",
+            ],
+        },
+        Curation {
+            slug: "claim-and-vote-guard",
+            name_en: "Claim & Vote Guard",
+            name_ko: "클레임 & 보트 가드",
+            desc_en: "Block airdrop-claim and governance-delegation phishing.",
+            desc_ko: "에어드롭 클레임·거버넌스 위임 피싱 차단.",
+            member_slugs: &[
+                "air-recipient-not-self-deny",
+                "air-delegatee-not-self-deny",
+                "air-claim-locks-received-warn",
+                "air-merkle-without-proof-warn",
+                "gov-delegatee-allowlist-deny",
+                "aave-delegate-borrow-allowlist-deny",
             ],
         },
     ];
@@ -208,6 +264,7 @@ async fn insert_policy_listing(
     pool: &PgPool,
     slug: &str,
     domain: &str,
+    category: &str,
     severity: &str,
     name_en: &str,
     name_ko: &str,
@@ -229,11 +286,11 @@ async fn insert_policy_listing(
     let inserted = query(
         "INSERT INTO market_listings (
            id, slug, kind, publisher_id, publisher_tier, display_name, description,
-           domain, intents, severity, status, current_version, forked_from,
+           domain, category, intents, severity, status, current_version, forked_from,
            created_at, updated_at
          ) VALUES ($1, $2, 'policy', $3, 'official', $4, NULL,
-                   $5, $6, $7, 'published', '1.0.0', NULL,
-                   $8, $8)
+                   $5, $6, $7, $8, 'published', '1.0.0', NULL,
+                   $9, $9)
          ON CONFLICT (slug) DO NOTHING",
     )
     .bind(id)
@@ -241,6 +298,7 @@ async fn insert_policy_listing(
     .bind(OFFICIAL_USER_ID)
     .bind(&display_name)
     .bind(domain)
+    .bind(category)
     .bind(&intents_json)
     .bind(severity)
     .bind(now)
@@ -327,6 +385,52 @@ async fn insert_set_listing(
     Ok(true)
 }
 
+/// Infer the action-based `category` (12-value taxonomy) from the policy
+/// manifest's `trigger.where.action.tag` (or `action.domain`). This is the
+/// authoritative server-side mirror of the dashboard's `categoryOf(slug)`;
+/// both must agree so grid counts and filtered lists match.
+fn infer_category(slug: &str, manifest: &Value) -> &'static str {
+    let where_ = manifest.get("trigger").and_then(|t| t.get("where"));
+
+    // action.tag may be `{ "eq": "x" }` or `{ "in": ["x", …] }`.
+    let tag = where_.and_then(|w| w.get("action.tag")).and_then(|t| {
+        t.get("eq").and_then(Value::as_str).or_else(|| {
+            t.get("in")
+                .and_then(Value::as_array)
+                .and_then(|a| a.first())
+                .and_then(Value::as_str)
+        })
+    });
+
+    if let Some(t) = tag {
+        return match t {
+            "erc20_approve" | "nft_set_approval_for_all" => "approvals",
+            "permit2_sign_allowance" | "erc20_permit" => "signing",
+            "erc20_transfer" | "nft_transfer" => "transfer",
+            "swap" => "swap",
+            "remove_liquidity" | "collect_fees" => "liquidity",
+            "delegate_borrow" => "lending",
+            "claim" => "rewards",
+            "delegate" => "governance",
+            // perp split: position trading vs account ops
+            "hl_update_leverage" | "hl_order" | "hl_twap_order" | "hl_unknown" => "derivatives",
+            "hl_approve_agent" | "hl_usd_send" | "hl_withdraw" => "perps",
+            _ => "others",
+        };
+    }
+
+    // No action.tag — fall back to action.domain (multicall / unknown).
+    let domain = where_
+        .and_then(|w| w.get("action.domain"))
+        .and_then(|d| d.get("eq"))
+        .and_then(Value::as_str);
+    match domain {
+        Some("multicall") => "approvals",
+        Some("unknown") if slug.contains("blind-sign") => "intents",
+        _ => "others",
+    }
+}
+
 /// Infer the listing's `domain` from the slug prefix. Mirrors the
 /// classification the original glossary used; falls back to "security" so
 /// every entry lands in a real bucket.
@@ -363,6 +467,11 @@ fn infer_domain(slug: &str) -> &'static str {
 }
 
 fn infer_severity(slug: &str) -> &'static str {
+    // Named "-warn" but actually a hard block (burn-address sends are permanent
+    // loss). See policy-packages README.
+    if slug == "send-first-time-or-burn-recipient-warn" {
+        return "deny";
+    }
     if slug.ends_with("-deny") {
         "deny"
     } else {

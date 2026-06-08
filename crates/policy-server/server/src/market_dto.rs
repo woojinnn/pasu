@@ -70,6 +70,9 @@ pub enum ListingSort {
 pub struct ListListingsQuery {
     pub kind: Option<ListingKind>,
     pub domain: Option<String>,
+    /// Action-based taxonomy filter (approvals, swap, perps, …). See migration
+    /// 0003. Independent of `domain`.
+    pub category: Option<String>,
     pub publisher_id: Option<String>,
     pub publisher_tier: Option<PublisherTier>,
     /// Substring match against `display_name.en` / `display_name.ko`.
@@ -95,6 +98,8 @@ pub struct ListingSummary {
     pub description: Option<I18nText>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub intents: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -173,6 +178,8 @@ pub struct CreateListingReq {
     // Policy-only — required when kind = Policy
     #[serde(default)]
     pub domain: Option<String>,
+    #[serde(default)]
+    pub category: Option<String>,
     #[serde(default)]
     pub intents: Option<Vec<String>>,
     #[serde(default)]

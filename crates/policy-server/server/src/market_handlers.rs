@@ -50,6 +50,7 @@ pub async fn list_listings(
     let filter = ListingFilter {
         kind: q.kind.map(|k| serde_kind(k).to_owned()),
         domain: q.domain,
+        category: q.category,
         publisher_id: q.publisher_id,
         publisher_tier: q.publisher_tier.map(|t| serde_tier(t).to_owned()),
         q: q.q,
@@ -197,6 +198,7 @@ pub async fn create_listing(
         display_name,
         description,
         domain: req.domain.clone(),
+        category: req.category.clone(),
         intents,
         severity: req.severity.map(|s| serde_severity(s).to_owned()),
         forked_from: req.forked_from,
@@ -303,10 +305,13 @@ pub async fn create_install(
         Ok(None) => return (StatusCode::NOT_FOUND, "version not found").into_response(),
         Err(e) => return server_error(&e.to_string()),
     };
+    // Recording the install event (popularity counts) is non-critical
+    // telemetry. Never fail the actual download because of it — e.g. a user
+    // row missing from `users` (FK) must not block copy-to-editor.
     if let Err(e) =
         db_record_install(pool, listing_id, &req.version, &user.user_id, now_secs()).await
     {
-        return server_error(&e.to_string());
+        tracing::warn!(error = %e, user_id = %user.user_id, "market install record failed; returning body anyway");
     }
     Json(version_row_to_dto(version)).into_response()
 }
@@ -448,6 +453,7 @@ fn listing_row_to_summary(r: &ListingRow) -> ListingSummary {
         display_name: json_to_i18n(&r.display_name),
         description: r.description.as_ref().map(json_to_i18n),
         domain: r.domain.clone(),
+        category: r.category.clone(),
         intents: r.intents.as_ref().and_then(json_to_string_array),
         severity: r.severity.as_deref().and_then(parse_severity),
         status: parse_status(&r.status),

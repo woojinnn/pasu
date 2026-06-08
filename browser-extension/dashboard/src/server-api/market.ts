@@ -38,6 +38,8 @@ export interface ListingSummary {
   display_name: I18nText;
   description?: I18nText;
   domain?: string;
+  /** Action-based taxonomy (approvals, swap, perps, …); see market-domain. */
+  category?: string;
   intents?: string[];
   severity?: Severity;
   status: ListingStatus;
@@ -88,6 +90,7 @@ export interface ListingDetail extends ListingSummary {
 export interface ListListingsParams {
   kind?: ListingKind;
   domain?: string;
+  category?: string;
   publisher_id?: string;
   publisher_tier?: PublisherTier;
   q?: string;
@@ -145,6 +148,7 @@ export async function listListings(
   const search = new URLSearchParams();
   if (params.kind) search.set("kind", params.kind);
   if (params.domain) search.set("domain", params.domain);
+  if (params.category) search.set("category", params.category);
   if (params.publisher_id) search.set("publisher_id", params.publisher_id);
   if (params.publisher_tier) search.set("publisher_tier", params.publisher_tier);
   if (params.q) search.set("q", params.q);
@@ -263,7 +267,7 @@ export function publisherDisplay(
   locale: "ko" | "en" = "ko",
 ): string {
   if (tier === "official") {
-    return locale === "ko" ? "지갑방위대 공식" : "Wallet Defense Force";
+    return "Wallet Guardians";
   }
   if (!email) return locale === "ko" ? "익명" : "anonymous";
   const at = email.indexOf("@");

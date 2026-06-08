@@ -25,9 +25,30 @@ interface TopbarProps {
   searchPlaceholder?: string;
   counts?: { pass: number; warn: number; fail: number };
   right?: ReactNode;
+  /** Show the notification bell. Default true; pages like Market opt out. */
+  showNotifications?: boolean;
+  /** Show the ⌘K / Ctrl K shortcut hint in the search box. Default true. */
+  showShortcutHint?: boolean;
+  /** Replace the global jump-search with a page-specific search element.
+   * The Market passes its own market-scoped search here; default keeps the
+   * shared wallet/policy/verdict search untouched for every other page. */
+  searchSlot?: ReactNode;
+  /** Render no search in the topbar at all (the Market moves it to a
+   * full-width hero search inside the page body). Default true. */
+  showSearch?: boolean;
 }
 
-export function Topbar({ here, subtitle, searchPlaceholder, counts, right }: TopbarProps) {
+export function Topbar({
+  here,
+  subtitle,
+  searchPlaceholder,
+  counts,
+  right,
+  showNotifications = true,
+  showShortcutHint = true,
+  searchSlot,
+  showSearch = true,
+}: TopbarProps) {
   return (
     <div className="topbar">
       <div className="crumb">
@@ -35,7 +56,10 @@ export function Topbar({ here, subtitle, searchPlaceholder, counts, right }: Top
         {subtitle && <span className="sep">/</span>}
         {subtitle && <span className="addr">{subtitle}</span>}
       </div>
-      <GlobalSearch placeholder={searchPlaceholder} />
+      {showSearch &&
+        (searchSlot ?? (
+          <GlobalSearch placeholder={searchPlaceholder} showShortcutHint={showShortcutHint} />
+        ))}
       <div className="dots">
         {counts && (
           <>
@@ -50,7 +74,7 @@ export function Topbar({ here, subtitle, searchPlaceholder, counts, right }: Top
             </span>
           </>
         )}
-        <NotificationButton />
+        {showNotifications && <NotificationButton />}
         {right}
       </div>
     </div>
@@ -59,7 +83,13 @@ export function Topbar({ here, subtitle, searchPlaceholder, counts, right }: Top
 
 // ── Global search ───────────────────────────────────────────────────────
 
-function GlobalSearch({ placeholder }: { placeholder?: string }) {
+function GlobalSearch({
+  placeholder,
+  showShortcutHint = true,
+}: {
+  placeholder?: string;
+  showShortcutHint?: boolean;
+}) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -161,7 +191,7 @@ function GlobalSearch({ placeholder }: { placeholder?: string }) {
           }}
           onFocus={() => setOpen(true)}
         />
-        <span className="kbd">{isMac ? "⌘ K" : "Ctrl K"}</span>
+        {showShortcutHint && <span className="kbd">{isMac ? "⌘ K" : "Ctrl K"}</span>}
       </div>
 
       {open && q.trim().length > 0 && (

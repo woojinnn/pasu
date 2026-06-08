@@ -1,26 +1,31 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
+  getListing,
   listListings,
   pickI18n,
+  type ListingDetail,
   type ListingKind,
   type ListingSort,
   type ListingSummary,
 } from "../server-api";
-import { formatYmd, publisherDisplay } from "../server-api/market";
+import { publisherDisplay } from "../server-api/market";
 import { Topbar } from "../shell/Topbar";
+import { installListingToEditor } from "./market-install";
 
 import {
-  DOMAIN_COLOR,
-  DOMAIN_NAME,
-  DOMAIN_ORDER,
-  DomainGlyph,
-  colorOf,
-  domainNameOf,
-  type DomainKey,
+  CATEGORY_COLOR,
+  CATEGORY_NAME,
+  CATEGORY_ORDER,
+  CategoryGlyph,
+  categoryNameOf,
+  categoryOf,
+  isCategoryKey,
+  type CategoryKey,
 } from "./market-domain";
+import { policyCopy } from "./market-copy";
 import { useMarketLocale, type MarketLocale } from "./market-locale";
 
 import "./market.css";
@@ -42,7 +47,9 @@ import "./market.css";
  * view reads those URL params on first render so deep links work.
  */
 export function MarketPage() {
-  const [locale, setLocale] = useMarketLocale();
+  // Locale is fixed to the stored preference here; the 한/EN toggle moved out
+  // of the market header (language belongs in user Settings). Default is `ko`.
+  const [locale] = useMarketLocale();
   const [params] = useSearchParams();
   const view = params.get("view") === "list" ? "list" : "landing";
 
@@ -51,30 +58,14 @@ export function MarketPage() {
       <Topbar
         here="Market"
         subtitle={view === "list" ? (locale === "ko" ? "전체 목록" : "All listings") : undefined}
+        showNotifications={false}
+        showSearch={false}
         right={
-          <>
-            <div className="locale-switch" role="group" aria-label="locale">
-              <button
-                type="button"
-                className={`locale-btn${locale === "ko" ? " is-active" : ""}`}
-                onClick={() => setLocale("ko")}
-              >
-                한
-              </button>
-              <button
-                type="button"
-                className={`locale-btn${locale === "en" ? " is-active" : ""}`}
-                onClick={() => setLocale("en")}
-              >
-                EN
-              </button>
-            </div>
-            {view === "list" && (
-              <Link to="/market" className="back-link">
-                ← {locale === "ko" ? "마켓 홈" : "Market home"}
-              </Link>
-            )}
-          </>
+          view === "list" ? (
+            <Link to="/market" className="back-link">
+              ← {locale === "ko" ? "마켓 홈" : "Market home"}
+            </Link>
+          ) : undefined
         }
       />
 
@@ -88,18 +79,78 @@ export function MarketPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Market-scoped search (replaces the global jump-search in the topbar)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Top-bar search for the market. Unlike the shared `GlobalSearch` (which jumps
+ * to wallets / installed policies / verdicts), this searches the marketplace
+ * itself: submitting routes to the list view with the query applied.
+ */
+function MarketSearch({ locale }: { locale: MarketLocale }) {
+  const [q, setQ] = useState("");
+  const navigate = useNavigate();
+  return (
+    <form
+      className="market-hero-search"
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const term = q.trim();
+        navigate(term ? `/market?view=list&q=${encodeURIComponent(term)}` : "/market?view=list");
+      }}
+    >
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder={
+          locale === "ko"
+            ? "정책 · 패키지 검색"
+            : "Search policies & packages"
+        }
+        aria-label={locale === "ko" ? "마켓 검색" : "Search the market"}
+      />
+      {q && (
+        <button
+          type="button"
+          className="market-hero-search-clear"
+          onClick={() => setQ("")}
+          aria-label="clear"
+        >
+          ×
+        </button>
+      )}
+    </form>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Landing view
 // ─────────────────────────────────────────────────────────────────────────
 
 function LandingView({ locale }: { locale: MarketLocale }) {
   const heroQ = useQuery({
-    queryKey: ["market-hero-packages"],
+    queryKey: ["market-latest-packages"],
     queryFn: () =>
       listListings({
         kind: "set",
-        publisher_tier: "official",
-        sort: "popular",
-        limit: 3,
+        sort: "new",
+        limit: 6,
       }),
   });
 
@@ -110,23 +161,29 @@ function LandingView({ locale }: { locale: MarketLocale }) {
     queryFn: () => listListings({ limit: 100 }),
   });
 
-  const domainCounts = useMemo(() => {
-    const map = new Map<string, number>();
+  // Category counts derive from each policy's slug (see `categoryOf`). Sets are
+  // packages, not single-action policies, so they don't count toward a tile.
+  const categoryCounts = useMemo(() => {
+    const map = new Map<CategoryKey, number>();
     (allForCountsQ.data ?? []).forEach((l) => {
-      if (l.domain) map.set(l.domain, (map.get(l.domain) ?? 0) + 1);
+      const c = listingCategoryKey(l);
+      if (c) map.set(c, (map.get(c) ?? 0) + 1);
     });
     return map;
   }, [allForCountsQ.data]);
 
   return (
-    <div className="market-landing">
-      <main className="ml-main">
-        <HeroPackages items={heroQ.data ?? []} loading={heroQ.isLoading} locale={locale} />
-        <CategoryGrid counts={domainCounts} locale={locale} />
-      </main>
-      <aside className="ml-sidebar">
-        <RankingSidebar locale={locale} />
-      </aside>
+    <div className="market-landing-v2">
+      <MarketSearch locale={locale} />
+      <div className="market-cols">
+        <div className="market-col-main">
+          <HeroPackages items={heroQ.data ?? []} loading={heroQ.isLoading} locale={locale} />
+          <CategoryGrid counts={categoryCounts} locale={locale} />
+        </div>
+        <aside className="market-col-side">
+          <RankingSidebar locale={locale} />
+        </aside>
+      </div>
     </div>
   );
 }
@@ -140,68 +197,108 @@ function HeroPackages({
   loading: boolean;
   locale: MarketLocale;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const page = (dir: 1 | -1) => {
+    const el = scrollerRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
+  };
+  const goTo = (i: number) => {
+    const el = scrollerRef.current;
+    if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  };
+  const onScroll = () => {
+    const el = scrollerRef.current;
+    if (el) setActive(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+  };
   return (
     <section className="ml-section">
       <header className="ml-section-head">
-        <h2>{locale === "ko" ? "오늘의 추천 패키지" : "Today's package picks"}</h2>
-        <p className="ml-section-sub">
-          {locale === "ko"
-            ? "공식 운영팀이 큐레이션한 핵심 패키지부터 시작해 보세요."
-            : "Start with the official packages curated by the operations team."}
-        </p>
+        <span className="ml-eyebrow">LATEST PACKAGES</span>
       </header>
       {loading && <div className="ml-status">{locale === "ko" ? "불러오는 중…" : "Loading…"}</div>}
       {!loading && items.length === 0 && (
         <div className="ml-status">
-          {locale === "ko" ? "공개된 공식 패키지가 없습니다." : "No official packages yet."}
+          {locale === "ko" ? "공개된 패키지가 없습니다." : "No packages yet."}
         </div>
       )}
       {items.length > 0 && (
-        <div className="hero-row">
-          {items.map((l) => (
-            <HeroCard key={l.id} listing={l} locale={locale} />
-          ))}
+        <div className="pkg-carousel-wrap">
+          <div className="pkg-carousel-viewport">
+            {items.length > 1 && (
+              <button
+                type="button"
+                className="carousel-arrow left"
+                onClick={() => page(-1)}
+                aria-label={locale === "ko" ? "이전" : "previous"}
+              >
+                ‹
+              </button>
+            )}
+            <div className="pkg-carousel" ref={scrollerRef} onScroll={onScroll}>
+              {items.map((l) => (
+                <PackageCard key={l.id} listing={l} locale={locale} />
+              ))}
+            </div>
+            {items.length > 1 && (
+              <button
+                type="button"
+                className="carousel-arrow right"
+                onClick={() => page(1)}
+                aria-label={locale === "ko" ? "다음" : "next"}
+              >
+                ›
+              </button>
+            )}
+          </div>
+          {items.length > 1 && (
+            <div className="carousel-dots" role="tablist">
+              {items.map((l, i) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={`carousel-dot${i === active ? " is-active" : ""}`}
+                  aria-label={`${i + 1}`}
+                  aria-selected={i === active}
+                  onClick={() => goTo(i)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
   );
 }
 
-function HeroCard({ listing, locale }: { listing: ListingSummary; locale: MarketLocale }) {
-  const color = colorOf(listing.domain);
+/** Full-width lead package card — one fills the carousel viewport; the
+ * carousel pages through them one at a time (Four-Pillars hero feel). */
+function PackageCard({ listing, locale }: { listing: ListingSummary; locale: MarketLocale }) {
   const name = pickI18n(listing.display_name, locale) || listing.slug;
   const desc = pickI18n(listing.description, locale);
   return (
-    <Link
-      to={`/market/${encodeURIComponent(listing.slug)}`}
-      className={`hero-card${color ? ` family-${color.family}` : ""}`}
-      style={color ? { borderTopColor: color.hex } : undefined}
-    >
-      <div className="hero-card-head">
-        <div className="hero-card-icon" style={color ? { background: color.soft } : undefined}>
-          <DomainGlyph domain={listing.domain} size={28} />
-        </div>
-        <span className="mc-tier tier-official">{locale === "ko" ? "공식" : "Official"}</span>
+    <Link to={`/market/${encodeURIComponent(listing.slug)}`} className="featured-card">
+      <div className="featured-card-glyph" aria-hidden="true">
+        <PackageGlyph size={168} color="rgba(99, 126, 89, 0.18)" />
       </div>
-      <h3 className="hero-card-name">{name}</h3>
-      {desc && <p className="hero-card-desc">{desc}</p>}
-      <div className="hero-card-foot">
-        <span className="hero-card-stat">
-          <strong>{listing.install_count}</strong> {locale === "ko" ? "설치" : "installs"}
+      <div className="featured-card-body">
+        <span className="featured-card-tag">
+          {locale === "ko" ? "패키지" : "Package"}
+          {listing.publisher_tier === "official" && (
+            <span className="featured-card-official"> · {locale === "ko" ? "공식" : "Official"}</span>
+          )}
         </span>
-        {listing.rating_count > 0 && listing.rating_avg != null && (
-          <span className="hero-card-stat">
-            ★ {listing.rating_avg.toFixed(1)}
-            <span className="mc-stat-mute"> ({listing.rating_count})</span>
+        <h3 className="featured-card-name">{name}</h3>
+        {desc && <p className="featured-card-desc">{desc}</p>}
+        <div className="featured-card-foot">
+          <InstallCount n={listing.install_count} />
+          <Rating avg={listing.rating_avg} count={listing.rating_count} locale={locale} />
+          <span className={`mc-install-badge featured-card-cta${listing.is_installed ? " is-installed" : ""}`}>
+            {listing.is_installed
+              ? locale === "ko" ? "설치됨" : "Installed"
+              : locale === "ko" ? "받기" : "Install"}
           </span>
-        )}
-        <span
-          className={`mc-install-badge${listing.is_installed ? " is-installed" : ""}`}
-        >
-          {listing.is_installed
-            ? locale === "ko" ? "설치됨" : "Installed"
-            : locale === "ko" ? "받기" : "Install"}
-        </span>
+        </div>
       </div>
     </Link>
   );
@@ -211,7 +308,7 @@ function CategoryGrid({
   counts,
   locale,
 }: {
-  counts: Map<string, number>;
+  counts: Map<CategoryKey, number>;
   locale: MarketLocale;
 }) {
   return (
@@ -220,26 +317,26 @@ function CategoryGrid({
         <h2>{locale === "ko" ? "카테고리" : "Categories"}</h2>
         <p className="ml-section-sub">
           {locale === "ko"
-            ? "도메인별로 정리된 정책·패키지를 탐색하세요."
-            : "Browse policies and packages organized by domain."}
+            ? "행위(action)별로 정리된 정책·패키지를 탐색하세요."
+            : "Browse policies and packages by the action they guard."}
         </p>
       </header>
       <div className="cat-grid">
-        {DOMAIN_ORDER.map((d: DomainKey) => {
-          const color = DOMAIN_COLOR[d];
-          const count = counts.get(d) ?? 0;
+        {CATEGORY_ORDER.map((c) => {
+          const color = CATEGORY_COLOR[c];
+          const count = counts.get(c) ?? 0;
           return (
             <Link
-              key={d}
-              to={`/market?view=list&domain=${d}`}
+              key={c}
+              to={`/market?view=list&category=${c}`}
               className={`cat-tile family-${color.family}`}
               style={{ background: color.soft }}
             >
               <div className="cat-tile-icon">
-                <DomainGlyph domain={d} size={22} color={color.hex} />
+                <CategoryGlyph category={c} size={22} color={color.hex} />
               </div>
               <div className="cat-tile-name" style={{ color: color.ink }}>
-                {DOMAIN_NAME[d][locale]}
+                {CATEGORY_NAME[c][locale]}
               </div>
               <div className="cat-tile-count">{count}</div>
             </Link>
@@ -263,50 +360,54 @@ function RankingSidebar({ locale }: { locale: MarketLocale }) {
   });
 
   return (
-    <div className="ranking-sidebar">
-      <header className="rs-head">
-        <span className="rs-title">{locale === "ko" ? "다운로드 순위" : "Top downloads"}</span>
-        <div className="rs-toggle" role="group" aria-label="kind">
-          <button
-            type="button"
-            className={`rs-tab${tab === "set" ? " is-active" : ""}`}
-            onClick={() => setTab("set")}
-          >
-            {locale === "ko" ? "패키지" : "Package"}
-          </button>
-          <button
-            type="button"
-            className={`rs-tab${tab === "policy" ? " is-active" : ""}`}
-            onClick={() => setTab("policy")}
-          >
-            {locale === "ko" ? "정책" : "Policy"}
-          </button>
-        </div>
+    <section className="ml-section">
+      <header className="ml-section-head">
+        <span className="ml-eyebrow">TRENDING</span>
       </header>
+      <div className="ranking-sidebar">
+        <div className="rs-toggle-wrap">
+          <div className="rs-toggle" role="group" aria-label="kind">
+            <button
+              type="button"
+              className={`rs-tab${tab === "set" ? " is-active" : ""}`}
+              onClick={() => setTab("set")}
+            >
+              {locale === "ko" ? "패키지" : "Package"}
+            </button>
+            <button
+              type="button"
+              className={`rs-tab${tab === "policy" ? " is-active" : ""}`}
+              onClick={() => setTab("policy")}
+            >
+              {locale === "ko" ? "정책" : "Policy"}
+            </button>
+          </div>
+        </div>
 
-      {topQ.isLoading && <div className="ml-status">{locale === "ko" ? "불러오는 중…" : "Loading…"}</div>}
+        {topQ.isLoading && <div className="ml-status">{locale === "ko" ? "불러오는 중…" : "Loading…"}</div>}
 
       <ol className="rs-list">
         {(topQ.data ?? []).map((l, i) => {
-          const color = colorOf(l.domain);
+          const color = listingColor(l);
           return (
             <li key={l.id} className="rs-row">
               <span className={`rs-rank rs-rank-${i < 3 ? i + 1 : "n"}`}>{i + 1}</span>
               <Link to={`/market/${encodeURIComponent(l.slug)}`} className="rs-link">
                 <div className="rs-icon" style={color ? { background: color.soft } : undefined}>
-                  <DomainGlyph domain={l.domain} size={14} />
+                  <ListingIcon listing={l} size={14} />
                 </div>
                 <div className="rs-meta">
                   <div className="rs-name">{pickI18n(l.display_name, locale) || l.slug}</div>
                   <div className="rs-sub">
                     {publisherDisplay(l.publisher_tier, l.publisher_email, locale)}
+                    {l.publisher_tier === "official" && <span className="mc-verified"> ✓</span>}
                   </div>
                 </div>
                 <div className="rs-count">
-                  <span className="rs-count-num">{l.install_count}</span>
-                  <span className="rs-count-label">
-                    {locale === "ko" ? "설치" : "inst."}
-                  </span>
+                  <InstallCount n={l.install_count} />
+                  {l.rating_count > 0 && l.rating_avg != null && (
+                    <Rating avg={l.rating_avg} count={l.rating_count} locale={locale} showCount={false} />
+                  )}
                 </div>
               </Link>
             </li>
@@ -314,10 +415,11 @@ function RankingSidebar({ locale }: { locale: MarketLocale }) {
         })}
       </ol>
 
-      <Link to={`/market?view=list&kind=${tab}&sort=popular`} className="rs-more">
-        {locale === "ko" ? "전체 순위 보기 →" : "View full ranking →"}
-      </Link>
-    </div>
+        <Link to={`/market?view=list&kind=${tab}&sort=popular`} className="rs-more">
+          {locale === "ko" ? "전체 순위 보기 →" : "View full ranking →"}
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -332,59 +434,112 @@ function ListView({
   locale: MarketLocale;
   initialParams: URLSearchParams;
 }) {
-  const initialKind = parseKindParam(initialParams.get("kind"));
-  const initialDomain = initialParams.get("domain") ?? "";
+  const ko = locale === "ko";
+  const initialCategory = initialParams.get("category") ?? "";
   const initialSort = parseSortParam(initialParams.get("sort"));
   const initialQ = initialParams.get("q") ?? "";
 
-  const [kind, setKind] = useState<ListingKind | "all">(initialKind);
-  const [domain, setDomain] = useState<string>(initialDomain);
+  const [cats, setCats] = useState<Set<CategoryKey>>(
+    () => new Set(isCategoryKey(initialCategory) ? [initialCategory] : []),
+  );
   const [sort, setSort] = useState<ListingSort>(initialSort);
   const [q, setQ] = useState(initialQ);
   const [search, setSearch] = useState(initialQ);
+  const [pkgAll, setPkgAll] = useState(false);
+  const [polAll, setPolAll] = useState(false);
+  const [installTarget, setInstallTarget] = useState<ListingSummary | null>(null);
 
-  const listingsQ = useQuery({
-    queryKey: ["market-listings", { kind, domain, sort, q: search }],
+  const selected = [...cats];
+  const toggleCat = (c: CategoryKey) =>
+    setCats((prev) => {
+      const n = new Set(prev);
+      if (n.has(c)) n.delete(c);
+      else n.add(c);
+      return n;
+    });
+
+  // All policies — multi-category filtering is client-side (union of selected).
+  const policiesQ = useQuery({
+    queryKey: ["market-listings", { kind: "policy", sort, q: search }],
     queryFn: () =>
-      listListings({
-        kind: kind === "all" ? undefined : kind,
-        domain: domain || undefined,
-        sort,
-        q: search.trim() || undefined,
-        limit: 60,
-      }),
+      listListings({ kind: "policy", sort, q: search.trim() || undefined, limit: 100 }),
   });
+  const allPolicies = policiesQ.data ?? [];
+  const polCatCounts = useMemo(() => {
+    const m = new Map<CategoryKey, number>();
+    allPolicies.forEach((p) => {
+      const c = listingCategoryKey(p);
+      if (c) m.set(c, (m.get(c) ?? 0) + 1);
+    });
+    return m;
+  }, [allPolicies]);
+
+  const setsQ = useQuery({
+    queryKey: ["market-sets-list", { sort, q: search }],
+    queryFn: () =>
+      listListings({ kind: "set", sort, q: search.trim() || undefined, limit: 50 }),
+  });
+  const sets = setsQ.data ?? [];
+  const setDetailQs = useQueries({
+    queries: sets.map((s) => ({
+      queryKey: ["market-listing", s.slug],
+      queryFn: () => getListing(s.slug),
+      staleTime: 60_000,
+    })),
+  });
+  const metaFor = (i: number) => {
+    const members = setDetailQs[i]?.data?.latest_version?.members ?? [];
+    const catCount = new Map<CategoryKey, number>();
+    members.forEach((m) => {
+      const c = categoryOf(m.slug);
+      catCount.set(c, (catCount.get(c) ?? 0) + 1);
+    });
+    return { count: members.length, catCount, ready: members.length > 0 };
+  };
+
+  const polList =
+    selected.length === 0
+      ? allPolicies
+      : allPolicies.filter((p) => {
+          const c = listingCategoryKey(p);
+          return c != null && cats.has(c);
+        });
+  // A package surfaces if any member is in any selected category.
+  const pkgList =
+    selected.length === 0
+      ? sets
+      : sets.filter((_, i) => {
+          const cc = metaFor(i).catCount;
+          return selected.some((c) => cc.has(c));
+        });
+  const pkgShown = pkgAll ? pkgList : pkgList.slice(0, 8);
+  const polShown = polAll ? polList : polList.slice(0, 12);
+  const loading = policiesQ.isLoading || setsQ.isLoading;
 
   return (
     <div className="market-wrap">
-      <header className="market-controls">
-        <div className="market-tabs">
-          <KindTab active={kind === "all"} onClick={() => setKind("all")}>
-            {locale === "ko" ? "전체" : "All"}
-          </KindTab>
-          <KindTab active={kind === "policy"} onClick={() => setKind("policy")}>
-            {locale === "ko" ? "정책" : "Policy"}
-          </KindTab>
-          <KindTab active={kind === "set"} onClick={() => setKind("set")}>
-            {locale === "ko" ? "패키지" : "Package"}
-          </KindTab>
-        </div>
-        {domain && (
-          <div className="market-active-filter">
-            <span className="map-label">
-              {locale === "ko" ? "도메인" : "Domain"}:
-            </span>
-            <span className="map-value">{domainNameOf(domain, locale)}</span>
+      {/* Category rail — multi-select, above the search bar */}
+      <div className="lv-catrail">
+        {CATEGORY_ORDER.map((c) => {
+          const on = cats.has(c);
+          const col = CATEGORY_COLOR[c];
+          const n = polCatCounts.get(c) ?? 0;
+          return (
             <button
+              key={c}
               type="button"
-              className="map-clear"
-              onClick={() => setDomain("")}
-              aria-label="clear domain"
+              className={`lv-catrail-chip${on ? " on" : ""}`}
+              onClick={() => toggleCat(c)}
+              style={on ? { color: col.hex, borderBottomColor: col.hex, background: col.soft } : undefined}
             >
-              ×
+              {categoryNameOf(c, locale)}
+              {n > 0 && <span className="lv-catrail-n">{n}</span>}
             </button>
-          </div>
-        )}
+          );
+        })}
+      </div>
+
+      <header className="market-controls">
         <form
           className="market-search"
           onSubmit={(e) => {
@@ -394,7 +549,7 @@ function ListView({
         >
           <input
             type="text"
-            placeholder={locale === "ko" ? "정책 이름으로 검색" : "Search by name"}
+            placeholder={ko ? "정책·패키지 검색" : "Search policies & packages"}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -417,147 +572,453 @@ function ListView({
           onChange={(e) => setSort(e.target.value as ListingSort)}
           aria-label="sort"
         >
-          <option value="popular">{locale === "ko" ? "인기순" : "Most popular"}</option>
-          <option value="new">{locale === "ko" ? "신규순" : "Newest"}</option>
-          <option value="rating">{locale === "ko" ? "별점순" : "Top rated"}</option>
+          <option value="popular">{ko ? "인기순" : "Most popular"}</option>
+          <option value="new">{ko ? "신규순" : "Newest"}</option>
+          <option value="rating">{ko ? "별점순" : "Top rated"}</option>
         </select>
       </header>
 
-      {listingsQ.isLoading && (
-        <div className="market-status">{locale === "ko" ? "불러오는 중…" : "Loading…"}</div>
-      )}
-
-      {listingsQ.isError && (
-        <div className="market-status market-error">
-          {locale === "ko" ? "마켓 로드 실패" : "Market load failed"}:{" "}
-          {(listingsQ.error as Error).message}
-        </div>
-      )}
-
-      {listingsQ.data && listingsQ.data.length === 0 && (
-        <div className="market-empty">
-          <h2>{locale === "ko" ? "결과가 없습니다" : "No matches"}</h2>
-          <p>
-            {locale === "ko"
-              ? "필터 조건을 바꾸거나 검색어를 비워보세요."
-              : "Try a different filter or clear the search."}
-          </p>
-        </div>
-      )}
-
-      {listingsQ.data && listingsQ.data.length > 0 && (
-        <div className="market-grid">
-          {listingsQ.data.map((l) => (
-            <ListingCard key={l.id} listing={l} locale={locale} />
+      {/* Selected category chips — below the search bar */}
+      {selected.length > 0 && (
+        <div className="lv-selected">
+          {selected.map((c) => (
+            <span
+              key={c}
+              className="lv-sel-chip"
+              style={{ background: CATEGORY_COLOR[c].soft, color: CATEGORY_COLOR[c].ink }}
+            >
+              {ko ? "카테고리: " : ""}
+              {categoryNameOf(c, locale)}
+              <button type="button" onClick={() => toggleCat(c)} aria-label="remove">
+                ×
+              </button>
+            </span>
           ))}
+          <button type="button" className="lv-sel-clear" onClick={() => setCats(new Set())}>
+            {ko ? "모두 해제" : "Clear all"}
+          </button>
         </div>
+      )}
+
+      {loading && <div className="market-status">{ko ? "불러오는 중…" : "Loading…"}</div>}
+      {policiesQ.isError && (
+        <div className="market-status market-error">
+          {ko ? "마켓 로드 실패" : "Market load failed"}
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          <section className="lv-section">
+            <div className="lv-section-head">
+              <h2>
+                {ko ? "패키지" : "Packages"} <span className="lv-count">{pkgList.length}</span>
+              </h2>
+              <p className="lv-section-sub">
+                {ko ? "여러 정책을 한 번에 켜는 묶음" : "Bundles that switch on many policies at once"}
+              </p>
+            </div>
+            {pkgList.length === 0 ? (
+              <p className="lv-empty">{ko ? "해당하는 패키지가 없습니다." : "No packages."}</p>
+            ) : (
+              <>
+                <div className="lv-grid">
+                  {pkgShown.map((l) => (
+                    <PackageListCard
+                      key={l.id}
+                      listing={l}
+                      meta={metaFor(sets.indexOf(l))}
+                      categories={selected}
+                      locale={locale}
+                      onInstall={setInstallTarget}
+                    />
+                  ))}
+                </div>
+                {pkgList.length > 8 && (
+                  <button type="button" className="lv-more" onClick={() => setPkgAll((v) => !v)}>
+                    {pkgAll
+                      ? ko ? "접기" : "Show less"
+                      : ko ? `더보기 (+${pkgList.length - 8})` : `Show more (+${pkgList.length - 8})`}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
+
+          <section className="lv-section">
+            <div className="lv-section-head">
+              <h2>
+                {ko ? "정책" : "Policies"} <span className="lv-count">{polList.length}</span>
+              </h2>
+              <p className="lv-section-sub">
+                {ko ? "개별 정책 — 직접 골라 설치" : "Individual policies"}
+              </p>
+            </div>
+            {polList.length === 0 ? (
+              <p className="lv-empty">{ko ? "해당하는 정책이 없습니다." : "No policies."}</p>
+            ) : (
+              <>
+                <div className="lv-grid">
+                  {polShown.map((l) => (
+                    <PolicyListCard key={l.id} listing={l} locale={locale} onInstall={setInstallTarget} />
+                  ))}
+                </div>
+                {polList.length > 12 && (
+                  <button type="button" className="lv-more" onClick={() => setPolAll((v) => !v)}>
+                    {polAll
+                      ? ko ? "접기" : "Show less"
+                      : ko ? `더보기 (+${polList.length - 12})` : `Show more (+${polList.length - 12})`}
+                  </button>
+                )}
+              </>
+            )}
+          </section>
+        </>
+      )}
+
+      {installTarget && (
+        <InstallModal
+          listing={installTarget}
+          locale={locale}
+          onClose={() => setInstallTarget(null)}
+        />
       )}
     </div>
   );
 }
 
-function KindTab({
-  active,
-  onClick,
-  children,
+/** Severity as a colored symbol (top-right of policy cards): deny = red
+ * no-entry, warn = amber triangle. Replaces the "차단"/"경고" text label. */
+function SeveritySymbol({ sev, locale }: { sev: "deny" | "warn"; locale: MarketLocale }) {
+  const ko = locale === "ko";
+  const label = sev === "deny" ? (ko ? "차단" : "Deny") : ko ? "경고" : "Warn";
+  return (
+    <span className={`lv-sev-sym sev-${sev}`} title={label} aria-label={label}>
+      {sev === "deny" ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+          <circle cx="12" cy="12" r="9" />
+          <line x1="6.6" y1="6.6" x2="17.4" y2="17.4" />
+        </svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3.2 21 19H3z" />
+          <line x1="12" y1="10" x2="12" y2="14" />
+          <circle cx="12" cy="16.6" r="0.7" fill="currentColor" stroke="none" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+/** Compact rating: ★ avg (count). Shows "★ 신규" when there are no reviews. */
+function Rating({
+  avg,
+  count,
+  locale,
+  showCount = true,
 }: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  avg: number | null;
+  count: number;
+  locale: MarketLocale;
+  showCount?: boolean;
 }) {
+  const ko = locale === "ko";
+  if (!count || avg == null) {
+    return <span className="lv-rating is-none">{ko ? "★ 신규" : "★ New"}</span>;
+  }
+  return (
+    <span className="lv-rating" title={`${avg.toFixed(1)} / 5 · ${count}`}>
+      <span className="lv-rating-star">★</span> {avg.toFixed(1)}
+      {showCount && <span className="lv-rating-n"> ({count})</span>}
+    </span>
+  );
+}
+
+/** Install count as a download glyph + number (replaces "설치 N" text). */
+function InstallCount({ n }: { n: number }) {
+  return (
+    <span className="lv-installs" title="installs">
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+      </svg>
+      {n}
+    </span>
+  );
+}
+
+function InstallBadge({
+  installed,
+  locale,
+  onClick,
+}: {
+  installed: boolean;
+  locale: MarketLocale;
+  onClick: () => void;
+}) {
+  const ko = locale === "ko";
   return (
     <button
       type="button"
-      className={`market-tab${active ? " is-active" : ""}`}
-      onClick={onClick}
+      className={`mc-install-badge mc-install-btn${installed ? " is-installed" : ""}`}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
     >
-      {children}
+      {ko ? "받기" : "Install"}
     </button>
   );
 }
 
-function ListingCard({
+/** "받기" popup — copies the listing into the local Editor (copy-to-editor). */
+function InstallModal({
   listing,
   locale,
+  onClose,
 }: {
   listing: ListingSummary;
   locale: MarketLocale;
+  onClose: () => void;
 }) {
-  const name = pickI18n(listing.display_name, locale);
-  const desc = pickI18n(listing.description, locale);
-  const color = colorOf(listing.domain);
-  const domainLabel = domainNameOf(listing.domain, locale);
+  const ko = locale === "ko";
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const detailQ = useQuery({
+    queryKey: ["market-listing", listing.slug],
+    queryFn: () => getListing(listing.slug),
+  });
+  const [done, setDone] = useState(false);
+  const mut = useMutation({
+    mutationFn: () => installListingToEditor(detailQ.data as ListingDetail, locale),
+    onSuccess: async () => {
+      setDone(true);
+      await qc.invalidateQueries({ queryKey: ["managed-policies"] });
+      await qc.invalidateQueries({ queryKey: ["policy-sets"] });
+    },
+  });
+  const isSet = listing.kind === "set";
+  const name = pickI18n(listing.display_name, locale) || listing.slug;
+  const memberCount = detailQ.data?.latest_version?.members?.length ?? 0;
 
-  const accentStyle: React.CSSProperties = color
-    ? { borderLeft: `3px solid ${color.hex}` }
-    : {};
+  return (
+    <div className="im-overlay" onClick={onClose}>
+      <div className="im-box" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="im-x" onClick={onClose} aria-label="close">
+          ×
+        </button>
+        {!done ? (
+          <>
+            <div className="im-kind">{isSet ? (ko ? "패키지" : "Package") : ko ? "정책" : "Policy"}</div>
+            <h3 className="im-title">{name}</h3>
+            <p className="im-sub">
+              {ko
+                ? isSet
+                  ? `이 패키지${memberCount ? ` (정책 ${memberCount}개)` : ""}를 내 Editor로 내려받습니다.`
+                  : "이 정책을 내 Editor로 내려받습니다."
+                : isSet
+                  ? `Copy this package${memberCount ? ` (${memberCount} policies)` : ""} into your Editor.`
+                  : "Copy this policy into your Editor."}
+            </p>
+            <p className="im-note">
+              {ko
+                ? "Editor에서 편집·활성화할 수 있는 복사본으로 받습니다(원본과 분리)."
+                : "Installed as an editable copy, independent of the source."}
+            </p>
+            {mut.isError && <div className="publish-error">{(mut.error as Error).message}</div>}
+            <div className="im-actions">
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                {ko ? "취소" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!detailQ.data || mut.isPending}
+                onClick={() => mut.mutate()}
+              >
+                {mut.isPending ? (ko ? "받는 중…" : "Installing…") : ko ? "Editor로 받기" : "Install to Editor"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="im-ok">✓</div>
+            <h3 className="im-title">{ko ? "받았어요" : "Installed"}</h3>
+            <p className="im-sub">
+              {ko ? `"${name}"을(를) Editor에 추가했습니다.` : `Added "${name}" to your Editor.`}
+            </p>
+            <div className="im-actions">
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                {ko ? "계속 둘러보기" : "Keep browsing"}
+              </button>
+              <button type="button" className="btn-primary" onClick={() => navigate("/editor")}>
+                {ko ? "Editor로 이동" : "Open Editor"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
+/** Policy card — leads with what it does (Korean one-liner), severity, category. */
+function PolicyListCard({
+  listing,
+  locale,
+  onInstall,
+}: {
+  listing: ListingSummary;
+  locale: MarketLocale;
+  onInstall: (l: ListingSummary) => void;
+}) {
+  const name = pickI18n(listing.display_name, locale) || listing.slug;
+  const cat = listingCategoryKey(listing);
+  const color = listingColor(listing);
+  const sev = listing.severity;
+  const oneLine = policyCopy(listing.slug)?.title || pickI18n(listing.description, locale) || "";
   return (
     <Link
       to={`/market/${encodeURIComponent(listing.slug)}`}
-      className={`market-card kind-${listing.kind}${color ? ` family-${color.family}` : ""}`}
-      style={accentStyle}
+      className="market-card lv-card"
+      style={color ? { borderLeft: `3px solid ${color.hex}` } : undefined}
     >
-      <div className="mc-head">
-        <div className="mc-icon-wrap" style={color ? { background: color.soft } : undefined}>
-          <DomainGlyph domain={listing.domain} size={18} />
-        </div>
-        <span className={`mc-kind kind-${listing.kind}`}>
-          {listing.kind === "set"
-            ? locale === "ko" ? "패키지" : "Package"
-            : locale === "ko" ? "정책" : "Policy"}
-        </span>
-        {listing.severity && (
-          <span className={`mc-sev sev-${listing.severity}`}>
-            {listing.severity === "deny"
-              ? locale === "ko" ? "차단" : "Block"
-              : locale === "ko" ? "경고" : "Warn"}
+      <div className="lv-card-top">
+        {cat && (
+          <span
+            className="lv-cat-chip"
+            style={{ background: CATEGORY_COLOR[cat].soft, color: CATEGORY_COLOR[cat].ink }}
+          >
+            {categoryNameOf(cat, locale)}
           </span>
         )}
-        {listing.publisher_tier !== "community" && (
-          <span className={`mc-tier tier-${listing.publisher_tier}`}>
-            {listing.publisher_tier === "official"
-              ? locale === "ko" ? "공식" : "Official"
-              : locale === "ko" ? "검증" : "Verified"}
-          </span>
-        )}
+        {sev && <SeveritySymbol sev={sev} locale={locale} />}
       </div>
-      <h3 className="mc-name">{name || listing.slug}</h3>
-      {desc && <p className="mc-desc">{desc}</p>}
-      <div className="mc-publisher">
-        <span className="mc-publisher-name">
-          {publisherDisplay(listing.publisher_tier, listing.publisher_email, locale)}
-        </span>
-        <span className="mc-publisher-dot">·</span>
-        <span className="mc-publisher-date">{formatYmd(listing.created_at)}</span>
-      </div>
-      {domainLabel && <div className="mc-domain">{domainLabel}</div>}
-      <div className="mc-foot">
-        <span className="mc-stat">
-          <span className="mc-stat-num">{listing.install_count}</span>{" "}
-          {locale === "ko" ? "설치" : "installs"}
-        </span>
-        {listing.rating_count > 0 && listing.rating_avg != null && (
-          <span className="mc-stat">
-            ★ {listing.rating_avg.toFixed(1)}
-            <span className="mc-stat-mute"> ({listing.rating_count})</span>
-          </span>
-        )}
-        <span
-          className={`mc-install-badge${listing.is_installed ? " is-installed" : ""}`}
-        >
-          {listing.is_installed
-            ? locale === "ko" ? "설치됨" : "Installed"
-            : locale === "ko" ? "설치" : "Install"}
-        </span>
+      <h3 className="lv-card-name">{name}</h3>
+      {oneLine && <p className="lv-card-line">{oneLine}</p>}
+      <div className="lv-card-foot">
+        <InstallCount n={listing.install_count} />
+        <Rating avg={listing.rating_avg} count={listing.rating_count} locale={locale} showCount={false} />
+        <InstallBadge installed={listing.is_installed} locale={locale} onClick={() => onInstall(listing)} />
       </div>
     </Link>
   );
 }
 
-function parseKindParam(raw: string | null): ListingKind | "all" {
-  if (raw === "policy" || raw === "set") return raw;
-  return "all";
+/** Package card — leads with policy count + (in a category view) how many of
+ * its policies belong to the active category (why it surfaced). */
+function PackageListCard({
+  listing,
+  meta,
+  categories,
+  locale,
+  onInstall,
+}: {
+  listing: ListingSummary;
+  meta: { count: number; catCount: Map<CategoryKey, number>; ready: boolean };
+  categories: CategoryKey[];
+  locale: MarketLocale;
+  onInstall: (l: ListingSummary) => void;
+}) {
+  const ko = locale === "ko";
+  const name = pickI18n(listing.display_name, locale) || listing.slug;
+  const desc = pickI18n(listing.description, locale);
+  // How many of this package's policies match the active category filter.
+  const match = categories.reduce((s, c) => s + (meta.catCount.get(c) ?? 0), 0);
+  const matchColor = categories.length === 1 ? CATEGORY_COLOR[categories[0]] : null;
+  const matchLabel =
+    categories.length === 1
+      ? `${categoryNameOf(categories[0], locale)} ${match}${ko ? "개 포함" : ""}`
+      : ko ? `관련 ${match}개 포함` : `${match} matching`;
+  return (
+    <Link
+      to={`/market/${encodeURIComponent(listing.slug)}`}
+      className="market-card lv-card lv-pkg-card"
+    >
+      <div className="lv-card-top">
+        <span className="lv-kind">{ko ? "패키지" : "Package"}</span>
+        {match > 0 && (
+          <span
+            className="lv-match"
+            style={
+              matchColor
+                ? { background: matchColor.soft, color: matchColor.ink }
+                : { background: "var(--sage-50, #f1f6ee)", color: "var(--sage-700, #44583d)" }
+            }
+          >
+            {matchLabel}
+          </span>
+        )}
+      </div>
+      <h3 className="lv-card-name">{name}</h3>
+      {desc && <p className="lv-card-line">{desc}</p>}
+      {meta.ready && (
+        <div className="lv-compose">
+          <span>
+            <strong>{meta.count}</strong> {ko ? "개 정책" : "policies"}
+          </span>
+        </div>
+      )}
+      <div className="lv-card-foot">
+        <InstallCount n={listing.install_count} />
+        <Rating avg={listing.rating_avg} count={listing.rating_count} locale={locale} showCount={false} />
+        <InstallBadge installed={listing.is_installed} locale={locale} onClick={() => onInstall(listing)} />
+      </div>
+    </Link>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Listing visuals — category-driven (sets get a package glyph)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** A listing's category: server `category` if present, else slug-derived.
+ * Sets (packages) span categories, so they have none. */
+function listingCategoryKey(l: ListingSummary): CategoryKey | null {
+  if (l.kind !== "policy") return null;
+  return isCategoryKey(l.category) ? l.category : categoryOf(l.slug);
+}
+
+function listingColor(l: ListingSummary) {
+  const cat = listingCategoryKey(l);
+  return cat ? CATEGORY_COLOR[cat] : null;
+}
+
+/** Box/package line glyph for set listings. */
+function PackageGlyph({ size = 18, color }: { size?: number; color?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color ?? "var(--slate-400)"}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8" />
+    </svg>
+  );
+}
+
+/** Unified listing icon: category glyph for policies, package glyph for sets.
+ * Never renders an empty box (the old `domain` glyph was null for sets). */
+function ListingIcon({ listing, size = 18 }: { listing: ListingSummary; size?: number }) {
+  const cat = listingCategoryKey(listing);
+  if (cat) return <CategoryGlyph category={cat} size={size} color={CATEGORY_COLOR[cat].hex} />;
+  return <PackageGlyph size={size} />;
 }
 
 function parseSortParam(raw: string | null): ListingSort {
