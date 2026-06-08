@@ -1,30 +1,31 @@
-/* PolicyFormPane — two-column form (left) + live cedar (right). */
+/* PolicyFormPane — two-column form (left) + live cedar (right). Clean, uniform
+ * controls (32px tall), subtle separators, and the Cedar preview on its own
+ * muted line under each condition row. */
 
 .pf-pane {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
   gap: 16px;
   align-items: start;
 }
-
 .pf-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
 }
 
+/* ── sections ───────────────────────────────────────────────────────────── */
 .pf-section {
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 12px;
   padding: 16px 18px;
   background: var(--surface, #fff);
 }
-
 .pf-h {
   font-size: 15px;
   font-weight: 650;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -46,6 +47,7 @@
   color: var(--muted, #6b7280);
 }
 
+/* label + control rows (trigger / notify) */
 .pf-row {
   display: flex;
   align-items: center;
@@ -62,139 +64,143 @@
 .pf-select {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 8px;
   font-size: 13px;
   background: var(--surface, #fff);
 }
-
-/* conditions */
-.pf-outer {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.pf-outer-lbl {
-  font-size: 12px;
+.pf-readonly {
+  background: #f3f4f6;
   color: var(--muted, #6b7280);
+  cursor: not-allowed;
 }
-.pf-seg {
-  display: inline-flex;
+
+/* severity toggle */
+.pf-sev {
+  display: flex;
+  gap: 8px;
+}
+.pf-sev-btn {
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 8px;
-  overflow: hidden;
-}
-.pf-seg-btn {
-  border: none;
+  padding: 7px 14px;
+  font-size: 13px;
   background: var(--surface, #fff);
-  padding: 6px 12px;
-  font-size: 12.5px;
-  color: var(--muted, #6b7280);
   cursor: pointer;
+  color: var(--muted, #6b7280);
 }
-.pf-seg-btn.on {
-  background: #111827;
-  color: #fff;
-  font-weight: 600;
+.pf-sev-btn.warn.on {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #b45309;
 }
+.pf-sev-btn.deny.on {
+  border-color: #ef4444;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ── condition list ─────────────────────────────────────────────────────── */
 .pf-empty-cond {
   font-size: 12.5px;
   color: var(--muted, #9ca3af);
-  padding: 8px 2px;
+  padding: 6px 2px;
 }
-.pf-group {
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #fafafa;
-}
-.pf-group.neg {
-  border-color: #fca5a5;
-  background: #fef2f2;
-}
-.pf-group-bar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 2px;
-}
-.pf-neg-btn {
-  border: 1px solid var(--border, #e5e7eb);
-  background: var(--surface, #fff);
-  border-radius: 6px;
-  padding: 2px 8px;
+.pf-precedence {
   font-size: 11px;
+  color: var(--muted, #9ca3af);
+  margin: 6px 0 8px;
+}
+.pf-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.pf-add-cond {
+  border: 1px dashed var(--border, #d1d5db);
+  background: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12.5px;
   color: var(--muted, #6b7280);
   cursor: pointer;
 }
-.pf-neg-btn.on {
-  border-color: #ef4444;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-weight: 600;
+.pf-add-cond:hover {
+  border-color: #9ca3af;
+  color: #374151;
 }
-.pf-mode {
-  border: 1px solid var(--border, #e5e7eb);
-  background: #f9fafb;
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 11.5px;
-  color: #475569;
-  cursor: pointer;
-  flex: none;
+
+/* a single condition row: a control line + a muted cedar line */
+.pf-cond {
+  padding: 4px 0;
 }
-.pf-leaf {
+.pf-cond + .pf-cond {
+  border-top: 1px solid #f3f4f6;
+}
+.pf-cond-main {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 6px 0;
-  flex-wrap: wrap;
+  gap: 6px;
 }
+.pf-cond-chip {
+  margin: 3px 0 0 26px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: #16a34a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-grow {
+  flex: 1;
+}
+
+/* uniform 32px controls */
+.pf-ctl,
+.pf-val,
+.fc-btn {
+  height: 32px;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--surface, #fff);
+}
+.pf-ctl {
+  padding: 0 9px;
+  cursor: pointer;
+}
+
 .pf-drag {
   flex: none;
+  width: 16px;
+  text-align: center;
   cursor: grab;
-  color: #9ca3af;
-  font-size: 14px;
+  color: #cbd5e1;
+  font-size: 13px;
   line-height: 1;
   user-select: none;
-  padding: 0 1px;
+}
+.pf-drag:hover {
+  color: #94a3b8;
 }
 .pf-drag:active {
   cursor: grabbing;
 }
-.pf-box.droppable {
-  outline: 2px dashed #a5b4fc;
-  outline-offset: 2px;
-}
-.pf-dropstrip {
-  border: 1.5px dashed #c7d2fe;
-  border-radius: 8px;
-  padding: 10px;
-  text-align: center;
-  font-size: 12.5px;
-  color: #6366f1;
-  background: #f5f7ff;
-  margin: 6px 0;
-}
-.pf-or-tag {
-  font-size: 11px;
-  font-weight: 600;
-  color: #2563eb;
-  background: #eff6ff;
-  border-radius: 6px;
-  padding: 2px 6px;
+
+.pf-join-tag {
+  width: 88px;
+  flex: none;
+  font-size: 12px;
+  color: var(--muted, #9ca3af);
+  padding-left: 2px;
 }
 .pf-join {
-  width: 104px;
+  width: 88px;
   flex: none;
-  padding: 6px 7px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 7px;
-  font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
 }
 .pf-join.and {
   color: #1d4ed8;
@@ -206,22 +212,10 @@
   background: #fefce8;
   border-color: #fde68a;
 }
-.pf-join-tag {
-  width: 104px;
-  flex: none;
-  font-size: 11.5px;
-  color: var(--muted, #9ca3af);
-  padding-left: 4px;
-}
+
 .pf-not {
   flex: none;
-  border: 1px solid var(--border, #e5e7eb);
-  background: var(--surface, #fff);
-  border-radius: 7px;
-  padding: 6px 9px;
-  font-size: 12px;
-  color: var(--muted, #6b7280);
-  cursor: pointer;
+  color: var(--muted, #9ca3af);
 }
 .pf-not.on {
   border-color: #ef4444;
@@ -229,41 +223,97 @@
   color: #b91c1c;
   font-weight: 600;
 }
-.pf-precedence {
-  font-size: 11px;
-  color: var(--muted, #9ca3af);
-  margin: 2px 0 6px;
+.pf-leaf-op {
+  width: 92px;
+  flex: none;
+  font-weight: 600;
 }
-.pf-add-row {
-  display: flex;
-  gap: 8px;
-}
-.pf-readonly {
-  background: #f3f4f6;
-  color: var(--muted, #6b7280);
-  cursor: not-allowed;
+.pf-mode {
+  flex: none;
+  color: #475569;
+  background: #f8fafc;
 }
 
-/* (…) group box */
+/* value inputs */
+.pf-val {
+  width: 150px;
+  padding: 0 10px;
+}
+.pf-val.num {
+  width: 92px;
+}
+.pf-val.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  width: 220px;
+}
+.pf-val.wide {
+  width: 240px;
+}
+.pf-val.invalid {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+.pf-val-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pf-unit {
+  font-size: 11.5px;
+  color: var(--muted, #6b7280);
+  background: #f1f5f9;
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+
+/* row action icon buttons */
+.pf-iconbtn {
+  flex: none;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+}
+.pf-iconbtn:hover {
+  background: #f9fafb;
+  color: #374151;
+}
+.pf-iconbtn.danger:hover {
+  color: #ef4444;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+/* ── (…) group box ──────────────────────────────────────────────────────── */
 .pf-box {
-  border: 1.5px solid #c7d2fe;
-  border-radius: 10px;
-  padding: 8px 10px 10px;
+  border: 1px solid #dbe1fe;
+  border-radius: 12px;
+  padding: 10px 12px;
   margin: 8px 0;
-  background: #f5f7ff;
+  background: #f8f9ff;
 }
 .pf-box.neg {
-  border-color: #fca5a5;
-  background: #fef4f4;
+  border-color: #fecaca;
+  background: #fef6f6;
+}
+.pf-box.droppable {
+  border-style: dashed;
+  border-color: #818cf8;
+  background: #eef2ff;
 }
 .pf-box-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .pf-box-label {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #4f46e5;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -276,10 +326,11 @@
 }
 .pf-box-act {
   flex: none;
+  height: 28px;
   border: 1px solid var(--border, #e5e7eb);
   background: var(--surface, #fff);
-  border-radius: 6px;
-  padding: 4px 9px;
+  border-radius: 7px;
+  padding: 0 10px;
   font-size: 11.5px;
   color: #4f46e5;
   cursor: pointer;
@@ -287,28 +338,45 @@
 .pf-box-act:hover {
   background: #eef2ff;
 }
-.pf-leaf-field {
-  min-width: 150px;
-  padding: 7px 9px;
-  border: 1px solid var(--border, #e5e7eb);
+.pf-or-btn {
+  margin-top: 6px;
+  border: 1px dashed var(--border, #d1d5db);
+  background: none;
   border-radius: 8px;
-  font-size: 13px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
 }
-/* field combobox */
+.pf-or-btn:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* drag-out target */
+.pf-dropstrip {
+  border: 1.5px dashed #c7d2fe;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: #6366f1;
+  background: #f5f7ff;
+  margin: 6px 0;
+}
+
+/* ── field combobox ─────────────────────────────────────────────────────── */
 .fc {
   position: relative;
-  min-width: 170px;
+  flex: 1 1 150px;
+  min-width: 130px;
 }
 .fc-btn {
   display: flex;
   align-items: center;
   gap: 7px;
   width: 100%;
-  padding: 7px 9px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
-  background: var(--surface, #fff);
-  font-size: 13px;
+  padding: 0 9px;
   cursor: pointer;
   text-align: left;
 }
@@ -371,7 +439,6 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--muted, #6b7280);
-  text-transform: none;
 }
 .fc-opt {
   display: block;
@@ -423,121 +490,7 @@
   flex: none;
 }
 
-.pf-leaf-op {
-  width: 64px;
-  padding: 7px 6px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
-  font-size: 13px;
-}
-.pf-val {
-  width: 130px;
-  padding: 7px 9px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
-  font-size: 13px;
-}
-.pf-val.wide {
-  width: 220px;
-}
-.pf-val.num {
-  width: 96px;
-}
-.pf-val.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  width: 200px;
-}
-.pf-val.invalid {
-  border-color: #ef4444;
-  background: #fef2f2;
-}
-.pf-val-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.pf-unit {
-  font-size: 11.5px;
-  color: var(--muted, #6b7280);
-  background: #f1f5f9;
-  border-radius: 5px;
-  padding: 2px 6px;
-}
-.pf-leaf-chip {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
-  color: #16a34a;
-  background: #f0fdf4;
-  border: 1px solid #dcfce7;
-  border-radius: 6px;
-  padding: 2px 7px;
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pf-x {
-  margin-left: auto;
-  border: none;
-  background: none;
-  color: #9ca3af;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px 6px;
-}
-.pf-x:hover {
-  color: #ef4444;
-}
-.pf-or-btn,
-.pf-add-cond {
-  border: 1px dashed var(--border, #d1d5db);
-  background: none;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12.5px;
-  color: var(--muted, #6b7280);
-  cursor: pointer;
-}
-.pf-or-btn {
-  margin-top: 4px;
-}
-.pf-add-cond {
-  margin-top: 4px;
-}
-.pf-or-btn:hover,
-.pf-add-cond:hover {
-  border-color: #9ca3af;
-  color: #374151;
-}
-
-/* severity toggle */
-.pf-sev {
-  display: flex;
-  gap: 8px;
-}
-.pf-sev-btn {
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 13px;
-  background: var(--surface, #fff);
-  cursor: pointer;
-  color: var(--muted, #6b7280);
-}
-.pf-sev-btn.warn.on {
-  border-color: #f59e0b;
-  background: #fffbeb;
-  color: #b45309;
-}
-.pf-sev-btn.deny.on {
-  border-color: #ef4444;
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-/* validity badge */
+/* ── validity badge ─────────────────────────────────────────────────────── */
 .pf-status {
   border-radius: 10px;
   padding: 10px 14px;
@@ -565,7 +518,7 @@
   font-size: 11.5px;
 }
 
-/* live cedar */
+/* ── live cedar pane ────────────────────────────────────────────────────── */
 .pf-cedar {
   position: sticky;
   top: 8px;

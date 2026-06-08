@@ -477,21 +477,21 @@ function GroupBox({
     >
       <div className="pf-box-head">
         {!first && (
-          <select className={`pf-join ${group.joiner}`} value={group.joiner} onChange={(e) => onJoiner(e.target.value as GroupOp)}>
+          <select className={`pf-ctl pf-join ${group.joiner}`} value={group.joiner} onChange={(e) => onJoiner(e.target.value as GroupOp)}>
             <option value="and">그리고(AND)</option>
             <option value="or">또는(OR)</option>
           </select>
         )}
         <span className="pf-box-label">( 묶음 )</span>
-        <button type="button" className={`pf-not${group.not ? " on" : ""}`} onClick={onToggleNot} title="이 묶음을 부정 — NOT">
+        <button type="button" className={`pf-ctl pf-not${group.not ? " on" : ""}`} onClick={onToggleNot} title="이 묶음을 부정 — NOT">
           아니다
         </button>
         <span className="pf-spc" />
         <button type="button" className="pf-box-act" onClick={onUngroup}>
           해제
         </button>
-        <button type="button" className="pf-x" onClick={onRemove} aria-label="묶음 삭제">
-          ×
+        <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="묶음 삭제" title="묶음 삭제">
+          ✕
         </button>
       </div>
       {conds.map((c, i) => (
@@ -553,75 +553,78 @@ function ConditionRow({
   const canField = SCALAR_OPS.has(cond.op);
   const fieldMode = cond.value.kind === "field";
   return (
-    <div className="pf-leaf">
-      {onDragStart && (
-        <span
-          className="pf-drag"
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", "cond"); // Firefox needs data
-            onDragStart();
-          }}
-          title="드래그해서 묶음으로 이동 / 빼기"
-        >
-          ⠿
-        </span>
-      )}
-      {first ? (
-        <span className="pf-join-tag">조건</span>
-      ) : (
-        <select className={`pf-join ${cond.joiner}`} value={cond.joiner} onChange={(e) => onJoiner(e.target.value as GroupOp)}>
-          <option value="and">그리고(AND)</option>
-          <option value="or">또는(OR)</option>
-        </select>
-      )}
-      <button
-        type="button"
-        className={`pf-not${cond.not ? " on" : ""}`}
-        onClick={onToggleNot}
-        title="이 조건을 부정 — NOT"
-      >
-        아니다
-      </button>
-      <FieldCombobox value={cond.fieldPath} fields={ctx.fields} onChange={onField} />
-      <select className="pf-leaf-op" value={cond.op} onChange={(e) => onOp(e.target.value as FormOp)}>
-        {ops.map((op) => (
-          <option key={op} value={op}>
-            {OP_LABEL[op]}
-          </option>
-        ))}
-      </select>
-      {canField && (
+    <div className="pf-cond">
+      <div className="pf-cond-main">
+        {onDragStart && (
+          <span
+            className="pf-drag"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", "cond"); // Firefox needs data
+              onDragStart();
+            }}
+            title="드래그해서 묶음으로 이동 / 빼기"
+          >
+            ⠿
+          </span>
+        )}
+        {first ? (
+          <span className="pf-join-tag">조건</span>
+        ) : (
+          <select className={`pf-ctl pf-join ${cond.joiner}`} value={cond.joiner} onChange={(e) => onJoiner(e.target.value as GroupOp)}>
+            <option value="and">그리고(AND)</option>
+            <option value="or">또는(OR)</option>
+          </select>
+        )}
         <button
           type="button"
-          className="pf-mode"
-          onClick={() =>
-            onValue(fieldMode ? defaultValueOfKind(valueKindFor(field, cond.op)) : { kind: "field", path: ctx.rhsFields[0]?.path ?? "principal.address" })
-          }
-          title={fieldMode ? "고정 값으로" : "다른 필드와 비교"}
+          className={`pf-ctl pf-not${cond.not ? " on" : ""}`}
+          onClick={onToggleNot}
+          title="이 조건을 부정 — NOT"
         >
-          {fieldMode ? "필드" : "값"}
+          아니다
         </button>
-      )}
-      {fieldMode ? (
-        <FieldCombobox
-          value={cond.value.kind === "field" ? cond.value.path : ""}
-          fields={ctx.rhsFields}
-          onChange={(p) => onValue({ kind: "field", path: p })}
-        />
-      ) : (
-        <ValueInput value={cond.value} field={field} onChange={onValue} />
-      )}
-      <span className="pf-leaf-chip">{chip}</span>
-      {onGroup && (
-        <button type="button" className="pf-box-act" onClick={onGroup} title="이 조건을 괄호로 묶기">
-          묶기
+        <FieldCombobox value={cond.fieldPath} fields={ctx.fields} onChange={onField} />
+        <select className="pf-ctl pf-leaf-op" value={cond.op} onChange={(e) => onOp(e.target.value as FormOp)}>
+          {ops.map((op) => (
+            <option key={op} value={op}>
+              {OP_LABEL[op]}
+            </option>
+          ))}
+        </select>
+        {canField && (
+          <button
+            type="button"
+            className="pf-ctl pf-mode"
+            onClick={() =>
+              onValue(fieldMode ? defaultValueOfKind(valueKindFor(field, cond.op)) : { kind: "field", path: ctx.rhsFields[0]?.path ?? "principal.address" })
+            }
+            title={fieldMode ? "고정 값으로" : "다른 필드와 비교"}
+          >
+            {fieldMode ? "필드" : "값"}
+          </button>
+        )}
+        {fieldMode ? (
+          <FieldCombobox
+            value={cond.value.kind === "field" ? cond.value.path : ""}
+            fields={ctx.rhsFields}
+            onChange={(p) => onValue({ kind: "field", path: p })}
+          />
+        ) : (
+          <ValueInput value={cond.value} field={field} onChange={onValue} />
+        )}
+        <span className="pf-grow" />
+        {onGroup && (
+          <button type="button" className="pf-iconbtn" onClick={onGroup} title="이 조건을 괄호로 묶기">
+            묶기
+          </button>
+        )}
+        <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="조건 삭제" title="삭제">
+          ✕
         </button>
-      )}
-      <button type="button" className="pf-x" onClick={onRemove} aria-label="조건 삭제">
-        ×
-      </button>
+      </div>
+      {cond.fieldPath && <div className="pf-cond-chip">{chip}</div>}
     </div>
   );
 }
