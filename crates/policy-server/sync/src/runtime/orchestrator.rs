@@ -385,21 +385,28 @@ impl Orchestrator {
     /// and touches ONLY the three `Signed*` `PendingKind` variants — intent
     /// orders share `state.pending`, so a loose filter would prune live intents.
     ///
-    /// Two retire rules:
+    /// Retire rules:
     /// * **Expiry** (all three kinds, no RPC): `valid_until < now` → mark
     ///   `Expired` and prune. Always runs.
-    /// * **Consumed** (`SignedPermit2Transfer` only): read the Permit2 unordered
-    ///   nonce bitmap on-chain (`nonceBitmap(owner, word)`); if the signed bit is
-    ///   set the `SignatureTransfer` was executed → mark `Filled` and prune. Best-
-    ///   effort: with no `RpcRouter` (or on RPC error) the entry is left `Active`
-    ///   and retried next tick — never aborts the tick.
+    /// * **Consumed — `SignedPermit2Transfer`**: read the Permit2 unordered nonce
+    ///   bitmap on-chain (`nonceBitmap(owner, word)`); if the signed bit is set
+    ///   the `SignatureTransfer` was executed → prune.
+    /// * **Consumed — `SignedEIP2612`**: read the token's `nonces(owner)`; once it
+    ///   has advanced past the signed (sequential, strictly in-order) nonce the
+    ///   permit was used or invalidated → prune.
     ///
-    /// FOLLOW-UP (deliberately NOT built here): the Permit2 `AllowanceTransfer`
-    /// internal-allowance reader. `SignedPermit2` (allowance) and `SignedEIP2612`
-    /// use a sequential allowance/nonce model, not the unordered bitmap, so their
-    /// "consumed" detection needs an `allowance(owner, token, spender)` read
-    /// against Permit2 / the token — a sibling to `discovery/approvals.rs`. Until
-    /// then those two kinds are expiry-only.
+    /// All consumed-checks are best-effort: with no `RpcRouter` (or on RPC error)
+    /// the entry is left `Active` and retried next tick — never aborts the tick.
+    ///
+    /// FOLLOW-UP (deliberately NOT built here): consumed-detection for the Permit2
+    /// `AllowanceTransfer` (`SignedPermit2`). It uses a sequential uint48 nonce in
+    /// the on-chain `allowance(owner, token, spender)` struct, but Phase 3 stores
+    /// its nonce as `(word, bit)` bitmap coords (the wrong shape — and inconsistent
+    /// across the extension report / ingest / reducer). A sound reader needs that
+    /// nonce model corrected end-to-end first (expiration-matching is NOT sound:
+    /// Permit2's default 30-day expiration + max amount make two permits to the
+    /// same `(token, spender)` indistinguishable). Until then `SignedPermit2` is
+    /// expiry-only.
     pub async fn reconcile_permits(
         &self,
         state: &mut WalletState,
@@ -427,7 +434,7 @@ impl Orchestrator {
                 continue;
             }
 
-            // 2) Consumed — SignatureTransfer only (unordered nonce bitmap).
+            // 2) Consumed — SignatureTransfer (unordered nonce bitmap).
             if let PendingKind::SignedPermit2Transfer { token, nonce, .. } = &pending.kind {
                 let (word, bit) = *nonce;
                 let chain = token.key.chain();
@@ -440,6 +447,26 @@ impl Orchestrator {
                     Err(e) => report
                         .errors
                         .push(format!("permit2 nonce-bitmap read for {}: {e}", pending.id)),
+                }
+            }
+
+            // 3) Consumed — EIP-2612 (sequential per-(owner,token) nonce).
+            if let PendingKind::SignedEIP2612 { token, nonce, .. } = &pending.kind {
+                if let policy_state::token::TokenKey::Erc20 { address, .. } = &token.key {
+                    let chain = token.key.chain();
+                    match self
+                        .eip2612_nonce_consumed(chain, *address, owner, *nonce)
+                        .await
+                    {
+                        Ok(true) => {
+                            to_prune.push(pending.id.clone());
+                            report.permits_retired += 1;
+                        }
+                        Ok(false) => {}
+                        Err(e) => report
+                            .errors
+                            .push(format!("eip2612 nonces read for {}: {e}", pending.id)),
+                    }
                 }
             }
         }
@@ -475,6 +502,32 @@ impl Orchestrator {
             reason: format!("short nonceBitmap return ({} bytes)", return_data.len()),
         })?;
         Ok(bitmap_bit_is_set(bitmap, bit))
+    }
+
+    /// Read the EIP-2612 `nonces(owner)` for `token` on `chain`. The signed permit
+    /// is consumed once the on-chain nonce has advanced past the signed nonce:
+    /// EIP-2612 nonces are strictly sequential and in-order, so `nonces(owner) >
+    /// signed_nonce` proves that nonce was used (or invalidated by a later
+    /// in-order use). Best-effort: any inability to read (no router, RPC error,
+    /// short return) is an `Err` the caller records, leaving the entry `Active`.
+    async fn eip2612_nonce_consumed(
+        &self,
+        chain: &policy_state::ChainId,
+        token: policy_state::primitives::Address,
+        owner: policy_state::primitives::Address,
+        signed_nonce: U256,
+    ) -> Result<bool, SyncError> {
+        let router = self.router.as_ref().ok_or_else(|| SyncError::FetchFailed {
+            source_id: "eip2612_nonces".into(),
+            reason: "no RpcRouter configured".into(),
+        })?;
+        let req = crate::fetchers::rpc::EthCallRequest::new(token, encode_nonces(owner));
+        let return_data = router.eth_call(chain, req).await?;
+        let onchain = decode_u256_be(&return_data).ok_or_else(|| SyncError::FetchFailed {
+            source_id: "eip2612_nonces".into(),
+            reason: format!("short nonces return ({} bytes)", return_data.len()),
+        })?;
+        Ok(eip2612_nonce_is_consumed(onchain, signed_nonce))
     }
 
     /// Best-effort **core** account sync (every tick): fetch the native-dex core,
@@ -1276,6 +1329,28 @@ fn encode_nonce_bitmap(owner: policy_state::primitives::Address, word: U256) -> 
     out.extend_from_slice(&[0u8; 12]);
     out.extend_from_slice(owner.as_slice());
     out.extend_from_slice(&word.to_be_bytes::<32>());
+    out
+}
+
+/// `nonces(address)` (EIP-2612) selector — `keccak256(sig)[..4]`. Verified by
+/// `nonces_selector_is_correct`.
+const NONCES_SELECTOR: [u8; 4] = [0x7e, 0xce, 0xbe, 0x00];
+
+/// An EIP-2612 permit signed with `signed` is consumed once the on-chain
+/// `nonces(owner)` has advanced strictly past it. Nonces are sequential and
+/// in-order, so `onchain > signed` ⟹ the signed nonce was used (or invalidated by
+/// a later in-order use); `onchain == signed` means it is still the next usable
+/// nonce → NOT yet consumed.
+fn eip2612_nonce_is_consumed(onchain: U256, signed: U256) -> bool {
+    onchain > signed
+}
+
+/// ABI-encode `nonces(owner)` calldata: selector + owner (left-padded).
+fn encode_nonces(owner: policy_state::primitives::Address) -> Vec<u8> {
+    let mut out = Vec::with_capacity(4 + 32);
+    out.extend_from_slice(&NONCES_SELECTOR);
+    out.extend_from_slice(&[0u8; 12]);
+    out.extend_from_slice(owner.as_slice());
     out
 }
 
@@ -2372,6 +2447,36 @@ priority = 1
         }
 
         #[test]
+        fn nonces_selector_is_correct() {
+            // keccak256("nonces(address)")[..4] = 0x7ecebe00.
+            let hash = alloy_primitives::keccak256(b"nonces(address)");
+            assert_eq!(&hash[..4], &NONCES_SELECTOR);
+        }
+
+        #[test]
+        fn encode_nonces_layout() {
+            let owner = Address::from([0x44; 20]);
+            let data = encode_nonces(owner);
+            assert_eq!(&data[..4], &NONCES_SELECTOR);
+            assert_eq!(&data[4..16], &[0u8; 12]); // left-pad
+            assert_eq!(&data[16..36], &[0x44u8; 20]); // owner
+            assert_eq!(data.len(), 36);
+        }
+
+        #[test]
+        fn eip2612_consumed_boundary_is_strict() {
+            let signed = U256::from(5u64);
+            // on-chain still at the signed nonce → next-to-use → NOT consumed.
+            assert!(!eip2612_nonce_is_consumed(U256::from(5u64), signed));
+            // advanced past it → consumed (used or invalidated).
+            assert!(eip2612_nonce_is_consumed(U256::from(6u64), signed));
+            // far ahead → consumed.
+            assert!(eip2612_nonce_is_consumed(U256::from(99u64), signed));
+            // behind (shouldn't happen) → not consumed.
+            assert!(!eip2612_nonce_is_consumed(U256::from(4u64), signed));
+        }
+
+        #[test]
         fn permit_is_expired_uses_strict_less_than() {
             let now = Time::from_unix(1000);
             assert!(permit_is_expired(Some(Time::from_unix(999)), now));
@@ -2414,9 +2519,9 @@ priority = 1
 
         #[tokio::test]
         async fn active_signed_permit_is_untouched_and_intents_ignored() {
-            // No reachable RPC → the transfer's consumed-check errors (recorded),
-            // but the entry stays Active; the EIP-2612 entry is in-window; the
-            // intent is out of scope. Nothing is pruned.
+            // No reachable RPC → both in-window consumed-checks (the SignatureTransfer
+            // bitmap read AND the EIP-2612 nonces read) error and are recorded, but
+            // every entry stays Active; the intent is out of scope. Nothing pruned.
             let orch = Orchestrator::from_sync_config(&crate::SyncConfig::default()).unwrap();
             let now = Time::from_unix(1_000_000);
             let mut state = state_with(vec![
@@ -2434,10 +2539,14 @@ priority = 1
             let report = orch.reconcile_permits(&mut state, now).await.unwrap();
             assert_eq!(report.permits_retired, 0, "nothing retired");
             assert_eq!(state.pending.len(), 3, "all entries preserved");
-            // The no-router transfer consumed-check is recorded as a non-fatal
-            // error, never an abort.
-            assert_eq!(report.errors.len(), 1);
-            assert!(report.errors[0].contains("permit2-transfer:active"));
+            // Both no-router consumed-checks are recorded as non-fatal errors,
+            // never an abort.
+            assert_eq!(report.errors.len(), 2);
+            assert!(report
+                .errors
+                .iter()
+                .any(|e| e.contains("permit2-transfer:active")));
+            assert!(report.errors.iter().any(|e| e.contains("eip2612:active")));
         }
 
         /// The "nonce bit set → Filled+pruned" decision, exercised purely (the

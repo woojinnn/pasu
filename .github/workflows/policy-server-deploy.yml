@@ -77,11 +77,15 @@ jobs:
 
       - name: Deploy with Helm
         run: |
+          # --set-string (not --set): an all-numeric short SHA (e.g. 58388293) is
+          # otherwise coerced to int64 by Helm, and the chart's `printf "%s"` then
+          # renders it as `%!s(int64=...)` → InvalidImageName. Forcing a string
+          # keeps the image tag valid for every SHA.
           helm upgrade --install pasu \
             crates/policy-server/server/deploy/helm/policy-server \
             --namespace "${NAMESPACE}" \
             -f "${HELM_VALUES}" \
-            --set image.tag="${IMAGE_TAG}" \
+            --set-string image.tag="${IMAGE_TAG}" \
             --timeout 8m
           kubectl -n "${NAMESPACE}" rollout status deploy/pasu-policy-server-api --timeout=180s
 

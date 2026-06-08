@@ -524,4 +524,341 @@ mod tests {
             "3500 USD input must warn, got {verdict:?}"
         );
     }
+
+    // ---------------------------------------------------------------------
+    // Phase 4 seam: a `{capSumOverBalance:true}` enrichment result (computed
+    // server-side by `intent.pending_cap_over_balance`) materializes into the
+    // SignIntentOrder context and trips the AMMLP-3 warn policy.
+    // ---------------------------------------------------------------------
+
+    fn sign_intent_sample() -> (
+        policy_transition::action::ActionBody,
+        policy_transition::action::ActionMeta,
+    ) {
+        use std::str::FromStr;
+
+        use policy_state::live_field::DataSource;
+        use policy_state::primitives::{Address, ChainId, Decimal, Time, U256};
+        use policy_state::token::{TokenKey, TokenRef};
+        use policy_state::LiveField;
+        use policy_transition::action::amm::{
+            AmmAction, IntentOrderKind, IntentVenue, SignIntentOrderAction,
+            SignIntentOrderLiveInputs,
+        };
+        use policy_transition::action::{ActionBody, ActionMeta, ActionNature, Eip712Domain};
+
+        let chain = ChainId::ethereum_mainnet();
+        let user = Address::from_str("0x1111111111111111111111111111111111111111").unwrap();
+        let token = |addr: &str| TokenRef {
+            key: TokenKey::Erc20 {
+                chain: chain.clone(),
+                address: Address::from_str(addr).unwrap(),
+            },
+        };
+        let reactor = Address::from_str("0x6000da47483062a0d734ba3dc7576ce6a0b645c4").unwrap();
+        let now = Time::from_unix(1_738_000_000);
+        let src = DataSource::OnchainView {
+            chain: chain.clone(),
+            contract: reactor,
+            function: "resolve()".into(),
+            decoder_id: "uniswapx_resolve".into(),
+        };
+        let sign = AmmAction::SignIntentOrder(SignIntentOrderAction {
+            venue: IntentVenue::UniswapX {
+                chain: chain.clone(),
+                reactor,
+            },
+            sell: token("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
+            buy: token("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
+            sell_amount: U256::from(1_000_000_000u64),
+            buy_min: U256::from(300_000_000_000_000_000u64),
+            order_kind: IntentOrderKind::Dutch,
+            recipient: user,
+            valid_until: Time::from_unix(1_738_003_600),
+            live_inputs: SignIntentOrderLiveInputs {
+                expected_fill_price: LiveField::new(Decimal::new("3050.25"), src.clone(), now),
+                competing_orders: LiveField::new(3u32, src, now),
+            },
+        });
+        let meta = ActionMeta {
+            submitted_at: now,
+            submitter: user,
+            nature: ActionNature::OffchainSig {
+                domain: Eip712Domain {
+                    name: "UniswapX".into(),
+                    version: Some("1".into()),
+                    chain_id: Some(1),
+                    verifying_contract: None,
+                    salt: None,
+                },
+                deadline: Time::from_unix(1_738_003_600),
+                nonce_key: None,
+            },
+        };
+        (ActionBody::Amm(sign), meta)
+    }
+
+    fn cap_over_balance_manifest() -> ManifestV2 {
+        serde_json::from_value(json!({
+            "id": "ammlp-intent-cap-over-balance-warn",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "sign_intent_order" } } },
+            "policy_rpc": [{
+                "id": "pending-cap-over-balance",
+                "method": "intent.pending_cap_over_balance",
+                "params": {
+                    "chain_id": "$.root.chain_id",
+                    "owner": "$.root.from",
+                    "action": "$.action"
+                },
+                "outputs": [{
+                    "kind": "context",
+                    "field": "capSumOverBalance",
+                    "type": "Bool",
+                    "from": "$.result.capSumOverBalance"
+                }],
+                "optional": true
+            }],
+            "custom_context": { "fields": { "capSumOverBalance": "Bool" } }
+        }))
+        .expect("manifest parses")
+    }
+
+    #[test]
+    fn cap_over_balance_result_materializes_and_warns() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x1111111111111111111111111111111111111111";
+        const TO: &str = "0x2222222222222222222222222222222222222222";
+
+        let (body, meta) = sign_intent_sample();
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let view = body.view();
+        let tx = TxView {
+            chain_id: "eip155:1",
+            from: FROM,
+            to: TO,
+        };
+        let manifest = cap_over_balance_manifest();
+
+        let planned = plan_policy_rpc_v2(
+            std::slice::from_ref(&manifest),
+            &view,
+            &lowered.context,
+            &tx,
+        )
+        .unwrap();
+        assert_eq!(planned.len(), 1);
+
+        // Producer-side seam guard: the planned params MUST carry the lowered shape
+        // the policy-server `pending_cap_over_balance` method reads
+        // (`action.sell.key.address` + `action.sellAmount` + top-level `chain_id`).
+        // This crate can't depend on policy-server, so the input seam is pinned by
+        // asserting the producer output here; a lowering rename breaks this test
+        // while a method-read change breaks the policy-server tests.
+        let pp = &planned[0].params;
+        assert!(
+            pp["action"]["sell"]["key"]["address"].is_string(),
+            "planned params must expose action.sell.key.address; got {pp}"
+        );
+        assert!(
+            pp["action"]["sellAmount"].is_string(),
+            "planned params must expose action.sellAmount; got {pp}"
+        );
+        assert_eq!(pp["chain_id"].as_str(), Some("eip155:1"));
+
+        // The server-side method returned capSumOverBalance: true (the Task 2 seam
+        // contract `{ "capSumOverBalance": bool }`).
+        let mut context = lowered.context.clone();
+        let mut results = BTreeMap::new();
+        results.insert(
+            planned[0].call_id.clone(),
+            json!({ "capSumOverBalance": true }),
+        );
+        materialize_v2(&mut context, &planned, &results).unwrap();
+        assert_eq!(context["custom"]["capSumOverBalance"], json!(true));
+
+        // Compose the per-policy schema and evaluate the AMMLP-3 warn policy.
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let policy = "@id(\"ammlp-intent-cap-over-balance-warn\")\n@severity(\"warn\")\n\
+            forbid(principal, action == Amm::Action::\"SignIntentOrder\", resource)\n\
+            when { context has custom && context.custom has capSumOverBalance \
+            && context.custom.capSumOverBalance };\n";
+        let engine =
+            crate::policy::PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema_text)])
+                .unwrap();
+        let verdict = engine
+            .evaluate(
+                &lowered.principal,
+                &lowered.action_uid,
+                &lowered.resource,
+                &json!([]),
+                &context,
+            )
+            .unwrap();
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Warn(_)),
+            "cap-over-balance must warn, got {verdict:?}"
+        );
+    }
+
+    #[test]
+    fn near_duplicate_result_materializes_and_warns() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x1111111111111111111111111111111111111111";
+        const TO: &str = "0x2222222222222222222222222222222222222222";
+
+        let manifest: ManifestV2 = serde_json::from_value(json!({
+            "id": "ammlp-intent-duplicate-warn",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "sign_intent_order" } } },
+            "policy_rpc": [{
+                "id": "near-duplicate-pending",
+                "method": "intent.near_duplicate_pending",
+                "params": { "chain_id": "$.root.chain_id", "owner": "$.root.from", "action": "$.action" },
+                "outputs": [{ "kind": "context", "field": "duplicateIntent", "type": "Bool", "from": "$.result.duplicate" }],
+                "optional": true
+            }],
+            "custom_context": { "fields": { "duplicateIntent": "Bool" } }
+        }))
+        .expect("manifest parses");
+
+        let (body, meta) = sign_intent_sample();
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let view = body.view();
+        let tx = TxView {
+            chain_id: "eip155:1",
+            from: FROM,
+            to: TO,
+        };
+        let planned = plan_policy_rpc_v2(
+            std::slice::from_ref(&manifest),
+            &view,
+            &lowered.context,
+            &tx,
+        )
+        .unwrap();
+        assert_eq!(planned.len(), 1);
+
+        // Producer-side seam guard for the venue + buy paths the method reads.
+        let pp = &planned[0].params;
+        assert!(
+            pp["action"]["venue"]["name"].is_string(),
+            "need action.venue.name; got {pp}"
+        );
+        assert!(
+            pp["action"]["sell"]["key"]["address"].is_string(),
+            "need action.sell.key.address"
+        );
+        assert!(
+            pp["action"]["buy"]["key"]["address"].is_string(),
+            "need action.buy.key.address"
+        );
+        assert_eq!(pp["chain_id"].as_str(), Some("eip155:1"));
+
+        let mut context = lowered.context.clone();
+        let mut results = BTreeMap::new();
+        results.insert(planned[0].call_id.clone(), json!({ "duplicate": true }));
+        materialize_v2(&mut context, &planned, &results).unwrap();
+        assert_eq!(context["custom"]["duplicateIntent"], json!(true));
+
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let policy = "@id(\"ammlp-intent-duplicate-warn\")\n@severity(\"warn\")\n\
+            forbid(principal, action == Amm::Action::\"SignIntentOrder\", resource)\n\
+            when { context has custom && context.custom has duplicateIntent \
+            && context.custom.duplicateIntent };\n";
+        let engine =
+            crate::policy::PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema_text)])
+                .unwrap();
+        let verdict = engine
+            .evaluate(
+                &lowered.principal,
+                &lowered.action_uid,
+                &lowered.resource,
+                &json!([]),
+                &context,
+            )
+            .unwrap();
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Warn(_)),
+            "duplicate must warn, got {verdict:?}"
+        );
+    }
+
+    #[test]
+    fn validity_horizon_result_materializes_and_warns() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x1111111111111111111111111111111111111111";
+        const TO: &str = "0x2222222222222222222222222222222222222222";
+
+        let manifest: ManifestV2 = serde_json::from_value(json!({
+            "id": "intent-validity-horizon-warn",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "sign_intent_order" } } },
+            "policy_rpc": [{
+                "id": "validity-horizon",
+                "method": "intent.validity_horizon_sec",
+                "params": { "valid_until": "$.action.validUntil" },
+                "outputs": [{ "kind": "context", "field": "validityHorizonSec", "type": "Long", "from": "$.result.horizonSec" }],
+                "optional": true
+            }],
+            "custom_context": { "fields": { "validityHorizonSec": "Long" } }
+        }))
+        .expect("manifest parses");
+
+        let (body, meta) = sign_intent_sample();
+        let lowered = lower_action(&body, &meta, &TxMeta { from: FROM, to: TO }).unwrap();
+        let view = body.view();
+        let tx = TxView {
+            chain_id: "eip155:1",
+            from: FROM,
+            to: TO,
+        };
+        let planned = plan_policy_rpc_v2(
+            std::slice::from_ref(&manifest),
+            &view,
+            &lowered.context,
+            &tx,
+        )
+        .unwrap();
+        assert_eq!(planned.len(), 1);
+
+        // Producer-side seam guard: the method reads `valid_until` (a Long).
+        assert!(
+            planned[0].params["valid_until"].is_number(),
+            "need numeric valid_until; got {}",
+            planned[0].params
+        );
+
+        let mut context = lowered.context.clone();
+        let mut results = BTreeMap::new();
+        // A long horizon (> 3600s) — what the method would compute for a far deadline.
+        results.insert(planned[0].call_id.clone(), json!({ "horizonSec": 99_999 }));
+        materialize_v2(&mut context, &planned, &results).unwrap();
+        assert_eq!(context["custom"]["validityHorizonSec"], json!(99_999));
+
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let policy = "@id(\"intent-validity-horizon-warn\")\n@severity(\"warn\")\n\
+            forbid(principal, action == Amm::Action::\"SignIntentOrder\", resource)\n\
+            when { context has custom && context.custom has validityHorizonSec \
+            && context.custom.validityHorizonSec > 3600 };\n";
+        let engine =
+            crate::policy::PolicyEngine::build_from_per_policy(&[(policy.to_owned(), schema_text)])
+                .unwrap();
+        let verdict = engine
+            .evaluate(
+                &lowered.principal,
+                &lowered.action_uid,
+                &lowered.resource,
+                &json!([]),
+                &context,
+            )
+            .unwrap();
+        assert!(
+            matches!(verdict, crate::policy::Verdict::Warn(_)),
+            "long horizon must warn, got {verdict:?}"
+        );
+    }
 }
