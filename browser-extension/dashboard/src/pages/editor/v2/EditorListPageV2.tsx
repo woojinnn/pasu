@@ -6,6 +6,8 @@ import {
   ENABLED_IDS_STORAGE_KEY,
   dashboardId,
   dashboardSetId,
+  deleteManagedPolicy,
+  deletePolicySet,
   getEnabledPolicyIds,
   listListings,
   listManagedPolicies,
@@ -42,6 +44,7 @@ import {
   PlusIcon,
   SearchIcon,
   ShieldIcon,
+  TrashIcon,
   WarnIcon,
   XIcon,
 } from "./icons";
@@ -456,6 +459,44 @@ export function EditorListPageV2() {
     }
   };
 
+  const deletePackage = async (s: PolicySet) => {
+    if (
+      !window.confirm(
+        `패키지 "${s.displayName}"를 삭제할까요?\n(안에 든 정책 자체는 삭제되지 않아요)`,
+      )
+    )
+      return;
+    try {
+      await deletePolicySet(s.id);
+      await qc.invalidateQueries({ queryKey: ["policy-sets"] });
+      pushToast("패키지를 삭제했어요");
+    } catch (err) {
+      console.error("[v2 list] deletePackage failed:", err);
+      pushToast("패키지를 삭제하지 못했어요");
+    }
+  };
+
+  const deletePolicyById = async (p: ManagedPolicy) => {
+    if (
+      !window.confirm(
+        `정책 "${nameFromPolicy(p)}"를 삭제할까요?\n되돌릴 수 없어요.`,
+      )
+    )
+      return;
+    try {
+      await deleteManagedPolicy(p.id);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["managed-policies"] }),
+        qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] }),
+        qc.invalidateQueries({ queryKey: ["policy-sets"] }),
+      ]);
+      pushToast("정책을 삭제했어요");
+    } catch (err) {
+      console.error("[v2 list] deletePolicyById failed:", err);
+      pushToast("정책을 삭제하지 못했어요");
+    }
+  };
+
   const activePkg =
     scope.type === "pkg" ? sets.find((s) => s.id === scope.id) ?? null : null;
 
@@ -507,6 +548,7 @@ export function EditorListPageV2() {
             onToggleExpand={toggleExpand}
             onRemoveFromPackage={(setId, pid) => void removeFromPackage(setId, pid)}
             onToggleArmed={(s, pid, armed) => void toggleArmed(s, pid, armed)}
+            onDeletePackage={(s) => void deletePackage(s)}
             onOpenPolicy={(id) => navigate(`/editor/${encodeURIComponent(id)}`)}
           />
 
@@ -641,6 +683,7 @@ export function EditorListPageV2() {
                         onOpen={() =>
                           navigate(`/editor/${encodeURIComponent(p.id)}`)
                         }
+                        onDelete={() => void deletePolicyById(p)}
                       />
                     );
                   })}
@@ -772,6 +815,7 @@ function PackagePanel(props: {
   onToggleExpand: (id: string) => void;
   onRemoveFromPackage: (setId: string, policyId: string) => void;
   onToggleArmed: (s: PolicySet, policyId: string, armed: boolean) => void;
+  onDeletePackage: (s: PolicySet) => void;
   onOpenPolicy: (id: string) => void;
 }) {
   const {
@@ -791,6 +835,7 @@ function PackagePanel(props: {
     onToggleExpand,
     onRemoveFromPackage,
     onToggleArmed,
+    onDeletePackage,
     onOpenPolicy,
   } = props;
 
@@ -968,6 +1013,17 @@ function PackagePanel(props: {
                           </div>
                         );
                       })
+                    )}
+                    {!s.readOnly && (
+                      <button
+                        type="button"
+                        className="ev2-pkg-del"
+                        onClick={() => onDeletePackage(s)}
+                        title="이 패키지 삭제 (정책은 유지)"
+                      >
+                        <TrashIcon />
+                        패키지 삭제
+                      </button>
                     )}
                   </div>
                 )}
@@ -1219,6 +1275,7 @@ function PolicyRow(props: {
   onSelect: () => void;
   onToggle: (on: boolean) => void;
   onOpen: () => void;
+  onDelete: () => void;
 }) {
   const {
     policy,
@@ -1231,6 +1288,7 @@ function PolicyRow(props: {
     onSelect,
     onToggle,
     onOpen,
+    onDelete,
   } = props;
   const draft = isDraft(policy);
   const on = rowOn(policy, enabled);
@@ -1363,6 +1421,17 @@ function PolicyRow(props: {
           title={draft ? "draft는 토글 불가" : "켜기/끄기"}
         >
           <span className="sw" />
+        </button>
+        <button
+          type="button"
+          className="ev2-del"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="정책 삭제"
+        >
+          <TrashIcon />
         </button>
         <button
           type="button"

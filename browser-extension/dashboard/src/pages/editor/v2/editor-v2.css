@@ -166,6 +166,56 @@
 .ev2-trow {
   cursor: grab;
 }
+/* per-row delete (hover-revealed) */
+.ev2-del {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--slate-300);
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+}
+.ev2-trow:hover .ev2-del {
+  opacity: 1;
+}
+.ev2-del:hover {
+  background: var(--fail-100, #fde8e8);
+  color: var(--fail-500, #d14343);
+}
+.ev2-del svg {
+  width: 15px;
+  height: 15px;
+}
+/* delete-package action in the expanded dropdown */
+.ev2-pkg-del {
+  margin-top: 4px;
+  align-self: flex-start;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--slate-400);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.ev2-pkg-del:hover {
+  background: var(--fail-100, #fde8e8);
+  color: var(--fail-500, #d14343);
+}
+.ev2-pkg-del svg {
+  width: 13px;
+  height: 13px;
+}
 /* expandable package: caret + in-panel member dropdown */
 .ev2-pkg-item {
   display: flex;

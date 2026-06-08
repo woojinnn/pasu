@@ -38,6 +38,13 @@ export const XIcon = (p: IconProps) => (
   </svg>
 );
 
+export const TrashIcon = (p: IconProps) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m1 0v12a1 1 0 01-1 1H8a1 1 0 01-1-1V7" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+);
+
 export const PlusIcon = (p: IconProps) => (
   <svg viewBox="0 0 24 24" {...base} strokeWidth={2.3} {...p}>
     <path d="M12 5v14M5 12h14" />
