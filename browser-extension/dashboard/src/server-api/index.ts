@@ -48,6 +48,20 @@ export {
 } from "./wallets";
 
 export {
+  getWalletPositions,
+  getWalletPending,
+  hlAccountOf,
+  type Position,
+  type PositionKind,
+  type HlAccount,
+  type HlPosition,
+  type HlOpenOrder,
+  type HlLeverageSetting,
+  type PendingTx,
+  type PendingKind,
+} from "./positions";
+
+export {
   listPolicies,
   createPolicy,
   patchPolicy,

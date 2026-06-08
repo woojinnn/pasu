@@ -178,6 +178,14 @@ pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Route
             get(read_handlers::get_approvals),
         )
         .route(
+            "/wallets/:address/positions",
+            get(read_handlers::get_positions),
+        )
+        .route(
+            "/wallets/:address/pending",
+            get(read_handlers::get_pending),
+        )
+        .route(
             "/wallets/:address/block-heights",
             get(read_handlers::get_block_heights),
         )

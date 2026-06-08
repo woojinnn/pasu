@@ -6,6 +6,9 @@ import {
   getDashboardSummary,
   getWalletApprovalsWithRisk,
   getWalletHoldings,
+  getWalletPending,
+  getWalletPositions,
+  hlAccountOf,
   listAuditVerdicts,
   setVerdictDecision,
   type ClassifiedApprovals,
@@ -14,6 +17,10 @@ import {
   type ClassifiedSetForAllApproval,
   type DashboardSummary,
   type DashboardWalletSummary,
+  type HlAccount,
+  type PendingKind,
+  type PendingTx,
+  type Position,
   type TokenHolding,
   type VerdictDto,
 } from "../server-api";
@@ -88,6 +95,25 @@ export function MonitoringPage() {
       queryKey: ["approvals", w.address, "with_risk"],
       queryFn: () => getWalletApprovalsWithRisk(w.address),
       enabled: summaryQ.isSuccess,
+    })),
+  });
+  const positionsQs = useQueries({
+    queries: targetWallets.map((w) => ({
+      queryKey: ["positions", w.address],
+      queryFn: () => getWalletPositions(w.address),
+      enabled: summaryQ.isSuccess,
+      // Re-read the server's stored state every 30s so HL positions/orders
+      // reflect backend syncs without a manual refresh. (Fresh HL data still
+      // requires a backend sync — `POST /sync` or the sync_worker tick.)
+      refetchInterval: 30_000,
+    })),
+  });
+  const pendingQs = useQueries({
+    queries: targetWallets.map((w) => ({
+      queryKey: ["pending", w.address],
+      queryFn: () => getWalletPending(w.address),
+      enabled: summaryQ.isSuccess,
+      refetchInterval: 30_000,
     })),
   });
 
@@ -222,6 +248,18 @@ export function MonitoringPage() {
         <span className="meta">UNLIMITED · KNOWN_VENUE · BLOCKED · OLD</span>
       </div>
       <ApprovalsTable wallets={targetWallets} queries={approvalsQs} />
+
+      <div className="sec-head">
+        <h3>Hyperliquid</h3>
+        <span className="meta">포지션 · 레버리지 · 오픈 오더 · 마진</span>
+      </div>
+      <HyperliquidSection wallets={targetWallets} queries={positionsQs} />
+
+      <div className="sec-head">
+        <h3>대기 주문 (오프체인 인텐트 · 서명)</h3>
+        <span className="meta">UniswapX · CoW · 1inch · permit</span>
+      </div>
+      <PendingTable wallets={targetWallets} queries={pendingQs} />
 
       <AddWalletModal open={addOpen} onClose={() => setAddOpen(false)} />
     </>
@@ -1254,6 +1292,211 @@ function ApprovalsTable({
       {revokeItem && <RevokeModal item={revokeItem} onClose={() => setRevokeItem(null)} />}
     </>
   );
+}
+
+// ── Hyperliquid ─────────────────────────────────────────────────────────
+
+function HyperliquidSection({
+  wallets,
+  queries,
+}: {
+  wallets: DashboardWalletSummary[];
+  queries: Array<ReturnType<typeof useQuery<Position[]>>>;
+}) {
+  const anyLoading = queries.some((q) => q.isLoading);
+  const accounts = wallets
+    .map((w, i) => ({ w, acct: hlAccountOf(queries[i]?.data ?? []) }))
+    .filter((x): x is { w: DashboardWalletSummary; acct: HlAccount } => x.acct !== null);
+
+  if (accounts.length === 0) {
+    return (
+      <div className="tbl-wrap">
+        <div className="empty-cell" style={{ padding: 12 }}>
+          {anyLoading ? "불러오는 중…" : "Hyperliquid 계정이 없습니다"}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      {accounts.map(({ w, acct }) => (
+        <HlAccountCard key={w.address} wallet={w} acct={acct} />
+      ))}
+    </div>
+  );
+}
+
+/** Split a HL symbol like `xyz:MU` into a perp-dex tag + coin. */
+function splitSym(sym: string | undefined, assetIndex: number): { coin: string; dex?: string } {
+  if (!sym) return { coin: `#${assetIndex}` };
+  const i = sym.indexOf(":");
+  return i > 0 ? { dex: sym.slice(0, i), coin: sym.slice(i + 1) } : { coin: sym };
+}
+
+/** Classify a trigger order as 익절(tp) / 손절(sl). Prefers HL's authoritative
+ *  `order_type` ("Take Profit …" / "Stop …"); falls back to comparing the
+ *  trigger price against the open position's entry. */
+function tpSlOf(
+  o: HlAccount["open_orders"][number],
+  pos: HlAccount["positions"][number] | undefined,
+): "tp" | "sl" | null {
+  const t = (o.order_type ?? "").toLowerCase();
+  if (t.includes("take profit")) return "tp";
+  if (t.includes("stop")) return "sl";
+  if (!o.is_trigger || !o.reduce_only || !o.trigger_price || !pos) return null;
+  const trig = Number(o.trigger_price);
+  const entry = Number(pos.entry_price);
+  if (!isFinite(trig) || !isFinite(entry)) return null;
+  return pos.is_long ? (trig >= entry ? "tp" : "sl") : trig <= entry ? "tp" : "sl";
+}
+
+function HlAccountCard({ wallet, acct }: { wallet: DashboardWalletSummary; acct: HlAccount }) {
+  const levByAsset = new Map(acct.leverage_settings.map((s) => [s.asset_index, s]));
+  const posByAsset = new Map(acct.positions.map((p) => [p.asset_index, p]));
+  const label = wallet.label ?? shortAddr(wallet.address);
+  const empty = acct.positions.length === 0 && acct.open_orders.length === 0;
+
+  return (
+    <div className="hl-card">
+      <div className="hl-card-head">
+        <span className="hl-wallet">{label}</span>
+        <div className="hl-meta">
+          <span className="hl-chip muted">마진 {acct.perp_usdc ? fmtUsd(acct.perp_usdc, 2) : "$0"}</span>
+          {Number(acct.pending_outflow) > 0 && (
+            <span className="hl-chip danger">출금대기 {fmtUsd(acct.pending_outflow, 2)}</span>
+          )}
+          {acct.agents.length > 0 && <span className="hl-chip danger">agent {acct.agents.length}</span>}
+        </div>
+      </div>
+
+      {acct.positions.map((p, i) => {
+        const { coin, dex } = splitSym(p.symbol, p.asset_index);
+        const lev = levByAsset.get(p.asset_index);
+        const notional = Number(p.size) * Number(p.entry_price);
+        return (
+          <div className="hl-pos" key={`p${i}`}>
+            <div className="hl-pos-main">
+              <span className="hl-sym">{coin}</span>
+              {dex && <span className="hl-dex">{dex}</span>}
+              <span className={`hl-side ${p.is_long ? "long" : "short"}`}>{p.is_long ? "롱" : "숏"}</span>
+              {lev && <span className="hl-chip">{lev.leverage}x {lev.is_cross ? "교차" : "격리"}</span>}
+            </div>
+            <div className="hl-stats">
+              <span className="hl-stat"><span className="k">수량</span><span className="v">{fmtDec(p.size)}</span></span>
+              <span className="hl-stat"><span className="k">진입가</span><span className="v">{fmtDec(p.entry_price)}</span></span>
+              {isFinite(notional) && (
+                <span className="hl-stat"><span className="k">평가</span><span className="v">{fmtUsd(notional, 0)}</span></span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {acct.open_orders.length > 0 && (
+        <>
+          <div className="hl-group-label">오픈 오더 {acct.open_orders.length}</div>
+          {acct.open_orders.map((o, i) => {
+            const { coin } = splitSym(o.symbol, o.asset_index);
+            const tag = tpSlOf(o, posByAsset.get(o.asset_index));
+            return (
+              <div className="hl-ord" key={`o${i}`}>
+                <span className={`hl-side ${o.is_buy ? "long" : "short"}`}>{o.is_buy ? "매수" : "매도"}</span>
+                <span className="hl-sym sm">{coin}</span>
+                {o.is_trigger && o.trigger_price ? (
+                  <span className="hl-trigger">
+                    트리거 {fmtDec(o.trigger_price)} <span className="arrow">→</span> 지정 {fmtDec(o.price)}
+                  </span>
+                ) : (
+                  <span className="hl-trigger">지정가 {fmtDec(o.price)}</span>
+                )}
+                {tag === "tp" && <span className="hl-tp">익절</span>}
+                {tag === "sl" && <span className="hl-sl">손절</span>}
+                <span className="hl-ord-meta">
+                  수량 {o.is_position_tpsl || Number(o.size) === 0 ? "전량" : fmtDec(o.size)} ·{" "}
+                  {o.tif.toUpperCase()}
+                  {o.reduce_only ? " · 청산전용" : ""}
+                </span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {empty && <div className="hl-empty">열린 포지션·오더 없음</div>}
+    </div>
+  );
+}
+
+// ── Pending (off-chain intent orders / signed permits) ───────────────────
+
+const PENDING_LABELS: Record<PendingKind["kind"], string> = {
+  offchain_limit_order: "오프체인 주문",
+  perp_venue_order: "perp 주문",
+  signed_permit2: "Permit2",
+  signed_permit2_transfer: "Permit2 전송",
+  signed_e_i_p2612: "EIP-2612",
+};
+
+function pendingSummary(k: PendingKind): string {
+  switch (k.kind) {
+    case "offchain_limit_order":
+      return `최대매도 ${k.sell_max} → 최소매수 ${k.buy_min}`;
+    case "perp_venue_order":
+      return `${k.side} ${k.size_base} @ ${k.price}${k.reduce_only ? " (reduce)" : ""}`;
+    case "signed_permit2":
+    case "signed_permit2_transfer":
+    case "signed_e_i_p2612":
+      return `한도 ${k.amount} · spender ${shortAddr(k.spender)}`;
+  }
+}
+
+function PendingTable({
+  wallets,
+  queries,
+}: {
+  wallets: DashboardWalletSummary[];
+  queries: Array<ReturnType<typeof useQuery<PendingTx[]>>>;
+}) {
+  const anyLoading = queries.some((q) => q.isLoading);
+  const rows = wallets.flatMap((w, i) => (queries[i]?.data ?? []).map((p) => ({ w, p })));
+  return (
+    <div className="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>유형</th><th>지갑</th><th>요약</th><th>서명 시각</th></tr>
+        </thead>
+        <tbody>
+          {anyLoading && rows.length === 0 && (
+            <tr><td colSpan={4} className="empty-cell">불러오는 중…</td></tr>
+          )}
+          {!anyLoading && rows.length === 0 && (
+            <tr><td colSpan={4} className="empty-cell">대기 중인 주문이 없습니다</td></tr>
+          )}
+          {rows.map(({ w, p }, idx) => (
+            <tr key={idx}>
+              <td className="strong" style={{ fontSize: 11 }}>{PENDING_LABELS[p.kind.kind] ?? p.kind.kind}</td>
+              <td className="mono">{w.label ?? shortAddr(w.address)}</td>
+              <td className="meta">{pendingSummary(p.kind)}</td>
+              <td className="mono num">{p.signed_at ? new Date(p.signed_at * 1000).toLocaleString() : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function fmtDec(d: string): string {
+  const n = Number(d);
+  if (!isFinite(n)) return d;
+  return n.toLocaleString("en-US", { maximumFractionDigits: 6 });
+}
+
+/** USD formatter accepting a Decimal string or a number. */
+function fmtUsd(d: string | number, frac: number): string {
+  const n = typeof d === "number" ? d : Number(d);
+  if (!isFinite(n)) return typeof d === "string" ? d : "—";
+  return `$${n.toLocaleString("en-US", { maximumFractionDigits: frac })}`;
 }
 
 // ── Revoke modal ────────────────────────────────────────────────────────

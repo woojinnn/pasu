@@ -81,6 +81,34 @@ pub async fn get_holdings(
     }
 }
 
+/// `GET /wallets/:address/positions` — protocol positions (lending accounts,
+/// perps, the Hyperliquid account, airdrop claims, …) as a typed array. The
+/// `Position` shape is Tsify-exported, so the dashboard consumes it without a
+/// hand-written interface.
+pub async fn get_positions(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(address): Path<String>,
+) -> Response {
+    match load_state(&state.multi_user, &user.user_id, &address).await {
+        Ok(s) => Json(s.positions).into_response(),
+        Err(e) => e,
+    }
+}
+
+/// `GET /wallets/:address/pending` — off-chain / unsettled intent orders
+/// (UniswapX, CoW Swap, 1inch Fusion) as a typed array of `PendingTx`.
+pub async fn get_pending(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(address): Path<String>,
+) -> Response {
+    match load_state(&state.multi_user, &user.user_id, &address).await {
+        Ok(s) => Json(s.pending).into_response(),
+        Err(e) => e,
+    }
+}
+
 /// `GET /wallets/:address/approvals[?with_risk=true]`.
 /// Default: returns the raw [`ApprovalSet`] (back-compat).
 /// `?with_risk=true`: returns the classified shape — every approval gets
