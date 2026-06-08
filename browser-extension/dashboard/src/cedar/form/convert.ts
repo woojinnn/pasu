@@ -20,7 +20,16 @@ import type {
   VarName,
 } from "../blocks/ir";
 
-import type { FormGroup, FormLeaf, FormModel, FormOp, FormSeverity, FormTrigger, FormValue } from "./model";
+import type {
+  FormGroup,
+  FormLeaf,
+  FormModel,
+  FormOp,
+  FormSeverity,
+  FormTrigger,
+  FormValue,
+  GroupOp,
+} from "./model";
 
 const REQUEST_VARS = new Set<VarName>(["principal", "action", "resource", "context"]);
 
@@ -186,22 +195,30 @@ function customGuards(leaves: FormLeaf[]): Expr[] {
   return [ctxHasCustom, ...names.map((n): Expr => ({ kind: "has", of: custom, attr: n }))];
 }
 
-/** Build a clause body (with `has` guards) from groups, or null if none have
- *  leaves. Each group is an OR of leaves, optionally negated; groups are AND-ed. */
-function clauseBody(groups: FormGroup[]): Expr | null {
+/**
+ * Build a clause body (with `has` guards) from groups joined by `outerOp`; the
+ * leaves within a group use the OPPOSITE connector. `has` guards always sit at a
+ * top-level AND (so they short-circuit safely even under an OR body). Null if no
+ * group has leaves.
+ */
+function clauseBody(groups: FormGroup[], outerOp: GroupOp): Expr | null {
+  const innerBin = outerOp === "and" ? "||" : "&&";
   const groupExprs = groups
     .filter((g) => g.leaves.length > 0)
     .map((g) => {
-      const orExpr = fold("||", g.leaves.map(leafToExpr));
-      return g.negated ? ({ kind: "unary", op: "!", operand: orExpr } as Expr) : orExpr;
+      const inner = fold(innerBin, g.leaves.map(leafToExpr));
+      return g.negated ? ({ kind: "unary", op: "!", operand: inner } as Expr) : inner;
     });
   if (groupExprs.length === 0) return null;
   const guards = customGuards(groups.flatMap((g) => g.leaves));
-  return fold("&&", [...guards, ...groupExprs]);
+  if (outerOp === "and") return fold("&&", [...guards, ...groupExprs]);
+  const dnf = fold("||", groupExprs);
+  return guards.length > 0 ? fold("&&", [...guards, dnf]) : dnf;
 }
 
-/** Parse one top-level AND term into a group (handles a `!(…)` negation). */
-function parseGroup(term: Expr): FormGroup | null {
+/** Parse one term into a group, flattening its leaves by `innerBin` and peeling
+ *  a `!(…)` negation. Null if any leaf isn't representable. */
+function parseGroup(term: Expr, innerBin: "&&" | "||"): FormGroup | null {
   let negated = false;
   let node = term;
   if (node.kind === "unary" && node.op === "!") {
@@ -209,7 +226,7 @@ function parseGroup(term: Expr): FormGroup | null {
     node = node.operand;
   }
   const leaves: FormLeaf[] = [];
-  for (const le of flattenBinary(node, "||")) {
+  for (const le of flattenBinary(node, innerBin)) {
     const leaf = exprToLeaf(le);
     if (!leaf) return null;
     leaves.push(leaf);
@@ -217,16 +234,40 @@ function parseGroup(term: Expr): FormGroup | null {
   return negated ? { leaves, negated: true } : { leaves };
 }
 
-/** Parse a clause body into groups; null if any term isn't representable. */
-function parseClause(body: Expr): FormGroup[] | null {
+/** Parse a clause body into `{ groups, outerOp }`; null if not representable.
+ *  After stripping top-level `has` guards: ≥2 AND-terms ⇒ CNF (outer "and");
+ *  a lone `||` whose disjuncts contain an `&&` ⇒ DNF (outer "or"); otherwise a
+ *  single OR-group (outer "and"). */
+function parseClause(body: Expr): { groups: FormGroup[]; outerOp: GroupOp } | null {
   const terms = flattenBinary(body, "&&").filter((t) => t.kind !== "has");
+  if (terms.length === 0) return { groups: [], outerOp: "and" };
+
+  if (terms.length === 1 && terms[0].kind === "binary" && terms[0].op === "||") {
+    const disj = flattenBinary(terms[0], "||");
+    const isAnd = (d: Expr) => {
+      const n = d.kind === "unary" && d.op === "!" ? d.operand : d;
+      return n.kind === "binary" && n.op === "&&";
+    };
+    if (disj.some(isAnd)) {
+      const groups: FormGroup[] = [];
+      for (const d of disj) {
+        const g = parseGroup(d, "&&");
+        if (!g) return null;
+        groups.push(g);
+      }
+      return { groups, outerOp: "or" };
+    }
+    const g = parseGroup(terms[0], "||");
+    return g ? { groups: [g], outerOp: "and" } : null;
+  }
+
   const groups: FormGroup[] = [];
   for (const term of terms) {
-    const g = parseGroup(term);
+    const g = parseGroup(term, "||");
     if (!g) return null;
     groups.push(g);
   }
-  return groups;
+  return { groups, outerOp: "and" };
 }
 
 // ── public API ────────────────────────────────────────────────────────────
@@ -245,9 +286,9 @@ export function formToIr(model: FormModel): PolicyIR {
       : { kind: "scopeAll" };
 
   const conditions: Condition[] = [];
-  const whenBody = clauseBody(model.groups);
+  const whenBody = clauseBody(model.groups, model.groupOp);
   if (whenBody) conditions.push({ kind: "when", body: whenBody });
-  const unlessBody = clauseBody(model.unlessGroups);
+  const unlessBody = clauseBody(model.unlessGroups, model.unlessOp);
   if (unlessBody) conditions.push({ kind: "unless", body: unlessBody });
 
   return {
@@ -278,6 +319,8 @@ export function irToForm(ir: PolicyIR): FormModel | null {
   // At most one `when` and one `unless` clause.
   let groups: FormGroup[] = [];
   let unlessGroups: FormGroup[] = [];
+  let groupOp: GroupOp = "and";
+  let unlessOp: GroupOp = "and";
   let sawWhen = false;
   let sawUnless = false;
   for (const cond of ir.conditions) {
@@ -286,12 +329,14 @@ export function irToForm(ir: PolicyIR): FormModel | null {
     if (cond.kind === "when") {
       if (sawWhen) return null;
       sawWhen = true;
-      groups = parsed;
+      groups = parsed.groups;
+      groupOp = parsed.outerOp;
     } else {
       if (sawUnless) return null;
       sawUnless = true;
-      unlessGroups = parsed;
+      unlessGroups = parsed.groups;
+      unlessOp = parsed.outerOp;
     }
   }
-  return { trigger, groups, unlessGroups, id, severity, reason };
+  return { trigger, groups, groupOp, unlessGroups, unlessOp, id, severity, reason };
 }

@@ -19,7 +19,9 @@ const richModel: FormModel = {
       ],
     },
   ],
+  groupOp: "and",
   unlessGroups: [],
+  unlessOp: "and",
   id: "my-policy",
   severity: "deny",
   reason: "위험 동작",
@@ -53,11 +55,35 @@ describe("formToIr / irToForm", () => {
           leaves: [{ fieldPath: "context.target", op: "in", value: { kind: "set", values: ["0xaa", "0xbb"] } }],
         },
       ],
+      groupOp: "and",
       unlessGroups: [
         { leaves: [{ fieldPath: "context.flagged", op: "==", value: { kind: "bool", value: false } }] },
       ],
+      unlessOp: "and",
       id: "p",
       severity: "deny",
+      reason: "",
+    };
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("round-trips a DNF policy (groupOp 'or' — groups OR-ed, leaves AND-ed)", () => {
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      groups: [
+        {
+          leaves: [
+            { fieldPath: "context.a", op: "==", value: { kind: "long", value: 1 } },
+            { fieldPath: "context.b", op: "==", value: { kind: "long", value: 2 } },
+          ],
+        },
+        { leaves: [{ fieldPath: "context.c", op: "==", value: { kind: "long", value: 3 } }] },
+      ],
+      groupOp: "or",
+      unlessGroups: [],
+      unlessOp: "and",
+      id: "p",
+      severity: "warn",
       reason: "",
     };
     expect(irToForm(formToIr(m))).toEqual(m);
@@ -125,7 +151,16 @@ describe("formToIr / irToForm", () => {
   });
 
   it("an empty model is a forbid with no when clause", () => {
-    const empty: FormModel = { trigger: { kind: "any" }, groups: [], unlessGroups: [], id: "p", severity: "warn", reason: "" };
+    const empty: FormModel = {
+      trigger: { kind: "any" },
+      groups: [],
+      groupOp: "and",
+      unlessGroups: [],
+      unlessOp: "and",
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
     const ir = formToIr(empty);
     expect(ir.conditions).toEqual([]);
     expect(irToForm(ir)).toEqual(empty);

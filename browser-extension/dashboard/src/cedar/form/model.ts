@@ -56,13 +56,22 @@ export type FormTrigger =
 export type FormSeverity = "warn" | "deny" | "info";
 
 /** The whole form: trigger + AND-of-OR condition groups + notify metadata. */
+/** How the groups of a clause are joined. The leaves WITHIN a group always use
+ *  the opposite connector (a bounded 2-level form):
+ *   - "and" → groups AND-ed, leaves OR-ed  → CNF  `(A|B) & (C|D)` (default)
+ *   - "or"  → groups OR-ed, leaves AND-ed   → DNF  `(A&B) | (C&D)` */
+export type GroupOp = "and" | "or";
+
 export interface FormModel {
   trigger: FormTrigger;
-  /** `when` body — groups are AND-ed; leaves within a group are OR-ed. Empty =
-   *  no `when` (the action is forbidden unconditionally). */
+  /** `when` body groups. */
   groups: FormGroup[];
-  /** `unless` body — exceptions ("단, ~인 경우는 제외"). Same AND-of-OR shape. */
+  /** Outer connector for `when` groups (inner = opposite). */
+  groupOp: GroupOp;
+  /** `unless` body — exceptions ("단, ~인 경우는 제외"). */
   unlessGroups: FormGroup[];
+  /** Outer connector for `unless` groups. */
+  unlessOp: GroupOp;
   id: string;
   severity: FormSeverity;
   reason: string;
@@ -70,5 +79,14 @@ export interface FormModel {
 
 /** An empty starter model for "새 정책 → 폼으로 만들기". */
 export function emptyFormModel(id = "untitled-policy"): FormModel {
-  return { trigger: { kind: "any" }, groups: [], unlessGroups: [], id, severity: "warn", reason: "" };
+  return {
+    trigger: { kind: "any" },
+    groups: [],
+    groupOp: "and",
+    unlessGroups: [],
+    unlessOp: "and",
+    id,
+    severity: "warn",
+    reason: "",
+  };
 }

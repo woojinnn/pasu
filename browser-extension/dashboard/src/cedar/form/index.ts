@@ -10,6 +10,7 @@ export type {
   FormTrigger,
   FormSeverity,
   FormOp,
+  GroupOp,
 } from "./model";
 export { emptyFormModel } from "./model";
 export { formToIr, irToForm, leafToExpr } from "./convert";

@@ -30,6 +30,7 @@ import {
   type FormModel,
   type FormOp,
   type FormValue,
+  type GroupOp,
 } from "../../../cedar/form";
 import { generateManifest } from "../../../editor-v9/manifest-gen";
 
@@ -211,6 +212,8 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           </h3>
           <ConditionEditor
             groups={model.groups}
+            outerOp={model.groupOp}
+            onOuterOp={(groupOp) => patch({ groupOp })}
             fields={fields}
             rhsFields={rhsFields}
             fieldByPath={fieldByPath}
@@ -226,6 +229,8 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           </h3>
           <ConditionEditor
             groups={model.unlessGroups}
+            outerOp={model.unlessOp}
+            onOuterOp={(unlessOp) => patch({ unlessOp })}
             fields={fields}
             rhsFields={rhsFields}
             fieldByPath={fieldByPath}
@@ -295,6 +300,8 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
 
 function ConditionEditor({
   groups,
+  outerOp,
+  onOuterOp,
   fields,
   rhsFields,
   fieldByPath,
@@ -302,12 +309,17 @@ function ConditionEditor({
   onChange,
 }: {
   groups: FormGroup[];
+  outerOp: GroupOp;
+  onOuterOp: (op: GroupOp) => void;
   fields: FieldOption[];
   rhsFields: FieldOption[];
   fieldByPath: Map<string, FieldOption>;
   emptyHint: string;
   onChange: (groups: FormGroup[]) => void;
 }) {
+  // The inner (within-group) connector is always the opposite of the outer one.
+  const innerLabel = outerOp === "and" ? "또는" : "그리고";
+  const addInnerLabel = outerOp === "and" ? "+ 또는(OR)" : "+ 그리고(AND)";
   const setGroup = (gi: number, g: FormGroup) => onChange(groups.map((x, i) => (i === gi ? g : x)));
 
   const updateLeaf = (gi: number, li: number, leaf: FormLeaf) =>
@@ -341,6 +353,19 @@ function ConditionEditor({
 
   return (
     <>
+      {groups.length > 1 && (
+        <div className="pf-outer">
+          <span className="pf-outer-lbl">조건 연결</span>
+          <div className="pf-seg">
+            <button type="button" className={`pf-seg-btn${outerOp === "and" ? " on" : ""}`} onClick={() => onOuterOp("and")}>
+              모두 만족 (AND)
+            </button>
+            <button type="button" className={`pf-seg-btn${outerOp === "or" ? " on" : ""}`} onClick={() => onOuterOp("or")}>
+              하나만 만족 (OR)
+            </button>
+          </div>
+        </div>
+      )}
       {groups.length === 0 && <div className="pf-empty-cond">{emptyHint}</div>}
       {groups.map((g, gi) => (
         <div className={`pf-group${g.negated ? " neg" : ""}`} key={gi}>
@@ -361,7 +386,7 @@ function ConditionEditor({
               fields={fields}
               rhsFields={rhsFields}
               field={fieldByPath.get(leaf.fieldPath)}
-              showOr={li > 0}
+              orLabel={li > 0 ? innerLabel : null}
               onField={(p) => onPickField(gi, li, p)}
               onOp={(op) => onPickOp(gi, li, op)}
               onValue={(value) => updateLeaf(gi, li, { ...leaf, value })}
@@ -369,7 +394,7 @@ function ConditionEditor({
             />
           ))}
           <button type="button" className="pf-or-btn" onClick={() => addOrLeaf(gi)}>
-            + 또는(OR)
+            {addInnerLabel}
           </button>
         </div>
       ))}
@@ -387,7 +412,7 @@ function LeafRow({
   fields,
   rhsFields,
   field,
-  showOr,
+  orLabel,
   onField,
   onOp,
   onValue,
@@ -397,7 +422,7 @@ function LeafRow({
   fields: FieldOption[];
   rhsFields: FieldOption[];
   field: FieldOption | undefined;
-  showOr: boolean;
+  orLabel: string | null;
   onField: (path: string) => void;
   onOp: (op: FormOp) => void;
   onValue: (v: FormValue) => void;
@@ -409,7 +434,7 @@ function LeafRow({
   const fieldMode = leaf.value.kind === "field";
   return (
     <div className="pf-leaf">
-      {showOr && <span className="pf-or-tag">또는</span>}
+      {orLabel && <span className="pf-or-tag">{orLabel}</span>}
       <FieldCombobox value={leaf.fieldPath} fields={fields} onChange={onField} />
       <select className="pf-leaf-op" value={leaf.op} onChange={(e) => onOp(e.target.value as FormOp)}>
         {ops.map((op) => (
