@@ -195,24 +195,65 @@ describe("formToIr / irToForm", () => {
     expect(irToForm({ ...ir, conditions: [...ir.conditions, ...ir.conditions] })).toBeNull();
   });
 
-  it("rejects a CNF OR-group `A && (B || C)` (hands off to blocks)", () => {
-    const cmp = (n: string): Expr => ({
+  it("round-trips an explicit group `A && (B || C)`", () => {
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        cond("context.a", "==", { kind: "long", value: 1 }),
+        {
+          kind: "group",
+          joiner: "and",
+          conds: [
+            cond("context.b", "==", { kind: "long", value: 2 }),
+            cond("context.c", "==", { kind: "long", value: 3 }, { joiner: "or" }),
+          ],
+        },
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("round-trips a CNF of two groups `(A || B) && (C || D)`", () => {
+    const g = (a: string, b: string) => ({
+      kind: "group" as const,
+      joiner: "and" as const,
+      conds: [
+        cond(`context.${a}`, "==", { kind: "long", value: 1 }),
+        cond(`context.${b}`, "==", { kind: "long", value: 2 }, { joiner: "or" }),
+      ],
+    });
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [g("a", "b"), g("c", "d")],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("rejects a doubly-nested group (hands off to blocks)", () => {
+    // forbid when { z==0 && (a==1 || (b==2 && (c==3 || d==4))) } — a group whose
+    // own internals need another group → beyond the one-level form subset.
+    const cmp = (n: string, v: number): Expr => ({
       kind: "binary",
       op: "==",
       left: { kind: "attr", of: { kind: "var", name: "context" }, attr: n },
-      right: { kind: "lit", litType: "bool", value: true },
+      right: { kind: "lit", litType: "long", value: v },
     });
+    const or = (l: Expr, r: Expr): Expr => ({ kind: "binary", op: "||", left: l, right: r });
+    const and = (l: Expr, r: Expr): Expr => ({ kind: "binary", op: "&&", left: l, right: r });
     const ir: PolicyIR = {
       ...base(),
       conditions: [
         {
           kind: "when",
-          body: {
-            kind: "binary",
-            op: "&&",
-            left: cmp("a"),
-            right: { kind: "binary", op: "||", left: cmp("b"), right: cmp("c") },
-          },
+          body: and(cmp("z", 0), or(cmp("a", 1), and(cmp("b", 2), or(cmp("c", 3), cmp("d", 4))))),
         },
       ],
     };

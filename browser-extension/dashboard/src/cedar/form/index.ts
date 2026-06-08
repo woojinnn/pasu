@@ -5,6 +5,8 @@
 export type {
   FormModel,
   FormCondition,
+  FormGroupNode,
+  FormNode,
   FormLeaf,
   FormValue,
   FormTrigger,
@@ -12,7 +14,7 @@ export type {
   FormOp,
   GroupOp,
 } from "./model";
-export { emptyFormModel } from "./model";
+export { emptyFormModel, isGroupNode } from "./model";
 export { formToIr, irToForm, leafToExpr } from "./convert";
 export {
   fieldsForTrigger,

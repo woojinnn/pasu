@@ -52,6 +52,25 @@ export interface FormCondition extends FormLeaf {
   joiner: GroupOp;
 }
 
+/** An explicit parenthesized group — `(…)` — of conditions, joined to its
+ *  siblings by `joiner`. One level deep (its `conds` are plain leaves), which is
+ *  enough for CNF like `(A | B) & (C | D)`; deeper nesting hands off to blocks. */
+export interface FormGroupNode {
+  kind: "group";
+  joiner: GroupOp;
+  not?: boolean;
+  conds: FormCondition[];
+}
+
+/** A node in a clause's list: either a bare condition or a `(…)` group box.
+ *  A bare condition has no `kind`; a group is `{ kind: "group", … }`. */
+export type FormNode = FormCondition | FormGroupNode;
+
+/** Type guard: is this node a `(…)` group box? */
+export function isGroupNode(n: FormNode): n is FormGroupNode {
+  return "kind" in n && n.kind === "group";
+}
+
 /** What the policy applies to (검사 대상). v1 supports action-scope equality
  *  (`action == Type::"id"`) and "any action". */
 export type FormTrigger =
@@ -64,10 +83,10 @@ export type FormSeverity = "warn" | "deny" | "info";
 /** The whole form: trigger + when/unless condition lists + notify metadata. */
 export interface FormModel {
   trigger: FormTrigger;
-  /** `when` conditions. Empty = no `when` (the action is forbidden always). */
-  when: FormCondition[];
-  /** `unless` conditions — exceptions ("단, ~인 경우는 제외"). */
-  unless: FormCondition[];
+  /** `when` nodes (conditions and/or `(…)` groups). Empty = no `when`. */
+  when: FormNode[];
+  /** `unless` nodes — exceptions ("단, ~인 경우는 제외"). */
+  unless: FormNode[];
   id: string;
   severity: FormSeverity;
   reason: string;
