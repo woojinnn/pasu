@@ -69,6 +69,13 @@ function isBridgeResponse(value: unknown): value is BridgeResponseEnvelope {
 }
 
 function getRuntime(): ChromeRuntimeShim["runtime"] | null {
+  // Only the extension's OWN pages (chrome-extension://, e.g. the bundled
+  // options.html) may call `chrome.runtime.sendMessage(message)` directly. On
+  // http(s) dev pages (the Vite server at :5173) `chrome.runtime` can still be
+  // exposed, but a 1-arg sendMessage there throws ("must specify an Extension
+  // ID") — those pages MUST go through the content-script window.postMessage
+  // bridge below. Gate on the page origin, not just sendMessage's presence.
+  if (globalThis.location?.protocol !== "chrome-extension:") return null;
   const chrome = (globalThis as unknown as { chrome?: ChromeRuntimeShim })
     .chrome;
   const runtime = chrome?.runtime;

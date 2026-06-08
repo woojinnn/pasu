@@ -13,6 +13,8 @@ describe("extension bridge", () => {
       .fn()
       .mockResolvedValue({ ok: true, data: { version: 1 } });
     vi.stubGlobal("chrome", { runtime: { sendMessage } });
+    // The direct runtime path is only taken on the extension's own pages.
+    vi.stubGlobal("location", { protocol: "chrome-extension:" });
 
     await expect(sendToExtension(payload, 10)).resolves.toEqual({ version: 1 });
     expect(sendMessage).toHaveBeenCalledWith(payload);
@@ -24,6 +26,7 @@ describe("extension bridge", () => {
       error: { kind: "parse_failed", message: "bad cedar" },
     });
     vi.stubGlobal("chrome", { runtime: { sendMessage } });
+    vi.stubGlobal("location", { protocol: "chrome-extension:" });
 
     await expect(
       sendToExtension({ type: "dashboard:put-raw" }, 10),
