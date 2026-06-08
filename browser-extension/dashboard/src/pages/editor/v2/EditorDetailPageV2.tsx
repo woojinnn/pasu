@@ -30,13 +30,24 @@ import { CatIcon, PencilIcon, ShieldIcon, WarnIcon } from "./icons";
 import { isDraft, isMarketSource } from "./helpers";
 import { PolicyDiagnosis } from "../../../cedar/diagram/PolicyDiagnosis";
 import { textToBlocks } from "../../../cedar";
+import { PolicyFormPane } from "./PolicyFormPane";
+import { emptyFormModel, irToForm, type FormModel } from "../../../cedar/form";
 
 type Tab = "cedar" | "form" | "block" | "diagram";
 
 function defaultTab(method: PolicyMethod | undefined): Tab {
   if (method === "block") return "block";
+  if (method === "form") return "form";
   return "cedar";
 }
+
+/** Result of trying to open the current policy in the form tab. `loading` while
+ *  parsing cedar→IR; `closed` when the policy is outside the form-representable
+ *  subset (complex OR/NOT/nesting). */
+type FormEntry =
+  | { kind: "loading" }
+  | { kind: "ok"; model: FormModel }
+  | { kind: "closed" };
 
 /**
  * Phase 3 detail view — mypolicy-editor.jsx ported to the SPA.
@@ -130,6 +141,11 @@ function EditorBody({
   const [ir, setIr] = useState<PolicyIR | null>(null);
   const [tab, setTab] = useState<Tab>(() => defaultTab(policy.method));
   const [publishOpen, setPublishOpen] = useState(false);
+  // Form tab: computed on entry from the live cedar/IR (not on every form edit,
+  // so editing doesn't remount the form). `formKey` bumps to remount the pane
+  // with a fresh `initialModel`.
+  const [formEntry, setFormEntry] = useState<FormEntry | null>(null);
+  const [formKey, setFormKey] = useState(0);
 
   /** Force a Workspace remount when seeding swaps (e.g. user typed in
    *  the Cedar tab, then switched to Block — Blockly needs to re-parse). */
@@ -146,6 +162,7 @@ function EditorBody({
     );
     setMemo(policy.memo ?? "");
     setTab(defaultTab(policy.method));
+    setFormEntry(null);
     lastBlockSnapshot.current = policy.text;
     setWorkspaceKey((k) => k + 1);
   }, [policy.id]);
@@ -248,8 +265,24 @@ function EditorBody({
     suggestedSlug: stripDashboardId(policy.id),
   };
 
+  /** Compute the form view from the live IR (or by parsing cedar). Sets
+   *  `closed` when the policy can't be represented as a form. */
+  const openForm = async () => {
+    setFormEntry({ kind: "loading" });
+    try {
+      let effectiveIr = ir;
+      if (!effectiveIr && cedarText.trim()) {
+        effectiveIr = (await textToBlocks(cedarText))[0] ?? null;
+      }
+      const model = effectiveIr ? irToForm(effectiveIr) : emptyFormModel(stripDashboardId(policy.id));
+      setFormEntry(model ? { kind: "ok", model } : { kind: "closed" });
+      setFormKey((k) => k + 1);
+    } catch {
+      setFormEntry({ kind: "closed" });
+    }
+  };
+
   const handleTabChange = (next: Tab) => {
-    if (next === "form") return;
     if (next === tab) return;
     // When switching to Block tab from Cedar where the user may have
     // typed by hand, force a Workspace remount so Blockly re-parses
@@ -257,8 +290,15 @@ function EditorBody({
     if (next === "block" && cedarText !== lastBlockSnapshot.current) {
       setWorkspaceKey((k) => k + 1);
     }
+    if (next === "form") void openForm(); // recompute the form from latest cedar
     setTab(next);
   };
+
+  // Open the form on first mount when it is the default tab (method === "form").
+  useEffect(() => {
+    if (tab === "form" && formEntry === null) void openForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   return (
     <div className="ev2-detail">
@@ -324,8 +364,6 @@ function EditorBody({
           <TabBtn
             label="폼"
             active={tab === "form"}
-            disabled
-            tooltip="준비 중 — Cedar/블록으로 편집하세요"
             onClick={() => handleTabChange("form")}
           />
           <TabBtn
@@ -403,14 +441,41 @@ function EditorBody({
             }}
           />
         )}
-        {tab === "form" && (
-          <div className="ev2-empty">
-            <div className="big">폼 모드는 준비 중입니다</div>
-            <div className="sm">
-              지금은 Cedar 탭 또는 블록 탭에서 편집해 주세요.
+        {tab === "form" &&
+          (formEntry?.kind === "ok" ? (
+            <PolicyFormPane
+              key={formKey}
+              initialModel={formEntry.model}
+              onChange={({ cedarText: c, ir: nextIr }) => {
+                setCedarText(c);
+                setIr(nextIr);
+                // The form doesn't produce a Blockly tree; drop the snapshot so
+                // a later Block-tab visit re-parses from the new cedar.
+                setTreeJson(null);
+                lastBlockSnapshot.current = c;
+              }}
+            />
+          ) : formEntry?.kind === "closed" ? (
+            <div className="ev2-empty">
+              <div className="big">이 정책은 폼으로 열 수 없어요</div>
+              <div className="sm">
+                폼은 단순한 조건(AND/OR 비교)만 다뤄요. 부정(!)·중첩·if 같은 복잡한
+                정책은 Cedar 또는 블록 탭에서 편집해 주세요.
+              </div>
+              <div className="ev2-empty-actions">
+                <button type="button" className="ev2-pri ghost" onClick={() => handleTabChange("cedar")}>
+                  Cedar 탭으로
+                </button>
+                <button type="button" className="ev2-pri ghost" onClick={() => handleTabChange("block")}>
+                  블록 탭으로
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="ev2-empty">
+              <div className="sm">폼을 불러오는 중…</div>
+            </div>
+          ))}
         {tab === "block" && (
           <WorkspaceV9
             key={workspaceKey}
