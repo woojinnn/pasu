@@ -2,7 +2,7 @@
 //!
 //! Discovery uses the 1inch Dev Portal Fusion API, which **requires** an
 //! `Authorization: Bearer <key>` header:
-//! `GET https://api.1inch.dev/fusion/v2.0/{chainId}/order/maker/{address}/?page=1&limit=100`.
+//! `GET https://api.1inch.dev/fusion/orders/v2.0/{chainId}/order/maker/{address}/?page=1&limit=100`.
 //! The chainId is the integer from the configured `eip155:<n>` chain, so each
 //! configured chain is polled separately and paginated by `page`.
 //!
@@ -60,9 +60,13 @@ impl OneInchFusionFetcher {
         }
     }
 
-    /// Poll one chain: paginate `GET {base}/v2.0/{chainId}/order/maker/{address}/`
-    /// by `page` until a short page is returned, projecting each order into a
-    /// `PendingTx`.
+    /// Poll one chain: paginate
+    /// `GET {base}/orders/v2.0/{chainId}/order/maker/{address}/` by `page` until
+    /// a short page is returned, projecting each order into a `PendingTx`.
+    ///
+    /// The Dev Portal (api.1inch.dev) routes the orders API under an `/orders/`
+    /// segment — same as `one_inch_fusion_plus` (`/fusion-plus/orders/v1.2/…`).
+    /// Without it the gateway 404s every request (a standing `errors=1`/tick).
     async fn fetch_chain(
         &self,
         chain: &ChainId,
@@ -79,7 +83,7 @@ impl OneInchFusionFetcher {
         let mut page = 1usize;
         loop {
             let url = format!(
-                "{}/v2.0/{chain_id}/order/maker/{:#x}/?page={page}&limit={PAGE_LIMIT}",
+                "{}/orders/v2.0/{chain_id}/order/maker/{:#x}/?page={page}&limit={PAGE_LIMIT}",
                 self.base_url.trim_end_matches('/'),
                 swapper,
             );

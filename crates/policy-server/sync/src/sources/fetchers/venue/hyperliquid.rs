@@ -163,7 +163,34 @@ impl HyperliquidFetcher {
         let clearinghouse = self.fetch_clearinghouse_state(endpoint, user).await;
         let spot = self.fetch_spot_clearinghouse_state(endpoint, user).await;
         let open_orders = self.fetch_open_orders(endpoint, user).await;
-        assemble_core(clearinghouse, spot, open_orders, &meta)
+        let (mut account, fresh, mut errors) = assemble_core(clearinghouse, spot, open_orders, &meta);
+
+        // Fan out to builder-deployed perp-dexs (HIP-3), exactly like
+        // `fetch_account_snapshot`. The native clearinghouse only reports
+        // positions/orders on the native dex; without this fan-out the core
+        // sync would overwrite (`merge_core`, gated on `fresh.clearinghouse`)
+        // a wallet's perp-dex positions with the empty native list every tick —
+        // they'd appear only right after a manual full sync and vanish on the
+        // next worker tick. Gated on a successful native anchor so a failed
+        // native fetch still preserves prior state (all-false mask).
+        if fresh.clearinghouse && endpoint_dex(endpoint).is_none() {
+            let empty_agents = Value::Array(Vec::new());
+            match self.fetch_perp_dexs(endpoint).await {
+                Ok(dexs) => {
+                    for dex in dexs {
+                        match self
+                            .fetch_account_snapshot_for_dex(endpoint, user, Some(&dex), &empty_agents)
+                            .await
+                        {
+                            Ok(extra) => merge_hl_account(&mut account, extra),
+                            Err(e) => errors.push(format!("perp-dex {dex} core: {e}")),
+                        }
+                    }
+                }
+                Err(e) => errors.push(format!("perp_dexs: {e}")),
+            }
+        }
+        (account, fresh, errors)
     }
 
     /// Best-effort **long-tail** fetch (staking / vaults / borrow-lend / agents).
