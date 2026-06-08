@@ -62,7 +62,7 @@ backBtn.addEventListener("click", () => { if (flow.step > 1) goTo(flow.step - 1)
 function renderStep1() {
   card.innerHTML =
     '<div class="ob-ghead">' +
-      '<div class="ob-guard ' + (flow.email ? "" : "idle") + '" id="g1"><div class="ring"></div><div class="face"><img src="assets/pasu-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
+      '<div class="ob-guard ' + (flow.email ? "" : "idle") + '" id="g1"><div class="ring"></div><div class="face"><img src="picture/pasu-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
       '<div class="gt">' + (flow.email ? "로그인됐어요" : "Google 계정으로 시작") + '</div>' +
       '<div class="gs">' + (flow.email ? "이 계정에 지갑과 정책이 동기화돼요." : "키는 받지 않아요 — 읽기 전용으로 정책만 묶어요.") + '</div>' +
     '</div>' +
@@ -214,7 +214,7 @@ function paintGate3() {
 function renderStep4() {
   card.innerHTML =
     '<div class="ob-ghead">' +
-      '<div class="ob-guard" id="g4"><div class="ring"></div><div class="face"><img src="assets/pasu-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
+      '<div class="ob-guard" id="g4"><div class="ring"></div><div class="face"><img src="picture/pasu-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
       '<div class="gt">보호가 켜졌어요</div>' +
       '<div class="gs">서명 직전마다 Pasu가 정책으로 검사해요.</div>' +
     '</div>' +

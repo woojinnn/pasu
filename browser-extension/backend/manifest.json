@@ -6,21 +6,21 @@
   "version": "0.1.0",
   "__chrome__key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt6ysSqYb9nhjL3WLzdCy0vOP7fhCBHLctl6WMlDjokTZJlrAglv7Cfro/SohLztFOJ1De3iTnyznrmE2ksKvThrlByoooX0haZCc8Y+EXxTf8Hs7hq2kmTsw4LuyAO0GHbrxqn+9jYODpMiNNRuCx9pmz10fDePKJVn2P2F6aoiMVh2mbRxxJNwPcS0+5hImBLisUpYxkv6/FMXfaDqmUYVEjNO08tHhMfggCW8u38HXGAqHS43KK6g7Izd3NjaQiDB5ywopY6ZJigXP1UXc+v+IdFg46aAp3aay7Swwc5j6eMy1e8vFCoXMzT3kza4XHMxHis5E0Q3dc6JJKeHL2QIDAQAB",
   "icons": {
-    "48": "images/icon-48.png",
-    "128": "images/icon-128.png"
+    "48": "picture/icon-48.png",
+    "128": "picture/icon-128.png"
   },
   "__chrome__action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "48": "images/icon-48.png",
-      "128": "images/icon-128.png"
+      "48": "picture/icon-48.png",
+      "128": "picture/icon-128.png"
     }
   },
   "__firefox__browser_action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "48": "images/icon-48.png",
-      "128": "images/icon-128.png"
+      "48": "picture/icon-48.png",
+      "128": "picture/icon-128.png"
     }
   },
   "__firefox__browser_specific_settings": {

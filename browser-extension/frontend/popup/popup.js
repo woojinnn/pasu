@@ -6,12 +6,12 @@
 
    ── 빌드 분리 ───────────────────────────────────────────────
      window.PasuStore        : 데모(localStorage) ↔ 연동(service-worker) 교체
-     window.PASU_ASSET_BASE  : 에셋 경로 ("assets/" | "../assets/")
+     window.PASU_ASSET_BASE  : 에셋 경로 ("picture/" | "../picture/")
      window.PASU_DASHBOARD_URL: 대시보드 배포 URL (없으면 기본값)
    ============================================================ */
 const S = window.PasuStore;
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-const ASSET = (typeof window !== "undefined" && window.PASU_ASSET_BASE) || "assets/";
+const ASSET = (typeof window !== "undefined" && window.PASU_ASSET_BASE) || "picture/";
 // §2.2 — dev 하드코딩 제거. 배포 URL 은 빌드시 window.PASU_DASHBOARD_URL 로 주입.
 const DASHBOARD_URL = (typeof window !== "undefined" && window.PASU_DASHBOARD_URL) || "https://app.pasu.xyz/";
 
