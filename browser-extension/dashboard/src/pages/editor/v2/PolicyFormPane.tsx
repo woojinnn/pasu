@@ -115,6 +115,33 @@ function newCond(fields: FieldOption[]): FormCondition {
   return { fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string"), joiner: "and" };
 }
 
+/**
+ * Move a condition (matched by object identity) to `targetBox` (append) or to the
+ * top level (`null`). Removes it from wherever it was; a box left empty is
+ * dropped. Pure — returns the new node list. Self-drops are no-ops.
+ */
+function moveCond(
+  nodes: FormNode[],
+  cond: FormCondition,
+  targetBox: FormGroupNode | null,
+): FormNode[] {
+  if (targetBox ? targetBox.conds.includes(cond) : nodes.includes(cond)) return nodes; // already there
+  const removed: FormNode[] = [];
+  for (const n of nodes) {
+    if (n === cond) continue; // a top-level leaf being moved
+    if (isGroupNode(n)) {
+      const conds = n.conds.filter((c) => c !== cond);
+      if (conds.length === 0) continue; // box emptied by the move → drop it
+      removed.push(conds.length === n.conds.length ? n : { ...n, conds });
+    } else removed.push(n);
+  }
+  const leaf: FormCondition = { ...cond, joiner: "and" };
+  if (!targetBox) return [...removed, leaf];
+  // `targetBox` never contained `cond` (guarded above), so its identity survived
+  // the removal pass and we can match it by reference.
+  return removed.map((n) => (n === targetBox ? { ...n, conds: [...n.conds, leaf] } : n));
+}
+
 export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) {
   const [model, setModel] = useState<FormModel>(() => initialModel ?? emptyFormModel());
   const [cedar, setCedar] = useState<string>("");
@@ -344,6 +371,15 @@ function ConditionEditor({
     onChange([...nodes.slice(0, i), ...inner, ...nodes.slice(i + 1)]);
   };
 
+  // Drag-and-drop: drag a condition onto a box to move it in, or onto the
+  // top-level strip to move it out. The payload is the condition object itself
+  // (matched by identity in `moveCond`).
+  const [drag, setDrag] = useState<FormCondition | null>(null);
+  const dropTo = (box: FormGroupNode | null) => {
+    if (drag) onChange(moveCond(nodes, drag, box));
+    setDrag(null);
+  };
+
   return (
     <>
       {nodes.length === 0 && <div className="pf-empty-cond">{emptyHint}</div>}
@@ -354,6 +390,9 @@ function ConditionEditor({
             group={n}
             first={i === 0}
             ctx={ctx}
+            dragging={drag !== null}
+            onDragStartCond={(c) => setDrag(c)}
+            onDropInto={() => dropTo(n)}
             onJoiner={(joiner) => update(i, { ...n, joiner })}
             onToggleNot={() => update(i, { ...n, not: !n.not })}
             onConds={(conds) => update(i, { ...n, conds })}
@@ -366,6 +405,7 @@ function ConditionEditor({
             cond={n}
             first={i === 0}
             ctx={ctx}
+            onDragStart={() => setDrag(n)}
             onJoiner={(joiner) => update(i, { ...n, joiner })}
             onToggleNot={() => update(i, { ...n, not: !n.not })}
             onField={(p) => update(i, pickFieldCond(n, p, ctx.fieldByPath))}
@@ -375,6 +415,11 @@ function ConditionEditor({
             onRemove={() => removeAt(i)}
           />
         ),
+      )}
+      {drag !== null && (
+        <div className="pf-dropstrip" onDragOver={(e) => e.preventDefault()} onDrop={() => dropTo(null)}>
+          여기에 놓아 묶음에서 빼기 (최상위로)
+        </div>
       )}
       {nodes.length > 1 && (
         <div className="pf-precedence">AND가 OR보다 먼저 묶여요 · 괄호로 묶으려면 행의 “묶기”</div>
@@ -401,6 +446,9 @@ function GroupBox({
   group,
   first,
   ctx,
+  dragging,
+  onDragStartCond,
+  onDropInto,
   onJoiner,
   onToggleNot,
   onConds,
@@ -410,6 +458,9 @@ function GroupBox({
   group: FormGroupNode;
   first: boolean;
   ctx: EditorCtx;
+  dragging: boolean;
+  onDragStartCond: (c: FormCondition) => void;
+  onDropInto: () => void;
   onJoiner: (op: GroupOp) => void;
   onToggleNot: () => void;
   onConds: (conds: FormCondition[]) => void;
@@ -419,7 +470,11 @@ function GroupBox({
   const { conds } = group;
   const updateCond = (i: number, c: FormCondition) => onConds(conds.map((x, j) => (j === i ? c : x)));
   return (
-    <div className={`pf-box${group.not ? " neg" : ""}`}>
+    <div
+      className={`pf-box${group.not ? " neg" : ""}${dragging ? " droppable" : ""}`}
+      onDragOver={dragging ? (e) => e.preventDefault() : undefined}
+      onDrop={dragging ? (e) => { e.preventDefault(); onDropInto(); } : undefined}
+    >
       <div className="pf-box-head">
         {!first && (
           <select className={`pf-join ${group.joiner}`} value={group.joiner} onChange={(e) => onJoiner(e.target.value as GroupOp)}>
@@ -445,6 +500,7 @@ function GroupBox({
           cond={c}
           first={i === 0}
           ctx={ctx}
+          onDragStart={() => onDragStartCond(c)}
           onJoiner={(joiner) => updateCond(i, { ...c, joiner })}
           onToggleNot={() => updateCond(i, { ...c, not: !c.not })}
           onField={(p) => updateCond(i, pickFieldCond(c, p, ctx.fieldByPath))}
@@ -470,6 +526,7 @@ function ConditionRow({
   cond,
   first,
   ctx,
+  onDragStart,
   onJoiner,
   onToggleNot,
   onField,
@@ -481,6 +538,7 @@ function ConditionRow({
   cond: FormCondition;
   first: boolean;
   ctx: EditorCtx;
+  onDragStart?: () => void;
   onJoiner: (op: GroupOp) => void;
   onToggleNot: () => void;
   onField: (path: string) => void;
@@ -496,6 +554,20 @@ function ConditionRow({
   const fieldMode = cond.value.kind === "field";
   return (
     <div className="pf-leaf">
+      {onDragStart && (
+        <span
+          className="pf-drag"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", "cond"); // Firefox needs data
+            onDragStart();
+          }}
+          title="드래그해서 묶음으로 이동 / 빼기"
+        >
+          ⠿
+        </span>
+      )}
       {first ? (
         <span className="pf-join-tag">조건</span>
       ) : (
