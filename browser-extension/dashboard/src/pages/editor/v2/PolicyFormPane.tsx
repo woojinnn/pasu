@@ -6,8 +6,9 @@
  * (debounced) renders Cedar via `blocksToText`, then calls `onChange`. Mirrors
  * the Block tab's (WorkspaceV9) contract so the editor wiring is identical.
  *
- * Layout matches the spec: left = three sections (검사 대상 / 조건 / 알림), right
- * = a live read-only `policy.cedar` preview kept in sync with the form.
+ * Sections: 검사 대상 (trigger) / 조건 (when, AND of OR, per-group NOT) / 예외
+ * (unless) / 알림. Right side = a live read-only policy.cedar preview. Beyond the
+ * subset (deep nesting, if/then/else, …) the editor hands off to the Block tab.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -24,6 +25,7 @@ import {
   operatorsFor,
   valueKindForField,
   type FieldOption,
+  type FormGroup,
   type FormLeaf,
   type FormModel,
   type FormOp,
@@ -51,6 +53,18 @@ const OP_LABEL: Record<FormOp, string> = {
   in: "다음 중 하나",
 };
 
+/** Ops that compare two scalars — these can take a field-vs-field RHS. */
+const SCALAR_OPS = new Set<FormOp>(["==", "!=", "<", "<=", ">", ">="]);
+
+/** Well-known comparison target offered alongside the catalog fields. */
+const PRINCIPAL_ADDRESS: FieldOption = {
+  path: "principal.address",
+  label: "내 지갑 주소",
+  role: "address",
+  fieldKind: "primitive.String",
+  source: "base",
+};
+
 function defaultValueOfKind(kind: FormValue["kind"]): FormValue {
   switch (kind) {
     case "bool":
@@ -61,6 +75,8 @@ function defaultValueOfKind(kind: FormValue["kind"]): FormValue {
       return { kind: "decimal", value: "0" };
     case "set":
       return { kind: "set", values: [] };
+    case "field":
+      return { kind: "field", path: PRINCIPAL_ADDRESS.path };
     default:
       return { kind: "string", value: "" };
   }
@@ -72,12 +88,17 @@ function valueKindFor(field: FieldOption | undefined, op: FormOp): FormValue["ki
   return field ? valueKindForField(field.fieldKind) : "string";
 }
 
+function newLeaf(fields: FieldOption[]): FormLeaf {
+  return { fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string") };
+}
+
 export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) {
   const [model, setModel] = useState<FormModel>(() => initialModel ?? emptyFormModel());
   const [cedar, setCedar] = useState<string>("");
   const [cedarError, setCedarError] = useState<string | null>(null);
 
   const fields = useMemo(() => fieldsForTrigger(model.trigger), [model.trigger]);
+  const rhsFields = useMemo(() => [PRINCIPAL_ADDRESS, ...fields], [fields]);
   const fieldByPath = useMemo(() => {
     const m = new Map<string, FieldOption>();
     for (const f of fields) m.set(f.path, f);
@@ -97,12 +118,12 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
   const enrichCount = useMemo(
     () =>
       new Set(
-        model.groups
+        [...model.groups, ...model.unlessGroups]
           .flatMap((g) => g.leaves)
           .map((l) => l.fieldPath)
           .filter((p) => p.startsWith("context.custom.")),
       ).size,
-    [model.groups],
+    [model.groups, model.unlessGroups],
   );
   const triggerText = model.trigger.kind === "actionEq" ? model.trigger.id : "모든 동작";
 
@@ -132,48 +153,7 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
     };
   }, [ir, model]);
 
-  // ── mutation helpers (immutable) ──
   const patch = (next: Partial<FormModel>) => setModel((m) => ({ ...m, ...next }));
-  const setGroups = (groups: FormModel["groups"]) => patch({ groups });
-
-  const updateLeaf = (gi: number, li: number, leaf: FormLeaf) =>
-    setGroups(
-      model.groups.map((g, i) =>
-        i === gi ? { leaves: g.leaves.map((l, j) => (j === li ? leaf : l)) } : g,
-      ),
-    );
-
-  const onPickField = (gi: number, li: number, path: string) => {
-    const field = fieldByPath.get(path);
-    const ops = field ? operatorsFor(field.fieldKind) : ["=="];
-    const op = (ops[0] ?? "==") as FormOp;
-    updateLeaf(gi, li, { fieldPath: path, op, value: defaultValueOfKind(valueKindFor(field, op)) });
-  };
-
-  const onPickOp = (gi: number, li: number, op: FormOp) => {
-    const leaf = model.groups[gi].leaves[li];
-    const field = fieldByPath.get(leaf.fieldPath);
-    const wantKind = valueKindFor(field, op);
-    const value = leaf.value.kind === wantKind ? leaf.value : defaultValueOfKind(wantKind);
-    updateLeaf(gi, li, { ...leaf, op, value });
-  };
-
-  const addGroup = () =>
-    setGroups([...model.groups, { leaves: [{ fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string") }] }]);
-  const addOrLeaf = (gi: number) =>
-    setGroups(
-      model.groups.map((g, i) =>
-        i === gi
-          ? { leaves: [...g.leaves, { fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string") }] }
-          : g,
-      ),
-    );
-  const removeLeaf = (gi: number, li: number) =>
-    setGroups(
-      model.groups
-        .map((g, i) => (i === gi ? { leaves: g.leaves.filter((_, j) => j !== li) } : g))
-        .filter((g) => g.leaves.length > 0),
-    );
 
   return (
     <div className="pf-pane">
@@ -204,43 +184,40 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           </div>
         </section>
 
-        {/* ② 조건 */}
+        {/* ② 조건 (when) */}
         <section className="pf-section">
           <h3 className="pf-h">
             <span className="pf-num">2</span> 언제 위험한가요? <span className="pf-sub">조건 추가, 여러 개면 모두 참(AND)</span>
           </h3>
-          {model.groups.length === 0 && (
-            <div className="pf-empty-cond">조건이 없으면 이 동작은 항상 막힙니다.</div>
-          )}
-          {model.groups.map((g, gi) => (
-            <div className="pf-group" key={gi}>
-              {g.leaves.map((leaf, li) => (
-                <LeafRow
-                  key={li}
-                  leaf={leaf}
-                  fields={fields}
-                  field={fieldByPath.get(leaf.fieldPath)}
-                  showOr={li > 0}
-                  onField={(p) => onPickField(gi, li, p)}
-                  onOp={(op) => onPickOp(gi, li, op)}
-                  onValue={(value) => updateLeaf(gi, li, { ...leaf, value })}
-                  onRemove={() => removeLeaf(gi, li)}
-                />
-              ))}
-              <button type="button" className="pf-or-btn" onClick={() => addOrLeaf(gi)}>
-                + 또는(OR)
-              </button>
-            </div>
-          ))}
-          <button type="button" className="pf-add-cond" onClick={addGroup}>
-            + 조건 추가
-          </button>
+          <ConditionEditor
+            groups={model.groups}
+            fields={fields}
+            rhsFields={rhsFields}
+            fieldByPath={fieldByPath}
+            emptyHint="조건이 없으면 이 동작은 항상 막힙니다."
+            onChange={(groups) => patch({ groups })}
+          />
         </section>
 
-        {/* ③ 알림 */}
+        {/* ③ 예외 (unless) */}
         <section className="pf-section">
           <h3 className="pf-h">
-            <span className="pf-num">3</span> 어떻게 알릴까요? <span className="pf-sub">이름·심각도·사유</span>
+            <span className="pf-num">3</span> 예외가 있나요? <span className="pf-sub">단, 다음이면 제외(unless) · 선택</span>
+          </h3>
+          <ConditionEditor
+            groups={model.unlessGroups}
+            fields={fields}
+            rhsFields={rhsFields}
+            fieldByPath={fieldByPath}
+            emptyHint="예외 없음 — 위 조건이 맞으면 항상 적용됩니다."
+            onChange={(unlessGroups) => patch({ unlessGroups })}
+          />
+        </section>
+
+        {/* ④ 알림 */}
+        <section className="pf-section">
+          <h3 className="pf-h">
+            <span className="pf-num">4</span> 어떻게 알릴까요? <span className="pf-sub">이름·심각도·사유</span>
           </h3>
           <div className="pf-row">
             <label className="pf-label">규칙 id</label>
@@ -294,11 +271,101 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
   );
 }
 
+// ── condition editor (shared by when + unless) ──────────────────────────────
+
+function ConditionEditor({
+  groups,
+  fields,
+  rhsFields,
+  fieldByPath,
+  emptyHint,
+  onChange,
+}: {
+  groups: FormGroup[];
+  fields: FieldOption[];
+  rhsFields: FieldOption[];
+  fieldByPath: Map<string, FieldOption>;
+  emptyHint: string;
+  onChange: (groups: FormGroup[]) => void;
+}) {
+  const setGroup = (gi: number, g: FormGroup) => onChange(groups.map((x, i) => (i === gi ? g : x)));
+
+  const updateLeaf = (gi: number, li: number, leaf: FormLeaf) =>
+    setGroup(gi, { ...groups[gi], leaves: groups[gi].leaves.map((l, j) => (j === li ? leaf : l)) });
+
+  const onPickField = (gi: number, li: number, path: string) => {
+    const field = fieldByPath.get(path);
+    const op = (field ? operatorsFor(field.fieldKind)[0] : "==") as FormOp;
+    updateLeaf(gi, li, { fieldPath: path, op, value: defaultValueOfKind(valueKindFor(field, op)) });
+  };
+
+  const onPickOp = (gi: number, li: number, op: FormOp) => {
+    const leaf = groups[gi].leaves[li];
+    // Keep a field-vs-field RHS when the new op still compares scalars.
+    if (leaf.value.kind === "field" && SCALAR_OPS.has(op)) return updateLeaf(gi, li, { ...leaf, op });
+    const field = fieldByPath.get(leaf.fieldPath);
+    const wantKind = valueKindFor(field, op);
+    const value = leaf.value.kind === wantKind ? leaf.value : defaultValueOfKind(wantKind);
+    updateLeaf(gi, li, { ...leaf, op, value });
+  };
+
+  const addGroup = () => onChange([...groups, { leaves: [newLeaf(fields)] }]);
+  const addOrLeaf = (gi: number) => setGroup(gi, { ...groups[gi], leaves: [...groups[gi].leaves, newLeaf(fields)] });
+  const removeLeaf = (gi: number, li: number) =>
+    onChange(
+      groups
+        .map((g, i) => (i === gi ? { ...g, leaves: g.leaves.filter((_, j) => j !== li) } : g))
+        .filter((g) => g.leaves.length > 0),
+    );
+  const toggleNegate = (gi: number) => setGroup(gi, { ...groups[gi], negated: !groups[gi].negated });
+
+  return (
+    <>
+      {groups.length === 0 && <div className="pf-empty-cond">{emptyHint}</div>}
+      {groups.map((g, gi) => (
+        <div className={`pf-group${g.negated ? " neg" : ""}`} key={gi}>
+          <div className="pf-group-bar">
+            <button
+              type="button"
+              className={`pf-neg-btn${g.negated ? " on" : ""}`}
+              onClick={() => toggleNegate(gi)}
+              title="이 그룹 전체를 부정 — '다음이 아닐 때'"
+            >
+              {g.negated ? "아니다(NOT) ✓" : "아니다(NOT)"}
+            </button>
+          </div>
+          {g.leaves.map((leaf, li) => (
+            <LeafRow
+              key={li}
+              leaf={leaf}
+              fields={fields}
+              rhsFields={rhsFields}
+              field={fieldByPath.get(leaf.fieldPath)}
+              showOr={li > 0}
+              onField={(p) => onPickField(gi, li, p)}
+              onOp={(op) => onPickOp(gi, li, op)}
+              onValue={(value) => updateLeaf(gi, li, { ...leaf, value })}
+              onRemove={() => removeLeaf(gi, li)}
+            />
+          ))}
+          <button type="button" className="pf-or-btn" onClick={() => addOrLeaf(gi)}>
+            + 또는(OR)
+          </button>
+        </div>
+      ))}
+      <button type="button" className="pf-add-cond" onClick={addGroup}>
+        + 조건 추가
+      </button>
+    </>
+  );
+}
+
 // ── one condition row ──────────────────────────────────────────────────────
 
 function LeafRow({
   leaf,
   fields,
+  rhsFields,
   field,
   showOr,
   onField,
@@ -308,6 +375,7 @@ function LeafRow({
 }: {
   leaf: FormLeaf;
   fields: FieldOption[];
+  rhsFields: FieldOption[];
   field: FieldOption | undefined;
   showOr: boolean;
   onField: (path: string) => void;
@@ -317,6 +385,8 @@ function LeafRow({
 }) {
   const ops = field ? operatorsFor(field.fieldKind) : (["=="] as FormOp[]);
   const chip = leaf.fieldPath ? safeChip(leaf) : "…";
+  const canField = SCALAR_OPS.has(leaf.op);
+  const fieldMode = leaf.value.kind === "field";
   return (
     <div className="pf-leaf">
       {showOr && <span className="pf-or-tag">또는</span>}
@@ -328,7 +398,27 @@ function LeafRow({
           </option>
         ))}
       </select>
-      <ValueInput value={leaf.value} onChange={onValue} />
+      {canField && (
+        <button
+          type="button"
+          className="pf-mode"
+          onClick={() =>
+            onValue(fieldMode ? defaultValueOfKind(valueKindFor(field, leaf.op)) : { kind: "field", path: rhsFields[0]?.path ?? "principal.address" })
+          }
+          title={fieldMode ? "고정 값으로" : "다른 필드와 비교"}
+        >
+          {fieldMode ? "필드" : "값"}
+        </button>
+      )}
+      {fieldMode ? (
+        <FieldCombobox
+          value={leaf.value.kind === "field" ? leaf.value.path : ""}
+          fields={rhsFields}
+          onChange={(p) => onValue({ kind: "field", path: p })}
+        />
+      ) : (
+        <ValueInput value={leaf.value} onChange={onValue} />
+      )}
       <span className="pf-leaf-chip">{chip}</span>
       <button type="button" className="pf-x" onClick={onRemove} aria-label="조건 삭제">
         ×
@@ -345,7 +435,7 @@ function safeChip(leaf: FormLeaf): string {
   }
 }
 
-// ── value widget by kind ───────────────────────────────────────────────────
+// ── value widget by kind (literal kinds only; `field` handled in LeafRow) ────
 
 function ValueInput({ value, onChange }: { value: FormValue; onChange: (v: FormValue) => void }) {
   switch (value.kind) {
@@ -380,6 +470,8 @@ function ValueInput({ value, onChange }: { value: FormValue; onChange: (v: FormV
           placeholder="값1, 값2, …"
         />
       );
+    case "field":
+      return null; // handled by LeafRow's field combobox
     default:
       return <input className="pf-val" value={value.value} onChange={(e) => onChange({ kind: "string", value: e.target.value })} />;
   }

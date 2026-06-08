@@ -26,7 +26,9 @@ export type FormValue =
   | { kind: "decimal"; value: string }
   | { kind: "string"; value: string }
   /** A literal set of strings, for the `in` operator (`x in ["a","b"]`). */
-  | { kind: "set"; values: string[] };
+  | { kind: "set"; values: string[] }
+  /** Another field (compare field-vs-field, e.g. `recipient != principal.address`). */
+  | { kind: "field"; path: string };
 
 /** One condition row: `<fieldPath> <op> <value>`, e.g.
  *  `context.custom.inputUsd >= 0.05`. */
@@ -37,9 +39,11 @@ export interface FormLeaf {
   value: FormValue;
 }
 
-/** A group of leaves OR-ed together (the row + its `+ 또는(OR)` siblings). */
+/** A group of leaves OR-ed together (the row + its `+ 또는(OR)` siblings).
+ *  `negated` wraps the whole group in `!(…)` ("다음이 아닐 때"). */
 export interface FormGroup {
   leaves: FormLeaf[];
+  negated?: boolean;
 }
 
 /** What the policy applies to (검사 대상). v1 supports action-scope equality
@@ -54,9 +58,11 @@ export type FormSeverity = "warn" | "deny" | "info";
 /** The whole form: trigger + AND-of-OR condition groups + notify metadata. */
 export interface FormModel {
   trigger: FormTrigger;
-  /** Groups are AND-ed; leaves within a group are OR-ed. Empty = no `when`
-   *  (the action is forbidden unconditionally). */
+  /** `when` body — groups are AND-ed; leaves within a group are OR-ed. Empty =
+   *  no `when` (the action is forbidden unconditionally). */
   groups: FormGroup[];
+  /** `unless` body — exceptions ("단, ~인 경우는 제외"). Same AND-of-OR shape. */
+  unlessGroups: FormGroup[];
   id: string;
   severity: FormSeverity;
   reason: string;
@@ -64,5 +70,5 @@ export interface FormModel {
 
 /** An empty starter model for "새 정책 → 폼으로 만들기". */
 export function emptyFormModel(id = "untitled-policy"): FormModel {
-  return { trigger: { kind: "any" }, groups: [], id, severity: "warn", reason: "" };
+  return { trigger: { kind: "any" }, groups: [], unlessGroups: [], id, severity: "warn", reason: "" };
 }

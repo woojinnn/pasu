@@ -20,7 +20,7 @@ import type {
   VarName,
 } from "../blocks/ir";
 
-import type { FormLeaf, FormModel, FormOp, FormSeverity, FormTrigger, FormValue } from "./model";
+import type { FormGroup, FormLeaf, FormModel, FormOp, FormSeverity, FormTrigger, FormValue } from "./model";
 
 const REQUEST_VARS = new Set<VarName>(["principal", "action", "resource", "context"]);
 
@@ -78,6 +78,8 @@ function valueToExpr(v: FormValue): Expr {
         kind: "set",
         elements: v.values.map((s) => ({ kind: "lit", litType: "string", value: s })),
       };
+    case "field":
+      return pathToExpr(v.path);
   }
 }
 
@@ -99,6 +101,9 @@ function exprToValue(e: Expr): FormValue | null {
     }
     return { kind: "set", values };
   }
+  // A pure var/attr chain → a field-vs-field comparison RHS.
+  const path = exprToPath(e);
+  if (path) return { kind: "field", path };
   return null;
 }
 
@@ -122,6 +127,15 @@ function exprToLeaf(e: Expr): FormLeaf | null {
     const value = exprToValue(e.args[1]);
     if (!path || !value || value.kind !== "decimal") return null;
     return { fieldPath: path, op: EXT_TO_OP[e.fn], value };
+  }
+  // `[set].contains(attr)` is membership over a literal set — normalize it to
+  // the form's `attr in [set]` so allowlist policies open as a single `in` leaf
+  // (the form re-emits it as `in`, an equivalent Cedar).
+  if (e.kind === "binary" && e.op === "contains" && e.left.kind === "set") {
+    const path = exprToPath(e.right);
+    const value = exprToValue(e.left);
+    if (path && value && value.kind === "set") return { fieldPath: path, op: "in", value };
+    return null;
   }
   if (e.kind === "binary") {
     const op = e.op;
@@ -172,6 +186,49 @@ function customGuards(leaves: FormLeaf[]): Expr[] {
   return [ctxHasCustom, ...names.map((n): Expr => ({ kind: "has", of: custom, attr: n }))];
 }
 
+/** Build a clause body (with `has` guards) from groups, or null if none have
+ *  leaves. Each group is an OR of leaves, optionally negated; groups are AND-ed. */
+function clauseBody(groups: FormGroup[]): Expr | null {
+  const groupExprs = groups
+    .filter((g) => g.leaves.length > 0)
+    .map((g) => {
+      const orExpr = fold("||", g.leaves.map(leafToExpr));
+      return g.negated ? ({ kind: "unary", op: "!", operand: orExpr } as Expr) : orExpr;
+    });
+  if (groupExprs.length === 0) return null;
+  const guards = customGuards(groups.flatMap((g) => g.leaves));
+  return fold("&&", [...guards, ...groupExprs]);
+}
+
+/** Parse one top-level AND term into a group (handles a `!(…)` negation). */
+function parseGroup(term: Expr): FormGroup | null {
+  let negated = false;
+  let node = term;
+  if (node.kind === "unary" && node.op === "!") {
+    negated = true;
+    node = node.operand;
+  }
+  const leaves: FormLeaf[] = [];
+  for (const le of flattenBinary(node, "||")) {
+    const leaf = exprToLeaf(le);
+    if (!leaf) return null;
+    leaves.push(leaf);
+  }
+  return negated ? { leaves, negated: true } : { leaves };
+}
+
+/** Parse a clause body into groups; null if any term isn't representable. */
+function parseClause(body: Expr): FormGroup[] | null {
+  const terms = flattenBinary(body, "&&").filter((t) => t.kind !== "has");
+  const groups: FormGroup[] = [];
+  for (const term of terms) {
+    const g = parseGroup(term);
+    if (!g) return null;
+    groups.push(g);
+  }
+  return groups;
+}
+
 // ── public API ────────────────────────────────────────────────────────────
 
 /** Build a `forbid` PolicyIR from the form model. */
@@ -187,13 +244,11 @@ export function formToIr(model: FormModel): PolicyIR {
       ? { kind: "scopeEq", entity: { type: model.trigger.entityType, id: model.trigger.id } }
       : { kind: "scopeAll" };
 
-  const groupExprs = model.groups
-    .filter((g) => g.leaves.length > 0)
-    .map((g) => fold("||", g.leaves.map(leafToExpr)));
-  const guards = customGuards(model.groups.flatMap((g) => g.leaves));
-  const terms = [...guards, ...groupExprs];
-  const conditions: Condition[] =
-    terms.length > 0 ? [{ kind: "when", body: fold("&&", terms) }] : [];
+  const conditions: Condition[] = [];
+  const whenBody = clauseBody(model.groups);
+  if (whenBody) conditions.push({ kind: "when", body: whenBody });
+  const unlessBody = clauseBody(model.unlessGroups);
+  if (unlessBody) conditions.push({ kind: "unless", body: unlessBody });
 
   return {
     kind: "policy",
@@ -220,22 +275,23 @@ export function irToForm(ir: PolicyIR): FormModel | null {
   const severity: FormSeverity = sev === "deny" || sev === "info" || sev === "warn" ? sev : "warn";
   const reason = ir.annotations.find((x) => x.name === "reason")?.value ?? "";
 
-  if (ir.conditions.length === 0) return { trigger, groups: [], id, severity, reason };
-  if (ir.conditions.length !== 1) return null;
-  const cond = ir.conditions[0];
-  if (cond.kind !== "when") return null;
-
-  // Top-level AND terms; drop the mechanical `has` guards.
-  const terms = flattenBinary(cond.body, "&&").filter((t) => t.kind !== "has");
-  const groups = [];
-  for (const term of terms) {
-    const leaves: FormLeaf[] = [];
-    for (const le of flattenBinary(term, "||")) {
-      const leaf = exprToLeaf(le);
-      if (!leaf) return null;
-      leaves.push(leaf);
+  // At most one `when` and one `unless` clause.
+  let groups: FormGroup[] = [];
+  let unlessGroups: FormGroup[] = [];
+  let sawWhen = false;
+  let sawUnless = false;
+  for (const cond of ir.conditions) {
+    const parsed = parseClause(cond.body);
+    if (!parsed) return null;
+    if (cond.kind === "when") {
+      if (sawWhen) return null;
+      sawWhen = true;
+      groups = parsed;
+    } else {
+      if (sawUnless) return null;
+      sawUnless = true;
+      unlessGroups = parsed;
     }
-    groups.push({ leaves });
   }
-  return { trigger, groups, id, severity, reason };
+  return { trigger, groups, unlessGroups, id, severity, reason };
 }

@@ -19,6 +19,7 @@ const richModel: FormModel = {
       ],
     },
   ],
+  unlessGroups: [],
   id: "my-policy",
   severity: "deny",
   reason: "위험 동작",
@@ -37,6 +38,57 @@ describe("formToIr / irToForm", () => {
       { name: "id", value: "my-policy" },
       { name: "severity", value: "deny" },
       { name: "reason", value: "위험 동작" },
+    ]);
+  });
+
+  it("round-trips field-vs-field, group NOT, and an unless clause", () => {
+    const m: FormModel = {
+      trigger: { kind: "actionEq", entityType: "Token::Action", id: "Erc20Transfer" },
+      groups: [
+        // recipient != principal.address  (field vs field)
+        { leaves: [{ fieldPath: "context.recipient", op: "!=", value: { kind: "field", path: "principal.address" } }] },
+        // NOT (target in [allowlist])
+        {
+          negated: true,
+          leaves: [{ fieldPath: "context.target", op: "in", value: { kind: "set", values: ["0xaa", "0xbb"] } }],
+        },
+      ],
+      unlessGroups: [
+        { leaves: [{ fieldPath: "context.flagged", op: "==", value: { kind: "bool", value: false } }] },
+      ],
+      id: "p",
+      severity: "deny",
+      reason: "",
+    };
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("normalizes `[set].contains(attr)` to an `in` leaf (allowlist policies)", () => {
+    // forbid when { !(["0xaa","0xbb"].contains(context.target)) }
+    const ir: PolicyIR = {
+      ...formToIr(richModel),
+      conditions: [
+        {
+          kind: "when",
+          body: {
+            kind: "unary",
+            op: "!",
+            operand: {
+              kind: "binary",
+              op: "contains",
+              left: { kind: "set", elements: [
+                { kind: "lit", litType: "string", value: "0xaa" },
+                { kind: "lit", litType: "string", value: "0xbb" },
+              ] },
+              right: { kind: "attr", of: { kind: "var", name: "context" }, attr: "target" },
+            },
+          },
+        },
+      ],
+    };
+    const form = irToForm(ir);
+    expect(form?.groups).toEqual([
+      { negated: true, leaves: [{ fieldPath: "context.target", op: "in", value: { kind: "set", values: ["0xaa", "0xbb"] } }] },
     ]);
   });
 
@@ -73,9 +125,10 @@ describe("formToIr / irToForm", () => {
   });
 
   it("an empty model is a forbid with no when clause", () => {
-    const ir = formToIr({ trigger: { kind: "any" }, groups: [], id: "p", severity: "warn", reason: "" });
+    const empty: FormModel = { trigger: { kind: "any" }, groups: [], unlessGroups: [], id: "p", severity: "warn", reason: "" };
+    const ir = formToIr(empty);
     expect(ir.conditions).toEqual([]);
-    expect(irToForm(ir)).toEqual({ trigger: { kind: "any" }, groups: [], id: "p", severity: "warn", reason: "" });
+    expect(irToForm(ir)).toEqual(empty);
   });
 
   // ── irToForm returns null outside the representable subset ──
@@ -99,11 +152,12 @@ describe("formToIr / irToForm", () => {
     ).toBeNull();
   });
 
-  it("rejects an unless clause", () => {
+  it("parses a standalone unless clause into unlessGroups", () => {
     const ir = base();
-    expect(
-      irToForm({ ...ir, conditions: [{ kind: "unless", body: ir.conditions[0].body }] }),
-    ).toBeNull();
+    const form = irToForm({ ...ir, conditions: [{ kind: "unless", body: ir.conditions[0].body }] });
+    expect(form).not.toBeNull();
+    expect(form?.groups).toEqual([]);
+    expect(form?.unlessGroups.length).toBeGreaterThan(0);
   });
 
   it("rejects a NOT in the body", () => {
@@ -123,7 +177,7 @@ describe("formToIr / irToForm", () => {
     expect(irToForm(ir)).toBeNull();
   });
 
-  it("rejects more than one clause", () => {
+  it("rejects two when clauses", () => {
     const ir = base();
     expect(irToForm({ ...ir, conditions: [...ir.conditions, ...ir.conditions] })).toBeNull();
   });
