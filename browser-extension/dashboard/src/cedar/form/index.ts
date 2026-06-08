@@ -4,7 +4,7 @@
  */
 export type {
   FormModel,
-  FormGroup,
+  FormCondition,
   FormLeaf,
   FormValue,
   FormTrigger,

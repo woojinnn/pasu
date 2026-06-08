@@ -1,16 +1,17 @@
 /**
  * Form-editor model — the small, constrained shape the "폼으로 만들기" UI edits.
  *
- * It is a deliberately tiny SUBSET of {@link PolicyIR}: a single `forbid` whose
- * `when` body is an AND of OR-groups of simple comparisons, plus an action-scope
- * trigger and the `@id`/`@severity`/`@reason` annotations. Everything the form
- * cannot express round-trips through the Cedar/Block tabs instead.
+ * A policy is a `forbid` over an action-eq trigger with two flat condition lists
+ * (`when` and `unless`). Each condition is a single comparison with its own
+ * `not` and a `joiner` (AND/OR) to the previous one. AND binds tighter than OR,
+ * so the list reads as an OR of AND-runs (e.g. `A 그리고 B 또는 C` = `(A∧B)∨C`)
+ * — a flat, query-builder UX that still covers most real policies. Anything
+ * deeper (nested OR-groups, if/then/else, …) hands off to the Block tab.
  *
  * The form NEVER assembles Cedar text. It builds this model, {@link formToIr}
- * turns it into a `PolicyIR`, and the existing pipeline (`blocksToText`) renders
- * Cedar — so manifest generation, address-casing normalization, and the diagram
- * all keep working. {@link irToForm} is the reverse and returns `null` for any
- * policy outside this subset (so the form honestly refuses to open it).
+ * turns it into a `PolicyIR`, and the existing pipeline renders Cedar.
+ * {@link irToForm} is the reverse and returns `null` for anything outside the
+ * subset.
  */
 
 /** Comparison operators the form offers. `contains`/`in` are membership over a
@@ -30,7 +31,7 @@ export type FormValue =
   /** Another field (compare field-vs-field, e.g. `recipient != principal.address`). */
   | { kind: "field"; path: string };
 
-/** One condition row: `<fieldPath> <op> <value>`, e.g.
+/** A single comparison: `<fieldPath> <op> <value>`, e.g.
  *  `context.custom.inputUsd >= 0.05`. */
 export interface FormLeaf {
   /** Dotted attribute path rooted at a request var, e.g. `context.flagged`. */
@@ -39,11 +40,16 @@ export interface FormLeaf {
   value: FormValue;
 }
 
-/** A group of leaves OR-ed together (the row + its `+ 또는(OR)` siblings).
- *  `negated` wraps the whole group in `!(…)` ("다음이 아닐 때"). */
-export interface FormGroup {
-  leaves: FormLeaf[];
-  negated?: boolean;
+/** AND/OR connector between conditions. */
+export type GroupOp = "and" | "or";
+
+/** One row of the condition list: a comparison, optionally negated, joined to
+ *  the previous row by `joiner` (ignored for the first row). */
+export interface FormCondition extends FormLeaf {
+  /** Wrap this single condition in `!(…)`. */
+  not?: boolean;
+  /** Connector to the PREVIOUS condition. The first row's value is ignored. */
+  joiner: GroupOp;
 }
 
 /** What the policy applies to (검사 대상). v1 supports action-scope equality
@@ -55,23 +61,13 @@ export type FormTrigger =
 /** Severity drives the `@severity` annotation; the effect is always `forbid`. */
 export type FormSeverity = "warn" | "deny" | "info";
 
-/** The whole form: trigger + AND-of-OR condition groups + notify metadata. */
-/** How the groups of a clause are joined. The leaves WITHIN a group always use
- *  the opposite connector (a bounded 2-level form):
- *   - "and" → groups AND-ed, leaves OR-ed  → CNF  `(A|B) & (C|D)` (default)
- *   - "or"  → groups OR-ed, leaves AND-ed   → DNF  `(A&B) | (C&D)` */
-export type GroupOp = "and" | "or";
-
+/** The whole form: trigger + when/unless condition lists + notify metadata. */
 export interface FormModel {
   trigger: FormTrigger;
-  /** `when` body groups. */
-  groups: FormGroup[];
-  /** Outer connector for `when` groups (inner = opposite). */
-  groupOp: GroupOp;
-  /** `unless` body — exceptions ("단, ~인 경우는 제외"). */
-  unlessGroups: FormGroup[];
-  /** Outer connector for `unless` groups. */
-  unlessOp: GroupOp;
+  /** `when` conditions. Empty = no `when` (the action is forbidden always). */
+  when: FormCondition[];
+  /** `unless` conditions — exceptions ("단, ~인 경우는 제외"). */
+  unless: FormCondition[];
   id: string;
   severity: FormSeverity;
   reason: string;
@@ -79,14 +75,5 @@ export interface FormModel {
 
 /** An empty starter model for "새 정책 → 폼으로 만들기". */
 export function emptyFormModel(id = "untitled-policy"): FormModel {
-  return {
-    trigger: { kind: "any" },
-    groups: [],
-    groupOp: "and",
-    unlessGroups: [],
-    unlessOp: "and",
-    id,
-    severity: "warn",
-    reason: "",
-  };
+  return { trigger: { kind: "any" }, when: [], unless: [], id, severity: "warn", reason: "" };
 }

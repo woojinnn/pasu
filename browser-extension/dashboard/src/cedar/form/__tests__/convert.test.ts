@@ -3,33 +3,80 @@ import { describe, expect, it } from "vitest";
 import { blocksToEst } from "../../blocks/blocksToEst";
 import type { Expr, PolicyIR } from "../../blocks/ir";
 import { formToIr, irToForm } from "../convert";
-import type { FormModel } from "../model";
+import type { FormCondition, FormModel } from "../model";
 
-/** A model exercising every supported shape: actionEq trigger, a bool `==`,
- *  a decimal `>=` (ext-method form), an `in` over a literal set, multiple AND
- *  groups, an OR within a group, and a custom field (triggers has-guards). */
+const cond = (
+  fieldPath: string,
+  op: FormCondition["op"],
+  value: FormCondition["value"],
+  extra: Partial<FormCondition> = {},
+): FormCondition => ({ fieldPath, op, value, joiner: "and", ...extra });
+
+/** Exercises field-vs-field, decimal `>=` (ext form), `in`, a custom field
+ *  (has-guards), a negated row, OR/AND joiners, and an unless clause. */
 const richModel: FormModel = {
   trigger: { kind: "actionEq", entityType: "Amm::Action", id: "Swap" },
-  groups: [
-    { leaves: [{ fieldPath: "context.flagged", op: "==", value: { kind: "bool", value: true } }] },
-    {
-      leaves: [
-        { fieldPath: "context.custom.inputUsd", op: ">=", value: { kind: "decimal", value: "0.05" } },
-        { fieldPath: "context.spender", op: "in", value: { kind: "set", values: ["0xabc", "0xdef"] } },
-      ],
-    },
+  when: [
+    cond("context.recipient", "!=", { kind: "field", path: "principal.address" }),
+    cond("context.custom.inputUsd", ">=", { kind: "decimal", value: "0.05" }, { joiner: "or" }),
+    cond("context.spender", "in", { kind: "set", values: ["0xabc", "0xdef"] }, { joiner: "and" }),
   ],
-  groupOp: "and",
-  unlessGroups: [],
-  unlessOp: "and",
+  unless: [cond("context.flagged", "==", { kind: "bool", value: false })],
   id: "my-policy",
   severity: "deny",
   reason: "위험 동작",
 };
 
 describe("formToIr / irToForm", () => {
-  it("round-trips a rich model losslessly (guards are re-derived, not stored)", () => {
+  it("round-trips a rich model losslessly", () => {
     expect(irToForm(formToIr(richModel))).toEqual(richModel);
+  });
+
+  it("round-trips a pure-AND list", () => {
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        cond("context.a", "==", { kind: "long", value: 1 }),
+        cond("context.b", ">", { kind: "long", value: 2 }),
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("round-trips a mixed AND/OR list as an OR of AND-runs", () => {
+    // A 그리고 B 또는 C  →  (A∧B) ∨ C
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        cond("context.a", "==", { kind: "long", value: 1 }),
+        cond("context.b", "==", { kind: "long", value: 2 }, { joiner: "and" }),
+        cond("context.c", "==", { kind: "long", value: 3 }, { joiner: "or" }),
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("round-trips a per-row NOT", () => {
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [cond("context.flagged", "==", { kind: "bool", value: true }, { not: true })],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    const ir = formToIr(m);
+    // body is `!(context.flagged == true)`
+    expect(ir.conditions[0].body.kind).toBe("unary");
+    expect(irToForm(ir)).toEqual(m);
   });
 
   it("emits forbid + action scope + @id/@severity/@reason", () => {
@@ -43,53 +90,31 @@ describe("formToIr / irToForm", () => {
     ]);
   });
 
-  it("round-trips field-vs-field, group NOT, and an unless clause", () => {
-    const m: FormModel = {
-      trigger: { kind: "actionEq", entityType: "Token::Action", id: "Erc20Transfer" },
-      groups: [
-        // recipient != principal.address  (field vs field)
-        { leaves: [{ fieldPath: "context.recipient", op: "!=", value: { kind: "field", path: "principal.address" } }] },
-        // NOT (target in [allowlist])
-        {
-          negated: true,
-          leaves: [{ fieldPath: "context.target", op: "in", value: { kind: "set", values: ["0xaa", "0xbb"] } }],
-        },
-      ],
-      groupOp: "and",
-      unlessGroups: [
-        { leaves: [{ fieldPath: "context.flagged", op: "==", value: { kind: "bool", value: false } }] },
-      ],
-      unlessOp: "and",
-      id: "p",
-      severity: "deny",
-      reason: "",
+  it("auto-inserts has-guards for a custom field at the top-level AND", () => {
+    const ir = formToIr({
+      ...richModel,
+      when: [cond("context.custom.inputUsd", ">=", { kind: "decimal", value: "1" })],
+      unless: [],
+    });
+    const terms: Expr[] = [];
+    const walk = (e: Expr) => {
+      if (e.kind === "binary" && e.op === "&&") {
+        walk(e.left);
+        walk(e.right);
+      } else terms.push(e);
     };
-    expect(irToForm(formToIr(m))).toEqual(m);
+    walk(ir.conditions[0].body);
+    const guards = terms.filter((t) => t.kind === "has");
+    expect(guards).toHaveLength(2);
+    expect(guards).toContainEqual({ kind: "has", of: { kind: "var", name: "context" }, attr: "custom" });
+    expect(guards).toContainEqual({
+      kind: "has",
+      of: { kind: "attr", of: { kind: "var", name: "context" }, attr: "custom" },
+      attr: "inputUsd",
+    });
   });
 
-  it("round-trips a DNF policy (groupOp 'or' — groups OR-ed, leaves AND-ed)", () => {
-    const m: FormModel = {
-      trigger: { kind: "any" },
-      groups: [
-        {
-          leaves: [
-            { fieldPath: "context.a", op: "==", value: { kind: "long", value: 1 } },
-            { fieldPath: "context.b", op: "==", value: { kind: "long", value: 2 } },
-          ],
-        },
-        { leaves: [{ fieldPath: "context.c", op: "==", value: { kind: "long", value: 3 } }] },
-      ],
-      groupOp: "or",
-      unlessGroups: [],
-      unlessOp: "and",
-      id: "p",
-      severity: "warn",
-      reason: "",
-    };
-    expect(irToForm(formToIr(m))).toEqual(m);
-  });
-
-  it("normalizes `[set].contains(attr)` to an `in` leaf (allowlist policies)", () => {
+  it("normalizes `[set].contains(attr)` to an `in` condition (allowlist policies)", () => {
     // forbid when { !(["0xaa","0xbb"].contains(context.target)) }
     const ir: PolicyIR = {
       ...formToIr(richModel),
@@ -112,40 +137,12 @@ describe("formToIr / irToForm", () => {
         },
       ],
     };
-    const form = irToForm(ir);
-    expect(form?.groups).toEqual([
-      { negated: true, leaves: [{ fieldPath: "context.target", op: "in", value: { kind: "set", values: ["0xaa", "0xbb"] } }] },
+    expect(irToForm(ir)?.when).toEqual([
+      cond("context.target", "in", { kind: "set", values: ["0xaa", "0xbb"] }, { not: true }),
     ]);
   });
 
-  it("auto-inserts has-guards for a custom field at the top-level AND", () => {
-    const ir = formToIr({
-      ...richModel,
-      groups: [
-        { leaves: [{ fieldPath: "context.custom.inputUsd", op: ">=", value: { kind: "decimal", value: "1" } }] },
-      ],
-    });
-    const body = ir.conditions[0].body;
-    // body = (context has custom) && (context.custom has inputUsd) && (inputUsd >= 1)
-    const terms: Expr[] = [];
-    const walk = (e: Expr) => {
-      if (e.kind === "binary" && e.op === "&&") {
-        walk(e.left);
-        walk(e.right);
-      } else terms.push(e);
-    };
-    walk(body);
-    const guards = terms.filter((t) => t.kind === "has");
-    expect(guards).toHaveLength(2);
-    expect(guards).toContainEqual({ kind: "has", of: { kind: "var", name: "context" }, attr: "custom" });
-    expect(guards).toContainEqual({
-      kind: "has",
-      of: { kind: "attr", of: { kind: "var", name: "context" }, attr: "custom" },
-      attr: "inputUsd",
-    });
-  });
-
-  it("produces an EST the local IR→EST converter accepts (valid Cedar shape)", () => {
+  it("produces an EST the local IR→EST converter accepts", () => {
     const est = blocksToEst(formToIr(richModel)) as { effect: string };
     expect(est.effect).toBe("forbid");
   });
@@ -153,10 +150,8 @@ describe("formToIr / irToForm", () => {
   it("an empty model is a forbid with no when clause", () => {
     const empty: FormModel = {
       trigger: { kind: "any" },
-      groups: [],
-      groupOp: "and",
-      unlessGroups: [],
-      unlessOp: "and",
+      when: [],
+      unless: [],
       id: "p",
       severity: "warn",
       reason: "",
@@ -187,33 +182,40 @@ describe("formToIr / irToForm", () => {
     ).toBeNull();
   });
 
-  it("parses a standalone unless clause into unlessGroups", () => {
+  it("parses a standalone unless clause into the unless list", () => {
     const ir = base();
     const form = irToForm({ ...ir, conditions: [{ kind: "unless", body: ir.conditions[0].body }] });
     expect(form).not.toBeNull();
-    expect(form?.groups).toEqual([]);
-    expect(form?.unlessGroups.length).toBeGreaterThan(0);
+    expect(form?.when).toEqual([]);
+    expect(form?.unless.length).toBeGreaterThan(0);
   });
 
-  it("rejects a NOT in the body", () => {
+  it("rejects two when clauses", () => {
+    const ir = base();
+    expect(irToForm({ ...ir, conditions: [...ir.conditions, ...ir.conditions] })).toBeNull();
+  });
+
+  it("rejects a CNF OR-group `A && (B || C)` (hands off to blocks)", () => {
+    const cmp = (n: string): Expr => ({
+      kind: "binary",
+      op: "==",
+      left: { kind: "attr", of: { kind: "var", name: "context" }, attr: n },
+      right: { kind: "lit", litType: "bool", value: true },
+    });
     const ir: PolicyIR = {
       ...base(),
       conditions: [
         {
           kind: "when",
           body: {
-            kind: "unary",
-            op: "!",
-            operand: { kind: "attr", of: { kind: "var", name: "context" }, attr: "flagged" },
+            kind: "binary",
+            op: "&&",
+            left: cmp("a"),
+            right: { kind: "binary", op: "||", left: cmp("b"), right: cmp("c") },
           },
         },
       ],
     };
     expect(irToForm(ir)).toBeNull();
-  });
-
-  it("rejects two when clauses", () => {
-    const ir = base();
-    expect(irToForm({ ...ir, conditions: [...ir.conditions, ...ir.conditions] })).toBeNull();
   });
 });

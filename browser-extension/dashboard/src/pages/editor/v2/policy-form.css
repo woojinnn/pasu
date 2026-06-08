@@ -160,6 +160,54 @@
   border-radius: 6px;
   padding: 2px 6px;
 }
+.pf-join {
+  width: 104px;
+  flex: none;
+  padding: 6px 7px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pf-join.and {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.pf-join.or {
+  color: #a16207;
+  background: #fefce8;
+  border-color: #fde68a;
+}
+.pf-join-tag {
+  width: 104px;
+  flex: none;
+  font-size: 11.5px;
+  color: var(--muted, #9ca3af);
+  padding-left: 4px;
+}
+.pf-not {
+  flex: none;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  border-radius: 7px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+}
+.pf-not.on {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 600;
+}
+.pf-precedence {
+  font-size: 11px;
+  color: var(--muted, #9ca3af);
+  margin: 2px 0 6px;
+}
 .pf-leaf-field {
   min-width: 150px;
   padding: 7px 9px;

@@ -25,8 +25,7 @@ import {
   operatorsFor,
   valueKindForField,
   type FieldOption,
-  type FormGroup,
-  type FormLeaf,
+  type FormCondition,
   type FormModel,
   type FormOp,
   type FormValue,
@@ -109,8 +108,8 @@ function stringFlavor(field: FieldOption | undefined): StringFlavor {
   return "plain";
 }
 
-function newLeaf(fields: FieldOption[]): FormLeaf {
-  return { fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string") };
+function newCond(fields: FieldOption[]): FormCondition {
+  return { fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string"), joiner: "and" };
 }
 
 export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) {
@@ -139,12 +138,11 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
   const enrichCount = useMemo(
     () =>
       new Set(
-        [...model.groups, ...model.unlessGroups]
-          .flatMap((g) => g.leaves)
-          .map((l) => l.fieldPath)
+        [...model.when, ...model.unless]
+          .map((c) => c.fieldPath)
           .filter((p) => p.startsWith("context.custom.")),
       ).size,
-    [model.groups, model.unlessGroups],
+    [model.when, model.unless],
   );
   const triggerText = model.trigger.kind === "actionEq" ? model.trigger.id : "모든 동작";
 
@@ -211,14 +209,12 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
             <span className="pf-num">2</span> 언제 위험한가요? <span className="pf-sub">조건 추가, 여러 개면 모두 참(AND)</span>
           </h3>
           <ConditionEditor
-            groups={model.groups}
-            outerOp={model.groupOp}
-            onOuterOp={(groupOp) => patch({ groupOp })}
+            conds={model.when}
             fields={fields}
             rhsFields={rhsFields}
             fieldByPath={fieldByPath}
             emptyHint="조건이 없으면 이 동작은 항상 막힙니다."
-            onChange={(groups) => patch({ groups })}
+            onChange={(when) => patch({ when })}
           />
         </section>
 
@@ -228,14 +224,12 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
             <span className="pf-num">3</span> 예외가 있나요? <span className="pf-sub">단, 다음이면 제외(unless) · 선택</span>
           </h3>
           <ConditionEditor
-            groups={model.unlessGroups}
-            outerOp={model.unlessOp}
-            onOuterOp={(unlessOp) => patch({ unlessOp })}
+            conds={model.unless}
             fields={fields}
             rhsFields={rhsFields}
             fieldByPath={fieldByPath}
             emptyHint="예외 없음 — 위 조건이 맞으면 항상 적용됩니다."
-            onChange={(unlessGroups) => patch({ unlessGroups })}
+            onChange={(unless) => patch({ unless })}
           />
         </section>
 
@@ -296,109 +290,64 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
   );
 }
 
-// ── condition editor (shared by when + unless) ──────────────────────────────
+// ── condition editor — a flat list with per-row AND/OR + NOT ─────────────────
 
 function ConditionEditor({
-  groups,
-  outerOp,
-  onOuterOp,
+  conds,
   fields,
   rhsFields,
   fieldByPath,
   emptyHint,
   onChange,
 }: {
-  groups: FormGroup[];
-  outerOp: GroupOp;
-  onOuterOp: (op: GroupOp) => void;
+  conds: FormCondition[];
   fields: FieldOption[];
   rhsFields: FieldOption[];
   fieldByPath: Map<string, FieldOption>;
   emptyHint: string;
-  onChange: (groups: FormGroup[]) => void;
+  onChange: (conds: FormCondition[]) => void;
 }) {
-  // The inner (within-group) connector is always the opposite of the outer one.
-  const innerLabel = outerOp === "and" ? "또는" : "그리고";
-  const addInnerLabel = outerOp === "and" ? "+ 또는(OR)" : "+ 그리고(AND)";
-  const setGroup = (gi: number, g: FormGroup) => onChange(groups.map((x, i) => (i === gi ? g : x)));
+  const update = (i: number, c: FormCondition) => onChange(conds.map((x, j) => (j === i ? c : x)));
 
-  const updateLeaf = (gi: number, li: number, leaf: FormLeaf) =>
-    setGroup(gi, { ...groups[gi], leaves: groups[gi].leaves.map((l, j) => (j === li ? leaf : l)) });
-
-  const onPickField = (gi: number, li: number, path: string) => {
+  const onPickField = (i: number, path: string) => {
     const field = fieldByPath.get(path);
     const op = (field ? operatorsFor(field.fieldKind)[0] : "==") as FormOp;
-    updateLeaf(gi, li, { fieldPath: path, op, value: defaultValueOfKind(valueKindFor(field, op)) });
+    update(i, { ...conds[i], fieldPath: path, op, value: defaultValueOfKind(valueKindFor(field, op)) });
   };
 
-  const onPickOp = (gi: number, li: number, op: FormOp) => {
-    const leaf = groups[gi].leaves[li];
+  const onPickOp = (i: number, op: FormOp) => {
+    const c = conds[i];
     // Keep a field-vs-field RHS when the new op still compares scalars.
-    if (leaf.value.kind === "field" && SCALAR_OPS.has(op)) return updateLeaf(gi, li, { ...leaf, op });
-    const field = fieldByPath.get(leaf.fieldPath);
+    if (c.value.kind === "field" && SCALAR_OPS.has(op)) return update(i, { ...c, op });
+    const field = fieldByPath.get(c.fieldPath);
     const wantKind = valueKindFor(field, op);
-    const value = leaf.value.kind === wantKind ? leaf.value : defaultValueOfKind(wantKind);
-    updateLeaf(gi, li, { ...leaf, op, value });
+    const value = c.value.kind === wantKind ? c.value : defaultValueOfKind(wantKind);
+    update(i, { ...c, op, value });
   };
-
-  const addGroup = () => onChange([...groups, { leaves: [newLeaf(fields)] }]);
-  const addOrLeaf = (gi: number) => setGroup(gi, { ...groups[gi], leaves: [...groups[gi].leaves, newLeaf(fields)] });
-  const removeLeaf = (gi: number, li: number) =>
-    onChange(
-      groups
-        .map((g, i) => (i === gi ? { ...g, leaves: g.leaves.filter((_, j) => j !== li) } : g))
-        .filter((g) => g.leaves.length > 0),
-    );
-  const toggleNegate = (gi: number) => setGroup(gi, { ...groups[gi], negated: !groups[gi].negated });
 
   return (
     <>
-      {groups.length > 1 && (
-        <div className="pf-outer">
-          <span className="pf-outer-lbl">조건 연결</span>
-          <div className="pf-seg">
-            <button type="button" className={`pf-seg-btn${outerOp === "and" ? " on" : ""}`} onClick={() => onOuterOp("and")}>
-              모두 만족 (AND)
-            </button>
-            <button type="button" className={`pf-seg-btn${outerOp === "or" ? " on" : ""}`} onClick={() => onOuterOp("or")}>
-              하나만 만족 (OR)
-            </button>
-          </div>
-        </div>
-      )}
-      {groups.length === 0 && <div className="pf-empty-cond">{emptyHint}</div>}
-      {groups.map((g, gi) => (
-        <div className={`pf-group${g.negated ? " neg" : ""}`} key={gi}>
-          <div className="pf-group-bar">
-            <button
-              type="button"
-              className={`pf-neg-btn${g.negated ? " on" : ""}`}
-              onClick={() => toggleNegate(gi)}
-              title="이 그룹 전체를 부정 — '다음이 아닐 때'"
-            >
-              {g.negated ? "아니다(NOT) ✓" : "아니다(NOT)"}
-            </button>
-          </div>
-          {g.leaves.map((leaf, li) => (
-            <LeafRow
-              key={li}
-              leaf={leaf}
-              fields={fields}
-              rhsFields={rhsFields}
-              field={fieldByPath.get(leaf.fieldPath)}
-              orLabel={li > 0 ? innerLabel : null}
-              onField={(p) => onPickField(gi, li, p)}
-              onOp={(op) => onPickOp(gi, li, op)}
-              onValue={(value) => updateLeaf(gi, li, { ...leaf, value })}
-              onRemove={() => removeLeaf(gi, li)}
-            />
-          ))}
-          <button type="button" className="pf-or-btn" onClick={() => addOrLeaf(gi)}>
-            {addInnerLabel}
-          </button>
-        </div>
+      {conds.length === 0 && <div className="pf-empty-cond">{emptyHint}</div>}
+      {conds.map((c, i) => (
+        <ConditionRow
+          key={i}
+          cond={c}
+          first={i === 0}
+          field={fieldByPath.get(c.fieldPath)}
+          fields={fields}
+          rhsFields={rhsFields}
+          onJoiner={(joiner) => update(i, { ...c, joiner })}
+          onToggleNot={() => update(i, { ...c, not: !c.not })}
+          onField={(p) => onPickField(i, p)}
+          onOp={(op) => onPickOp(i, op)}
+          onValue={(value) => update(i, { ...c, value })}
+          onRemove={() => onChange(conds.filter((_, j) => j !== i))}
+        />
       ))}
-      <button type="button" className="pf-add-cond" onClick={addGroup}>
+      {conds.length > 1 && (
+        <div className="pf-precedence">AND가 OR보다 먼저 묶여요 — 예: A 그리고 B 또는 C = (A 그리고 B) 또는 C</div>
+      )}
+      <button type="button" className="pf-add-cond" onClick={() => onChange([...conds, newCond(fields)])}>
         + 조건 추가
       </button>
     </>
@@ -407,36 +356,55 @@ function ConditionEditor({
 
 // ── one condition row ──────────────────────────────────────────────────────
 
-function LeafRow({
-  leaf,
+function ConditionRow({
+  cond,
+  first,
+  field,
   fields,
   rhsFields,
-  field,
-  orLabel,
+  onJoiner,
+  onToggleNot,
   onField,
   onOp,
   onValue,
   onRemove,
 }: {
-  leaf: FormLeaf;
+  cond: FormCondition;
+  first: boolean;
+  field: FieldOption | undefined;
   fields: FieldOption[];
   rhsFields: FieldOption[];
-  field: FieldOption | undefined;
-  orLabel: string | null;
+  onJoiner: (op: GroupOp) => void;
+  onToggleNot: () => void;
   onField: (path: string) => void;
   onOp: (op: FormOp) => void;
   onValue: (v: FormValue) => void;
   onRemove: () => void;
 }) {
   const ops = field ? operatorsFor(field.fieldKind) : (["=="] as FormOp[]);
-  const chip = leaf.fieldPath ? safeChip(leaf) : "…";
-  const canField = SCALAR_OPS.has(leaf.op);
-  const fieldMode = leaf.value.kind === "field";
+  const chip = cond.fieldPath ? rowChip(cond) : "…";
+  const canField = SCALAR_OPS.has(cond.op);
+  const fieldMode = cond.value.kind === "field";
   return (
     <div className="pf-leaf">
-      {orLabel && <span className="pf-or-tag">{orLabel}</span>}
-      <FieldCombobox value={leaf.fieldPath} fields={fields} onChange={onField} />
-      <select className="pf-leaf-op" value={leaf.op} onChange={(e) => onOp(e.target.value as FormOp)}>
+      {first ? (
+        <span className="pf-join-tag">조건</span>
+      ) : (
+        <select className={`pf-join ${cond.joiner}`} value={cond.joiner} onChange={(e) => onJoiner(e.target.value as GroupOp)}>
+          <option value="and">그리고(AND)</option>
+          <option value="or">또는(OR)</option>
+        </select>
+      )}
+      <button
+        type="button"
+        className={`pf-not${cond.not ? " on" : ""}`}
+        onClick={onToggleNot}
+        title="이 조건을 부정 — NOT"
+      >
+        아니다
+      </button>
+      <FieldCombobox value={cond.fieldPath} fields={fields} onChange={onField} />
+      <select className="pf-leaf-op" value={cond.op} onChange={(e) => onOp(e.target.value as FormOp)}>
         {ops.map((op) => (
           <option key={op} value={op}>
             {OP_LABEL[op]}
@@ -448,7 +416,7 @@ function LeafRow({
           type="button"
           className="pf-mode"
           onClick={() =>
-            onValue(fieldMode ? defaultValueOfKind(valueKindFor(field, leaf.op)) : { kind: "field", path: rhsFields[0]?.path ?? "principal.address" })
+            onValue(fieldMode ? defaultValueOfKind(valueKindFor(field, cond.op)) : { kind: "field", path: rhsFields[0]?.path ?? "principal.address" })
           }
           title={fieldMode ? "고정 값으로" : "다른 필드와 비교"}
         >
@@ -457,12 +425,12 @@ function LeafRow({
       )}
       {fieldMode ? (
         <FieldCombobox
-          value={leaf.value.kind === "field" ? leaf.value.path : ""}
+          value={cond.value.kind === "field" ? cond.value.path : ""}
           fields={rhsFields}
           onChange={(p) => onValue({ kind: "field", path: p })}
         />
       ) : (
-        <ValueInput value={leaf.value} field={field} onChange={onValue} />
+        <ValueInput value={cond.value} field={field} onChange={onValue} />
       )}
       <span className="pf-leaf-chip">{chip}</span>
       <button type="button" className="pf-x" onClick={onRemove} aria-label="조건 삭제">
@@ -472,9 +440,11 @@ function LeafRow({
   );
 }
 
-function safeChip(leaf: FormLeaf): string {
+/** Inline Cedar chip for a condition (reflects NOT). */
+function rowChip(cond: FormCondition): string {
   try {
-    return exprToText(leafToExpr(leaf));
+    const t = exprToText(leafToExpr(cond));
+    return cond.not ? `!(${t})` : t;
   } catch {
     return "…";
   }
