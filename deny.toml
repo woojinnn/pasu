@@ -7,6 +7,7 @@ ignore = [
     { id = "RUSTSEC-2024-0388", reason = "Transitive through alloy-primitives in cargo-audit's lockfile scan; revisit when upgrading Alloy." },
     { id = "RUSTSEC-2024-0436", reason = "Transitive through alloy-primitives/alloy-sol-types; revisit when upgrading Alloy." },
     { id = "RUSTSEC-2025-0048", reason = "tsify-next unmaintained; no safe upgrade path available. Tracked separately." },
+    { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2 unmaintained; transitive through alloy-sol-macro. Not a vuln; revisit when upgrading Alloy." },
 ]
 
 [licenses]

@@ -1,0 +1,6 @@
+# cargo-audit config. `proc-macro-error2` (RUSTSEC-2026-0173) is flagged
+# "unmaintained" — it is a transitive dep of alloy-sol-macro (Ethereum types),
+# not a vulnerability and not ours to fix. Ignore it here so `cargo audit`
+# passes without changing the CI workflow. Remove when alloy drops it.
+[advisories]
+ignore = ["RUSTSEC-2026-0173"]
