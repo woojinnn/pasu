@@ -855,6 +855,10 @@ function PackagePanel(props: {
                     ? "on"
                     : "partial";
             const mutedCount = [...memberIds].filter((id) => muted.has(id)).length;
+            // Lock "포함" (armed) editing while the package is ON — changing
+            // inclusion then would desync members from their global state.
+            // Turn the package off first to re-pick included policies.
+            const armedLocked = s.readOnly || pkgState === "on";
             const market = isMarketSource(s);
             const cstyle = catStyle(s.cat);
             const expanded = expandedPkgs.has(s.id);
@@ -926,15 +930,17 @@ function PackagePanel(props: {
                             <button
                               type="button"
                               className={`ev2-pkg-mtg${armed ? " on" : ""}`}
-                              disabled={s.readOnly}
+                              disabled={armedLocked}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!s.readOnly) onToggleArmed(s, m.id, !armed);
+                                if (!armedLocked) onToggleArmed(s, m.id, !armed);
                               }}
                               title={
-                                armed
-                                  ? "패키지를 켤 때 이 정책 포함 (끄면 제외)"
-                                  : "제외됨 — 켜면 패키지 활성화 시 포함"
+                                armedLocked && !s.readOnly
+                                  ? "패키지가 켜져 있을 땐 변경 불가 — 패키지를 끄고 포함을 바꾸세요"
+                                  : armed
+                                    ? "패키지를 켤 때 이 정책 포함 (끄면 제외)"
+                                    : "제외됨 — 켜면 패키지 활성화 시 포함"
                               }
                             >
                               <span className="sw" />
