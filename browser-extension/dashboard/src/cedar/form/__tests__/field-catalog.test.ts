@@ -8,6 +8,13 @@ describe("field catalog", () => {
     expect(paths).toContain("context.recipient"); // a well-known base field (수신자)
   });
 
+  it("hides container fields the form can't compare (ref / record)", () => {
+    const paths = fieldsForTrigger({ kind: "any" }).map((f) => f.path);
+    expect(paths).not.toContain("context.amountDesired"); // record (희망 수량)
+    expect(paths).not.toContain("context.tokenIn"); // ref (입력 토큰)
+    expect(paths).toContain("context.venue.name"); // its String subfield stays (베뉴 이름)
+  });
+
   it("includes a custom enrichment field only for its applicable action", () => {
     const swap = fieldsForTrigger({ kind: "actionEq", entityType: "Amm::Action", id: "Swap" });
     expect(swap.map((f) => f.path)).toContain("context.custom.inputUsd"); // appliesTo: ["swap"]

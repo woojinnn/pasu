@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { blocksToText } from "../../../cedar";
 import type { PolicyIR } from "../../../cedar/blocks/ir";
+import { naturalCondition } from "../../../cedar/nl";
 import {
   emptyFormModel,
   fieldsForTrigger,
@@ -629,22 +630,6 @@ function ConditionRow({
 
 // ── natural-language chip (the raw Cedar is shown in the right pane) ─────────
 
-/** Whether a word ends in a Korean final consonant (받침), so we can pick the
- *  right particle (이/가, 을/를). Falls back for digit/latin endings. */
-function hasJong(word: string): boolean {
-  const ch = word.at(-1);
-  if (!ch) return false;
-  const code = ch.charCodeAt(0);
-  if (code >= 0xac00 && code <= 0xd7a3) return (code - 0xac00) % 28 !== 0;
-  // last digit's Korean reading: 1·3·6·7·8 end in a consonant
-  if (ch >= "0" && ch <= "9") return [false, true, false, true, false, false, true, true, true, false][Number(ch)];
-  return false;
-}
-/** Attach the right particle to `word`. */
-function withJosa(word: string, jong: string, no: string): string {
-  return word + (hasJong(word) ? jong : no);
-}
-
 function labelOf(path: string, ctx: EditorCtx): string {
   return ctx.fieldByPath.get(path)?.label ?? ctx.rhsFields.find((f) => f.path === path)?.label ?? path;
 }
@@ -666,40 +651,16 @@ function valueText(v: FormValue, ctx: EditorCtx): string {
   }
 }
 
-/** Render a condition as a plain-Korean phrase, e.g.
- *  `context.recipient == ""` → "수신자가 비어 있을 때". */
-function condToKorean(cond: FormCondition, ctx: EditorCtx): string {
-  const S = withJosa(labelOf(cond.fieldPath, ctx), "이", "가");
-  const v = cond.value;
-  const V = valueText(v, ctx);
-  const emptyStr = v.kind === "string" && v.value === "";
-  const neg = !!cond.not;
-  switch (cond.op) {
-    case "==":
-      if (emptyStr) return `${S} ${neg ? "비어 있지 않을" : "비어 있을"} 때`;
-      return neg ? `${S} ${withJosa(V, "이", "가")} 아닐 때` : `${S} ${V}일 때`;
-    case "!=":
-      if (emptyStr) return `${S} ${neg ? "비어 있을" : "비어 있지 않을"} 때`;
-      return neg ? `${S} ${V}일 때` : `${S} ${withJosa(V, "이", "가")} 아닐 때`;
-    case "<":
-      return `${S} ${V}보다 ${neg ? "크거나 같을" : "작을"} 때`;
-    case "<=":
-      return `${S} ${V} ${neg ? "초과일" : "이하일"} 때`;
-    case ">":
-      return `${S} ${V}보다 ${neg ? "작거나 같을" : "클"} 때`;
-    case ">=":
-      return `${S} ${V} ${neg ? "미만일" : "이상일"} 때`;
-    case "in":
-      return `${S} ${V} 중 ${neg ? "하나도 아닐" : "하나일"} 때`;
-    case "contains":
-      return `${S} ${withJosa(V, "을", "를")} ${neg ? "포함하지 않을" : "포함할"} 때`;
-  }
-}
-
 /** Plain-Korean chip for a condition, falling back to "…" if anything is off. */
 function condChip(cond: FormCondition, ctx: EditorCtx): string {
   try {
-    return condToKorean(cond, ctx);
+    return naturalCondition({
+      subject: labelOf(cond.fieldPath, ctx),
+      op: cond.op,
+      value: valueText(cond.value, ctx),
+      emptyStr: cond.value.kind === "string" && cond.value.value === "",
+      neg: cond.not,
+    });
   } catch {
     return "…";
   }

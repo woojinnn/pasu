@@ -17,6 +17,18 @@ import type { FormOp, FormTrigger, FormValue } from "./model";
 
 const CUSTOM_PREFIX = "context.custom.";
 
+/** Field kinds the form can compare with a single leaf. `ref`/`record` are
+ *  containers (a whole token / a `{a,b}` record) — comparing them to a literal
+ *  doesn't typecheck in Cedar, so they're hidden from the form (use the Block
+ *  tab to drill into their subfields). */
+const COMPARABLE_KINDS = new Set<FieldKind>([
+  "primitive.String",
+  "primitive.Long",
+  "primitive.decimal",
+  "primitive.Bool",
+  "collection",
+]);
+
 export interface FieldOption {
   /** Dotted path, e.g. `context.custom.inputUsd`. */
   path: string;
@@ -45,6 +57,7 @@ export function fieldsForTrigger(trigger: FormTrigger): FieldOption[] {
   const tag = triggerTag(trigger);
   const out: FieldOption[] = [];
   for (const g of allGloss()) {
+    if (!COMPARABLE_KINDS.has(g.fieldKind)) continue; // hide containers (ref/record)
     const customName = g.path.startsWith(CUSTOM_PREFIX)
       ? g.path.slice(CUSTOM_PREFIX.length)
       : null;
