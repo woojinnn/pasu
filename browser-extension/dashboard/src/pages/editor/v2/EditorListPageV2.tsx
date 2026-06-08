@@ -220,6 +220,18 @@ export function EditorListPageV2() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [chooserOpen, setChooserOpen] = useState(false);
+  // Packages expand IN PLACE in the left panel (a dropdown of their members);
+  // the right table always shows the full list (scope is all/loose only).
+  const [expandedPkgs, setExpandedPkgs] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) =>
+    setExpandedPkgs((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const expandPkg = (id: string) =>
+    setExpandedPkgs((prev) => new Set(prev).add(id));
 
   const pushToast = (text: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -324,7 +336,7 @@ export function EditorListPageV2() {
         source: "mine",
       });
       await qc.invalidateQueries({ queryKey: ["policy-sets"] });
-      setScope({ type: "pkg", id: setId });
+      expandPkg(setId);
       pushToast("빈 패키지를 만들었어요 — 정책을 끌어다 넣어보세요");
     } catch (err) {
       console.error("[v2 list] createEmptyPackage failed:", err);
@@ -358,10 +370,27 @@ export function EditorListPageV2() {
     try {
       await putPolicySet(setToOpts(s, { memberIds: [...merged] }));
       await qc.invalidateQueries({ queryKey: ["policy-sets"] });
+      expandPkg(setId);
       pushToast(`${s.displayName}에 ${added}개 추가했어요`);
     } catch (err) {
       console.error("[v2 list] addToPackage failed:", err);
       pushToast("패키지에 넣지 못했어요");
+    }
+  };
+
+  // Remove one policy from a package (the dropdown's × button).
+  const removeFromPackage = async (setId: string, policyId: string) => {
+    const s = sets.find((x) => x.id === setId);
+    if (!s || s.readOnly) return;
+    const next = s.memberIds.filter((id) => id !== policyId);
+    if (next.length === s.memberIds.length) return;
+    try {
+      await putPolicySet(setToOpts(s, { memberIds: next }));
+      await qc.invalidateQueries({ queryKey: ["policy-sets"] });
+      pushToast(`${s.displayName}에서 뺐어요`);
+    } catch (err) {
+      console.error("[v2 list] removeFromPackage failed:", err);
+      pushToast("빼지 못했어요");
     }
   };
 
@@ -440,6 +469,10 @@ export function EditorListPageV2() {
             onTogglePackage={togglePackage}
             onDropPolicies={(setId, ids) => void addToPackage(setId, ids)}
             onRename={(s, name) => void renamePackage(s, name)}
+            expandedPkgs={expandedPkgs}
+            onToggleExpand={toggleExpand}
+            onRemoveFromPackage={(setId, pid) => void removeFromPackage(setId, pid)}
+            onOpenPolicy={(id) => navigate(`/editor/${encodeURIComponent(id)}`)}
           />
 
           <section className="ev2-right">
@@ -700,6 +733,10 @@ function PackagePanel(props: {
   onTogglePackage: (s: PolicySet, on: boolean) => void;
   onDropPolicies: (setId: string, ids: string[]) => void;
   onRename: (s: PolicySet, name: string) => void;
+  expandedPkgs: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onRemoveFromPackage: (setId: string, policyId: string) => void;
+  onOpenPolicy: (id: string) => void;
 }) {
   const {
     scope,
@@ -714,6 +751,10 @@ function PackagePanel(props: {
     onTogglePackage,
     onDropPolicies,
     onRename,
+    expandedPkgs,
+    onToggleExpand,
+    onRemoveFromPackage,
+    onOpenPolicy,
   } = props;
 
   const policyById = useMemo(
@@ -776,52 +817,94 @@ function PackagePanel(props: {
                     : "partial";
             const market = isMarketSource(s);
             const cstyle = catStyle(s.cat);
+            const expanded = expandedPkgs.has(s.id);
+            const members = [...memberIds]
+              .map((id) => policyById.get(id))
+              .filter((p): p is ManagedPolicy => !!p);
             return (
-              <PackBtn
-                key={s.id}
-                active={scope.type === "pkg" && scope.id === s.id}
-                onClick={() => setScope({ type: "pkg", id: s.id })}
-                icon={
-                  <span style={{ color: cstyle.hex, display: "grid", placeItems: "center" }}>
-                    <FolderIcon />
-                  </span>
-                }
-                name={s.displayName}
-                sub={
-                  <>
-                    <b>{onCount}</b>/{memberIds.size} 켜짐
-                  </>
-                }
-                source={
-                  market ? (
+              <div key={s.id} className="ev2-pkg-item">
+                <PackBtn
+                  active={expanded}
+                  expanded={expanded}
+                  onClick={() => onToggleExpand(s.id)}
+                  icon={
+                    <span style={{ color: cstyle.hex, display: "grid", placeItems: "center" }}>
+                      <FolderIcon />
+                    </span>
+                  }
+                  name={s.displayName}
+                  sub={
                     <>
-                      <ShieldIcon />
-                      마켓에서 가져옴
-                      {s.sourceVersion ? ` · ${s.sourceVersion}` : ""}
+                      <b>{onCount}</b>/{memberIds.size} 켜짐
                     </>
-                  ) : (
-                    <>
-                      <PencilIcon />
-                      내가 만듦
-                    </>
-                  )
-                }
-                badge={s.readOnly ? <LockIcon /> : null}
-                pkgState={pkgState}
-                onTogglePkg={
-                  pkgState === "empty"
-                    ? undefined
-                    : (on) => onTogglePackage(s, on)
-                }
-                onRename={
-                  s.readOnly ? undefined : (name) => onRename(s, name)
-                }
-                onDropPolicies={
-                  s.readOnly
-                    ? undefined
-                    : (ids) => onDropPolicies(s.id, ids)
-                }
-              />
+                  }
+                  source={
+                    market ? (
+                      <>
+                        <ShieldIcon />
+                        마켓에서 가져옴
+                        {s.sourceVersion ? ` · ${s.sourceVersion}` : ""}
+                      </>
+                    ) : (
+                      <>
+                        <PencilIcon />
+                        내가 만듦
+                      </>
+                    )
+                  }
+                  badge={s.readOnly ? <LockIcon /> : null}
+                  pkgState={pkgState}
+                  onTogglePkg={
+                    pkgState === "empty"
+                      ? undefined
+                      : (on) => onTogglePackage(s, on)
+                  }
+                  onRename={
+                    s.readOnly ? undefined : (name) => onRename(s, name)
+                  }
+                  onDropPolicies={
+                    s.readOnly ? undefined : (ids) => onDropPolicies(s.id, ids)
+                  }
+                />
+                {expanded && (
+                  <div className="ev2-pkg-members">
+                    {members.length === 0 ? (
+                      <div className="ev2-pkg-mini-empty">
+                        비어 있어요 — 오른쪽에서 정책을 끌어다 넣으세요
+                      </div>
+                    ) : (
+                      members.map((m) => (
+                        <div
+                          key={m.id}
+                          className="ev2-pkg-mrow"
+                          onClick={() => onOpenPolicy(m.id)}
+                          title="에디터 열기"
+                        >
+                          <span
+                            className={`ev2-pkg-mdot ${
+                              rowOn(m, enabledSet.has(m.id)) ? "on" : "off"
+                            }`}
+                          />
+                          <span className="ev2-pkg-mnm">{nameFromPolicy(m)}</span>
+                          {!s.readOnly && (
+                            <button
+                              type="button"
+                              className="ev2-pkg-mrm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveFromPackage(s.id, m.id);
+                              }}
+                              title="패키지에서 빼기"
+                            >
+                              <XIcon />
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -845,6 +928,8 @@ function PackBtn(props: {
   source?: React.ReactNode;
   right?: React.ReactNode;
   badge?: React.ReactNode;
+  /** When defined, the row is an expandable package: shows a rotating caret. */
+  expanded?: boolean;
   pkgState?: "on" | "off" | "partial" | "empty";
   onTogglePkg?: (on: boolean) => void;
   onRename?: (name: string) => void;
@@ -859,6 +944,7 @@ function PackBtn(props: {
     source,
     right,
     badge,
+    expanded,
     pkgState,
     onTogglePkg,
     onRename,
@@ -914,6 +1000,11 @@ function PackBtn(props: {
       }}
       {...dropProps}
     >
+      {expanded !== undefined && (
+        <span className={`ev2-pk-caret${expanded ? " open" : ""}`}>
+          <CaretRightIcon />
+        </span>
+      )}
       <span className="ev2-pk-ic">{icon}</span>
       <span className="ev2-pk-body">
         <span className="ev2-pk-nm">
