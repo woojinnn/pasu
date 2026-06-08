@@ -20,6 +20,7 @@ import {
   type PolicySet,
 } from "../../../server-api";
 import {
+  DAY1_SET_ID,
   buildDay1Policies,
   buildDay1Set,
   isDay1Id,
@@ -657,6 +658,7 @@ function PackagePanel(props: {
               return m ? rowOn(m, enabledSet.has(id)) : false;
             }).length;
             const market = isMarketSource(s);
+            const isDay1 = s.id === DAY1_SET_ID;
             const cstyle = catStyle(s.cat);
             return (
               <PackBtn
@@ -665,7 +667,7 @@ function PackagePanel(props: {
                 onClick={() => setScope({ type: "pkg", id: s.id })}
                 icon={
                   <span style={{ color: cstyle.hex, display: "grid", placeItems: "center" }}>
-                    <FolderIcon />
+                    {isDay1 ? <ShieldIcon /> : <FolderIcon />}
                   </span>
                 }
                 name={s.displayName}
@@ -675,7 +677,12 @@ function PackagePanel(props: {
                   </>
                 }
                 source={
-                  market ? (
+                  isDay1 ? (
+                    <>
+                      <ShieldIcon />
+                      기본 제공
+                    </>
+                  ) : market ? (
                     <>
                       <ShieldIcon />
                       마켓에서 가져옴
@@ -754,13 +761,18 @@ function ScopeHeader(props: {
       <div className="ev2-scope-title">
         <span className="t">{title}</span>
         <span className="ct">{rowCount}개</span>
-        {activePkg && isMarketSource(activePkg) && (
+        {activePkg && activePkg.id === DAY1_SET_ID && (
+          <span className="ev2-scope-prov">
+            <ShieldIcon /> 기본 제공
+          </span>
+        )}
+        {activePkg && activePkg.id !== DAY1_SET_ID && isMarketSource(activePkg) && (
           <span className="ev2-scope-prov">
             <ShieldIcon /> 마켓에서 가져옴
             {activePkg.sourceVersion ? ` · ${activePkg.sourceVersion}` : ""}
           </span>
         )}
-        {activePkg && !isMarketSource(activePkg) && (
+        {activePkg && activePkg.id !== DAY1_SET_ID && !isMarketSource(activePkg) && (
           <span className="ev2-scope-prov mine">
             <PencilIcon /> 내가 만듦
           </span>
@@ -824,8 +836,11 @@ function PolicyRow(props: {
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("button,.ev2-selbox,.ev2-tg,.ev2-grip")) return;
+        // day1 베이스라인(읽기전용)은 shift-click 선택도 막는다 — 선택되면
+        // 벌크 토글/패키지 묶기로 baked 정책이 사용자 set 에 섞일 수 있다.
+        if (readOnly) return;
         if (e.shiftKey) onSelect();
-        else if (!readOnly) onOpen();
+        else onOpen();
       }}
     >
       <div className="ev2-c-sel">

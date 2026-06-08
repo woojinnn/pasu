@@ -53,7 +53,10 @@ export function buildDay1Policies(catalog: PolicyCatalog | undefined): ManagedPo
     kind: "raw" as const,
     text: `@severity("${s.severity}")\n@id("${s.id}")\nforbid(principal, action, resource);`,
     displayName: s.name,
-    source: "market" as const,
+    // baked 베이스라인. PolicySource 에 baked 값이 없어 "mine" 으로 두되(=market
+    // 아님 → 업데이트 배지/마켓 조회 등 market 부작용 회피), 표시 provenance 는
+    // isDay1Id/DAY1_SET_ID 로 식별해 "기본 제공"으로 따로 렌더한다.
+    source: "mine" as const,
     cat: s.cat,
     updatedAtMs: 0,
     schemaVersion: 1 as const,
@@ -68,7 +71,9 @@ export function buildDay1Set(day1Policies: ManagedPolicy[]): PolicySet | null {
     displayName: DAY1_PKG_NAME,
     description: "기본 제공",
     memberIds: day1Policies.map((p) => p.id),
-    source: "market",
+    // source 는 "mine"(=market 아님)으로 두고, DAY1_SET_ID 로 식별해 provenance 를
+    // "기본 제공"으로 따로 렌더한다(마켓/내가 만듦 둘 다 부정확하므로).
+    source: "mine",
     readOnly: true,
     updatedAtMs: 0,
     schemaVersion: 1,
