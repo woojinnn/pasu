@@ -46,15 +46,27 @@ fn order_action(is_buy: bool, size: &str) -> Value {
     })
 }
 
-/// A HyperliquidCore updateLeverage action JSON — `hl-order-to-action.ts` shape.
+/// A Hyperliquid updateLeverage JSON — the `hl-order-to-action.ts` shape: a
+/// generic `Perp::ChangeLeverage` body (`newLeverage` is a decimal string).
 fn update_leverage_action(leverage: i64) -> Value {
     json!({
-        "domain": "hyperliquid_core",
-        "action": "hl_update_leverage",
-        "asset_index": 0,
-        "symbol": "BTC",
-        "is_cross": true,
-        "leverage": leverage
+        "domain": "perp",
+        "action": "change_leverage",
+        "venue": { "name": "hyperliquid", "chain": "hyperliquid:mainnet" },
+        "market": { "symbol": "BTC", "venue": { "name": "hyperliquid" } },
+        "new_leverage": leverage.to_string()
+    })
+}
+
+/// A NON-Hyperliquid (`gmx_v2`) `Perp::ChangeLeverage` body — the cross-venue
+/// control: the HL-scoped leverage policies must NOT fire on it (venue guard).
+fn gmx_leverage_action(leverage: i64) -> Value {
+    json!({
+        "domain": "perp",
+        "action": "change_leverage",
+        "venue": { "name": "gmx_v2", "chain": "eip155:42161" },
+        "market": { "symbol": "ETH", "venue": { "name": "gmx_v2" } },
+        "new_leverage": leverage.to_string()
     })
 }
 
@@ -336,6 +348,23 @@ fn shipped_seed_policy_allows_modest_leverage() {
     assert_eq!(
         parsed["data"]["verdict"]["kind"], "pass",
         "10x leverage must PASS the >20x confirm: {parsed}"
+    );
+}
+
+/// CROSS-VENUE SCOPE: the same high (25x) leverage on a NON-Hyperliquid venue
+/// (`gmx_v2`) PASSES — `Perp::ChangeLeverage` is generic, so the HL-confirm
+/// policy's `context.venue.name == "hyperliquid"` guard keeps it HL-scoped (it
+/// does not fire on other perp venues).
+#[test]
+fn shipped_seed_policy_high_leverage_does_not_fire_off_hyperliquid() {
+    let parsed = run(
+        gmx_leverage_action(25),
+        json!([seed_bundle("hl-confirm-high-leverage")]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "pass",
+        "25x leverage on gmx_v2 must PASS the HL-scoped confirm: {parsed}"
     );
 }
 

@@ -111,7 +111,7 @@ const SPECS: Spec[] = [
   {
     type: "updateLeverage",
     category: "modeled",
-    expectTag: "hl_update_leverage",
+    expectTag: "change_leverage",
     action: (g) => ({
       type: "updateLeverage",
       asset: g.perp().assetIndex,
@@ -122,7 +122,7 @@ const SPECS: Spec[] = [
   {
     type: "updateIsolatedMargin",
     category: "modeled",
-    expectTag: "hl_update_isolated_margin",
+    expectTag: "adjust_margin",
     action: (g) => ({
       type: "updateIsolatedMargin",
       asset: g.perp().assetIndex,
@@ -310,10 +310,14 @@ describe("HL /exchange fuzz coverage (real info-API-seeded)", () => {
         expect(payloads, `${spec.type} must produce a payload`).not.toBeNull();
         for (const p of payloads!) {
           const { action } = hlOrderToAction(p);
-          // HL orders decode to the generic `perp` domain (Perp::PlaceOrder);
-          // every other HL Core action stays in the `hyperliquid_core` domain.
+          // The HL perp family decodes to the generic `perp` domain
+          // (place_order / change_leverage / adjust_margin); every other HL Core
+          // action stays in the `hyperliquid_core` domain.
+          const PERP_ACTIONS = ["place_order", "change_leverage", "adjust_margin"];
           expect(action.domain).toBe(
-            action.action === "place_order" ? "perp" : "hyperliquid_core",
+            PERP_ACTIONS.includes(action.action as string)
+              ? "perp"
+              : "hyperliquid_core",
           );
           if (spec.category === "modeled") {
             bucket.handled.add(spec.type);

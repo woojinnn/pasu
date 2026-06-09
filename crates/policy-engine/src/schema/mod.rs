@@ -274,9 +274,6 @@ const TOKEN_WRAP_NATIVE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/wrap_native.cedarschema");
 
 // hyperliquid_core (alphabetical) — the thin off-chain L1 action model.
-const HL_UPDATE_LEVERAGE_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/update_leverage.cedarschema"
-);
 const HL_WITHDRAW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/withdraw.cedarschema");
 const HL_USD_CLASS_TRANSFER_SCHEMA: &str = include_str!(
@@ -287,9 +284,6 @@ const HL_SEND_ASSET_SCHEMA: &str = include_str!(
 );
 const HL_TOKEN_DELEGATE_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/token_delegate.cedarschema"
-);
-const HL_UPDATE_ISOLATED_MARGIN_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/update_isolated_margin.cedarschema"
 );
 
 /// Ordered list of all shipped cedarschema files. The merge in
@@ -400,12 +394,10 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     TOKEN_REVOKE_APPROVAL_SCHEMA,
     TOKEN_UNWRAP_NATIVE_SCHEMA,
     TOKEN_WRAP_NATIVE_SCHEMA,
-    HL_UPDATE_LEVERAGE_SCHEMA,
     HL_WITHDRAW_SCHEMA,
     HL_USD_CLASS_TRANSFER_SCHEMA,
     HL_SEND_ASSET_SCHEMA,
     HL_TOKEN_DELEGATE_SCHEMA,
-    HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -904,8 +896,6 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     // unique (notably `withdraw` is already a Lending tag).
     ("hl_send_asset", "HlSendAssetContext"),
     ("hl_token_delegate", "HlTokenDelegateContext"),
-    ("hl_update_isolated_margin", "HlUpdateIsolatedMarginContext"),
-    ("hl_update_leverage", "HlUpdateLeverageContext"),
     ("hl_usd_class_transfer", "HlUsdClassTransferContext"),
     ("hl_withdraw", "HlWithdrawContext"),
 ];

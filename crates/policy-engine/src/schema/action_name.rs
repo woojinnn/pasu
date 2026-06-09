@@ -203,14 +203,13 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     // `hl_c_withdraw` to `Staking::Stake` / `Staking::Redeem` (no own schema).
     // `hl_approve_agent` / `hl_approve_builder_fee` were dropped. `hl_order` /
     // `hl_twap_order` now decode (TS) directly to `Perp::PlaceOrder` (off-chain
-    // perp placement; orderType limit/stop/twap), so they too are absent here.
-    // All are therefore absent from this shipped-schema set.
-    "hl_update_leverage",
+    // perp placement; orderType limit/stop/twap). `hl_update_leverage` →
+    // `Perp::ChangeLeverage`, `hl_update_isolated_margin` → `Perp::AdjustMargin`
+    // (the perp leverage/margin actions). All are therefore absent here.
     "hl_withdraw",
     "hl_usd_class_transfer",
     "hl_send_asset",
     "hl_token_delegate",
-    "hl_update_isolated_margin",
 ];
 
 #[cfg(test)]
@@ -275,7 +274,7 @@ mod tests {
         // + Aave `gsm_swap` + governance + lending periphery + staking
         // redeem/stake/cooldown) = 118, plus Marketplace (Seaport) sign_order +
         // fulfill_order (cancel_order dedups against Perp) = 120.
-        assert_eq!(REGISTERED_ACTIONS.len(), 107);
+        assert_eq!(REGISTERED_ACTIONS.len(), 105);
     }
 
     #[test]

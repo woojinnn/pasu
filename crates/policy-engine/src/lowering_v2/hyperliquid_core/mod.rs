@@ -1,7 +1,7 @@
 //! Hyperliquid CORE domain lowering: thin actions with NO live inputs.
 //!
 //! Mirrors the perp/token fan-out: a per-action `lower` leaf for each variant,
-//! plus the shared `hl_venue` / `hl_market` encoders. Every action lowers to a
+//! plus the shared `hl_venue` encoder. Every action lowers to a
 //! `HyperliquidCore::*Context` whose numeric fields (price / size / amount) are
 //! emitted as decimal STRINGS — fractional-safe and free of Cedar's `decimal`
 //! 4-dp limit. Policies match on action type + `context.venue.name` +
@@ -22,8 +22,6 @@ mod spot_send;
 mod sub_account_transfer;
 mod token_delegate;
 mod unknown;
-mod update_isolated_margin;
-mod update_leverage;
 mod usd_class_transfer;
 mod usd_send;
 mod vault_transfer;
@@ -40,7 +38,6 @@ pub(crate) fn lower(
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
     match action {
-        HyperliquidCoreAction::UpdateLeverage(a) => update_leverage::lower(a, ctx),
         HyperliquidCoreAction::Withdraw(a) => withdraw::lower(a, ctx),
         HyperliquidCoreAction::UsdSend(a) => usd_send::lower(a, ctx),
         HyperliquidCoreAction::SpotSend(a) => spot_send::lower(a, ctx),
@@ -52,7 +49,6 @@ pub(crate) fn lower(
         HyperliquidCoreAction::VaultTransfer(a) => vault_transfer::lower(a, ctx),
         HyperliquidCoreAction::SubAccountTransfer(a) => sub_account_transfer::lower(a, ctx),
         HyperliquidCoreAction::TokenDelegate(a) => token_delegate::lower(a, ctx),
-        HyperliquidCoreAction::UpdateIsolatedMargin(a) => update_isolated_margin::lower(a, ctx),
         HyperliquidCoreAction::Unknown(a) => unknown::lower(a, ctx),
     }
 }
@@ -63,17 +59,6 @@ pub(crate) fn lower(
 pub(crate) fn hl_venue() -> Value {
     let mut m = Map::new();
     m.insert("name".into(), Value::String("hyperliquid".into()));
-    Value::Object(m)
-}
-
-/// Lower a market reference → `{ symbol, assetIndex }` (`HyperliquidCore::HlMarket`).
-/// `symbol` falls back to `ASSET-<index>` when the venue meta cache has not yet
-/// resolved the numeric `assetIndex` to a human symbol.
-pub(crate) fn hl_market(asset_index: u32, symbol: Option<&str>) -> Value {
-    let mut m = Map::new();
-    let sym = symbol.map_or_else(|| format!("ASSET-{asset_index}"), str::to_owned);
-    m.insert("symbol".into(), Value::String(sym));
-    m.insert("assetIndex".into(), Value::from(i64::from(asset_index)));
     Value::Object(m)
 }
 

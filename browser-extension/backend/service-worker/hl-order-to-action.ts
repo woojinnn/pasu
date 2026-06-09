@@ -140,15 +140,16 @@ function actionBody(
       };
     }
     case "update_leverage": {
-      const body: Record<string, unknown> = {
-        domain: "hyperliquid_core",
-        action: "hl_update_leverage",
-        asset_index: a.assetIndex,
-        is_cross: a.isCross,
-        leverage: a.leverage,
+      // HL updateLeverage decodes to the generic `Perp::ChangeLeverage`;
+      // `newLeverage` is a decimal string (the engine lowers it to a Cedar
+      // `decimal`). `isCross` carries no policy signal and is dropped.
+      return {
+        domain: "perp",
+        action: "change_leverage",
+        venue: hlPerpVenue(),
+        market: hlMarketRef(a.assetIndex, symbol),
+        new_leverage: String(a.leverage),
       };
-      if (symbol !== undefined) body.symbol = symbol;
-      return body;
     }
     case "withdraw":
       return {
@@ -253,15 +254,17 @@ function actionBody(
       };
     }
     case "update_isolated_margin": {
-      const body: Record<string, unknown> = {
-        domain: "hyperliquid_core",
-        action: "hl_update_isolated_margin",
-        asset_index: a.assetIndex,
-        is_buy: a.isBuy,
-        ntli: String(a.ntli),
+      // HL updateIsolatedMargin decodes to the generic `Perp::AdjustMargin`,
+      // referenced by `(market, side)` (no position id at sign time). `ntli` is
+      // the signed margin delta (negative = remove).
+      return {
+        domain: "perp",
+        action: "adjust_margin",
+        venue: hlPerpVenue(),
+        market: hlMarketRef(a.assetIndex, symbol),
+        side: a.isBuy ? "long" : "short",
+        delta: String(a.ntli),
       };
-      if (symbol !== undefined) body.symbol = symbol;
-      return body;
     }
     case "unknown":
       return {

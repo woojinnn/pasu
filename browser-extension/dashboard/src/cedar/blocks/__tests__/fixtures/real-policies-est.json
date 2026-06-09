@@ -3976,8 +3976,8 @@
       "action": {
         "op": "==",
         "entity": {
-          "type": "HyperliquidCore::Action",
-          "id": "HlUpdateLeverage"
+          "type": "Perp::Action",
+          "id": "ChangeLeverage"
         }
       },
       "resource": {
@@ -4009,19 +4009,23 @@
                 }
               },
               "right": {
-                ">": {
-                  "left": {
+                "greaterThan": [
+                  {
                     ".": {
                       "left": {
                         "Var": "context"
                       },
-                      "attr": "leverage"
+                      "attr": "newLeverage"
                     }
                   },
-                  "right": {
-                    "Value": 20
+                  {
+                    "decimal": [
+                      {
+                        "Value": "20.0"
+                      }
+                    ]
                   }
-                }
+                ]
               }
             }
           }

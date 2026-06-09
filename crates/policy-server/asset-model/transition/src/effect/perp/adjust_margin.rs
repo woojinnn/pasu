@@ -36,23 +36,28 @@ impl Reducer for AdjustMarginAction {
             .as_ref()
             .ok_or(ReducerError::MissingField("adjust_margin.live_inputs"))?;
 
+        // On-chain venues reference the position by `position_id`; the
+        // `(market, side)` form is Hyperliquid (off-chain, not reduced here).
+        let position_id = self
+            .position_id
+            .as_ref()
+            .ok_or(ReducerError::MissingField("adjust_margin.position_id"))?;
+
         let position = state
             .positions
             .iter()
-            .find(|p| p.id == self.position_id)
-            .ok_or_else(|| ReducerError::PositionNotFound(self.position_id.clone()))?;
+            .find(|p| &p.id == position_id)
+            .ok_or_else(|| ReducerError::PositionNotFound(position_id.clone()))?;
         let PositionKind::PerpPosition(perp) = &position.kind else {
             return Err(ReducerError::Invariant(format!(
-                "adjust_margin: position {} is not a PerpPosition",
-                self.position_id
+                "adjust_margin: position {position_id} is not a PerpPosition"
             )));
         };
 
         let (collateral_token, current_locked) =
             perp.collateral.first().cloned().ok_or_else(|| {
                 ReducerError::Invariant(format!(
-                    "adjust_margin: position {} has no collateral",
-                    self.position_id
+                    "adjust_margin: position {position_id} has no collateral"
                 ))
             })?;
 
@@ -93,7 +98,7 @@ impl Reducer for AdjustMarginAction {
             ));
         };
 
-        helpers::position::upsert_perp_position(state, &mut delta, &self.position_id, |p| {
+        helpers::position::upsert_perp_position(state, &mut delta, position_id, |p| {
             if let PositionKind::PerpPosition(pp) = &mut p.kind {
                 if let Some(first) = pp.collateral.first_mut() {
                     first.1 = new_collateral_amount;
@@ -211,7 +216,9 @@ mod tests {
             venue: PerpVenue::GmxV2 {
                 chain: ChainId::ethereum_mainnet(),
             },
-            position_id: id.to_string(),
+            position_id: Some(id.to_string()),
+            market: None,
+            side: None,
             delta: SignedI256::try_from(delta).unwrap(),
             live_inputs: Some(AdjustMarginLiveInputs {
                 position_state: live(PerpPositionLive {

@@ -7,11 +7,11 @@
 //! marshalling. HL orders now decode to `Perp::PlaceOrder` (orderType
 //! limit/stop/twap); the deny/warn conditions read only base context fields
 //! (`context.venue.name`, `context.side`, `context.reduceOnly`,
-//! `context.orderType.kind`, `context.leverage`), so no live inputs / `results`
-//! map are required. `positionEffect == "open"` collapses to `reduceOnly ==
-//! false` (a non-reduce-only order opens/adds exposure). The leverage-change
-//! (`HlUpdateLeverage`) and withdraw (`HlWithdraw`) HL Core actions are
-//! unchanged.
+//! `context.orderType.kind`, `context.newLeverage`), so no live inputs /
+//! `results` map are required. `positionEffect == "open"` collapses to
+//! `reduceOnly == false` (a non-reduce-only order opens/adds exposure). HL
+//! `updateLeverage` decodes to `Perp::ChangeLeverage`; the withdraw
+//! (`HlWithdraw`) HL Core action is unchanged.
 //!
 //! Pipeline mirrored here:
 //!   HL order → `ActionBody::Perp(PlaceOrder)` → `lower_action(...)`
@@ -30,9 +30,7 @@ use policy_engine::schema::compose_per_policy;
 
 use policy_state::position::PerpSide;
 use policy_state::primitives::{Address, ChainId, Decimal, MarketRef, Time, VenueRef};
-use policy_transition::action::hyperliquid_core::{
-    HlUpdateLeverageAction, HlWithdrawAction, HyperliquidCoreAction,
-};
+use policy_transition::action::hyperliquid_core::{HlWithdrawAction, HyperliquidCoreAction};
 use policy_transition::action::perp::{
     OrderType, PerpAction, PerpVenue, PlaceOrderAction, SizeSpec, TimeInForce,
 };
@@ -178,14 +176,15 @@ const CONFIRM_WITHDRAW: &str = "\
 @reason(\"Withdrawing funds off Hyperliquid — confirm\")\n\
 forbid(principal, action == HyperliquidCore::Action::\"HlWithdraw\", resource);\n";
 
-// A threshold confirm (warn) policy for high leverage (`HlUpdateLeverage`,
-// unchanged — leverage-change is Phase-4 territory).
+// A threshold confirm (warn) policy for high leverage. HL updateLeverage
+// decodes to the generic `Perp::ChangeLeverage`; `newLeverage` is a Cedar
+// `decimal`, compared via `.greaterThan`. HL-scoped via the venue guard.
 const CONFIRM_HIGH_LEVERAGE: &str = "\
 @id(\"hl/confirm-high-leverage\")\n\
 @severity(\"warn\")\n\
 @reason(\"High leverage on Hyperliquid — confirm\")\n\
-forbid(principal, action == HyperliquidCore::Action::\"HlUpdateLeverage\", resource)\n\
-when { context.venue.name == \"hyperliquid\" && context.leverage > 20 };\n";
+forbid(principal, action == Perp::Action::\"ChangeLeverage\", resource)\n\
+when { context.venue.name == \"hyperliquid\" && context.newLeverage.greaterThan(decimal(\"20.0\")) };\n";
 
 /// THE PROOF: opening a NEW short order (short side, NOT reduce-only) is BLOCKED
 /// (`Verdict::Fail`).
@@ -309,29 +308,34 @@ fn hyperliquid_withdraw_is_flagged_for_confirmation() {
     }
 }
 
-/// D4: a high-leverage `updateLeverage` is flagged (`Verdict::Warn`); a modest
-/// one passes — proves the threshold guard on `context.leverage`.
+/// D4: a high-leverage change (HL `updateLeverage` → `Perp::ChangeLeverage`) is
+/// flagged (`Verdict::Warn`); a modest one passes — proves the threshold guard
+/// on the Cedar-`decimal` `context.newLeverage`.
 #[test]
 fn hyperliquid_high_leverage_is_flagged_but_modest_passes() {
-    let lev = |x: u32| {
-        ActionBody::HyperliquidCore(HyperliquidCoreAction::UpdateLeverage(
-            HlUpdateLeverageAction {
-                asset_index: 0,
-                symbol: Some("BTC".to_owned()),
-                is_cross: true,
-                leverage: x,
+    use policy_transition::action::perp::ChangeLeverageAction;
+    let lev = |x: &str| {
+        ActionBody::Perp(PerpAction::ChangeLeverage(ChangeLeverageAction {
+            venue: PerpVenue::Hyperliquid {
+                chain: ChainId::new("hyperliquid:mainnet"),
             },
-        ))
+            market: MarketRef {
+                symbol: "BTC".to_owned(),
+                venue: VenueRef::new("hyperliquid"),
+            },
+            new_leverage: Decimal::new(x),
+            live_inputs: None,
+        }))
     };
     assert!(
         matches!(
-            evaluate(&lev(25), "hl_update_leverage", CONFIRM_HIGH_LEVERAGE),
+            evaluate(&lev("25"), "change_leverage", CONFIRM_HIGH_LEVERAGE),
             Verdict::Warn(_)
         ),
         "25x leverage must warn"
     );
     assert_eq!(
-        evaluate(&lev(10), "hl_update_leverage", CONFIRM_HIGH_LEVERAGE),
+        evaluate(&lev("10"), "change_leverage", CONFIRM_HIGH_LEVERAGE),
         Verdict::Pass,
         "10x leverage must pass the >20x confirm"
     );

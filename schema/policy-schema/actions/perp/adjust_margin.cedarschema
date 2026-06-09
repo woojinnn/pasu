@@ -19,7 +19,11 @@ namespace Perp {
   type AdjustMarginContext = {
     meta: Core::ActionMeta,
     venue: PerpVenue,
-    positionId: String,
+    // Position referenced by `positionId` (on-chain) OR `(market, side)`
+    // (Hyperliquid updateIsolatedMargin) — at least one form is present.
+    positionId?: String,
+    market?: MarketRef,
+    side?: String,                      // "long" | "short"
     delta: String,                      // SignedI256 (signed)
     // AdjustMarginLiveInputs flattened — present on-chain, absent for HL
     // pre-sign (updateIsolatedMargin).

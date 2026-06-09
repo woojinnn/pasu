@@ -24,8 +24,9 @@ import { resolveHlMaster } from "./resolve-hl-master";
  * single tag covers both — a TWAP cannot evade an order-leverage cap.
  */
 const ORDER_TAG = "place_order";
-/** The leverage-change tag that triggers a cache invalidation. */
-const UPDATE_LEVERAGE_TAG = "hl_update_leverage";
+/** The leverage-change tag that triggers a cache invalidation (HL
+ * updateLeverage now decodes to the generic `Perp::ChangeLeverage`). */
+const UPDATE_LEVERAGE_TAG = "change_leverage";
 
 function asAssetIndex(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value >= 0
@@ -43,6 +44,7 @@ function assetIndexFromPayload(payload: VenueOrderPayload): number | null {
   if (!wire) return null;
   if (wire.kind === "order") return asAssetIndex(wire.order.a);
   if (wire.kind === "twap_order") return asAssetIndex(wire.assetIndex);
+  if (wire.kind === "update_leverage") return asAssetIndex(wire.assetIndex);
   return null;
 }
 
@@ -124,9 +126,10 @@ export async function collectHlLeverage(
 }
 
 /**
- * When the SW intercepts an `hl_update_leverage`, INVALIDATE the cached leverage
- * for (master, coin) so the NEXT order on that asset re-fetches the
- * authoritative `activeAssetData`.
+ * When the SW intercepts a leverage change (HL updateLeverage → the generic
+ * `change_leverage` action), INVALIDATE the cached leverage for (master, coin)
+ * so the NEXT order on that asset re-fetches the authoritative
+ * `activeAssetData`. The numeric asset index is read from the wire payload.
  *
  * SECURITY: we deliberately do NOT seed the cache from the page-asserted wire
  * `leverage` value. That value is unauthenticated MAIN-world input; seeding a
@@ -143,7 +146,7 @@ export async function noteHlLeverageUpdate(
 ): Promise<void> {
   try {
     if (action.action !== UPDATE_LEVERAGE_TAG) return;
-    const assetIndex = asAssetIndex(action.asset_index);
+    const assetIndex = assetIndexFromPayload(payload);
     if (assetIndex === null) return;
 
     const master = await resolveHlMaster(payload);

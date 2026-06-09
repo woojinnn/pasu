@@ -35,9 +35,7 @@ use super::{
     GOVERNANCE_PROPOSE_SCHEMA, GOVERNANCE_QUEUE_SCHEMA, GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
     GOVERNANCE_START_VOTE_SCHEMA, GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA, GOVERNANCE_VOTE_SCHEMA,
     HL_SEND_ASSET_SCHEMA,
-    HL_TOKEN_DELEGATE_SCHEMA,
-    HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
-    HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA,
+    HL_TOKEN_DELEGATE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA,
     HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
     LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
@@ -741,12 +739,6 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
     ActionEntry {
         domain: "hyperliquid_core",
-        action_tag: Some("hl_update_leverage"),
-        schema_text: HL_UPDATE_LEVERAGE_SCHEMA,
-        pascal_stub: "HlUpdateLeverage",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
         action_tag: Some("hl_withdraw"),
         schema_text: HL_WITHDRAW_SCHEMA,
         pascal_stub: "HlWithdraw",
@@ -816,12 +808,6 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("hl_token_delegate"),
         schema_text: HL_TOKEN_DELEGATE_SCHEMA,
         pascal_stub: "HlTokenDelegate",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_update_isolated_margin"),
-        schema_text: HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
-        pascal_stub: "HlUpdateIsolatedMargin",
     },
 ];
 
@@ -1296,8 +1282,8 @@ mod tests {
         // (domain, action_tag), so cancel_order is a distinct row from perp's.)
         assert_eq!(
             RESOLVER_TABLE.len(),
-            118,
-            "resolver table must have 118 rows"
+            116,
+            "resolver table must have 116 rows"
         );
     }
 

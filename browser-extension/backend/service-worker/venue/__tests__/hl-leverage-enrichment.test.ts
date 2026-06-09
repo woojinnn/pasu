@@ -315,16 +315,20 @@ describe("noteHlLeverageUpdate (invalidation, NOT page-seed)", () => {
     // Prime the cache with the authoritative value.
     expect(await client.leverageFor(MASTER, "BTC")).toBe(99);
 
-    // A page-asserted updateLeverage claiming leverage:1 must NOT poison the
-    // deny-path cache (the historical under-block vector).
+    // A page-asserted updateLeverage (now the generic `change_leverage` body)
+    // claiming leverage:1 must NOT poison the deny-path cache (the historical
+    // under-block vector). The asset index is read from the wire payload.
     const update = {
-      domain: "hyperliquid_core",
-      action: "hl_update_leverage",
-      asset_index: 0,
-      is_cross: true,
-      leverage: 1,
+      domain: "perp",
+      action: "change_leverage",
+      venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+      market: { symbol: "BTC", venue: { name: "hyperliquid" } },
+      new_leverage: "1",
     };
-    await noteHlLeverageUpdate(update, payload(), client);
+    const updatePayload = payload({
+      hlAction: { kind: "update_leverage", assetIndex: 0, isCross: true, leverage: 1 },
+    } as Partial<VenueOrderPayload>);
+    await noteHlLeverageUpdate(update, updatePayload, client);
 
     // The next read returns the AUTHORITATIVE 99 — never the wire-asserted 1 —
     // and a fresh activeAssetData fetch happened (cache was invalidated, not seeded).

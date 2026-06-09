@@ -11,7 +11,7 @@ namespace Perp {
     meta: Core::ActionMeta,
     venue: PerpVenue,
     market: MarketRef,
-    newLeverage: String,                // Decimal as string
+    newLeverage: decimal,               // Cedar decimal — comparable via .greaterThan(decimal("..."))
     // ChangeLeverageLiveInputs flattened — present on-chain, absent for HL
     // pre-sign (updateLeverage).
     maxLeverage?: String,

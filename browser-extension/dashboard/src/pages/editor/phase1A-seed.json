@@ -300,14 +300,14 @@
 ,
 {
   "id": "hl-confirm-high-leverage",
-  "cedar": "@id(\"hl-confirm-high-leverage\")\n@severity(\"warn\")\n@reason(\"Raising leverage above 20x on Hyperliquid — confirm before applying\")\nforbid(\n  principal,\n  action == HyperliquidCore::Action::\"HlUpdateLeverage\",\n  resource\n)\nwhen {\n  context.venue.name == \"hyperliquid\" && context.leverage > 20\n};",
+  "cedar": "@id(\"hl-confirm-high-leverage\")\n@severity(\"warn\")\n@reason(\"Raising leverage above 20x on Hyperliquid — confirm before applying\")\nforbid(principal, action == Perp::Action::\"ChangeLeverage\", resource)\nwhen {\n  context.venue.name == \"hyperliquid\"\n    && context.newLeverage.greaterThan(decimal(\"20.0\"))\n};",
   "manifest": {
     "id": "hl-confirm-high-leverage",
     "schema_version": 2,
     "trigger": {
       "where": {
         "action.tag": {
-          "eq": "hl_update_leverage"
+          "eq": "change_leverage"
         }
       }
     },

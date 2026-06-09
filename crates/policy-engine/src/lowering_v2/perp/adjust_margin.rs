@@ -6,7 +6,7 @@ use policy_transition::action::perp::{AdjustMarginAction, PerpPositionLive};
 
 use super::super::common::cedar::u256_hex;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
-use super::lower_perp_venue;
+use super::{lower_market_ref, lower_perp_venue, perp_side};
 
 /// Lower an `AdjustMarginAction` into the `Perp::AdjustMarginContext` shape.
 ///
@@ -22,10 +22,17 @@ pub(crate) fn lower(
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_perp_venue(&action.venue));
-    m.insert(
-        "positionId".into(),
-        Value::String(action.position_id.clone()),
-    );
+    // The position is referenced by `positionId` (on-chain) OR `(market, side)`
+    // (Hyperliquid); emit whichever the action carries.
+    if let Some(position_id) = &action.position_id {
+        m.insert("positionId".into(), Value::String(position_id.clone()));
+    }
+    if let Some(market) = &action.market {
+        m.insert("market".into(), lower_market_ref(market));
+    }
+    if let Some(side) = &action.side {
+        m.insert("side".into(), Value::String(perp_side(side).into()));
+    }
     // `delta` is a signed SignedI256: positive = deposit, negative = withdraw.
     m.insert("delta".into(), Value::String(action.delta.to_string()));
     // AdjustMarginLiveInputs flattened — emitted only when present (on-chain).
@@ -90,7 +97,9 @@ mod tests {
     fn build(delta: SignedI256, position_state: PerpPositionLive) -> ActionBody {
         let action = AdjustMarginAction {
             venue: sample_venue(),
-            position_id: "pos-123".into(),
+            position_id: Some("pos-123".into()),
+            market: None,
+            side: None,
             delta,
             live_inputs: Some(AdjustMarginLiveInputs {
                 position_state: live(position_state),
@@ -128,13 +137,17 @@ mod tests {
         assert_conforms("adjust_margin", &body, &onchain_meta());
     }
 
-    /// Hyperliquid pre-sign shape: `live_inputs: None` — `positionState` /
+    /// Hyperliquid pre-sign shape: referenced by `(market, side)` instead of a
+    /// `position_id`, `live_inputs: None` — `positionId` / `positionState` /
     /// `freeMarginAfter` are omitted and the context still conforms.
     #[test]
-    fn adjust_margin_hl_shape_no_live_inputs_conforms() {
+    fn adjust_margin_hl_shape_market_side_no_live_inputs_conforms() {
+        use policy_state::position::PerpSide;
         let action = AdjustMarginAction {
             venue: sample_venue(),
-            position_id: "pos-123".into(),
+            position_id: None,
+            market: Some(super::super::test_support::sample_market()),
+            side: Some(PerpSide::Long),
             delta: SignedI256::try_from(-100i64).unwrap(),
             live_inputs: None,
         };

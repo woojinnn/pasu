@@ -29,9 +29,6 @@ use policy_state::primitives::{Address, Decimal};
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "action")]
 pub enum HyperliquidCoreAction {
-    /// Change leverage for a market (`{"type":"updateLeverage"}`).
-    #[serde(rename = "hl_update_leverage")]
-    UpdateLeverage(HlUpdateLeverageAction),
     /// Withdraw USDC off the L1 to a destination (`{"type":"withdraw3"}`).
     #[serde(rename = "hl_withdraw")]
     Withdraw(HlWithdrawAction),
@@ -67,9 +64,6 @@ pub enum HyperliquidCoreAction {
     /// Delegate / undelegate stake to a validator (`{"type":"tokenDelegate"}`).
     #[serde(rename = "hl_token_delegate")]
     TokenDelegate(HlTokenDelegateAction),
-    /// Add / remove isolated margin (`{"type":"updateIsolatedMargin"}`).
-    #[serde(rename = "hl_update_isolated_margin")]
-    UpdateIsolatedMargin(HlUpdateIsolatedMarginAction),
     /// Any `/exchange` action not explicitly modeled above. Carries only the raw
     /// wire `type` string so a policy can gate or surface unrecognized actions
     /// (`HlUnknown` — policy default: warn / deny). Closes the silent-allow gap:
@@ -84,7 +78,6 @@ impl HyperliquidCoreAction {
     #[must_use]
     pub const fn action_tag(&self) -> &'static str {
         match self {
-            Self::UpdateLeverage(_) => "hl_update_leverage",
             Self::Withdraw(_) => "hl_withdraw",
             Self::UsdSend(_) => "hl_usd_send",
             Self::SpotSend(_) => "hl_spot_send",
@@ -96,7 +89,6 @@ impl HyperliquidCoreAction {
             Self::VaultTransfer(_) => "hl_vault_transfer",
             Self::SubAccountTransfer(_) => "hl_sub_account_transfer",
             Self::TokenDelegate(_) => "hl_token_delegate",
-            Self::UpdateIsolatedMargin(_) => "hl_update_isolated_margin",
             Self::Unknown(_) => "hl_unknown",
         }
     }
@@ -107,22 +99,6 @@ impl HyperliquidCoreAction {
     pub const fn venue_name(&self) -> Option<&'static str> {
         Some("hyperliquid")
     }
-}
-
-/// Leverage change: `{"type":"updateLeverage"}`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
-pub struct HlUpdateLeverageAction {
-    /// Asset index (`asset`).
-    pub asset_index: u32,
-    /// Resolved market symbol; `None` until resolved.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[tsify(optional)]
-    pub symbol: Option<String>,
-    /// `isCross` — cross (`true`) vs isolated (`false`) margin.
-    pub is_cross: bool,
-    /// New leverage multiplier (`leverage`).
-    pub leverage: u32,
 }
 
 /// USDC withdrawal off the L1: `{"type":"withdraw3"}`.
@@ -262,23 +238,6 @@ pub struct HlTokenDelegateAction {
     pub wei: Decimal,
 }
 
-/// Isolated-margin adjustment: `{"type":"updateIsolatedMargin"}`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
-pub struct HlUpdateIsolatedMarginAction {
-    /// Asset index (`asset`).
-    pub asset_index: u32,
-    /// Resolved market symbol; `None` until resolved.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[tsify(optional)]
-    pub symbol: Option<String>,
-    /// `isBuy` — side the margin adjustment applies to.
-    pub is_buy: bool,
-    /// Notional to add (positive) or remove (negative) (`ntli`), a decimal value
-    /// held as a string (can be negative).
-    pub ntli: Decimal,
-}
-
 /// Catch-all for an `/exchange` action not explicitly modeled.
 ///
 /// Holds only the raw wire `type` string (`{"type":"<actionType>"}`) — no
@@ -301,12 +260,6 @@ mod tests {
     #[test]
     fn action_tag_matches_serde() {
         let cases: Vec<HyperliquidCoreAction> = vec![
-            HyperliquidCoreAction::UpdateLeverage(HlUpdateLeverageAction {
-                asset_index: 0,
-                symbol: None,
-                is_cross: true,
-                leverage: 5,
-            }),
             HyperliquidCoreAction::Withdraw(HlWithdrawAction {
                 destination: Address::from([0x11; 20]),
                 amount: Decimal::new("100"),
@@ -358,12 +311,6 @@ mod tests {
                 validator: Address::from([0xaa; 20]),
                 is_undelegate: false,
                 wei: Decimal::new("1000000000"),
-            }),
-            HyperliquidCoreAction::UpdateIsolatedMargin(HlUpdateIsolatedMarginAction {
-                asset_index: 0,
-                symbol: None,
-                is_buy: true,
-                ntli: Decimal::new("-100"),
             }),
             HyperliquidCoreAction::Unknown(HlUnknownAction {
                 action_type: "convertToMultiSigUser".to_owned(),

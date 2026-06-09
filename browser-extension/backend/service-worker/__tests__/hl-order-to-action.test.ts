@@ -105,17 +105,33 @@ describe("hlOrderToAction", () => {
     });
   });
 
-  it("converts updateLeverage", () => {
+  it("converts updateLeverage to a Perp::ChangeLeverage (newLeverage decimal string)", () => {
     const { action } = hlOrderToAction(
       payload({ kind: "update_leverage", assetIndex: 1, isCross: false, leverage: 25 }, "ETH-USD"),
     );
     expect(action).toEqual({
-      domain: "hyperliquid_core",
-      action: "hl_update_leverage",
-      asset_index: 1,
-      is_cross: false,
-      leverage: 25,
-      symbol: "ETH-USD",
+      domain: "perp",
+      action: "change_leverage",
+      venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+      market: { symbol: "ETH-USD", venue: { name: "hyperliquid" } },
+      new_leverage: "25",
+    });
+  });
+
+  it("converts updateIsolatedMargin to a Perp::AdjustMargin (market+side+signed delta)", () => {
+    const { action } = hlOrderToAction(
+      payload(
+        { kind: "update_isolated_margin", assetIndex: 0, isBuy: false, ntli: "-100" },
+        "BTC",
+      ),
+    );
+    expect(action).toEqual({
+      domain: "perp",
+      action: "adjust_margin",
+      venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+      market: { symbol: "BTC", venue: { name: "hyperliquid" } },
+      side: "short",
+      delta: "-100",
     });
   });
 
