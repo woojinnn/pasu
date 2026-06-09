@@ -18,8 +18,6 @@ pub(crate) fn lower(
     action: &ChangeLeverageAction,
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
-    let li = &action.live_inputs;
-
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_perp_venue(&action.venue));
@@ -28,35 +26,38 @@ pub(crate) fn lower(
         "newLeverage".into(),
         Value::String(action.new_leverage.0.clone()),
     );
-    // ChangeLeverageLiveInputs flattened.
-    m.insert(
-        "maxLeverage".into(),
-        Value::String(li.max_leverage.value.0.clone()),
-    );
-    // `affectedPositions` (Vec<PositionId>) → Set<String>.
-    let affected: Vec<Value> = li
-        .affected_positions
-        .value
-        .iter()
-        .map(|id| Value::String(id.clone()))
-        .collect();
-    m.insert("affectedPositions".into(), Value::Array(affected));
-    // `newLiqPrices` (Vec<(PositionId, Option<Price>)>) →
-    // Set<{ positionId, liqPrice? }>. `liqPrice` is omitted when None.
-    let liq: Vec<Value> = li
-        .new_liq_prices
-        .value
-        .iter()
-        .map(|(id, price)| {
-            let mut e = Map::new();
-            e.insert("positionId".into(), Value::String(id.clone()));
-            if let Some(price) = price {
-                e.insert("liqPrice".into(), Value::String(price.0.clone()));
-            }
-            Value::Object(e)
-        })
-        .collect();
-    m.insert("newLiqPrices".into(), Value::Array(liq));
+    // ChangeLeverageLiveInputs flattened — emitted only when present
+    // (on-chain). Omitted for the Hyperliquid pre-sign path.
+    if let Some(li) = &action.live_inputs {
+        m.insert(
+            "maxLeverage".into(),
+            Value::String(li.max_leverage.value.0.clone()),
+        );
+        // `affectedPositions` (Vec<PositionId>) → Set<String>.
+        let affected: Vec<Value> = li
+            .affected_positions
+            .value
+            .iter()
+            .map(|id| Value::String(id.clone()))
+            .collect();
+        m.insert("affectedPositions".into(), Value::Array(affected));
+        // `newLiqPrices` (Vec<(PositionId, Option<Price>)>) →
+        // Set<{ positionId, liqPrice? }>. `liqPrice` is omitted when None.
+        let liq: Vec<Value> = li
+            .new_liq_prices
+            .value
+            .iter()
+            .map(|(id, price)| {
+                let mut e = Map::new();
+                e.insert("positionId".into(), Value::String(id.clone()));
+                if let Some(price) = price {
+                    e.insert("liqPrice".into(), Value::String(price.0.clone()));
+                }
+                Value::Object(e)
+            })
+            .collect();
+        m.insert("newLiqPrices".into(), Value::Array(liq));
+    }
     // `custom` is OMITTED — filled later by enrichment.
 
     Ok(ctx.lowered(r#"Perp::Action::"ChangeLeverage""#, Value::Object(m)))
@@ -80,7 +81,7 @@ mod tests {
             venue: sample_venue(),
             market: sample_market(),
             new_leverage: Decimal::new("10"),
-            live_inputs: ChangeLeverageLiveInputs {
+            live_inputs: Some(ChangeLeverageLiveInputs {
                 max_leverage: live(Decimal::new("20")),
                 affected_positions: live(vec!["pos-1".to_owned(), "pos-2".to_owned()]),
                 // Exercise both Some and None liqPrice arms.
@@ -88,7 +89,7 @@ mod tests {
                     ("pos-1".to_owned(), Some(Price::new("2500"))),
                     ("pos-2".to_owned(), None),
                 ]),
-            },
+            }),
         };
         (
             ActionBody::Perp(PerpAction::ChangeLeverage(action)),
@@ -100,5 +101,19 @@ mod tests {
     fn change_leverage_lowering_conforms_to_schema() {
         let (body, meta) = sample();
         assert_conforms("change_leverage", &body, &meta);
+    }
+
+    /// Hyperliquid pre-sign shape: `live_inputs: None` — the live fields are
+    /// omitted and the context still conforms (they are optional).
+    #[test]
+    fn change_leverage_hl_shape_no_live_inputs_conforms() {
+        let action = ChangeLeverageAction {
+            venue: sample_venue(),
+            market: sample_market(),
+            new_leverage: Decimal::new("10"),
+            live_inputs: None,
+        };
+        let body = ActionBody::Perp(PerpAction::ChangeLeverage(action));
+        assert_conforms("change_leverage", &body, &onchain_meta());
     }
 }

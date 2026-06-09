@@ -19,8 +19,11 @@ pub struct ChangeLeverageAction {
     pub market: MarketRef,
     /// New leverage multiplier.
     pub new_leverage: Decimal,
-    /// Live venue / position inputs.
-    pub live_inputs: ChangeLeverageLiveInputs,
+    /// Live venue / position inputs. `None` for Hyperliquid pre-sign (the
+    /// `updateLeverage` intent carries no live state).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub live_inputs: Option<ChangeLeverageLiveInputs>,
 }
 
 /// Live inputs read at execution time for `ChangeLeverageAction`.

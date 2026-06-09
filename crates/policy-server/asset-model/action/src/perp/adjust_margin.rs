@@ -20,8 +20,11 @@ pub struct AdjustMarginAction {
     /// Positive = deposit, negative = withdraw.
     #[tsify(type = "string")]
     pub delta: SignedI256,
-    /// Live position / margin inputs.
-    pub live_inputs: AdjustMarginLiveInputs,
+    /// Live position / margin inputs. `None` for Hyperliquid pre-sign (the
+    /// `updateIsolatedMargin` intent carries no live state).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub live_inputs: Option<AdjustMarginLiveInputs>,
 }
 
 /// Live inputs read at execution time for `AdjustMarginAction`.

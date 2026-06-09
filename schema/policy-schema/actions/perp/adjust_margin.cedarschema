@@ -21,9 +21,10 @@ namespace Perp {
     venue: PerpVenue,
     positionId: String,
     delta: String,                      // SignedI256 (signed)
-    // AdjustMarginLiveInputs flattened.
-    positionState: PerpPositionLive,
-    freeMarginAfter: String,            // U256
+    // AdjustMarginLiveInputs flattened — present on-chain, absent for HL
+    // pre-sign (updateIsolatedMargin).
+    positionState?: PerpPositionLive,
+    freeMarginAfter?: String,           // U256
     custom?: AdjustMarginCustomContext,
   };
 

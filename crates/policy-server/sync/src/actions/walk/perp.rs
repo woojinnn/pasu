@@ -292,7 +292,9 @@ fn walk_adjust(
     st: &mut Vec<StaleField>,
     sx: &mut WalkStats,
 ) {
-    let li = &a.live_inputs;
+    let Some(li) = &a.live_inputs else {
+        return;
+    };
     push_if_stale(
         st,
         sx,
@@ -318,7 +320,9 @@ fn walk_change_lev(
     st: &mut Vec<StaleField>,
     sx: &mut WalkStats,
 ) {
-    let li = &c.live_inputs;
+    let Some(li) = &c.live_inputs else {
+        return;
+    };
     push_if_stale(
         st,
         sx,
@@ -620,7 +624,9 @@ fn apply_decrease(d: &mut DecreasePerpAction, slot: &ActionSlot, value: Value, n
 }
 
 fn apply_adjust(a: &mut AdjustMarginAction, slot: &ActionSlot, value: Value, now: Time) {
-    let li = &mut a.live_inputs;
+    let Some(li) = &mut a.live_inputs else {
+        return;
+    };
     match slot {
         ActionSlot::PerpAdjustMarginPositionState => {
             if let Ok(v) = serde_json::from_value(value) {
@@ -637,7 +643,9 @@ fn apply_adjust(a: &mut AdjustMarginAction, slot: &ActionSlot, value: Value, now
 }
 
 fn apply_change_lev(c: &mut ChangeLeverageAction, slot: &ActionSlot, value: Value, now: Time) {
-    let li = &mut c.live_inputs;
+    let Some(li) = &mut c.live_inputs else {
+        return;
+    };
     match slot {
         ActionSlot::PerpChangeLeverageMaxLeverage => {
             if let Some(d) = value_to_decimal(&value) {

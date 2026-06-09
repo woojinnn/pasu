@@ -19,8 +19,6 @@ pub(crate) fn lower(
     action: &AdjustMarginAction,
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
-    let li = &action.live_inputs;
-
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
     m.insert("venue".into(), lower_perp_venue(&action.venue));
@@ -30,15 +28,18 @@ pub(crate) fn lower(
     );
     // `delta` is a signed SignedI256: positive = deposit, negative = withdraw.
     m.insert("delta".into(), Value::String(action.delta.to_string()));
-    // AdjustMarginLiveInputs flattened.
-    m.insert(
-        "positionState".into(),
-        lower_perp_position_live(&li.position_state.value),
-    );
-    m.insert(
-        "freeMarginAfter".into(),
-        Value::String(u256_hex(li.free_margin_after.value)),
-    );
+    // AdjustMarginLiveInputs flattened — emitted only when present (on-chain).
+    // Omitted for the Hyperliquid pre-sign path.
+    if let Some(li) = &action.live_inputs {
+        m.insert(
+            "positionState".into(),
+            lower_perp_position_live(&li.position_state.value),
+        );
+        m.insert(
+            "freeMarginAfter".into(),
+            Value::String(u256_hex(li.free_margin_after.value)),
+        );
+    }
     // `custom` is OMITTED — filled later by enrichment.
 
     Ok(ctx.lowered(r#"Perp::Action::"AdjustMargin""#, Value::Object(m)))
@@ -91,10 +92,10 @@ mod tests {
             venue: sample_venue(),
             position_id: "pos-123".into(),
             delta,
-            live_inputs: AdjustMarginLiveInputs {
+            live_inputs: Some(AdjustMarginLiveInputs {
                 position_state: live(position_state),
                 free_margin_after: live(U256::from(7_900_000_000u64)),
-            },
+            }),
         };
         ActionBody::Perp(PerpAction::AdjustMargin(action))
     }
@@ -124,6 +125,20 @@ mod tests {
             SignedI256::try_from(250i64).unwrap(),
             sample_position_live_no_liq(),
         );
+        assert_conforms("adjust_margin", &body, &onchain_meta());
+    }
+
+    /// Hyperliquid pre-sign shape: `live_inputs: None` — `positionState` /
+    /// `freeMarginAfter` are omitted and the context still conforms.
+    #[test]
+    fn adjust_margin_hl_shape_no_live_inputs_conforms() {
+        let action = AdjustMarginAction {
+            venue: sample_venue(),
+            position_id: "pos-123".into(),
+            delta: SignedI256::try_from(-100i64).unwrap(),
+            live_inputs: None,
+        };
+        let body = ActionBody::Perp(PerpAction::AdjustMargin(action));
         assert_conforms("adjust_margin", &body, &onchain_meta());
     }
 }

@@ -24,9 +24,16 @@ impl Reducer for ChangeLeverageAction {
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
         let mut delta = StateDelta::new();
 
+        // On-chain reduction requires live inputs (the Hyperliquid pre-sign
+        // path is evaluated through lowering/policy, not this reducer).
+        let li = self
+            .live_inputs
+            .as_ref()
+            .ok_or(ReducerError::MissingField("change_leverage.live_inputs"))?;
+
         // Leverage cap check.
         let new_lev = math::parse_decimal(&self.new_leverage)?;
-        let max_lev = math::parse_decimal(&self.live_inputs.max_leverage.value)?;
+        let max_lev = math::parse_decimal(&li.max_leverage.value)?;
         if !max_lev.is_zero() && new_lev > max_lev {
             return Err(ReducerError::Invariant(format!(
                 "change_leverage: requested {new_lev} > max {max_lev}"
@@ -38,9 +45,9 @@ impl Reducer for ChangeLeverageAction {
             ));
         }
 
-        let liq_prices = &self.live_inputs.new_liq_prices.value;
+        let liq_prices = &li.new_liq_prices.value;
 
-        for position_id in &self.live_inputs.affected_positions.value {
+        for position_id in &li.affected_positions.value {
             // Verify position kind before mutation.
             let position = state
                 .positions
@@ -163,11 +170,11 @@ mod tests {
                 venue: VenueRef::new("gmx_v2"),
             },
             new_leverage: Decimal::new(new_lev),
-            live_inputs: ChangeLeverageLiveInputs {
+            live_inputs: Some(ChangeLeverageLiveInputs {
                 max_leverage: live(Decimal::new(max_lev)),
                 affected_positions: live(affected),
                 new_liq_prices: live(liq),
-            },
+            }),
         }
     }
 
