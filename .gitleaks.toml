@@ -46,6 +46,10 @@ paths = [
   '''(^|/)crates/simulation/''',
   '''(^|/)crates/adapter/''',
   '''(^|/)schema/schema/''',
+  # dashboard codegen output (action lists / token-address tables / enrichment
+  # bindings derived from the schema + seeds — structured low-value data whose
+  # long literal arrays trip the generic-api-key entropy rule; never secrets)
+  '''(^|/)browser-extension/dashboard/src/.*\.generated\.ts$''',
 ]
 regexes = [
   '''0x[a-fA-F0-9]{40}\b''',                          # EVM addresses are never secrets

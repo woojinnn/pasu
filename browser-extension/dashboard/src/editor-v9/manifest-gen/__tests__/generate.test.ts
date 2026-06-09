@@ -207,4 +207,20 @@ describe("generateManifest", () => {
     expect(manifest).toBeUndefined();
     expect(errors.some((e) => e.message.includes("action"))).toBe(true);
   });
+
+  it("generates for a field lifted from the seeded defaults (pctOfHolding)", () => {
+    // pctOfHolding is registered from phase1A-seed.json with appliesTo
+    // ["erc20_transfer"] — the action tag is snake_cased, so it must match.
+    const policy = enrichmentPolicy({
+      id: "holding-pct-outflow-warn",
+      severity: "warn",
+      field: "pctOfHolding",
+      actionId: "Erc20Transfer",
+    });
+    const { manifest, errors } = generateManifest(policy);
+    expect(errors).toEqual([]);
+    expect(manifest?.policy_rpc[0].method).toBe("token.outflow_pct_of_holding");
+    expect(manifest?.trigger.where["action.tag"].eq).toBe("erc20_transfer");
+    expect(manifest?.custom_context.fields).toEqual({ pctOfHolding: "decimal" });
+  });
 });

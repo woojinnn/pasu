@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:catalog": "node scripts/gen-field-catalog.mjs",
+    "gen:registry": "node scripts/gen-enrichment-registry.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

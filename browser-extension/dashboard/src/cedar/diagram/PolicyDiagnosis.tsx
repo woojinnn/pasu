@@ -18,6 +18,7 @@ import {
 } from "../../server-api/diagnosis";
 import { SAMPLE_ACTIONS } from "../../editor-v9/sample-actions";
 import { buildProbes, diagnoseFromResult } from "../diagnosis";
+import { useAddressBook, shortAddress } from "../../hooks/useAddressBook";
 import { PolicyDiagram } from "./PolicyDiagram";
 
 /** The diagnosis context minus the probes (the caller's policy supplies those). */
@@ -47,6 +48,14 @@ export function PolicyDiagnosis({
   );
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Resolve 0x addresses in diagram labels to friendly names (my wallet / token).
+  const book = useAddressBook();
+  const humanizeLabel = (text: string): string =>
+    text.replace(/0x[0-9a-fA-F]{40}/g, (m) => {
+      const e = book.lookup(m);
+      return e ? `${e.name}(${shortAddress(m)})` : m;
+    });
 
   // A diagnosis is bound to one policy; drop it when the policy changes.
   const autoRanFor = useRef<PolicyIR | null>(null);
@@ -157,6 +166,7 @@ export function PolicyDiagnosis({
         highlightPaths={diag?.culprits}
         erroredPaths={diag?.errored}
         compact={compact}
+        humanizeLabel={humanizeLabel}
       />
     </div>
   );

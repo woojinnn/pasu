@@ -16,8 +16,9 @@ function roleColor(role: Role): string {
   return `hsl(${ROLE_COLOUR[role]} 60% 52%)`;
 }
 
+/** The TYPE chip — one fixed vocabulary, independent of unit (Rule 2). The
+ *  unit (USD / bp / 토큰 / …) is rendered as a separate pill, never here. */
 function typeChip(f: FieldOption): string {
-  if (f.unit) return f.unit;
   const k: FieldKind = f.fieldKind;
   switch (k) {
     case "primitive.Bool":
@@ -48,12 +49,16 @@ export function FieldCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [active, setActive] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const selected = fields.find((f) => f.path === value);
+  const advancedCount = useMemo(() => fields.filter((f) => f.advanced).length, [fields]);
 
   // Flat filtered list (drives keyboard nav) + grouped view (drives render).
+  // Engine-internal "advanced" fields stay hidden until the user expands them
+  // or starts searching (a query searches everything).
   const flat = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const match = (f: FieldOption) =>
@@ -61,10 +66,16 @@ export function FieldCombobox({
       f.label.toLowerCase().includes(needle) ||
       f.path.toLowerCase().includes(needle) ||
       (f.desc?.toLowerCase().includes(needle) ?? false);
-    const kept = fields.filter(match);
-    // Stable order: by role, then original order.
-    return kept.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
-  }, [fields, q]);
+    const kept = fields.filter(
+      (f) => match(f) && (!f.advanced || showAdvanced || needle.length > 0 || f.path === value),
+    );
+    // Stable order: by role, then prominent-before-advanced, then original.
+    return kept.sort(
+      (a, b) =>
+        ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) ||
+        Number(a.advanced ?? false) - Number(b.advanced ?? false),
+    );
+  }, [fields, q, showAdvanced, value]);
 
   const groups = useMemo(() => {
     const m = new Map<Role, FieldOption[]>();
@@ -76,7 +87,7 @@ export function FieldCombobox({
     return ROLE_ORDER.filter((r) => m.has(r)).map((r) => ({ role: r, items: m.get(r)! }));
   }, [flat]);
 
-  useEffect(() => setActive(0), [q, open]);
+  useEffect(() => setActive(0), [q, open, showAdvanced]);
 
   // Close on outside click.
   useEffect(() => {
@@ -156,6 +167,7 @@ export function FieldCombobox({
                       <div className="fc-opt-top">
                         <span className="fc-opt-label">{f.label}</span>
                         {f.source === "custom" && <span className="fc-badge">보강</span>}
+                        {f.unit && <span className="fc-unit">{f.unit}</span>}
                         <span className="fc-chip">{typeChip(f)}</span>
                       </div>
                       {f.desc && <div className="fc-opt-desc">{f.desc}</div>}
@@ -164,6 +176,15 @@ export function FieldCombobox({
                 })}
               </div>
             ))}
+            {advancedCount > 0 && !q.trim() && (
+              <button
+                type="button"
+                className="fc-adv"
+                onClick={() => setShowAdvanced((s) => !s)}
+              >
+                {showAdvanced ? "▾ 고급 필드 숨기기" : `▸ 고급 필드 보기 (${advancedCount})`}
+              </button>
+            )}
           </div>
         </div>
       )}

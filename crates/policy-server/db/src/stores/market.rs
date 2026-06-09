@@ -777,6 +777,25 @@ pub async fn unwatch(pool: &PgPool, user_id: &str, listing_id: Uuid) -> DbResult
     Ok(())
 }
 
+/// Hard-delete a listing owned by `publisher_id`. Child rows (versions,
+/// installs, reviews, watches) cascade via FK; any listing forked from this one
+/// has its `forked_from` cleared first (that FK has no cascade). Returns true
+/// when a row owned by the caller was actually removed.
+pub async fn delete_listing(pool: &PgPool, listing_id: Uuid, publisher_id: &str) -> DbResult<bool> {
+    query("UPDATE market_listings SET forked_from = NULL WHERE forked_from = $1")
+        .bind(listing_id)
+        .execute(pool)
+        .await
+        .map_err(|e| DbError::Invariant(e.to_string()))?;
+    let res = query("DELETE FROM market_listings WHERE id = $1 AND publisher_id = $2")
+        .bind(listing_id)
+        .bind(publisher_id)
+        .execute(pool)
+        .await
+        .map_err(|e| DbError::Invariant(e.to_string()))?;
+    Ok(res.rows_affected() > 0)
+}
+
 pub async fn list_watches(pool: &PgPool, user_id: &str) -> DbResult<Vec<ListingRow>> {
     let rows = query(
         "SELECT l.id, l.slug, l.kind, l.publisher_id, l.publisher_tier,

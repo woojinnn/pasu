@@ -18,7 +18,7 @@
  */
 import { useMemo } from "react";
 
-import type { ActionScope, BinaryOp, Expr, PolicyIR } from "../blocks/ir";
+import type { BinaryOp, Expr, PolicyIR } from "../blocks/ir";
 import { isAllOf, setLiteralOperand } from "../diagnosis/membership";
 import { eachChild, pathByNode } from "../diagnosis/path";
 import { naturalCondition } from "../nl";
@@ -26,7 +26,15 @@ import { getGloss } from "../../editor-v9/gloss/paths";
 
 import "./policy-diagram.css";
 
-type NodeKind = "root" | "when" | "unless" | "and" | "or" | "not" | "if" | "leaf";
+type NodeKind = "root" | "when" | "unless" | "and" | "or" | "not" | "if" | "leaf" | "memberset";
+
+/** A membership fan-out (`x in [a, b, …]`) rendered as ONE box with the members
+ *  as chips (instead of N connected boxes). Each member keeps its canonical path
+ *  so a diagnosis can still highlight the individual chip that matched. */
+interface MemberSet {
+  mode: "any" | "all";
+  members: { text: string; path: string }[];
+}
 
 interface DNode {
   /** Structural path, stable across renders; the unit `highlightPaths` targets. */
@@ -37,21 +45,12 @@ interface DNode {
   /** Optional secondary line (e.g. the action under a FORBID head, or an
    *  IF branch tag like "then"). */
   detail?: string;
+  /** Present on a `memberset` node — the chips to render inside the box. */
+  memberset?: MemberSet;
   children: DNode[];
 }
 
 // ── IR → tree ────────────────────────────────────────────────────────────
-
-function actionLabel(a: ActionScope): string {
-  switch (a.kind) {
-    case "scopeAll":
-      return "any action";
-    case "scopeEq":
-      return a.entity.id;
-    case "scopeIn":
-      return a.entities.map((e) => e.id).join(" / ") || "any action";
-  }
-}
 
 /** Flatten a same-operator binary chain into its leaf operands, preserving each
  *  operand's identity so its canonical path resolves via {@link pathByNode}:
@@ -138,14 +137,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
   ) {
     const inner = e.operand;
     const negated: Expr = { kind: "binary", op: NEGATE_OP[inner.op] ?? inner.op, left: inner.left, right: inner.right };
-    return {
-      path: pathOf.get(inner) ?? path,
-      kind: "leaf",
-      title:
-        exprToKorean(negated) ??
-        `${exprToText(inner.left)} ${NEGATE_BINARY[inner.op]} ${exprToText(inner.right)}`,
-      children: [],
-    };
+    return { path: pathOf.get(inner) ?? path, kind: "leaf", ...leafParts(negated), children: [] };
   }
   if (e.kind === "unary" && e.op === "!") {
     return { path, kind: "not", title: "NOT", children: [exprToNode(e.operand, pathOf)] };
@@ -170,38 +162,52 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
   if (e.kind === "binary") {
     const mem = setLiteralOperand(e);
     if (mem) {
+      const fieldPath = attrPath(mem.other);
       return {
         path,
-        kind: "or", // alternation styling — "any of these members"
-        title: isAllOf(e.op) ? "다음 전부" : "다음 중 하나",
-        detail: exprToText(mem.other),
-        children: mem.set.elements.map((m) => ({
-          path: pathOf.get(m) ?? "?",
-          kind: "leaf",
-          title: exprToText(m),
-          children: [],
-        })),
+        kind: "memberset",
+        title: (fieldPath && getGloss(fieldPath)?.ko) || exprToText(mem.other),
+        detail: isAllOf(e.op) ? "다음 전부 포함" : "다음 중 하나",
+        memberset: {
+          mode: isAllOf(e.op) ? "all" : "any",
+          members: mem.set.elements.map((m) => ({ text: exprToText(m), path: pathOf.get(m) ?? "?" })),
+        },
+        children: [],
       };
     }
   }
-  return { path, kind: "leaf", title: exprToKorean(e) ?? exprToText(e), children: [] };
+  return { path, kind: "leaf", ...leafParts(e), children: [] };
 }
 
 function buildTree(ir: PolicyIR): DNode {
   const pathOf = pathByNode(ir);
-  return {
-    path: "root",
-    kind: "root",
-    title: ir.effect === "forbid" ? "FORBID" : "PERMIT",
-    detail: actionLabel(ir.scope.action),
-    children: ir.conditions.map((c, i) => ({
-      // Display wrapper for the clause; its body carries the canonical `c{i}.body`.
-      path: `clause${i}`,
-      kind: c.kind === "unless" ? "unless" : "when",
-      title: c.kind === "unless" ? "UNLESS" : "WHEN",
-      children: [exprToNode(c.body, pathOf)],
-    })),
-  };
+  const clauses: DNode[] = ir.conditions.map((c, i) => ({
+    // Display wrapper for the clause; its body carries the canonical `c{i}.body`.
+    path: `clause${i}`,
+    kind: c.kind === "unless" ? "unless" : "when",
+    title: c.kind === "unless" ? "UNLESS" : "WHEN",
+    children: [exprToNode(c.body, pathOf)],
+  }));
+  // The FORBID/PERMIT head is dropped — the action is shown in the form's
+  // trigger, and the effect is implied. A single clause becomes the root; with
+  // both when + unless we keep a light neutral junction (no FORBID box).
+  if (clauses.length === 0) {
+    return { path: "root", kind: "when", title: "조건 없음 · 항상 적용", children: [] };
+  }
+  if (clauses.length === 1) {
+    const clause = clauses[0];
+    // A single WHEN over one leaf / one memberset reads fine on its own — drop
+    // the wrapper box. Keep it for gates and for UNLESS (예외).
+    if (
+      clause.kind === "when" &&
+      clause.children.length === 1 &&
+      (clause.children[0].kind === "leaf" || clause.children[0].kind === "memberset")
+    ) {
+      return clause.children[0];
+    }
+    return clause;
+  }
+  return { path: "root", kind: "root", title: "규칙", children: clauses };
 }
 
 /**
@@ -214,6 +220,9 @@ export function policyDiagramPaths(ir: PolicyIR): string[] {
   const out: string[] = [];
   const walk = (n: DNode) => {
     if (n.kind !== "root" && n.kind !== "when" && n.kind !== "unless") out.push(n.path);
+    // memberset chips carry their own canonical paths (rendered as chips, not
+    // child boxes) — keep them in the path set so diagnosis alignment holds.
+    if (n.memberset) for (const m of n.memberset.members) out.push(m.path);
     n.children.forEach(walk);
   };
   walk(buildTree(ir));
@@ -291,6 +300,48 @@ function exprToKorean(e: Expr): string | null {
     return naturalCondition({ subject: getGloss(path)?.ko ?? path, op: EXT_TO_OP[e.fn], value: valueExprText(e.args[1]) });
   }
   return null;
+}
+
+/** Operator → compact symbol for the leaf's value line. */
+const OP_SYM: Record<string, string> = {
+  "==": "=",
+  "!=": "≠",
+  "<": "<",
+  "<=": "≤",
+  ">": ">",
+  ">=": "≥",
+  contains: "포함",
+  in: "중 하나",
+};
+
+/** Split a leaf comparison into a two-line card: `title` = field label,
+ *  `detail` = operator + value (+ unit). Falls back to a single `title` line
+ *  for anything that isn't a plain field-vs-value comparison. */
+function leafParts(e: Expr): { title: string; detail?: string } {
+  const fromCompare = (
+    path: string | null,
+    op: string,
+    rhs: Expr,
+  ): { title: string; detail?: string } | null => {
+    if (!path) return null;
+    const g = getGloss(path);
+    const unit = g?.unit?.ko ? ` ${g.unit.ko}` : "";
+    const emptyStr = rhs.kind === "lit" && rhs.litType === "string" && rhs.value === "";
+    if (emptyStr) {
+      return { title: g?.ko ?? path, detail: op === "==" ? "비어 있음" : "비어 있지 않음" };
+    }
+    return { title: g?.ko ?? path, detail: `${OP_SYM[op] ?? op} ${valueExprText(rhs)}${unit}` };
+  };
+
+  if (e.kind === "binary" && OP_SYM[e.op]) {
+    const parts = fromCompare(attrPath(e.left), e.op, e.right);
+    if (parts) return parts;
+  }
+  if (e.kind === "ext" && EXT_TO_OP[e.fn] && e.args.length === 2) {
+    const parts = fromCompare(attrPath(e.args[0]), EXT_TO_OP[e.fn], e.args[1]);
+    if (parts) return parts;
+  }
+  return { title: exprToKorean(e) ?? exprToText(e) };
 }
 
 /** `decimal("0.05")` / `ip("…")` used as a value → just its inner literal text. */
@@ -371,61 +422,119 @@ const MIN_W = 64;
 const MAX_W = 380;
 const LABEL_CAP = 48;
 
+// memberset (chip box) sizing
+const MS_HEADER = 38;
+const MS_CHIP_H = 22;
+const MS_CHIP_GAP = 6;
+const MS_PAD = 12;
+/** Box dimensions for a memberset — width grows with member count (capped),
+ *  height is computed conservatively (2 chips/row) so chips never clip. */
+function membersetSize(n: DNode): { w: number; h: number } {
+  const count = n.memberset?.members.length ?? 1;
+  const w = count <= 2 ? 200 : 300;
+  const rows = Math.max(1, Math.ceil(count / 2));
+  return { w, h: MS_HEADER + rows * (MS_CHIP_H + MS_CHIP_GAP) + MS_PAD };
+}
+
 interface Placed extends DNode {
   x: number; // center x
   y: number; // top y
+  h: number; // box height (NODE_H, or taller for memberset)
   w: number; // box width
   children: Placed[];
 }
 
+const STACK_GAP = 9;
+/** Stack a gate's children vertically (instead of one wide row) when it has
+ *  many leaf-only children — e.g. an allowlist fan-out. Keeps each box full
+ *  size & readable, and the diagram narrow enough to fit the pane. */
+function isStacked(n: DNode): boolean {
+  return (
+    n.children.length > 3 &&
+    n.children.every((c) => c.kind === "leaf" && c.children.length === 0)
+  );
+}
+
 function nodeWidth(n: DNode): number {
+  if (n.kind === "memberset") return membersetSize(n).w;
   const text = Math.max(n.title.length, (n.detail ?? "").length);
   return Math.min(MAX_W, Math.max(MIN_W, Math.min(text, LABEL_CAP) * CHAR_W + PAD_X));
 }
+/** Box height of a node (taller for a memberset chip box). */
+function nodeHeight(n: DNode): number {
+  return n.kind === "memberset" ? membersetSize(n).h : NODE_H;
+}
 
-/** Two-pass layout: size subtrees, then place. Returns the placed root and the
- *  total canvas extents. */
+/** Two-pass layout: size subtrees (width + height), then place. Returns the
+ *  placed root and the total canvas extents. */
 function layout(root: DNode): { placed: Placed; width: number; height: number } {
-  // First pass — subtree width (max of own box and children span).
   const subtreeW = new Map<DNode, number>();
-  const measure = (n: DNode): number => {
+  const subtreeH = new Map<DNode, number>();
+  const measure = (n: DNode): void => {
     const own = nodeWidth(n);
     if (n.children.length === 0) {
       subtreeW.set(n, own);
-      return own;
+      subtreeH.set(n, nodeHeight(n));
+      return;
     }
-    const kids = n.children.map(measure);
-    const span = kids.reduce((a, b) => a + b, 0) + H_GAP * (n.children.length - 1);
-    const w = Math.max(own, span);
-    subtreeW.set(n, w);
-    return w;
+    n.children.forEach(measure);
+    const childW = n.children.map((c) => subtreeW.get(c)!);
+    const childH = n.children.map((c) => subtreeH.get(c)!);
+    if (isStacked(n)) {
+      // children stacked in a column: width = widest, height = sum.
+      subtreeW.set(n, Math.max(own, Math.max(...childW)));
+      const colH = childH.reduce((a, b) => a + b, 0) + STACK_GAP * (n.children.length - 1);
+      subtreeH.set(n, NODE_H + V_GAP + colH);
+    } else {
+      const span = childW.reduce((a, b) => a + b, 0) + H_GAP * (n.children.length - 1);
+      subtreeW.set(n, Math.max(own, span));
+      subtreeH.set(n, NODE_H + V_GAP + Math.max(...childH));
+    }
   };
   measure(root);
 
-  // Second pass — assign positions. `left` is the subtree's left edge.
+  // Second pass — assign positions. `left` = subtree's left edge, `top` = its y.
   let maxBottom = 0;
-  const place = (n: DNode, left: number, depth: number): Placed => {
+  const place = (n: DNode, left: number, top: number): Placed => {
     const w = nodeWidth(n);
+    const h = nodeHeight(n);
     const subW = subtreeW.get(n) ?? w;
-    const y = depth * (NODE_H + V_GAP);
-    maxBottom = Math.max(maxBottom, y + NODE_H);
+    maxBottom = Math.max(maxBottom, top + h);
     if (n.children.length === 0) {
-      return { ...n, x: left + subW / 2, y, w, children: [] };
+      return { ...n, x: left + subW / 2, y: top, w, h, children: [] };
+    }
+    const childTop = top + h + V_GAP;
+    if (isStacked(n)) {
+      const cx = left + subW / 2;
+      let cy = childTop;
+      const placedKids = n.children.map((c) => {
+        const cSub = subtreeW.get(c)!;
+        const pk = place(c, cx - cSub / 2, cy);
+        cy += subtreeH.get(c)! + STACK_GAP;
+        return pk;
+      });
+      return { ...n, x: cx, y: top, w, h, children: placedKids };
     }
     let cursor = left;
     const placedKids = n.children.map((c) => {
       const cSub = subtreeW.get(c) ?? nodeWidth(c);
-      const pk = place(c, cursor, depth + 1);
+      const pk = place(c, cursor, childTop);
       cursor += cSub + H_GAP;
       return pk;
     });
     const first = placedKids[0].x;
     const last = placedKids[placedKids.length - 1].x;
-    return { ...n, x: (first + last) / 2, y, w, children: placedKids };
+    return { ...n, x: (first + last) / 2, y: top, w, h, children: placedKids };
   };
   const placed = place(root, 0, 0);
   return { placed, width: subtreeW.get(root) ?? nodeWidth(root), height: maxBottom };
 }
+
+/** Strip the surrounding quotes a string literal carries from `exprToText`. */
+const stripQuotes = (s: string): string => s.replace(/^"|"$/g, "");
+/** Shorten any leftover full 0x address to `0x1234…abcd` (chips stay compact). */
+const shortenAddrs = (t: string): string =>
+  t.replace(/0x[0-9a-fA-F]{40}/g, (m) => `${m.slice(0, 6)}…${m.slice(-4)}`);
 
 // ── Render ───────────────────────────────────────────────────────────────
 
@@ -439,6 +548,9 @@ export interface PolicyDiagramProps {
   erroredPaths?: readonly string[];
   /** Tighter sizing for cramped surfaces (e.g. the confirm popup). */
   compact?: boolean;
+  /** Optional resolver: rewrite 0x addresses in node labels to friendly names.
+   *  The caller owns the address book (a hook), keeping this module pure. */
+  humanizeLabel?: (text: string) => string;
 }
 
 export function PolicyDiagram({
@@ -446,8 +558,13 @@ export function PolicyDiagram({
   highlightPaths,
   erroredPaths,
   compact,
+  humanizeLabel,
 }: PolicyDiagramProps) {
   const model = useMemo(() => (ir ? layout(buildTree(ir)) : null), [ir]);
+
+  // Friendly-name resolver for 0x addresses inside labels (supplied by the
+  // caller, which owns the address book). Identity when not provided.
+  const humanizeAddrs = humanizeLabel ?? ((s: string) => s);
 
   if (!ir || !model) {
     return <div className="pdiagram-empty">표시할 정책이 없습니다</div>;
@@ -462,7 +579,8 @@ export function PolicyDiagram({
   if (active) {
     const mark = (n: Placed): boolean => {
       const childHit = n.children.map(mark).some(Boolean);
-      const hit = hl.has(n.path) || err.has(n.path) || childHit;
+      const memberHit = n.memberset?.members.some((m) => hl.has(m.path) || err.has(m.path)) ?? false;
+      const hit = hl.has(n.path) || err.has(n.path) || memberHit || childHit;
       if (hit) onTrace.add(n.path);
       return hit;
     };
@@ -479,24 +597,45 @@ export function PolicyDiagram({
   const walk = (n: Placed) => {
     const cx = n.x + PAD;
     const cy = n.y + PAD;
-    for (const c of n.children) {
-      const dimmed = active && !onTrace.has(c.path);
-      edges.push(
-        <path
-          key={`e-${n.path}-${c.path}`}
-          className={`pd-edge${dimmed ? " pd-dim" : ""}`}
-          d={`M ${cx} ${cy + NODE_H} C ${cx} ${cy + NODE_H + V_GAP / 2}, ${
-            c.x + PAD
-          } ${c.y + PAD - V_GAP / 2}, ${c.x + PAD} ${c.y + PAD}`}
-        />,
-      );
-      walk(c);
+    if (isStacked(n)) {
+      // Vertical chain: parent → first child, then each child to the next. The
+      // boxes are column-aligned, so adjacent-only segments never cross a box.
+      const chain: Placed[] = [n, ...n.children];
+      for (let i = 1; i < chain.length; i++) {
+        const a = chain[i - 1];
+        const b = chain[i];
+        const dimmed = active && !onTrace.has(b.path);
+        edges.push(
+          <path
+            key={`e-${a.path}-${b.path}`}
+            className={`pd-edge${dimmed ? " pd-dim" : ""}`}
+            d={`M ${a.x + PAD} ${a.y + PAD + a.h} L ${b.x + PAD} ${b.y + PAD}`}
+          />,
+        );
+      }
+      n.children.forEach(walk);
+    } else {
+      for (const c of n.children) {
+        const dimmed = active && !onTrace.has(c.path);
+        edges.push(
+          <path
+            key={`e-${n.path}-${c.path}`}
+            className={`pd-edge${dimmed ? " pd-dim" : ""}`}
+            d={`M ${cx} ${cy + n.h} C ${cx} ${cy + n.h + V_GAP / 2}, ${
+              c.x + PAD
+            } ${c.y + PAD - V_GAP / 2}, ${c.x + PAD} ${c.y + PAD}`}
+          />,
+        );
+        walk(c);
+      }
     }
-    const culprit = hl.has(n.path);
+    const msHit = n.memberset?.members.some((m) => hl.has(m.path)) ?? false;
+    const culprit = hl.has(n.path) || msHit;
     const errored = !culprit && err.has(n.path);
     const dimmed = active && !onTrace.has(n.path);
-    const label =
-      n.title.length > LABEL_CAP ? `${n.title.slice(0, LABEL_CAP - 1)}…` : n.title;
+    const title = humanizeAddrs(n.title);
+    const detail = n.detail ? humanizeAddrs(n.detail) : undefined;
+    const label = title.length > LABEL_CAP ? `${title.slice(0, LABEL_CAP - 1)}…` : title;
     nodes.push(
       <g
         key={`n-${n.path}`}
@@ -505,16 +644,43 @@ export function PolicyDiagram({
         }${dimmed ? " pd-dim" : ""}`}
         transform={`translate(${cx - n.w / 2}, ${cy})`}
       >
-        <rect className="pd-box" width={n.w} height={NODE_H} rx={n.kind === "leaf" ? 7 : 10} />
-        <text className="pd-title" x={n.w / 2} y={n.detail ? 17 : 24}>
-          {label}
-        </text>
-        {n.detail && (
-          <text className="pd-detail" x={n.w / 2} y={30}>
-            {n.detail.length > LABEL_CAP ? `${n.detail.slice(0, LABEL_CAP - 1)}…` : n.detail}
-          </text>
+        {n.memberset ? (
+          <foreignObject width={n.w} height={n.h}>
+            <div className="pd-ms">
+              <div className="pd-ms-head">
+                <span className="pd-ms-field">{label}</span>
+                {detail && <span className="pd-ms-mode">{detail}</span>}
+              </div>
+              <div className="pd-ms-chips">
+                {n.memberset.members.map((m, i) => {
+                  const chipHit = hl.has(m.path);
+                  const chipErr = !chipHit && err.has(m.path);
+                  return (
+                    <span
+                      key={i}
+                      className={`pd-ms-chip${chipHit ? " hit" : ""}${chipErr ? " err" : ""}`}
+                    >
+                      {shortenAddrs(humanizeAddrs(stripQuotes(m.text)))}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </foreignObject>
+        ) : (
+          <>
+            <rect className="pd-box" width={n.w} height={n.h} rx={n.kind === "leaf" ? 7 : 10} />
+            <text className="pd-title" x={n.w / 2} y={detail ? 17 : 24}>
+              {label}
+            </text>
+            {detail && (
+              <text className="pd-detail" x={n.w / 2} y={30}>
+                {detail.length > LABEL_CAP ? `${detail.slice(0, LABEL_CAP - 1)}…` : detail}
+              </text>
+            )}
+            <title>{detail ? `${title} · ${detail}` : title}</title>
+          </>
         )}
-        <title>{n.detail ? `${n.title} · ${n.detail}` : n.title}</title>
       </g>,
     );
   };
@@ -524,9 +690,8 @@ export function PolicyDiagram({
     <div className={`pdiagram${compact ? " is-compact" : ""}`}>
       <svg
         className="pdiagram-svg"
-        width={W}
-        height={H}
         viewBox={`0 0 ${W} ${H}`}
+        style={{ width: "100%", maxWidth: W, height: "auto" }}
         role="img"
         aria-label="정책 구조 다이어그램"
       >

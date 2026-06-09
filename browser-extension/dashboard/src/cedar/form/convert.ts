@@ -32,6 +32,7 @@ import type {
   GroupOp,
 } from "./model";
 import { isGroupNode } from "./model";
+import { guardsForPath } from "./schema-catalog";
 
 const REQUEST_VARS = new Set<VarName>(["principal", "action", "resource", "context"]);
 
@@ -128,6 +129,13 @@ export function leafToExpr(leaf: FormLeaf): Expr {
   // Decimal comparisons (< <= > >=) use the extension-method form.
   const extFn = leaf.value.kind === "decimal" ? OP_TO_EXT[leaf.op] : undefined;
   if (extFn) return { kind: "ext", fn: extFn, args: [attr, rhs] };
+  // `in` (the form's "다음 중 하나") is membership in a LITERAL set. Cedar's
+  // `in` operator is for entity-hierarchy only, so `attr in [strings]` fails
+  // schema validation ("expected AnyEntity but saw String"). Emit the set's
+  // `.contains(attr)` form instead — that's how Cedar tests set membership.
+  if (leaf.op === "in") {
+    return { kind: "binary", op: "contains", left: rhs, right: attr };
+  }
   return { kind: "binary", op: leaf.op, left: attr, right: rhs };
 }
 
@@ -139,9 +147,9 @@ function exprToLeaf(e: Expr): FormLeaf | null {
     if (!path || !value || value.kind !== "decimal") return null;
     return { fieldPath: path, op: EXT_TO_OP[e.fn], value };
   }
-  // `[set].contains(attr)` is membership over a literal set — normalize it to
-  // the form's `attr in [set]` so allowlist policies open as a single `in` leaf
-  // (the form re-emits it as `in`, an equivalent Cedar).
+  // `[set].contains(attr)` is membership over a literal set — open it as the
+  // form's single `in` leaf (and the form re-emits it as the same
+  // `[set].contains(attr)`, the Cedar-valid form of set membership).
   if (e.kind === "binary" && e.op === "contains" && e.left.kind === "set") {
     const path = exprToPath(e.right);
     const value = exprToValue(e.left);
@@ -180,21 +188,43 @@ function fold(op: "&&" | "||", terms: Expr[]): Expr {
   return terms.reduce((left, right) => ({ kind: "binary", op, left, right }));
 }
 
-/** `has` guards for every distinct `context.custom.<name>` referenced — safe to
- *  prepend at the top-level AND (positive polarity), prevents fail-open. */
-function customGuards(leaves: FormLeaf[]): Expr[] {
-  const names: string[] = [];
-  for (const l of leaves) {
-    if (l.fieldPath.startsWith(CUSTOM_PREFIX)) {
-      const name = l.fieldPath.slice(CUSTOM_PREFIX.length).split(".")[0];
-      if (name && !names.includes(name)) names.push(name);
+/**
+ * `has` guards every optional field needs before it is compared — the form's
+ * safety net against fail-open policies (an unguarded optional attribute makes
+ * the whole `when`/`unless` short-circuit to false). Covers:
+ *   - custom fields (`context.custom.<name>` — guarded by construction), and
+ *   - schema-optional fields, whose exact guard chain comes from the generated
+ *     catalog under the policy's action (`context has tokenOut`,
+ *     `context.tokenOut.key has address`, …).
+ *
+ * Guards are de-duped preserving order (parent-before-child) and prepended at
+ * the top-level AND (positive polarity) so Cedar short-circuits cleanly.
+ */
+function presenceGuards(leaves: FormLeaf[], trigger: FormTrigger): Expr[] {
+  const seen = new Set<string>();
+  const pairs: { of: string; attr: string }[] = [];
+  const add = (of: string, attr: string) => {
+    const k = `${of}|${attr}`;
+    if (!seen.has(k)) {
+      seen.add(k);
+      pairs.push({ of, attr });
     }
+  };
+  const guardPath = (path: string) => {
+    if (path.startsWith(CUSTOM_PREFIX)) {
+      const name = path.slice(CUSTOM_PREFIX.length).split(".")[0];
+      add("context", "custom");
+      if (name) add("context.custom", name);
+    } else {
+      for (const g of guardsForPath(trigger, path)) add(g.of, g.attr);
+    }
+  };
+  for (const l of leaves) {
+    guardPath(l.fieldPath);
+    // field-vs-field RHS: the compared-against path may itself be optional.
+    if (l.value.kind === "field") guardPath(l.value.path);
   }
-  if (names.length === 0) return [];
-  const ctx: Expr = { kind: "var", name: "context" };
-  const ctxHasCustom: Expr = { kind: "has", of: ctx, attr: "custom" };
-  const custom: Expr = { kind: "attr", of: ctx, attr: "custom" };
-  return [ctxHasCustom, ...names.map((n): Expr => ({ kind: "has", of: custom, attr: n }))];
+  return pairs.map(({ of, attr }): Expr => ({ kind: "has", of: pathToExpr(of), attr }));
 }
 
 /** A single condition's Cedar expr, wrapped in `!(…)` when negated. */
@@ -243,13 +273,13 @@ function allLeaves(nodes: FormNode[]): FormCondition[] {
  * sub-expr. `has` guards sit at a top-level AND (safe short-circuit). Null when
  * empty.
  */
-function clauseBody(nodes: FormNode[]): Expr | null {
+function clauseBody(nodes: FormNode[], trigger: FormTrigger): Expr | null {
   // Drop empty group boxes (a box the user emptied) so `fold` never sees an
   // empty list.
   const present = nodes.filter((n) => !isGroupNode(n) || n.conds.length > 0);
   if (present.length === 0) return null;
   const body = fold("||", splitRuns(present).map((run) => fold("&&", run.map(nodeExpr))));
-  const guards = customGuards(allLeaves(present));
+  const guards = presenceGuards(allLeaves(present), trigger);
   return guards.length > 0 ? fold("&&", [...guards, body]) : body;
 }
 
@@ -345,9 +375,9 @@ export function formToIr(model: FormModel): PolicyIR {
       : { kind: "scopeAll" };
 
   const conditions: Condition[] = [];
-  const whenBody = clauseBody(model.when);
+  const whenBody = clauseBody(model.when, model.trigger);
   if (whenBody) conditions.push({ kind: "when", body: whenBody });
-  const unlessBody = clauseBody(model.unless);
+  const unlessBody = clauseBody(model.unless, model.trigger);
   if (unlessBody) conditions.push({ kind: "unless", body: unlessBody });
 
   return {

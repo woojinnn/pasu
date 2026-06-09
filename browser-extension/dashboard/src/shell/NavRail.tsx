@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -18,9 +19,27 @@ export function NavRail() {
   const pendingCount = findingsQ.data?.filter((f) => f.user_decision === null).length ?? 0;
 
   const initials = (meQ.data?.email ?? "??").slice(0, 2).toUpperCase();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
+
   const onSignOut = () => {
+    setMenuOpen(false);
     logout();
     navigate("/login", { replace: true });
+  };
+  const onProfile = () => {
+    setMenuOpen(false);
+    navigate("/profile");
   };
 
   return (
@@ -53,13 +72,32 @@ export function NavRail() {
         <RailItem to="/settings" label="Settings" icon={<SettingsIcon />} />
       </div>
 
-      <div className="nav-bottom">
-        <button className="nav-user" onClick={onSignOut} title="Sign out">
+      <div className="nav-bottom" ref={menuRef}>
+        {menuOpen && (
+          <div className="nav-usermenu" role="menu">
+            <button type="button" className="nav-usermenu-item" onClick={onProfile} role="menuitem">
+              <ProfileIcon />
+              프로필
+            </button>
+            <button type="button" className="nav-usermenu-item danger" onClick={onSignOut} role="menuitem">
+              <SignOutIcon />
+              로그아웃
+            </button>
+          </div>
+        )}
+        <button
+          className={`nav-user${menuOpen ? " open" : ""}`}
+          onClick={() => setMenuOpen((v) => !v)}
+          title="계정"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+        >
           <span className="av">{initials}</span>
           <div className="meta">
             <div className="nm">{meQ.data?.email ?? "—"}</div>
             <div className="em">{meQ.data?.user_id ?? ""}</div>
           </div>
+          <span className="nav-user-caret"><CaretUpIcon /></span>
         </button>
       </div>
     </nav>
@@ -138,5 +176,22 @@ const SettingsIcon = () => (
   <svg viewBox="0 0 24 24" {...stroke}>
     <circle cx="12" cy="12" r="3" />
     <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+  </svg>
+);
+const ProfileIcon = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" {...stroke}>
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+  </svg>
+);
+const SignOutIcon = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" {...stroke}>
+    <path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" />
+    <path d="M10 8 6 12l4 4M6 12h11" />
+  </svg>
+);
+const CaretUpIcon = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" {...stroke}>
+    <path d="m6 14 6-6 6 6" />
   </svg>
 );

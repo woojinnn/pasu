@@ -163,6 +163,69 @@
   width: 10px;
   height: 10px;
 }
+.ev2-badge-pkg { position: relative; cursor: default; }
+
+/* hover tooltip: which packages contain this policy, and each one's on/off.
+   position:fixed so it escapes the scroll container's overflow clipping. */
+.ev2-pkgtip {
+  position: fixed;
+  z-index: 200;
+  min-width: 180px;
+  background: var(--slate-900, #0f172a);
+  color: var(--fog-50, #f8fafc);
+  border-radius: 9px;
+  padding: 7px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-weight: 500;
+  pointer-events: none;
+}
+.ev2-pkgtip-h {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slate-400, #94a3b8);
+  padding: 3px 7px 5px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+.ev2-pkgtip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.ev2-pkgtip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--slate-500, #64748b);
+  flex-shrink: 0;
+}
+.ev2-pkgtip-row.on .ev2-pkgtip-dot {
+  background: var(--pass-500, #22c55e);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+.ev2-pkgtip-nm {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fog-100, #f1f5f9);
+}
+.ev2-pkgtip-st {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slate-400, #94a3b8);
+  flex-shrink: 0;
+}
+.ev2-pkgtip-row.on .ev2-pkgtip-st {
+  color: var(--pass-400, #4ade80);
+}
 .ev2-trow {
   cursor: grab;
 }
@@ -260,39 +323,18 @@
 .ev2-pkg-mrow:hover {
   background: var(--fog-200, var(--fog-300));
 }
-/* per-member "armed" toggle: include this policy when the package activates */
-.ev2-pkg-mtg {
-  appearance: none;
-  width: 26px;
-  height: 15px;
-  border-radius: var(--r-pill);
-  background: var(--fog-600);
-  border: 0;
-  position: relative;
-  display: inline-block;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.ev2-pkg-mtg .sw {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 11px;
-  height: 11px;
+/* per-member status dot: reflects whether the policy is currently on (the
+   package is on, or it is kept on by another package). Read-only — package
+   on/off is the control. */
+.ev2-pkg-mdot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--surface);
-  transition: transform 120ms ease;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+  background: var(--fog-600);
+  flex-shrink: 0;
 }
-.ev2-pkg-mtg.on {
+.ev2-pkg-mdot.on {
   background: var(--pass-500);
-}
-.ev2-pkg-mtg.on .sw {
-  transform: translateX(11px);
-}
-.ev2-pkg-mtg:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 .ev2-pkg-mrow.muted .ev2-pkg-mnm {
   color: var(--slate-300);
@@ -1781,3 +1823,63 @@
     transform: translateY(0);
   }
 }
+
+/* ── policy-in-package toggle ask modal ── */
+.ptm-bd {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid; place-items: center; padding: 24px;
+}
+.ptm {
+  width: min(440px, 100%);
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+.ptm-h { padding: 20px 22px 14px; }
+.ptm-t { font-size: 16px; font-weight: 800; color: var(--slate-900); }
+.ptm-s { font-size: 13px; color: var(--slate-500); margin-top: 5px; line-height: 1.5; }
+.ptm-s b { color: var(--slate-800); }
+
+.ptm-opts { display: flex; flex-direction: column; gap: 8px; padding: 0 18px 18px; }
+.ptm-opt {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  text-align: left; width: 100%;
+  border: 1px solid var(--hairline); border-radius: 11px;
+  padding: 12px 14px; background: var(--surface); cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.ptm-opt:hover { background: var(--fog-200, var(--fog-300)); border-color: var(--sage-300); }
+.ptm-opt.primary { border-color: var(--slate-900); background: var(--slate-900); }
+.ptm-opt.primary .ptm-opt-t { color: #fff; }
+.ptm-opt.primary .ptm-opt-d { color: var(--slate-300); }
+.ptm-opt.primary:hover { background: #000; }
+.ptm-opt-t { font-size: 13.5px; font-weight: 700; color: var(--slate-900); }
+.ptm-opt-d { font-size: 11.5px; color: var(--slate-500); }
+.ptm-cancel {
+  border: 0; background: transparent; color: var(--slate-500);
+  font-size: 13px; font-weight: 600; padding: 9px; border-radius: 9px; cursor: pointer;
+}
+.ptm-cancel:hover { background: var(--fog-300); color: var(--slate-700); }
+
+/* select sub-step */
+.ptm-select { padding: 0 18px 16px; }
+.ptm-select-list { display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow-y: auto; }
+.ptm-pkg {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 9px; cursor: pointer; font-size: 13px;
+}
+.ptm-pkg:hover { background: var(--fog-200, var(--fog-300)); }
+.ptm-pkg input { width: 15px; height: 15px; accent-color: var(--slate-800); }
+.ptm-pkg-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--slate-400); flex-shrink: 0; }
+.ptm-pkg-dot.on { background: var(--pass-500); }
+.ptm-pkg-nm { flex: 1; min-width: 0; color: var(--slate-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptm-pkg-st { font-size: 11px; font-weight: 600; color: var(--slate-400); }
+.ptm-select-foot { display: flex; align-items: center; margin-top: 12px; }
+.ptm-spc { flex: 1; }
+.ptm-opt.inline {
+  flex-direction: row; width: auto; align-items: center;
+  padding: 9px 16px; border-radius: 10px; font-size: 13px; font-weight: 700;
+}
+.ptm-opt.inline:disabled { opacity: 0.45; cursor: not-allowed; }

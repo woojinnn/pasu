@@ -73,7 +73,7 @@ export {
 
 export { listTransactions, type TxRow } from "./transactions";
 
-export { listTokens, type TokenCatalogRow } from "./tokens";
+export { listTokens, tokenAddress, type TokenCatalogRow } from "./tokens";
 
 // Catalog endpoints (policy schema, templates, examples,
 // spenders, single policy fetch).
@@ -174,6 +174,7 @@ export {
   getListing,
   getListingVersion,
   createListing,
+  deleteListing,
   createVersion,
   installListing,
   listReviews,

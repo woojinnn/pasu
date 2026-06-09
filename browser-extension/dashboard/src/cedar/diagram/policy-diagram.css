@@ -53,7 +53,7 @@
 }
 .pdiagram-svg {
   display: block;
-  min-width: 100%;
+  margin: 0 auto;
 }
 .pdiagram-empty {
   display: flex;
@@ -77,6 +77,7 @@
   fill: var(--surface-raised, #fff);
   stroke: var(--hairline, #d7dbe0);
   stroke-width: 1.4;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.08));
 }
 .pd-title {
   text-anchor: middle;
@@ -95,19 +96,22 @@
 
 /* Root / clause / gate accents */
 .pd-root .pd-box {
-  fill: var(--slate-900);
-  stroke: var(--slate-900);
+  fill: var(--fog-200, #eef1f5);
+  stroke: var(--hairline, #d7dbe0);
 }
-.pd-root .pd-title { fill: #fff; font-weight: 700; }
-.pd-root .pd-detail { fill: rgba(255, 255, 255, 0.72); }
+.pd-root .pd-title { fill: var(--slate-500); font-weight: 700; letter-spacing: 0.02em; }
 
-.pd-when .pd-box,
-.pd-unless .pd-box {
-  fill: var(--surface);
-  stroke-dasharray: 4 3;
+/* WHEN = the blocking condition (green), UNLESS = exception (amber). */
+.pd-when .pd-box {
+  fill: var(--pass-50, #f0fdf4);
+  stroke: var(--pass-300, #86efac);
 }
-.pd-when .pd-title { fill: var(--slate-600); }
-.pd-unless .pd-title { fill: var(--warn-700, #8a6d3b); }
+.pd-unless .pd-box {
+  fill: var(--warn-50, #fffbeb);
+  stroke: var(--warn-300, #fcd34d);
+}
+.pd-when .pd-title { fill: var(--pass-800, #166534); }
+.pd-unless .pd-title { fill: var(--warn-800, #92400e); }
 
 .pd-and .pd-box { fill: var(--info-50, #eef2f7); stroke: var(--info-300, #aab8c8); }
 .pd-or .pd-box { fill: var(--warn-50, #f7f2e8); stroke: var(--warn-300, #d8c08a); }
@@ -118,9 +122,17 @@
 .pd-not .pd-title,
 .pd-if .pd-title { font-weight: 700; letter-spacing: 0.04em; }
 
+/* Leaf = an actual condition; the load-bearing content, so give it weight. */
+.pd-leaf .pd-box {
+  fill: var(--surface, #fff);
+  stroke: var(--slate-300, #cbd5e1);
+  stroke-width: 1.5;
+}
 .pd-leaf .pd-title {
-  font-weight: 500;
-  font-size: 11.5px;
+  font-weight: 600;
+  font-size: 12px;
+  fill: var(--slate-800);
+  font-family: inherit;
 }
 
 /* Diagnosis: the blamed leaf/path → red; off-trace branches → dimmed. */
@@ -142,3 +154,67 @@
 
 .pd-edge.pd-dim,
 .pd-node.pd-dim { opacity: 0.32; }
+
+/* memberset = a membership fan-out rendered as one box of chips */
+.pd-ms {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  background: var(--warn-50, #f7f2e8);
+  border: 1.4px solid var(--warn-300, #d8c08a);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  font-family: var(--ff-sans, system-ui, sans-serif);
+}
+.pd-ms-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.pd-ms-field {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--slate-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pd-ms-mode {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--warn-800, #92400e);
+  flex-shrink: 0;
+}
+.pd-ms-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-content: flex-start;
+}
+.pd-ms-chip {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--ff-mono, ui-monospace, monospace);
+  color: var(--slate-700);
+  background: var(--surface, #fff);
+  border: 1px solid var(--hairline, #d7dbe0);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.pd-ms-chip.hit {
+  background: var(--fail-100, #fee2e2);
+  border-color: var(--fail-400, #f87171);
+  color: var(--fail-800, #991b1b);
+}
+.pd-ms-chip.err {
+  background: var(--warn-100, #fef3c7);
+  border-color: var(--warn-400, #fbbf24);
+}
+/* the memberset box manages its own bg/border via .pd-ms (no rect) */
+.pd-memberset.pd-culprit .pd-ms { box-shadow: 0 0 0 2px var(--fail-400, #f87171); }

@@ -37,6 +37,7 @@ import { HistoryPage } from "./pages/HistoryPage";
 import { MarketPage } from "./pages/MarketPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 
 // On an extension page the URL is `…/options.html` (a real file, no dev
 // server rewriting unknown paths to index.html), so path-based routing finds
@@ -67,6 +68,7 @@ const router = createRouter([
           { path: "history", element: <HistoryPage /> },
           { path: "market", element: <MarketPage /> },
           { path: "market/:slug", element: <MarketDetailPage /> },
+          { path: "profile", element: <ProfilePage /> },
           { path: "*", element: <Navigate to="/" replace /> },
         ],
       },

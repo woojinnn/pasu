@@ -1,14 +1,14 @@
 import type { ManagedPolicy, PolicySet } from "../../../server-api";
 
-/** Combined view-state of a row. The legacy invariant — absent `life`
- *  is treated as `publish` — keeps pre-flag entries enforceable. */
-export function isDraft(p: ManagedPolicy): boolean {
-  return p.life === "draft";
+/** There is no draft lifecycle anymore — a policy only exists once saved, and
+ *  saving always makes it live. Kept as a stub so legacy `life:"draft"` rows
+ *  (created before the change) render as ordinary, toggleable policies. */
+export function isDraft(_p: ManagedPolicy): boolean {
+  return false;
 }
 
-/** Whether the row should render as "on". Draft rows are never on. */
-export function rowOn(p: ManagedPolicy, enabled: boolean): boolean {
-  if (isDraft(p)) return false;
+/** Whether the row should render as "on" — simply its enabled bit. */
+export function rowOn(_p: ManagedPolicy, enabled: boolean): boolean {
   return enabled;
 }
 

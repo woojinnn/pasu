@@ -108,13 +108,40 @@
 }
 .nav-rail:hover .nav-item .dot-badge, .nav-rail:focus-within .nav-item .dot-badge { opacity: 0; }
 
-.nav-bottom { margin-top: auto; padding-top: 8px; }
+.nav-bottom { margin-top: auto; padding-top: 8px; position: relative; }
 .nav-user {
   display: flex; align-items: center; gap: 12px;
   margin: 0 10px; padding: 8px 10px; border-radius: 10px;
   transition: background 120ms ease; cursor: pointer;
 }
-.nav-user:hover { background: var(--fog-300); }
+.nav-user:hover, .nav-user.open { background: var(--fog-300); }
+.nav-user-caret {
+  margin-left: auto; color: var(--slate-400); display: grid; place-items: center;
+  opacity: 0; transition: opacity 180ms 100ms ease;
+}
+.nav-rail:hover .nav-user-caret, .nav-rail:focus-within .nav-user-caret { opacity: 1; }
+.nav-rail:not(:hover):not(:focus-within) .nav-user-caret { display: none; }
+
+/* account popover above the user row */
+.nav-usermenu {
+  position: absolute; left: 10px; right: 10px; bottom: calc(100% + 6px);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+  padding: 6px; z-index: 40;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.nav-usermenu-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; color: var(--slate-700);
+  background: transparent; border: 0; cursor: pointer; text-align: left;
+}
+.nav-usermenu-item:hover { background: var(--fog-300); }
+.nav-usermenu-item.danger { color: var(--fail-700); }
+.nav-usermenu-item.danger:hover { background: var(--fail-50); }
+.nav-rail:not(:hover):not(:focus-within) .nav-usermenu { display: none; }
 .nav-user .av {
   width: 28px; height: 28px; border-radius: 50%;
   background: var(--slate-500); color: var(--fog-50);

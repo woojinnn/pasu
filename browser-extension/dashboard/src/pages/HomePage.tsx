@@ -10,15 +10,18 @@ import {
   getEnabledPolicyIds,
   listAuditVerdicts,
   listManagedPolicies,
+  setEnabledPolicyIds,
   subscribeToBroadcast,
   syncWallet,
   type DashboardSummary,
   type DashboardWalletSummary,
+  type ManagedPolicy,
   type VerdictDto,
 } from "../server-api";
 
 import { AddWalletModal } from "../components/AddWalletModal";
 import { RenameWalletModal } from "../components/RenameWalletModal";
+import { nameFromPolicy } from "./editor/policy-meta";
 import { Topbar } from "../shell/Topbar";
 import "./home.css";
 
@@ -108,6 +111,48 @@ export function HomePage() {
   const totalManagedCount = managed.length;
   const policiesLoading = managedQ.isLoading || enabledQ.isLoading;
 
+  // Policies "about" a wallet: their Cedar text references the wallet's address
+  // (e.g. a recipient block / allowlist entry). Addresses are lowercased on
+  // install, so match case-insensitively.
+  const relatedByWallet = useMemo(() => {
+    const m = new Map<string, ManagedPolicy[]>();
+    for (const w of wallets) {
+      const addr = w.address.toLowerCase();
+      m.set(
+        w.address,
+        managed.filter((p) => (p.text ?? "").toLowerCase().includes(addr)),
+      );
+    }
+    return m;
+  }, [wallets, managed]);
+
+  // Optimistic enable/disable, mirroring the editor list so a wallet-card toggle
+  // and the editor stay in sync.
+  const toggleMut = useMutation({
+    mutationFn: async (next: string[]) => {
+      await setEnabledPolicyIds(next);
+      return next;
+    },
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: ["enabled-policy-ids"] });
+      const previous = qc.getQueryData<string[]>(["enabled-policy-ids"]) ?? [];
+      qc.setQueryData(["enabled-policy-ids"], next);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["enabled-policy-ids"], ctx.previous);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+    },
+  });
+  const togglePolicy = (id: string, on: boolean) => {
+    const next = new Set(enabledSet);
+    if (on) next.add(id);
+    else next.delete(id);
+    toggleMut.mutate([...next]);
+  };
+
   return (
     <>
       <Topbar
@@ -137,6 +182,9 @@ export function HomePage() {
         error={summaryQ.error}
         agg={walletStatusAgg}
         verdictsByAddr={verdictsByAddr}
+        relatedByWallet={relatedByWallet}
+        enabledSet={enabledSet}
+        onTogglePolicy={togglePolicy}
         onAddWallet={() => setAddOpen(true)}
       />
 
@@ -232,6 +280,9 @@ function WalletList({
   error,
   agg,
   verdictsByAddr,
+  relatedByWallet,
+  enabledSet,
+  onTogglePolicy,
   onAddWallet,
 }: {
   wallets: DashboardWalletSummary[];
@@ -239,6 +290,9 @@ function WalletList({
   error: unknown;
   agg: { pass: number; warn: number; fail: number };
   verdictsByAddr: Map<string, VerdictDto[]>;
+  relatedByWallet: Map<string, ManagedPolicy[]>;
+  enabledSet: Set<string>;
+  onTogglePolicy: (id: string, on: boolean) => void;
   onAddWallet: () => void;
 }) {
   return (
@@ -279,6 +333,9 @@ function WalletList({
               key={w.address}
               w={w}
               verdicts={verdictsByAddr.get(w.address) ?? []}
+              related={relatedByWallet.get(w.address) ?? []}
+              enabledSet={enabledSet}
+              onTogglePolicy={onTogglePolicy}
             />
           ))}
         </div>
@@ -290,13 +347,20 @@ function WalletList({
 function WalletCard({
   w,
   verdicts,
+  related,
+  enabledSet,
+  onTogglePolicy,
 }: {
   w: DashboardWalletSummary;
   verdicts: VerdictDto[];
+  related: ManagedPolicy[];
+  enabledSet: Set<string>;
+  onTogglePolicy: (id: string, on: boolean) => void;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [renameOpen, setRenameOpen] = useState(false);
+  const [policiesOpen, setPoliciesOpen] = useState(false);
 
   // Click the wallet identity row → open this wallet in the Assets tab,
   // pre-selected (`?wallet=`). The action buttons below sit in a separate row
@@ -388,6 +452,43 @@ function WalletCard({
         {syncMut.isSuccess && <span className="sync-result">✓ 완료</span>}
         {syncMut.error && <span className="sync-result" style={{ color: "var(--fail-600)" }}>실패: {String(syncMut.error)}</span>}
       </div>
+
+      {related.length > 0 && (
+        <div className="wallet-policies">
+          <button
+            type="button"
+            className="wp-head"
+            onClick={() => setPoliciesOpen((v) => !v)}
+            aria-expanded={policiesOpen}
+          >
+            <span className={`wp-caret${policiesOpen ? " open" : ""}`}>▶</span>
+            이 지갑 관련 정책 <b>{related.length}</b>
+            <span className="wp-onoff">
+              {related.filter((p) => enabledSet.has(p.id)).length}/{related.length} 켜짐
+            </span>
+          </button>
+          {policiesOpen &&
+            related.map((p) => {
+              const on = enabledSet.has(p.id);
+              return (
+                <div key={p.id} className={`wp-row${on ? "" : " off"}`}>
+                  <Link to={`/editor/${encodeURIComponent(p.id)}`} className="wp-name" title="에디터에서 열기">
+                    {nameFromPolicy(p)}
+                  </Link>
+                  <button
+                    type="button"
+                    className={`wp-tg${on ? " on" : ""}`}
+                    onClick={() => onTogglePolicy(p.id, !on)}
+                    title={on ? "이 정책 끄기" : "이 정책 켜기"}
+                    aria-pressed={on}
+                  >
+                    <span className="sw" />
+                  </button>
+                </div>
+              );
+            })}
+        </div>
+      )}
 
       <RenameWalletModal
         open={renameOpen}

@@ -15,6 +15,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { blocksToText } from "../../../cedar";
 import type { PolicyIR } from "../../../cedar/blocks/ir";
 import { naturalCondition } from "../../../cedar/nl";
+import { useAddressBook, shortAddress, type AddressEntry } from "../../../hooks/useAddressBook";
+import { PolicyDiagram } from "../../../cedar/diagram/PolicyDiagram";
+import { AddressInput, AddressSetInput } from "./AddressPicker";
 import {
   emptyFormModel,
   fieldsForTrigger,
@@ -22,6 +25,7 @@ import {
   irToForm,
   isGroupNode,
   KNOWN_ACTIONS,
+  ACTION_GROUPS,
   operatorsFor,
   valueKindForField,
   type FieldOption,
@@ -30,6 +34,7 @@ import {
   type FormModel,
   type FormNode,
   type FormOp,
+  type FormTrigger,
   type FormValue,
   type GroupOp,
 } from "../../../cedar/form";
@@ -41,7 +46,16 @@ import "./policy-form.css";
 
 export interface PolicyFormPaneProps {
   initialModel?: FormModel | null;
-  onChange: (next: { cedarText: string; ir: PolicyIR; model: FormModel }) => void;
+  /** `manifest` is the effective manifest to persist — the user's hand-edited
+   *  override when `manifestOverridden`, otherwise the auto-generated one
+   *  (`undefined` = none). */
+  onChange: (next: {
+    cedarText: string;
+    ir: PolicyIR;
+    model: FormModel;
+    manifest: unknown;
+    manifestOverridden: boolean;
+  }) => void;
 }
 
 const OP_LABEL: Record<FormOp, string> = {
@@ -90,9 +104,6 @@ function valueKindFor(field: FieldOption | undefined, op: FormOp): FormValue["ki
   return field ? valueKindForField(field.fieldKind) : "string";
 }
 
-/** EVM address shape — used to validate/hint address-typed value inputs. */
-const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
-const isAddr = (s: string) => s === "" || ADDR_RE.test(s.trim());
 
 /** Known enum value suggestions (no machine-readable enum list exists; these are
  *  the ones we're confident about — shown as datalist hints, not enforced). */
@@ -143,7 +154,8 @@ function moveCond(
 
 export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) {
   const [model, setModel] = useState<FormModel>(() => initialModel ?? emptyFormModel());
-  const [cedar, setCedar] = useState<string>("");
+  // We no longer display the Cedar text (the right pane shows the diagram), but
+  // we still build it to push up via onChange and to surface conversion errors.
   const [cedarError, setCedarError] = useState<string | null>(null);
 
   const fields = useMemo(() => fieldsForTrigger(model.trigger), [model.trigger]);
@@ -153,18 +165,44 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
     for (const f of fields) m.set(f.path, f);
     return m;
   }, [fields]);
-  const ctx = useMemo<EditorCtx>(() => ({ fields, rhsFields, fieldByPath }), [fields, rhsFields, fieldByPath]);
+  const addrBook = useAddressBook();
+  const ctx = useMemo<EditorCtx>(
+    () => ({ fields, rhsFields, fieldByPath, lookupAddr: addrBook.lookup }),
+    [fields, rhsFields, fieldByPath, addrBook.lookup],
+  );
+  // Resolve 0x addresses in the structure diagram to friendly names.
+  const humanizeAddrs = (text: string): string =>
+    text.replace(/0x[0-9a-fA-F]{40}/g, (m) => {
+      const e = addrBook.lookup(m);
+      return e ? `${e.name}(${shortAddress(m)})` : m;
+    });
 
   const ir = useMemo(() => formToIr(model), [model]);
 
-  // Validity badge: cedar rendered + manifest generates cleanly + the IR is
-  // still form-representable (round-trips). Manifest gen is pure/sync.
-  const manifestErrors = useMemo(
-    () => generateManifest(ir, undefined, { id: model.id, severity: model.severity }).errors,
+  // Validity badge + manifest preview: cedar rendered + manifest generates
+  // cleanly + the IR is still form-representable (round-trips). Manifest gen is
+  // pure/sync — the same call the save path makes, so the preview matches what
+  // gets persisted.
+  const gen = useMemo(
+    () => generateManifest(ir, undefined, { id: model.id, severity: model.severity }),
     [ir, model.id, model.severity],
   );
+  const manifestErrors = gen.errors;
   const roundTrips = useMemo(() => irToForm(ir) !== null, [ir]);
   const valid = !cedarError && manifestErrors.length === 0;
+  const [manifestOpen, setManifestOpen] = useState(false);
+  // Manual manifest override. `null` = use the auto-generated manifest.
+  const [manifestText, setManifestText] = useState<string | null>(null);
+  // The effective manifest to persist + its parse error (if the override is
+  // invalid JSON we fall back to the auto manifest so save never breaks).
+  const { manifest: effectiveManifest, parseErr: manifestParseErr } = useMemo(() => {
+    if (manifestText === null) return { manifest: gen.manifest, parseErr: null as string | null };
+    try {
+      return { manifest: JSON.parse(manifestText) as unknown, parseErr: null as string | null };
+    } catch (e) {
+      return { manifest: gen.manifest, parseErr: e instanceof Error ? e.message : "JSON 형식 오류" };
+    }
+  }, [manifestText, gen.manifest]);
   const enrichCount = useMemo(
     () =>
       new Set(
@@ -175,7 +213,16 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
       ).size,
     [model.when, model.unless],
   );
-  const triggerText = model.trigger.kind === "actionEq" ? model.trigger.id : "모든 동작";
+  const trig = model.trigger;
+  // Cascading trigger picker: 분류(group) → 동작(action). `currentGroup` is
+  // `"*"` for the any-action case (no second dropdown).
+  const currentAction =
+    trig.kind === "actionEq"
+      ? KNOWN_ACTIONS.find((k) => k.entityType === trig.entityType && k.id === trig.id)
+      : undefined;
+  const currentGroup = trig.kind === "actionEq" ? currentAction?.group ?? ACTION_GROUPS[0]?.group ?? "*" : "*";
+  const groupActions = ACTION_GROUPS.find((g) => g.group === currentGroup)?.actions ?? [];
+  const triggerText = trig.kind === "actionEq" ? currentAction?.label ?? trig.id : "모든 동작";
 
   // Keep onChange in a ref so the sync effect depends only on `ir`.
   const onChangeRef = useRef(onChange);
@@ -188,9 +235,14 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
       void blocksToText(ir)
         .then((text) => {
           if (cancelled) return;
-          setCedar(text);
           setCedarError(null);
-          onChangeRef.current({ cedarText: text, ir, model });
+          onChangeRef.current({
+            cedarText: text,
+            ir,
+            model,
+            manifest: effectiveManifest,
+            manifestOverridden: manifestText !== null,
+          });
         })
         .catch((err: unknown) => {
           if (cancelled) return;
@@ -201,9 +253,24 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [ir, model]);
+  }, [ir, model, effectiveManifest, manifestText]);
 
   const patch = (next: Partial<FormModel>) => setModel((m) => ({ ...m, ...next }));
+
+  /** Change the trigger. Because the available fields are action-specific, any
+   *  real change clears the conditions (언제 위험한가요?) and 예외 — they would
+   *  reference fields the new action doesn't have. */
+  const setTrigger = (next: FormTrigger) =>
+    setModel((m) => {
+      const same =
+        (m.trigger.kind === "any" && next.kind === "any") ||
+        (m.trigger.kind === "actionEq" &&
+          next.kind === "actionEq" &&
+          m.trigger.entityType === next.entityType &&
+          m.trigger.id === next.id);
+      if (same) return m;
+      return { ...m, trigger: next, when: [], unless: [] };
+    });
 
   return (
     <div className="pf-pane">
@@ -214,22 +281,48 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
             <span className="pf-num">1</span> 무엇을 검사하나요? <span className="pf-sub">어떤 거래에 적용할지 골라요</span>
           </h3>
           <div className="pf-row">
-            <label className="pf-label">검사 대상</label>
+            <label className="pf-label">분류</label>
             <select
               className="pf-select"
-              value={model.trigger.kind === "actionEq" ? `${model.trigger.entityType}::${model.trigger.id}` : "*"}
+              value={currentGroup}
               onChange={(e) => {
-                if (e.target.value === "*") return patch({ trigger: { kind: "any" } });
-                const a = KNOWN_ACTIONS.find((k) => `${k.entityType}::${k.id}` === e.target.value);
-                if (a) patch({ trigger: { kind: "actionEq", entityType: a.entityType, id: a.id } });
+                const v = e.target.value;
+                if (v === "*") return setTrigger({ kind: "any" });
+                // Pick a category → default to its first action so the trigger
+                // stays valid; the user refines it in the second dropdown.
+                const first = ACTION_GROUPS.find((g) => g.group === v)?.actions[0];
+                if (first)
+                  setTrigger({ kind: "actionEq", entityType: first.entityType, id: first.id });
               }}
             >
               <option value="*">모든 동작</option>
-              {KNOWN_ACTIONS.map((a) => (
-                <option key={`${a.entityType}::${a.id}`} value={`${a.entityType}::${a.id}`}>
-                  {a.label}
+              {ACTION_GROUPS.map((g) => (
+                <option key={g.group} value={g.group}>
+                  {g.group}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="pf-row">
+            <label className="pf-label">동작</label>
+            <select
+              className="pf-select"
+              disabled={currentGroup === "*"}
+              value={currentAction ? `${currentAction.entityType}::${currentAction.id}` : ""}
+              onChange={(e) => {
+                const a = groupActions.find((k) => `${k.entityType}::${k.id}` === e.target.value);
+                if (a) setTrigger({ kind: "actionEq", entityType: a.entityType, id: a.id });
+              }}
+            >
+              {currentGroup === "*" ? (
+                <option value="">먼저 분류를 골라요</option>
+              ) : (
+                groupActions.map((a) => (
+                  <option key={`${a.entityType}::${a.id}`} value={`${a.entityType}::${a.id}`}>
+                    {a.label}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         </section>
@@ -247,28 +340,11 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           />
         </section>
 
-        {/* ③ 예외 (unless) */}
+        {/* ③ 알림 */}
         <section className="pf-section">
           <h3 className="pf-h">
-            <span className="pf-num">3</span> 예외가 있나요? <span className="pf-sub">단, 다음이면 제외(unless) · 선택</span>
+            <span className="pf-num">3</span> 어떻게 알릴까요? <span className="pf-sub">심각도·사유</span>
           </h3>
-          <ConditionEditor
-            nodes={model.unless}
-            ctx={ctx}
-            emptyHint="예외 없음 — 위 조건이 맞으면 항상 적용됩니다."
-            onChange={(unless) => patch({ unless })}
-          />
-        </section>
-
-        {/* ④ 알림 */}
-        <section className="pf-section">
-          <h3 className="pf-h">
-            <span className="pf-num">4</span> 어떻게 알릴까요? <span className="pf-sub">이름·심각도·사유</span>
-          </h3>
-          <div className="pf-row">
-            <label className="pf-label">규칙 id</label>
-            <input className="pf-input pf-readonly" value={model.id} readOnly title="규칙 id는 자동 지정되며 변경할 수 없어요" />
-          </div>
           <div className="pf-row">
             <label className="pf-label">심각도</label>
             <div className="pf-sev">
@@ -305,14 +381,122 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
         </div>
       </div>
 
-      {/* 우측 라이브 Cedar */}
+      {/* 우측 라이브 구조 다이어그램 + manifest 미리보기 */}
       <aside className="pf-cedar">
         <div className="pf-cedar-head">
-          policy.cedar
+          구조 미리보기
           <span className={`pf-sync${cedarError ? " err" : ""}`}>{cedarError ? "변환 오류" : "폼과 동기화됨"}</span>
         </div>
-        <pre className="pf-cedar-body">{cedarError ?? cedar}</pre>
+        <div className="pf-diagram-body">
+          <PolicyDiagram ir={ir} humanizeLabel={humanizeAddrs} />
+        </div>
+        <ManifestPreview
+          open={manifestOpen}
+          onToggle={() => setManifestOpen((v) => !v)}
+          autoManifest={gen.manifest}
+          errors={manifestErrors}
+          overrideText={manifestText}
+          parseErr={manifestParseErr}
+          onEdit={() =>
+            setManifestText(JSON.stringify(gen.manifest ?? {}, null, 2))
+          }
+          onChangeText={setManifestText}
+          onReset={() => setManifestText(null)}
+        />
       </aside>
+    </div>
+  );
+}
+
+/** Collapsible preview/editor of the enrichment manifest. By default it shows
+ *  the auto-generated manifest (the exact value `save` persists). "직접 편집"
+ *  switches to an editable JSON textarea whose value overrides the auto one;
+ *  "자동으로" reverts. Invalid JSON falls back to auto on save (warned inline). */
+function ManifestPreview({
+  open,
+  onToggle,
+  autoManifest,
+  errors,
+  overrideText,
+  parseErr,
+  onEdit,
+  onChangeText,
+  onReset,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  autoManifest: unknown;
+  errors: { message: string }[];
+  overrideText: string | null;
+  parseErr: string | null;
+  onEdit: () => void;
+  onChangeText: (v: string) => void;
+  onReset: () => void;
+}) {
+  const editing = overrideText !== null;
+  const hasManifest = autoManifest !== undefined;
+  const tag = editing
+    ? "직접 편집됨"
+    : errors.length > 0
+      ? `오류 ${errors.length}`
+      : hasManifest
+        ? "보강 필드 있음"
+        : "필요 없음";
+  return (
+    <div className="pf-manifest">
+      <button type="button" className="pf-manifest-head" onClick={onToggle} aria-expanded={open}>
+        <span className={`pf-manifest-caret${open ? " open" : ""}`}>▶</span>
+        manifest
+        <span className={`pf-manifest-tag${editing ? " edited" : ""}`}>{tag}</span>
+      </button>
+      {open && (
+        <div className="pf-manifest-body">
+          <div className="pf-manifest-bar">
+            {editing ? (
+              <>
+                <span className={`pf-manifest-status${parseErr ? " err" : " ok"}`}>
+                  {parseErr ? `JSON 오류 · 저장 시 자동값 사용` : "직접 편집 중 · 저장 시 이 값 사용"}
+                </span>
+                <button type="button" className="pf-manifest-btn" onClick={onReset}>
+                  ↺ 자동으로
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="pf-manifest-status">
+                  정책에서 자동 생성됨 · 저장 시 이 값 사용
+                </span>
+                <button type="button" className="pf-manifest-btn" onClick={onEdit}>
+                  ✎ 직접 편집
+                </button>
+              </>
+            )}
+          </div>
+
+          {editing ? (
+            <textarea
+              className={`pf-manifest-edit${parseErr ? " invalid" : ""}`}
+              value={overrideText}
+              onChange={(e) => onChangeText(e.target.value)}
+              spellCheck={false}
+              rows={12}
+            />
+          ) : errors.length > 0 ? (
+            <div className="pf-manifest-err">
+              {errors.map((e, i) => (
+                <div key={i}>⚠ {e.message}</div>
+              ))}
+            </div>
+          ) : hasManifest ? (
+            <pre className="pf-manifest-json">{JSON.stringify(autoManifest, null, 2)}</pre>
+          ) : (
+            <div className="pf-manifest-empty">
+              이 정책은 <code>context.custom.*</code> 보강 필드를 쓰지 않아 manifest가 필요 없어요.
+              직접 편집으로 수동 manifest를 추가할 수도 있어요.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -324,6 +508,8 @@ interface EditorCtx {
   fields: FieldOption[];
   rhsFields: FieldOption[];
   fieldByPath: Map<string, FieldOption>;
+  /** Resolve an address to a friendly name (my wallet / token), or undefined. */
+  lookupAddr: (address: string) => AddressEntry | undefined;
 }
 
 /** Re-derive a condition after the user picks a new field. */
@@ -634,18 +820,28 @@ function labelOf(path: string, ctx: EditorCtx): string {
   return ctx.fieldByPath.get(path)?.label ?? ctx.rhsFields.find((f) => f.path === path)?.label ?? path;
 }
 
-function valueText(v: FormValue, ctx: EditorCtx): string {
+/** Render one address for a chip: friendly name + short 0x when known. */
+function addrText(raw: string, ctx: EditorCtx): string {
+  const e = ctx.lookupAddr(raw);
+  return e ? `${e.name}(${shortAddress(raw)})` : raw;
+}
+
+function valueText(v: FormValue, ctx: EditorCtx, field?: FieldOption): string {
+  const unit = field?.unit ? ` ${field.unit}` : "";
   switch (v.kind) {
     case "bool":
       return v.value ? "참" : "거짓";
     case "long":
-      return String(v.value);
+      // nano fields are stored ×10⁹; show plain token units to match the widget.
+      return (field?.scale === "nano" ? v.value / 1e9 : v.value) + unit;
     case "decimal":
-      return v.value;
+      return v.value + unit;
     case "string":
-      return v.value === "" ? "" : `"${v.value}"`;
+      if (v.value === "") return "";
+      // Resolve a known address to its name; otherwise quote the literal.
+      return ctx.lookupAddr(v.value) ? addrText(v.value, ctx) : `"${v.value}"`;
     case "set":
-      return v.values.length ? `[${v.values.join(", ")}]` : "[비어 있음]";
+      return v.values.length ? `[${v.values.map((x) => addrText(x, ctx)).join(", ")}]` : "[비어 있음]";
     case "field":
       return labelOf(v.path, ctx);
   }
@@ -657,7 +853,7 @@ function condChip(cond: FormCondition, ctx: EditorCtx): string {
     return naturalCondition({
       subject: labelOf(cond.fieldPath, ctx),
       op: cond.op,
-      value: valueText(cond.value, ctx),
+      value: valueText(cond.value, ctx, ctx.fieldByPath.get(cond.fieldPath)),
       emptyStr: cond.value.kind === "string" && cond.value.value === "",
       neg: cond.not,
     });
@@ -686,18 +882,28 @@ function ValueInput({
           <option value="false">false</option>
         </select>
       );
-    case "long":
+    case "long": {
+      // nano fields store token × 10⁹ but the user enters/sees plain token
+      // units — convert at the widget so "nano" never surfaces (Rule: unit
+      // auto-convert). decimals are accepted (0.05 토큰 → 50000000 nano).
+      const nano = field?.scale === "nano";
+      const shown = nano ? value.value / 1e9 : value.value;
       return (
         <span className="pf-val-wrap">
           <input
             className="pf-val num"
             type="number"
-            value={value.value}
-            onChange={(e) => onChange({ kind: "long", value: Number(e.target.value) })}
+            step={nano ? "any" : undefined}
+            value={shown}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              onChange({ kind: "long", value: nano ? Math.round(n * 1e9) : n });
+            }}
           />
           {unit && <span className="pf-unit">{unit}</span>}
         </span>
       );
+    }
     case "decimal":
       return (
         <span className="pf-val-wrap">
@@ -706,17 +912,23 @@ function ValueInput({
         </span>
       );
     case "set": {
-      // `in` over an address field → validate each entry as an EVM address.
-      const addr = field?.role === "address";
-      const bad = addr && value.values.some((v) => !isAddr(v));
+      // `in` over an address field → name-resolving multi-address picker.
+      if (field?.role === "address") {
+        return (
+          <AddressSetInput
+            values={value.values}
+            onChange={(values) => onChange({ kind: "set", values })}
+          />
+        );
+      }
       return (
         <input
-          className={`pf-val wide${addr ? " mono" : ""}${bad ? " invalid" : ""}`}
+          className="pf-val wide"
           value={value.values.join(", ")}
           onChange={(e) =>
             onChange({ kind: "set", values: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })
           }
-          placeholder={addr ? "0x…, 0x…" : "값1, 값2, …"}
+          placeholder="값1, 값2, …"
         />
       );
     }
@@ -726,14 +938,10 @@ function ValueInput({
       // string — refine by the field's semantic type (address / enum / plain).
       const flavor = stringFlavor(field);
       if (flavor === "address") {
-        const bad = !isAddr(value.value);
         return (
-          <input
-            className={`pf-val mono${bad ? " invalid" : ""}`}
+          <AddressInput
             value={value.value}
-            onChange={(e) => onChange({ kind: "string", value: e.target.value })}
-            placeholder="0x…"
-            spellCheck={false}
+            onChange={(v) => onChange({ kind: "string", value: v })}
           />
         );
       }

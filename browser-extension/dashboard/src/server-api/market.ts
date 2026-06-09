@@ -218,6 +218,12 @@ export async function createListing(
   return request<ListingSummary>("/market/listings", { method: "POST", body });
 }
 
+/** `DELETE /market/listings/id/:id` — remove a listing the caller published.
+ *  Only the publisher can delete; the server cascades versions/installs/reviews. */
+export async function deleteListing(listingId: string): Promise<void> {
+  await request<void>(`/market/listings/id/${listingId}`, { method: "DELETE" });
+}
+
 /** `POST /market/listings/id/:id/versions` — release a new SemVer version. */
 export async function createVersion(
   listingId: string,

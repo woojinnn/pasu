@@ -18,6 +18,8 @@
  * is passed through verbatim instead of resolved.
  */
 
+import { SEEDED_ENRICHMENT_FIELDS } from "./registry.generated";
+
 /** A policy-RPC param value: a `$.`-selector, or a literal passed through. */
 export type ParamSpec = string | { literal: number | string | boolean };
 
@@ -44,7 +46,10 @@ export interface EnrichmentField {
 
 export type EnrichmentRegistry = Record<string, EnrichmentField>;
 
-export const ENRICHMENT_FIELDS: EnrichmentRegistry = {
+/** Hand-authored enrichment fields (selector-driven, server-backed). Merged with
+ *  the fields lifted from the seeded default policies' manifests so the editor
+ *  can regenerate a matching manifest for any of those policies. */
+const HAND_AUTHORED_FIELDS: EnrichmentRegistry = {
   // Input USD value — fully selector-driven, served by the policy-server
   // `/evaluate` oracle.usd_value executor from synced price. Works as-is.
   inputUsd: {
@@ -78,4 +83,11 @@ export const ENRICHMENT_FIELDS: EnrichmentRegistry = {
       asset: "$.action.tokenIn.key.address",
     },
   },
+};
+
+/** All enrichment fields the editor knows. Hand-authored entries win on a
+ *  name clash (none today). */
+export const ENRICHMENT_FIELDS: EnrichmentRegistry = {
+  ...SEEDED_ENRICHMENT_FIELDS,
+  ...HAND_AUTHORED_FIELDS,
 };

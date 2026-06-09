@@ -1,10 +1,7 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 
 import {
   dashboardId,
-  putPolicy,
   type PolicyMethod,
 } from "../../../server-api";
 
@@ -75,33 +72,22 @@ interface ChooserProps {
 
 export function NewPolicyChooser({ open, onClose }: ChooserProps) {
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState<PolicyMethod | null>(null);
 
   if (!open) return null;
 
-  const pick = async (method: PolicyMethod) => {
-    if (busy) return;
-    setBusy(method);
+  // Do NOT persist here. We hand the editor an in-memory seed via navigation
+  // state; nothing is written to storage until the user presses 저장. So a
+  // policy the user abandons without saving simply never exists.
+  const pick = (method: PolicyMethod) => {
     const stamp = Date.now().toString(36);
-    const slug = `draft-${method}-${stamp}`;
+    const slug = `new-${method}-${stamp}`;
     const id = dashboardId(slug);
-    try {
-      await putPolicy({
-        id,
-        cedarText: seedCedar(slug),
-        displayName: "새 정책",
-        method,
-        life: "draft",
-        source: "mine",
-      });
-      await qc.invalidateQueries({ queryKey: ["managed-policies"] });
-      onClose();
-      navigate(`/editor/${encodeURIComponent(id)}`);
-    } catch (err) {
-      console.error("[chooser] create draft failed:", err);
-      setBusy(null);
-    }
+    onClose();
+    navigate(`/editor/${encodeURIComponent(id)}`, {
+      state: {
+        newPolicy: { method, cedarText: seedCedar(slug), displayName: "새 정책" },
+      },
+    });
   };
 
   return (
@@ -126,12 +112,11 @@ export function NewPolicyChooser({ open, onClose }: ChooserProps) {
         </div>
         <div className="ev2-mpc-grid">
           {CARDS.map((c) => {
-            const disabled = !!c.disabled || busy !== null;
+            const disabled = !!c.disabled;
             const cls = [
               "ev2-mpc-card",
               c.accent,
               c.disabled ? "is-disabled" : "",
-              busy === c.key ? "is-busy" : "",
             ]
               .filter(Boolean)
               .join(" ");
@@ -141,7 +126,7 @@ export function NewPolicyChooser({ open, onClose }: ChooserProps) {
                 type="button"
                 className={cls}
                 disabled={disabled}
-                onClick={() => void pick(c.key)}
+                onClick={() => pick(c.key)}
                 title={c.disabled ? c.disabledNote : undefined}
               >
                 <div className="ev2-mpc-card-top">

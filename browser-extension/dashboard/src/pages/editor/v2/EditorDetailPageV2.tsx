@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
   deleteManagedPolicy,
+  getEnabledPolicyIds,
   listManagedPolicies,
   putPolicy,
+  setEnabledPolicyIds,
   stripDashboardId,
   type ManagedPolicy,
   type PolicyMethod,
@@ -26,14 +28,13 @@ import { PublishModal, type PublishSource } from "../PublishModal";
 import "../../market.css";
 
 import { catLabel, catStyle } from "./categories";
-import { CatIcon, PencilIcon, ShieldIcon, WarnIcon } from "./icons";
-import { isDraft, isMarketSource } from "./helpers";
-import { PolicyDiagnosis } from "../../../cedar/diagram/PolicyDiagnosis";
+import { CatIcon, ShieldIcon, WarnIcon } from "./icons";
+import { isMarketSource } from "./helpers";
 import { textToBlocks } from "../../../cedar";
 import { PolicyFormPane } from "./PolicyFormPane";
 import { emptyFormModel, irToForm, type FormModel } from "../../../cedar/form";
 
-type Tab = "cedar" | "form" | "block" | "diagram";
+type Tab = "cedar" | "form" | "block";
 
 function defaultTab(method: PolicyMethod | undefined): Tab {
   if (method === "block") return "block";
@@ -55,8 +56,17 @@ type FormEntry =
  * collapsible manifest panel. Form tab is intentionally disabled —
  * surfaced behind a tooltip so the design intent stays visible.
  */
+/** Seed handed in by {@link NewPolicyChooser} via navigation state. Nothing is
+ *  persisted until the user saves, so an abandoned new policy never exists. */
+interface NewPolicySeed {
+  method: PolicyMethod;
+  cedarText: string;
+  displayName: string;
+}
+
 export function EditorDetailPageV2() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams<{ id: string }>();
   const id = params.id ? decodeURIComponent(params.id) : "";
   const qc = useQueryClient();
@@ -65,10 +75,31 @@ export function EditorDetailPageV2() {
     queryKey: ["managed-policies"],
     queryFn: listManagedPolicies,
   });
-  const policy = useMemo(
+  const stored = useMemo(
     () => listQ.data?.find((p) => p.id === id) ?? null,
     [listQ.data, id],
   );
+
+  // A fresh policy carried in via navigation state — synthesize an in-memory
+  // ManagedPolicy so the editor renders before anything is written to storage.
+  const seed = (location.state as { newPolicy?: NewPolicySeed } | null)?.newPolicy;
+  const isNew = !stored && !!seed;
+  const draftPolicy = useMemo<ManagedPolicy | null>(() => {
+    if (!seed) return null;
+    return {
+      id,
+      kind: "raw",
+      text: seed.cedarText,
+      displayName: seed.displayName,
+      method: seed.method,
+      source: "mine",
+      life: "publish",
+      updatedAtMs: Date.now(),
+      schemaVersion: 1,
+    };
+  }, [seed, id]);
+
+  const policy = stored ?? (isNew ? draftPolicy : null);
 
   return (
     <>
@@ -82,7 +113,9 @@ export function EditorDetailPageV2() {
         }
       />
       <div className="ev2-detail-body">
-        {listQ.isLoading && <div className="ev2-status">불러오는 중…</div>}
+        {listQ.isLoading && !policy && (
+          <div className="ev2-status">불러오는 중…</div>
+        )}
         {!listQ.isLoading && !policy && (
           <div className="ev2-empty">
             <div className="big">정책을 찾을 수 없습니다</div>
@@ -95,12 +128,17 @@ export function EditorDetailPageV2() {
         )}
         {policy && (
           <EditorBody
+            key={policy.id}
             policy={policy}
+            isNew={isNew}
             onSaved={(savedId) => {
               if (savedId !== id) {
                 navigate(`/editor/${encodeURIComponent(savedId)}`, {
                   replace: true,
                 });
+              } else if (isNew) {
+                // Drop the navigation seed so a reload doesn't re-enter new mode.
+                navigate(`/editor/${encodeURIComponent(id)}`, { replace: true });
               }
               void qc.invalidateQueries({ queryKey: ["managed-policies"] });
             }}
@@ -114,10 +152,12 @@ export function EditorDetailPageV2() {
 
 function EditorBody({
   policy,
+  isNew,
   onSaved,
   onDeleted,
 }: {
   policy: ManagedPolicy;
+  isNew: boolean;
   onSaved: (id: string) => void;
   onDeleted: () => void;
 }) {
@@ -137,8 +177,13 @@ function EditorBody({
   const [treeJson, setTreeJson] = useState<string | null>(
     policy.method === "cedar" ? null : (policy.policyTree ?? null),
   );
-  const [memo, setMemo] = useState(policy.memo ?? "");
+  // Memo is no longer edited in the UI (the form's 사유 covers it); preserve any
+  // existing value so saving doesn't wipe it.
+  const memo = policy.memo ?? "";
   const [ir, setIr] = useState<PolicyIR | null>(null);
+  // A hand-edited manifest from the form, wrapped so `null` = no override
+  // (auto-generate) is distinct from an override whose value is `undefined`.
+  const [manifestOverride, setManifestOverride] = useState<{ value: unknown } | null>(null);
   const [tab, setTab] = useState<Tab>(() => defaultTab(policy.method));
   const [publishOpen, setPublishOpen] = useState(false);
   // Form tab: computed on entry from the live cedar/IR (not on every form edit,
@@ -160,14 +205,13 @@ function EditorBody({
     setTreeJson(
       policy.method === "cedar" ? null : (policy.policyTree ?? null),
     );
-    setMemo(policy.memo ?? "");
     setTab(defaultTab(policy.method));
+    setManifestOverride(null);
     setFormEntry(null);
     lastBlockSnapshot.current = policy.text;
     setWorkspaceKey((k) => k + 1);
   }, [policy.id]);
 
-  const draft = isDraft(policy);
   const fromMarket = isMarketSource(policy);
   const cstyle = catStyle(policy.cat);
 
@@ -193,7 +237,10 @@ function EditorBody({
         }
       }
       let manifest: unknown;
-      if (effectiveIr) {
+      if (tab === "form" && manifestOverride) {
+        // The form supplied a hand-edited manifest — persist it as-is.
+        manifest = manifestOverride.value;
+      } else if (effectiveIr) {
         const gen = generateManifest(effectiveIr, undefined, {
           id: policy.id,
           severity,
@@ -210,7 +257,8 @@ function EditorBody({
         displayName: name.trim() || "untitled",
         memo,
         method: policy.method,
-        life: policy.life,
+        // There is no draft lifecycle: every save makes the policy live.
+        life: "publish",
         source: policy.source,
         cat: policy.cat,
         dupKey: policy.dupKey,
@@ -218,33 +266,24 @@ function EditorBody({
         sourceVersion: policy.sourceVersion,
         ...(manifest !== undefined ? { manifest } : {}),
       });
+      // A freshly-created policy should be active the moment it's saved
+      // ("저장 = 활성"). Add it to the enabled set (idempotent for re-saves).
+      if (isNew) {
+        try {
+          const enabled = await getEnabledPolicyIds();
+          if (!enabled.includes(policy.id)) {
+            await setEnabledPolicyIds([...enabled, policy.id]);
+          }
+        } catch {
+          // Non-fatal: the policy is saved; the user can toggle it on manually.
+        }
+      }
       return policy.id;
     },
     onSuccess: (id) => {
       void qc.invalidateQueries({ queryKey: ["managed-policies"] });
+      void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
       onSaved(id);
-    },
-  });
-
-  const publishDraftMut = useMutation({
-    mutationFn: async () => {
-      await putPolicy({
-        id: policy.id,
-        cedarText,
-        policyTree: treeJson,
-        displayName: name.trim() || "untitled",
-        memo,
-        method: policy.method,
-        life: "publish",
-        source: policy.source,
-        cat: policy.cat,
-        dupKey: policy.dupKey,
-        sourceListingId: policy.sourceListingId,
-        sourceVersion: policy.sourceVersion,
-      });
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["managed-policies"] });
     },
   });
 
@@ -340,9 +379,9 @@ function EditorBody({
         </div>
 
         <div className="ev2-detail-meta">
-          {draft && (
+          {isNew && (
             <span className="ev2-badge-draft">
-              <PencilIcon /> 수정중 · 평가에서 자동 제외
+              새 정책 · 저장해야 적용됩니다
             </span>
           )}
           {fromMarket && (
@@ -352,16 +391,6 @@ function EditorBody({
               {policy.sourceVersion ? ` · ${policy.sourceVersion}` : ""}
             </span>
           )}
-        </div>
-
-        <div className="ev2-detail-memo-row">
-          <label className="ev2-detail-memo-label">메모</label>
-          <input
-            className="ev2-detail-memo"
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-            placeholder="이 정책에 대한 짧은 메모 (선택)"
-          />
         </div>
 
         <div className="ev2-detail-tabs" role="tablist">
@@ -380,23 +409,7 @@ function EditorBody({
             active={tab === "block"}
             onClick={() => handleTabChange("block")}
           />
-          <TabBtn
-            label="다이어그램"
-            active={tab === "diagram"}
-            onClick={() => handleTabChange("diagram")}
-          />
           <span className="ev2-spc" />
-          {draft && (
-            <button
-              type="button"
-              className="ev2-pri ghost"
-              onClick={() => publishDraftMut.mutate()}
-              disabled={publishDraftMut.isPending}
-              title="draft 상태를 publish로 전환합니다"
-            >
-              {publishDraftMut.isPending ? "전환 중…" : "Publish 전환"}
-            </button>
-          )}
           <button
             type="button"
             className="ev2-pri ghost"
@@ -427,12 +440,10 @@ function EditorBody({
         </div>
       </div>
 
-      {(saveMut.error || deleteMut.error || publishDraftMut.error) && (
+      {(saveMut.error || deleteMut.error) && (
         <div className="ev2-err-banner">
           <WarnIcon />
-          {String(
-            saveMut.error || deleteMut.error || publishDraftMut.error || "",
-          )}
+          {String(saveMut.error || deleteMut.error || "")}
         </div>
       )}
 
@@ -447,6 +458,10 @@ function EditorBody({
               // stale `policyTree` (Workspace prefers initialJson over
               // initialCedarText), silently dropping the new cedar.
               setTreeJson(null);
+              // Drop the cached IR too. Otherwise the form tab (openForm) and
+              // save (manifest gen) reuse the IR captured by the last form/block
+              // edit and the hand-typed cedar never reflects into form/block.
+              setIr(null);
             }}
           />
         )}
@@ -455,7 +470,7 @@ function EditorBody({
             <PolicyFormPane
               key={formKey}
               initialModel={formEntry.model}
-              onChange={({ cedarText: c, ir: nextIr, model }) => {
+              onChange={({ cedarText: c, ir: nextIr, model, manifest, manifestOverridden }) => {
                 setCedarText(c);
                 setIr(nextIr);
                 // Keep the header severity in sync so save stamps it correctly.
@@ -464,6 +479,9 @@ function EditorBody({
                 // a later Block-tab visit re-parses from the new cedar.
                 setTreeJson(null);
                 lastBlockSnapshot.current = c;
+                // Carry the form's manifest override (if any) so save persists it
+                // instead of re-generating.
+                setManifestOverride(manifestOverridden ? { value: manifest } : null);
               }}
             />
           ) : formEntry?.kind === "closed" ? (
@@ -503,7 +521,6 @@ function EditorBody({
             }}
           />
         )}
-        {tab === "diagram" && <DiagramTab cedarText={cedarText} />}
       </div>
 
       <PublishModal
@@ -537,42 +554,6 @@ function TabBtn(props: {
       {props.label}
       {props.disabled && <span className="ev2-tab-soon">준비 중</span>}
     </button>
-  );
-}
-
-/**
- * The 다이어그램 tab — a read-only UML-feel structure view of the policy.
- * Parses the live `cedarText` (the shared source both the Cedar and Block tabs
- * keep current) into a {@link PolicyIR} via the WASM bridge, then renders it.
- * Last good diagram is kept while a malformed in-progress edit can't parse.
- */
-function DiagramTab({ cedarText }: { cedarText: string }) {
-  const q = useQuery({
-    queryKey: ["editor-diagram-ir", cedarText],
-    queryFn: async () => {
-      const text = cedarText.trim();
-      if (!text) return null;
-      const irs = await textToBlocks(text);
-      return irs[0] ?? null;
-    },
-    placeholderData: (prev) => prev, // hold the last diagram across re-parses
-    retry: false,
-  });
-
-  if (q.isError) {
-    return (
-      <div className="ev2-empty">
-        <div className="big">아직 다이어그램을 그릴 수 없어요</div>
-        <div className="sm">
-          Cedar 또는 블록 탭에서 정책을 완성하면 구조가 표시됩니다.
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="ev2-diagram-pane">
-      <PolicyDiagnosis ir={q.data ?? null} />
-    </div>
   );
 }
 
