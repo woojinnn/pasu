@@ -41,10 +41,6 @@ pub enum HyperliquidCoreAction {
     /// Send USDC to another account (`{"type":"usdSend"}`).
     #[serde(rename = "hl_usd_send")]
     UsdSend(HlUsdSendAction),
-    /// Authorize an agent (API) wallet to sign on the account's behalf
-    /// (`{"type":"approveAgent"}`).
-    #[serde(rename = "hl_approve_agent")]
-    ApproveAgent(HlApproveAgentAction),
     /// Transfer a spot token off the account (`{"type":"spotSend"}`).
     #[serde(rename = "hl_spot_send")]
     SpotSend(HlSpotSendAction),
@@ -71,9 +67,6 @@ pub enum HyperliquidCoreAction {
     /// Move USDC to / from a sub-account (`{"type":"subAccountTransfer"}`).
     #[serde(rename = "hl_sub_account_transfer")]
     SubAccountTransfer(HlSubAccountTransferAction),
-    /// Authorize a builder to charge a fee (`{"type":"approveBuilderFee"}`).
-    #[serde(rename = "hl_approve_builder_fee")]
-    ApproveBuilderFee(HlApproveBuilderFeeAction),
     /// Delegate / undelegate stake to a validator (`{"type":"tokenDelegate"}`).
     #[serde(rename = "hl_token_delegate")]
     TokenDelegate(HlTokenDelegateAction),
@@ -101,7 +94,6 @@ impl HyperliquidCoreAction {
             Self::UpdateLeverage(_) => "hl_update_leverage",
             Self::Withdraw(_) => "hl_withdraw",
             Self::UsdSend(_) => "hl_usd_send",
-            Self::ApproveAgent(_) => "hl_approve_agent",
             Self::SpotSend(_) => "hl_spot_send",
             Self::UsdClassTransfer(_) => "hl_usd_class_transfer",
             Self::SendAsset(_) => "hl_send_asset",
@@ -110,7 +102,6 @@ impl HyperliquidCoreAction {
             Self::CWithdraw(_) => "hl_c_withdraw",
             Self::VaultTransfer(_) => "hl_vault_transfer",
             Self::SubAccountTransfer(_) => "hl_sub_account_transfer",
-            Self::ApproveBuilderFee(_) => "hl_approve_builder_fee",
             Self::TokenDelegate(_) => "hl_token_delegate",
             Self::TwapOrder(_) => "hl_twap_order",
             Self::UpdateIsolatedMargin(_) => "hl_update_isolated_margin",
@@ -185,19 +176,6 @@ pub struct HlUsdSendAction {
     pub destination: Address,
     /// USDC amount (`amount`), a decimal value held as a string.
     pub amount: Decimal,
-}
-
-/// Agent-wallet authorization: `{"type":"approveAgent"}`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
-pub struct HlApproveAgentAction {
-    /// Agent (API) wallet address being authorized (`agentAddress`).
-    #[tsify(type = "string")]
-    pub agent_address: Address,
-    /// Optional human-readable agent name (`agentName`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[tsify(optional)]
-    pub agent_name: Option<String>,
 }
 
 /// Spot token transfer off the account: `{"type":"spotSend"}`.
@@ -302,18 +280,6 @@ pub struct HlSubAccountTransferAction {
     pub usd: Decimal,
 }
 
-/// Builder-fee authorization: `{"type":"approveBuilderFee"}`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
-pub struct HlApproveBuilderFeeAction {
-    /// Maximum fee rate the builder may charge (`maxFeeRate`), e.g. `"0.001%"`.
-    /// Kept as the raw wire string (it carries a `%` suffix, not a plain decimal).
-    pub max_fee_rate: String,
-    /// Builder address being authorized (`builder`).
-    #[tsify(type = "string")]
-    pub builder: Address,
-}
-
 /// Stake delegation / undelegation: `{"type":"tokenDelegate"}`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -415,10 +381,6 @@ mod tests {
                 destination: Address::from([0x22; 20]),
                 amount: Decimal::new("50"),
             }),
-            HyperliquidCoreAction::ApproveAgent(HlApproveAgentAction {
-                agent_address: Address::from([0x33; 20]),
-                agent_name: None,
-            }),
             HyperliquidCoreAction::SpotSend(HlSpotSendAction {
                 destination: Address::from([0x44; 20]),
                 token: "USDC:0xdeadbeef".to_owned(),
@@ -457,10 +419,6 @@ mod tests {
                 sub_account_user: Address::from([0x88; 20]),
                 is_deposit: false,
                 usd: Decimal::new("75"),
-            }),
-            HyperliquidCoreAction::ApproveBuilderFee(HlApproveBuilderFeeAction {
-                max_fee_rate: "0.001%".to_owned(),
-                builder: Address::from([0x99; 20]),
             }),
             HyperliquidCoreAction::TokenDelegate(HlTokenDelegateAction {
                 validator: Address::from([0xaa; 20]),

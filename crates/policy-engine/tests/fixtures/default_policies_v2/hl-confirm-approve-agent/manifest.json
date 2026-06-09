@@ -1,7 +1,0 @@
-{
-  "id": "hl-confirm-approve-agent",
-  "schema_version": 2,
-  "trigger": { "where": { "action.tag": { "eq": "hl_approve_agent" } } },
-  "policy_rpc": [],
-  "custom_context": { "fields": {} }
-}

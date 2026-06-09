@@ -34,10 +34,10 @@ use super::{
     GOVERNANCE_CLOSE_VOTE_SCHEMA, GOVERNANCE_DELEGATE_SCHEMA, GOVERNANCE_EXECUTE_SCHEMA,
     GOVERNANCE_PROPOSE_SCHEMA, GOVERNANCE_QUEUE_SCHEMA, GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
     GOVERNANCE_START_VOTE_SCHEMA, GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA, GOVERNANCE_VOTE_SCHEMA,
-    HL_APPROVE_AGENT_SCHEMA, HL_APPROVE_BUILDER_FEE_SCHEMA, HL_C_DEPOSIT_SCHEMA,
-    HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA, HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
+    HL_C_DEPOSIT_SCHEMA,
+    HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA,
     HL_SPOT_SEND_SCHEMA, HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_TOKEN_DELEGATE_SCHEMA,
-    HL_TWAP_ORDER_SCHEMA, HL_UNKNOWN_SCHEMA, HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
+    HL_TWAP_ORDER_SCHEMA, HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
     HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA,
     HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
@@ -772,15 +772,9 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     },
     ActionEntry {
         domain: "hyperliquid_core",
-        action_tag: Some("hl_approve_agent"),
-        schema_text: HL_APPROVE_AGENT_SCHEMA,
-        pascal_stub: "HlApproveAgent",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
         action_tag: Some("hl_unknown"),
-        schema_text: HL_UNKNOWN_SCHEMA,
-        pascal_stub: "HlUnknown",
+        schema_text: CORE_UNKNOWN_SCHEMA,
+        pascal_stub: "Unknown",
     },
     ActionEntry {
         domain: "hyperliquid_core",
@@ -803,8 +797,8 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_send_to_evm_with_data"),
-        schema_text: HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
-        pascal_stub: "HlSendToEvmWithData",
+        schema_text: CORE_UNKNOWN_SCHEMA,
+        pascal_stub: "Unknown",
     },
     ActionEntry {
         domain: "hyperliquid_core",
@@ -829,12 +823,6 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: Some("hl_sub_account_transfer"),
         schema_text: HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
         pascal_stub: "HlSubAccountTransfer",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_approve_builder_fee"),
-        schema_text: HL_APPROVE_BUILDER_FEE_SCHEMA,
-        pascal_stub: "HlApproveBuilderFee",
     },
     ActionEntry {
         domain: "hyperliquid_core",
@@ -896,8 +884,16 @@ pub fn compose_per_policy(manifest: &ManifestV2) -> Result<String, PolicyRpcErro
     // single `namespace <Name> { ... }` (Cedar rejects duplicates).
     let mut inputs: Vec<&str> = Vec::with_capacity(matched.len() + 1);
     inputs.push(CORE_SCHEMA);
+    // Dedup by `schema_text`: multiple (domain, tag) rows can resolve to the SAME
+    // shared schema (retargeted HL actions point at CORE_UNKNOWN_SCHEMA /
+    // TOKEN_ERC20_TRANSFER_SCHEMA / STAKING_*), and including it twice would
+    // duplicate its action/type defs inside the merged namespace (Cedar rejects
+    // duplicates). Identical `&'static str` consts share a data pointer.
+    let mut seen: std::collections::BTreeSet<*const u8> = std::collections::BTreeSet::new();
     for entry in &matched {
-        inputs.push(entry.schema_text);
+        if seen.insert(entry.schema_text.as_ptr()) {
+            inputs.push(entry.schema_text);
+        }
     }
     let mut text = merge_namespace_blocks(&inputs);
 
@@ -1319,8 +1315,8 @@ mod tests {
         // (domain, action_tag), so cancel_order is a distinct row from perp's.)
         assert_eq!(
             RESOLVER_TABLE.len(),
-            123,
-            "resolver table must have 123 rows"
+            121,
+            "resolver table must have 121 rows"
         );
     }
 

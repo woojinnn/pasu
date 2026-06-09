@@ -271,8 +271,7 @@ fn unknown_hl_action_can_be_denied() {
 @id(\"hl/deny-unknown\")\n\
 @severity(\"deny\")\n\
 @reason(\"Unrecognized Hyperliquid action blocked by policy\")\n\
-forbid(principal, action == HyperliquidCore::Action::\"HlUnknown\", resource)\n\
-when { context.venue.name == \"hyperliquid\" };\n";
+forbid(principal, action == Core::Action::\"Unknown\", resource);\n";
     let parsed = run(
         unknown_action("convertToMultiSigUser"),
         json!([{ "policy": DENY_UNKNOWN, "manifest": manifest("hl_unknown") }]),
@@ -294,8 +293,8 @@ fn send_to_evm_with_data_can_be_denied_on_recipient() {
 @id(\"hl/deny-evm-bridge\")\n\
 @severity(\"deny\")\n\
 @reason(\"Bridging funds to an unapproved EVM recipient is blocked\")\n\
-forbid(principal, action == HyperliquidCore::Action::\"HlSendToEvmWithData\", resource)\n\
-when { context.destinationRecipient == \"0x000000000000000000000000000000000000dead\" };\n";
+forbid(principal, action == Core::Action::\"Unknown\", resource)\n\
+when { context.target == \"0x000000000000000000000000000000000000dead\" };\n";
     let action = json!({
         "domain": "hyperliquid_core",
         "action": "hl_send_to_evm_with_data",

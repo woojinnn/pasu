@@ -13,8 +13,6 @@ use policy_transition::action::hyperliquid_core::HyperliquidCoreAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
-mod approve_agent;
-mod approve_builder_fee;
 mod c_deposit;
 mod c_withdraw;
 mod order;
@@ -47,7 +45,6 @@ pub(crate) fn lower(
         HyperliquidCoreAction::UpdateLeverage(a) => update_leverage::lower(a, ctx),
         HyperliquidCoreAction::Withdraw(a) => withdraw::lower(a, ctx),
         HyperliquidCoreAction::UsdSend(a) => usd_send::lower(a, ctx),
-        HyperliquidCoreAction::ApproveAgent(a) => approve_agent::lower(a, ctx),
         HyperliquidCoreAction::SpotSend(a) => spot_send::lower(a, ctx),
         HyperliquidCoreAction::UsdClassTransfer(a) => usd_class_transfer::lower(a, ctx),
         HyperliquidCoreAction::SendAsset(a) => send_asset::lower(a, ctx),
@@ -56,7 +53,6 @@ pub(crate) fn lower(
         HyperliquidCoreAction::CWithdraw(a) => c_withdraw::lower(a, ctx),
         HyperliquidCoreAction::VaultTransfer(a) => vault_transfer::lower(a, ctx),
         HyperliquidCoreAction::SubAccountTransfer(a) => sub_account_transfer::lower(a, ctx),
-        HyperliquidCoreAction::ApproveBuilderFee(a) => approve_builder_fee::lower(a, ctx),
         HyperliquidCoreAction::TokenDelegate(a) => token_delegate::lower(a, ctx),
         HyperliquidCoreAction::TwapOrder(a) => twap_order::lower(a, ctx),
         HyperliquidCoreAction::UpdateIsolatedMargin(a) => update_isolated_margin::lower(a, ctx),

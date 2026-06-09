@@ -221,17 +221,16 @@ const SPECS: Spec[] = [
       usd: Math.floor(g.rnd() * 1e8),
     }),
   },
-  // ── modeled: permission ──
+  // ── catch-all: approve_agent / approve_builder_fee are no longer modeled →
+  // they fall through to hl_unknown (deny-closed) ──
   {
     type: "approveAgent",
-    category: "modeled",
-    expectTag: "hl_approve_agent",
+    category: "catch_all",
     action: (g) => ({ type: "approveAgent", agentAddress: g.addr(), nonce: 1 }),
   },
   {
     type: "approveBuilderFee",
-    category: "modeled",
-    expectTag: "hl_approve_builder_fee",
+    category: "catch_all",
     action: (g) => ({
       type: "approveBuilderFee",
       maxFeeRate: `${(g.rnd() * 0.1).toFixed(4)}%`,
@@ -239,6 +238,7 @@ const SPECS: Spec[] = [
       nonce: 1,
     }),
   },
+  // ── modeled: permission ──
   {
     type: "tokenDelegate",
     category: "modeled",

@@ -118,22 +118,6 @@ describe("hlOrderToAction", () => {
     });
   });
 
-  it("converts approveAgent (delegation), carrying agent_name when present", () => {
-    const withName = hlOrderToAction(
-      payload({ kind: "approve_agent", agentAddress: "0x00000000000000000000000000000000000a6e47", agentName: "bot" }),
-    ).action;
-    expect(withName).toEqual({
-      domain: "hyperliquid_core",
-      action: "hl_approve_agent",
-      agent_address: "0x00000000000000000000000000000000000a6e47",
-      agent_name: "bot",
-    });
-    const noName = hlOrderToAction(
-      payload({ kind: "approve_agent", agentAddress: "0x00000000000000000000000000000000000a6e47" }),
-    ).action;
-    expect(noName.agent_name).toBeUndefined();
-  });
-
   it("converts spotSend (spot token fund movement)", () => {
     const { action } = hlOrderToAction(
       payload({

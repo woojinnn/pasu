@@ -94,15 +94,6 @@ function actionBody(
         destination: a.destination,
         amount: String(a.amount),
       };
-    case "approve_agent": {
-      const body: Record<string, unknown> = {
-        domain: "hyperliquid_core",
-        action: "hl_approve_agent",
-        agent_address: a.agentAddress,
-      };
-      if (a.agentName !== undefined) body.agent_name = a.agentName;
-      return body;
-    }
     case "spot_send":
       return {
         domain: "hyperliquid_core",
@@ -165,13 +156,6 @@ function actionBody(
         sub_account_user: a.subAccountUser,
         is_deposit: a.isDeposit,
         usd: String(a.usd),
-      };
-    case "approve_builder_fee":
-      return {
-        domain: "hyperliquid_core",
-        action: "hl_approve_builder_fee",
-        max_fee_rate: a.maxFeeRate,
-        builder: a.builder,
       };
     case "token_delegate":
       return {

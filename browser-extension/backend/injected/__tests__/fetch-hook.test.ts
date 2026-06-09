@@ -62,10 +62,12 @@ describe("parseHyperliquidExchangeOrders", () => {
     expect(
       parse({ action: { type: "usdSend", destination: "0xdef", amount: "9" } })![0].hlAction,
     ).toEqual({ kind: "usd_send", destination: "0xdef", amount: "9" });
+    // approveAgent is no longer a modeled action — it falls through to the
+    // hl_unknown catch-all (deny-closed), like any other unmodeled /exchange type.
     expect(
       parse({ action: { type: "approveAgent", agentAddress: "0x123", agentName: "bot" } })![0]
         .hlAction,
-    ).toEqual({ kind: "approve_agent", agentAddress: "0x123", agentName: "bot" });
+    ).toEqual({ kind: "unknown", actionType: "approveAgent" });
   });
 
   it("returns null for benign/out-of-scope actions and unknown for malformed guarded actions", () => {
