@@ -634,11 +634,7 @@ pub async fn unwatch(pool: &PgPool, user_id: &str, listing_id: Uuid) -> DbResult
 /// installs, reviews, watches) cascade via FK; any listing forked from this one
 /// has its `forked_from` cleared first (that FK has no cascade). Returns true
 /// when a row owned by the caller was actually removed.
-pub async fn delete_listing(
-    pool: &PgPool,
-    listing_id: Uuid,
-    publisher_id: &str,
-) -> DbResult<bool> {
+pub async fn delete_listing(pool: &PgPool, listing_id: Uuid, publisher_id: &str) -> DbResult<bool> {
     query("UPDATE market_listings SET forked_from = NULL WHERE forked_from = $1")
         .bind(listing_id)
         .execute(pool)

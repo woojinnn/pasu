@@ -20,13 +20,13 @@ use uuid::Uuid;
 use policy_db::market::{
     create_listing as db_create_listing, create_version as db_create_version,
     delete_listing as db_delete_listing, get_latest_version as db_get_latest_version,
-    get_listing_by_id as db_get_listing_by_id,
-    get_listing_by_slug as db_get_listing_by_slug, get_version as db_get_version,
-    list_listings as db_list_listings, list_reviews as db_list_reviews,
-    list_watches as db_list_watches, record_install as db_record_install, unwatch as db_unwatch,
-    upsert_review as db_upsert_review, validate_semver, vote_helpful as db_vote_helpful,
-    watch as db_watch, ListingFilter, ListingRow, ListingSort as DbListingSort, NewListing,
-    ReviewRow, VersionBody, VersionRow, LIST_LIMIT_DEFAULT,
+    get_listing_by_id as db_get_listing_by_id, get_listing_by_slug as db_get_listing_by_slug,
+    get_version as db_get_version, list_listings as db_list_listings,
+    list_reviews as db_list_reviews, list_watches as db_list_watches,
+    record_install as db_record_install, unwatch as db_unwatch, upsert_review as db_upsert_review,
+    validate_semver, vote_helpful as db_vote_helpful, watch as db_watch, ListingFilter, ListingRow,
+    ListingSort as DbListingSort, NewListing, ReviewRow, VersionBody, VersionRow,
+    LIST_LIMIT_DEFAULT,
 };
 
 use crate::app::AppState;
