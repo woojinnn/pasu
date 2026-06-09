@@ -22,6 +22,7 @@ import {
   irToForm,
   isGroupNode,
   KNOWN_ACTIONS,
+  ACTION_GROUPS,
   operatorsFor,
   valueKindForField,
   type FieldOption,
@@ -175,7 +176,12 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
       ).size,
     [model.when, model.unless],
   );
-  const triggerText = model.trigger.kind === "actionEq" ? model.trigger.id : "모든 동작";
+  const trig = model.trigger;
+  const triggerText =
+    trig.kind === "actionEq"
+      ? KNOWN_ACTIONS.find((k) => k.entityType === trig.entityType && k.id === trig.id)?.label ??
+        trig.id
+      : "모든 동작";
 
   // Keep onChange in a ref so the sync effect depends only on `ir`.
   const onChangeRef = useRef(onChange);
@@ -225,10 +231,14 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
               }}
             >
               <option value="*">모든 동작</option>
-              {KNOWN_ACTIONS.map((a) => (
-                <option key={`${a.entityType}::${a.id}`} value={`${a.entityType}::${a.id}`}>
-                  {a.label}
-                </option>
+              {ACTION_GROUPS.map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.actions.map((a) => (
+                    <option key={`${a.entityType}::${a.id}`} value={`${a.entityType}::${a.id}`}>
+                      {a.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

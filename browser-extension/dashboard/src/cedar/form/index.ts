@@ -21,6 +21,7 @@ export {
   operatorsFor,
   valueKindForField,
   KNOWN_ACTIONS,
+  ACTION_GROUPS,
   type FieldOption,
   type KnownAction,
 } from "./field-catalog";
