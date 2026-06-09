@@ -110,6 +110,12 @@ pub(crate) fn lower_size_spec(size: &SizeSpec) -> Value {
             m.insert("collateral".into(), Value::String(u256_hex(*collateral)));
             m.insert("leverage".into(), Value::String(leverage.0.clone()));
         }
+        SizeSpec::BaseDecimal { amount } => {
+            m.insert("kind".into(), Value::String("base_decimal".into()));
+            // Distinct from `amount` (U256 hex) — `amountDecimal` is a
+            // fractional base-asset decimal string (Hyperliquid sizes).
+            m.insert("amountDecimal".into(), Value::String(amount.0.clone()));
+        }
     }
     Value::Object(m)
 }

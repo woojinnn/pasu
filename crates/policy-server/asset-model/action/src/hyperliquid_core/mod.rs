@@ -29,9 +29,6 @@ use policy_state::primitives::{Address, Decimal};
 #[tsify(into_wasm_abi, from_wasm_abi)]
 #[serde(tag = "action")]
 pub enum HyperliquidCoreAction {
-    /// Place an order (`{"type":"order"}`, one leg of `orders[]`).
-    #[serde(rename = "hl_order")]
-    Order(HlOrderAction),
     /// Change leverage for a market (`{"type":"updateLeverage"}`).
     #[serde(rename = "hl_update_leverage")]
     UpdateLeverage(HlUpdateLeverageAction),
@@ -70,9 +67,6 @@ pub enum HyperliquidCoreAction {
     /// Delegate / undelegate stake to a validator (`{"type":"tokenDelegate"}`).
     #[serde(rename = "hl_token_delegate")]
     TokenDelegate(HlTokenDelegateAction),
-    /// Place a TWAP order (`{"type":"twapOrder"}`).
-    #[serde(rename = "hl_twap_order")]
-    TwapOrder(HlTwapOrderAction),
     /// Add / remove isolated margin (`{"type":"updateIsolatedMargin"}`).
     #[serde(rename = "hl_update_isolated_margin")]
     UpdateIsolatedMargin(HlUpdateIsolatedMarginAction),
@@ -90,7 +84,6 @@ impl HyperliquidCoreAction {
     #[must_use]
     pub const fn action_tag(&self) -> &'static str {
         match self {
-            Self::Order(_) => "hl_order",
             Self::UpdateLeverage(_) => "hl_update_leverage",
             Self::Withdraw(_) => "hl_withdraw",
             Self::UsdSend(_) => "hl_usd_send",
@@ -103,7 +96,6 @@ impl HyperliquidCoreAction {
             Self::VaultTransfer(_) => "hl_vault_transfer",
             Self::SubAccountTransfer(_) => "hl_sub_account_transfer",
             Self::TokenDelegate(_) => "hl_token_delegate",
-            Self::TwapOrder(_) => "hl_twap_order",
             Self::UpdateIsolatedMargin(_) => "hl_update_isolated_margin",
             Self::Unknown(_) => "hl_unknown",
         }
@@ -115,29 +107,6 @@ impl HyperliquidCoreAction {
     pub const fn venue_name(&self) -> Option<&'static str> {
         Some("hyperliquid")
     }
-}
-
-/// Place-order leg: `orders[i]` of a `{"type":"order"}` action.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
-pub struct HlOrderAction {
-    /// Asset index (`a`): perp = `meta.universe` index; spot = 10000 + spot idx.
-    pub asset_index: u32,
-    /// Resolved market symbol (e.g. `"BTC"`); `None` until the venue meta cache
-    /// resolves the numeric index.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[tsify(optional)]
-    pub symbol: Option<String>,
-    /// `b` — `true` ⇒ long/buy, `false` ⇒ short/sell.
-    pub is_buy: bool,
-    /// Limit price (`p`), a decimal value held as a string (fractional-safe).
-    pub price: Decimal,
-    /// Size in base units (`s`), a decimal value held as a string.
-    pub size: Decimal,
-    /// `r` — reduce-only.
-    pub reduce_only: bool,
-    /// Time-in-force (`gtc` / `ioc` / `post_only`), normalized from `t`.
-    pub tif: String,
 }
 
 /// Leverage change: `{"type":"updateLeverage"}`.
@@ -293,28 +262,6 @@ pub struct HlTokenDelegateAction {
     pub wei: Decimal,
 }
 
-/// TWAP order: `{"type":"twapOrder"}` (`twap` sub-object).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
-#[tsify(into_wasm_abi, from_wasm_abi)]
-pub struct HlTwapOrderAction {
-    /// Asset index (`twap.a`).
-    pub asset_index: u32,
-    /// Resolved market symbol; `None` until the venue meta cache resolves it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[tsify(optional)]
-    pub symbol: Option<String>,
-    /// `twap.b` — `true` ⇒ buy/long, `false` ⇒ sell/short.
-    pub is_buy: bool,
-    /// Total size (`twap.s`), a decimal value held as a string.
-    pub size: Decimal,
-    /// `twap.r` — reduce-only.
-    pub reduce_only: bool,
-    /// Duration in minutes the TWAP runs over (`twap.m`).
-    pub minutes: u32,
-    /// `twap.t` — randomize sub-order timing.
-    pub randomize: bool,
-}
-
 /// Isolated-margin adjustment: `{"type":"updateIsolatedMargin"}`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -349,24 +296,11 @@ pub struct HlUnknownAction {
 mod tests {
     use super::*;
 
-    fn order() -> HyperliquidCoreAction {
-        HyperliquidCoreAction::Order(HlOrderAction {
-            asset_index: 0,
-            symbol: Some("BTC".to_owned()),
-            is_buy: false,
-            price: Decimal::new("60000"),
-            size: Decimal::new("0.1"),
-            reduce_only: false,
-            tif: "gtc".to_owned(),
-        })
-    }
-
     /// `action_tag()` must equal the serde `action` discriminant for every
     /// variant — a policy trigger matches on the serde tag.
     #[test]
     fn action_tag_matches_serde() {
         let cases: Vec<HyperliquidCoreAction> = vec![
-            order(),
             HyperliquidCoreAction::UpdateLeverage(HlUpdateLeverageAction {
                 asset_index: 0,
                 symbol: None,
@@ -425,15 +359,6 @@ mod tests {
                 is_undelegate: false,
                 wei: Decimal::new("1000000000"),
             }),
-            HyperliquidCoreAction::TwapOrder(HlTwapOrderAction {
-                asset_index: 0,
-                symbol: None,
-                is_buy: true,
-                size: Decimal::new("10"),
-                reduce_only: false,
-                minutes: 30,
-                randomize: true,
-            }),
             HyperliquidCoreAction::UpdateIsolatedMargin(HlUpdateIsolatedMarginAction {
                 asset_index: 0,
                 symbol: None,
@@ -455,16 +380,4 @@ mod tests {
         }
     }
 
-    /// Fractional price/size must round-trip (the whole reason we use `Decimal`,
-    /// not `U256`, which rejects `"0.1"`).
-    #[test]
-    fn fractional_size_round_trips() {
-        let json = serde_json::to_string(&order()).unwrap();
-        assert!(
-            json.contains("\"0.1\""),
-            "fractional size preserved: {json}"
-        );
-        let back: HyperliquidCoreAction = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, order());
-    }
 }

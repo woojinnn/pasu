@@ -193,21 +193,21 @@ export const SAMPLE_ACTIONS: Record<string, () => SampleRequest> = {
   // Hyperliquid `/exchange` `{"type":"order"}` — the first-class HL venue sample.
   // Off-chain L1 order (signed by an agent key, POSTed to the venue), so the
   // `meta.nature` is `offchain_sig` (NOT the swap's `onchain_tx`) and the `tx`
-  // chain is `hl-mainnet`. `is_buy:false` ⇒ lowered `context.side == "short"`,
-  // tripping the shipped `hl-no-short-perp` deny — the Simulate analogue of the
-  // baked-150 slippage in `Swap`. Numeric fields are decimal STRINGS (HL prices
-  // exceed Cedar's 4-dp `decimal`), so policies match on side/venue/symbol/tif.
+  // chain is `hl-mainnet`. HL orders decode to the generic `Perp::PlaceOrder`;
+  // `side:"short"` + `reduce_only:false` trips the shipped `hl-no-short-perp`
+  // deny — the Simulate analogue of the baked-150 slippage in `Swap`. Numeric
+  // fields are decimal STRINGS (HL prices exceed Cedar's 4-dp `decimal`), so
+  // policies match on side/venue/market.symbol/reduceOnly.
   HlOrder: () => ({
     action: {
-      domain: "hyperliquid_core",
-      action: "hl_order",
-      asset_index: 0,
-      symbol: "BTC",
-      is_buy: false,
-      price: "60000",
-      size: "0.1",
+      domain: "perp",
+      action: "place_order",
+      venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+      market: { symbol: "BTC", venue: { name: "hyperliquid" } },
+      side: "short",
+      size: { kind: "base_decimal", amount: "0.1" },
       reduce_only: false,
-      tif: "gtc",
+      order_type: { kind: "limit", price: "60000", time_in_force: { kind: "gtc" } },
     },
     meta: {
       submitted_at: 1738000000,

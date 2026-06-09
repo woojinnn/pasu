@@ -38,7 +38,7 @@ fn covers_shipped_actions_without_panic() {
     for action in [
         "Swap",
         "Borrow",
-        "HlOrder",
+        "PlaceOrder",
         "Erc20Approve",
         "OpenPosition",
         "AddLiquidity",

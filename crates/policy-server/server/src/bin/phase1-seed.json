@@ -339,17 +339,14 @@
   },
   {
     "id": "hl-no-short-perp",
-    "cedar": "@id(\"hl-no-short-perp\")\n@severity(\"deny\")\n@reason(\"Opening a new short perp on Hyperliquid is blocked by policy\")\nforbid(\n  principal,\n  // Covers BOTH a plain order and a TWAP order — a TWAP short is still a short,\n  // so it must not bypass this control (both contexts carry venue/side/positionEffect).\n  action in [HyperliquidCore::Action::\"HlOrder\", HyperliquidCore::Action::\"HlTwapOrder\"],\n  resource\n)\nwhen {\n  // `side == \"short\"` is the order DIRECTION (sell), which also covers\n  // reduce-only long-CLOSES. Gate on `positionEffect == \"open\"` so this blocks\n  // only NEW short exposure, never a position exit (reduce-only ⇒ \"reduce\").\n  context.venue.name == \"hyperliquid\"\n    && context.side == \"short\"\n    && context.positionEffect == \"open\"\n};\n",
+    "cedar": "@id(\"hl-no-short-perp\")\n@severity(\"deny\")\n@reason(\"Opening a new short perp on Hyperliquid is blocked by policy\")\nforbid(principal, action == Perp::Action::\"PlaceOrder\", resource)\nwhen {\n  context.venue.name == \"hyperliquid\"\n    && context.side == \"short\"\n    && context.reduceOnly == false\n};\n",
     "manifest": {
       "id": "hl-no-short-perp",
       "schema_version": 2,
       "trigger": {
         "where": {
           "action.tag": {
-            "in": [
-              "hl_order",
-              "hl_twap_order"
-            ]
+            "eq": "place_order"
           }
         }
       },

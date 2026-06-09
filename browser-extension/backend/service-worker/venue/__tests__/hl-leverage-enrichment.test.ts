@@ -201,22 +201,37 @@ describe("resolveHlMaster", () => {
 });
 
 describe("collectHlLeverage", () => {
-  const order = (assetIndex: number): Record<string, unknown> => ({
-    domain: "hyperliquid_core",
-    action: "hl_order",
-    asset_index: assetIndex,
-    is_buy: true,
-    price: "60000",
-    size: "0.1",
+  // The built `Perp::PlaceOrder` body. `market.symbol` is the key the result is
+  // returned under (what the lowering looks leverage up by).
+  const order = (symbol: string): Record<string, unknown> => ({
+    domain: "perp",
+    action: "place_order",
+    venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+    market: { symbol, venue: { name: "hyperliquid" } },
+    side: "long",
+    size: { kind: "base_decimal", amount: "0.1" },
     reduce_only: false,
-    tif: "gtc",
+    order_type: { kind: "limit", price: "60000", time_in_force: { kind: "gtc" } },
   });
+  // The raw wire payload carrying the numeric asset index `collect` reads (the
+  // built body no longer carries it).
+  const orderPayload = (
+    assetIndex: number,
+    over: Partial<VenueOrderPayload> = {},
+  ): VenueOrderPayload =>
+    payload({
+      hlAction: {
+        kind: "order",
+        order: { a: assetIndex, b: true, p: "60000", s: "0.1", r: false, t: { limit: { tif: "Gtc" } } },
+      },
+      ...over,
+    } as Partial<VenueOrderPayload>);
 
-  it("returns { idx: leverage } for an hl_order with a resolvable master", async () => {
+  it("returns { symbol: leverage } for a place_order with a resolvable master", async () => {
     await setConnectedAccount(HOST, MASTER);
     const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: 26 }) });
-    const out = await collectHlLeverage(order(0), payload(), client);
-    expect(out).toEqual({ "0": 26 });
+    const out = await collectHlLeverage(order("BTC"), orderPayload(0), client);
+    expect(out).toEqual({ BTC: 26 });
   });
 
   it("returns {} for a non-order action", async () => {
@@ -228,45 +243,50 @@ describe("collectHlLeverage", () => {
 
   it("returns {} when the master is unknown (best-effort dormancy)", async () => {
     const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: 26 }) });
-    expect(await collectHlLeverage(order(0), payload(), client)).toEqual({});
+    expect(await collectHlLeverage(order("BTC"), orderPayload(0), client)).toEqual({});
   });
 
   it("returns {} for a spot asset_index (no perp leverage)", async () => {
     await setConnectedAccount(HOST, MASTER);
     const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: 26 }) });
-    expect(await collectHlLeverage(order(10042), payload(), client)).toEqual({});
+    expect(
+      await collectHlLeverage(order("ASSET-10042"), orderPayload(10042), client),
+    ).toEqual({});
   });
 
   it("returns {} when the leverage lookup misses", async () => {
     await setConnectedAccount(HOST, MASTER);
     const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: null }) });
-    expect(await collectHlLeverage(order(0), payload(), client)).toEqual({});
+    expect(await collectHlLeverage(order("BTC"), orderPayload(0), client)).toEqual({});
   });
 
   it("uses vaultAddress as the master when present", async () => {
     const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: 11 }) });
     const out = await collectHlLeverage(
-      order(1),
-      payload({ vaultAddress: VAULT }),
+      order("ETH"),
+      orderPayload(1, { vaultAddress: VAULT }),
       client,
     );
-    expect(out).toEqual({ "1": 11 });
+    expect(out).toEqual({ ETH: 11 });
   });
 
-  it("ALSO enriches an hl_twap_order (closes the TWAP bypass of the order-leverage cap)", async () => {
+  it("ALSO enriches a TWAP order (closes the TWAP bypass of the order-leverage cap)", async () => {
     await setConnectedAccount(HOST, MASTER);
     const client = new HlInfoClient({ fetchImpl: infoFetch({ leverage: 26 }) });
-    const twap: Record<string, unknown> = {
-      domain: "hyperliquid_core",
-      action: "hl_twap_order",
-      asset_index: 0,
-      is_buy: true,
-      size: "10",
-      reduce_only: false,
-      minutes: 30,
-      randomize: true,
-    };
-    expect(await collectHlLeverage(twap, payload(), client)).toEqual({ "0": 26 });
+    const twap = order("BTC"); // place_order body...
+    twap.order_type = { kind: "twap", duration_minutes: 30, randomize: true }; // ...with twap kind
+    const twapPayload = payload({
+      hlAction: {
+        kind: "twap_order",
+        assetIndex: 0,
+        isBuy: true,
+        size: "10",
+        reduceOnly: false,
+        minutes: 30,
+        randomize: true,
+      },
+    } as Partial<VenueOrderPayload>);
+    expect(await collectHlLeverage(twap, twapPayload, client)).toEqual({ BTC: 26 });
   });
 });
 
@@ -318,7 +338,7 @@ describe("noteHlLeverageUpdate (invalidation, NOT page-seed)", () => {
     const client = new HlInfoClient({ fetchImpl });
     client.set(MASTER, "BTC", 5);
     await noteHlLeverageUpdate(
-      { domain: "hyperliquid_core", action: "hl_order", asset_index: 0 },
+      { domain: "perp", action: "place_order" },
       payload(),
       client,
     );

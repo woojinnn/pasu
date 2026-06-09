@@ -386,13 +386,15 @@ namespace Perp {
   //   "base_amount"       → amount (U256 hex)
   //   "quote_amount"      → amountUsd (U256 hex USD), amountUsdNano
   //   "leverage_implied"  → collateral (U256 hex), leverage (Decimal)
+  //   "base_decimal"      → amountDecimal (fractional base-asset Decimal; HL)
   type SizeSpec = {
-    kind: String,                // "base_amount" | "quote_amount" | "leverage_implied"
+    kind: String,                // "base_amount" | "quote_amount" | "leverage_implied" | "base_decimal"
     amount?: String,             // base_amount: U256 hex
     amountUsd?: String,          // quote_amount: U256 hex (USD units)
     amountUsdNano?: Long,        // host-populated nano view
     collateral?: String,         // leverage_implied: U256 hex
     leverage?: String,           // leverage_implied: Decimal as string
+    amountDecimal?: String,      // base_decimal: fractional base-asset Decimal
   };
 
   // PerpAccountState — aggregated perp account state for one user.

@@ -78,6 +78,14 @@ pub(crate) fn lower(
     }
     m.insert("orderType".into(), Value::Object(ot));
 
+    // Effective per-asset leverage, host-enriched from the venue info API
+    // (Hyperliquid `activeAssetData`), keyed by market symbol. Absent when the
+    // host could not resolve it → the optional `leverage` field is omitted and
+    // a `context has leverage` policy stays dormant rather than over-blocking.
+    if let Some(leverage) = ctx.leverage_for_symbol(&action.market.symbol) {
+        m.insert("leverage".into(), Value::from(leverage));
+    }
+
     // Live inputs (flattened) — present on-chain, omitted for HL pre-sign.
     // `best_bid_ask: (Price, Price)` splits into `bestBid` + `bestAsk`.
     if let Some(li) = &action.live_inputs {
@@ -109,8 +117,8 @@ mod tests {
     use policy_state::position::PerpSide;
     use policy_state::primitives::{Price, Time};
     use policy_transition::action::perp::{
-        OrderType, PerpAccountState, PerpAction, PlaceOrderAction, PlaceOrderLiveInputs,
-        StopOrderKind, TimeInForce,
+        OrderType, PerpAccountState, PerpAction, PerpVenue, PlaceOrderAction, PlaceOrderLiveInputs,
+        SizeSpec, StopOrderKind, TimeInForce,
     };
     use policy_transition::action::ActionBody;
 
@@ -255,5 +263,82 @@ mod tests {
             Some(li),
         );
         assert_conforms("place_order", &body, &offchain_meta());
+    }
+
+    /// Hyperliquid-shaped order with a fractional `base_decimal` size (the size
+    /// representation HL `/exchange` orders carry) — conforms.
+    #[test]
+    fn place_order_base_decimal_size_conforms() {
+        use policy_state::primitives::Decimal;
+        let body = ActionBody::Perp(PerpAction::PlaceOrder(PlaceOrderAction {
+            venue: sample_venue(),
+            market: sample_market(),
+            side: PerpSide::Short,
+            size: SizeSpec::BaseDecimal {
+                amount: Decimal::new("0.1"),
+            },
+            reduce_only: false,
+            order_type: OrderType::Limit {
+                price: Price::new("60000"),
+                time_in_force: TimeInForce::Gtc,
+            },
+            live_inputs: None,
+        }));
+        assert_conforms("place_order", &body, &offchain_meta());
+    }
+
+    /// Host-injected per-symbol leverage surfaces as `context.leverage` (Cedar
+    /// `Long`) and the enriched context still conforms — the order-leverage
+    /// enrichment the high-leverage policy reads (mirrors the former HlOrder
+    /// path, now keyed by `market.symbol`).
+    #[test]
+    fn place_order_with_injected_leverage_emits_long_and_conforms() {
+        use crate::lowering_v2::{lower_action_enriched, AccountLeverage, TokenDecimals, TxMeta};
+        use policy_state::primitives::{ChainId, Decimal, MarketRef, VenueRef};
+
+        let body = ActionBody::Perp(PerpAction::PlaceOrder(PlaceOrderAction {
+            venue: PerpVenue::Hyperliquid {
+                chain: ChainId::new("hyperliquid:mainnet"),
+            },
+            market: MarketRef {
+                symbol: "BTC".into(),
+                venue: VenueRef::new("hyperliquid"),
+            },
+            side: PerpSide::Long,
+            size: SizeSpec::BaseDecimal {
+                amount: Decimal::new("0.1"),
+            },
+            reduce_only: false,
+            order_type: OrderType::Limit {
+                price: Price::new("60000"),
+                time_in_force: TimeInForce::Gtc,
+            },
+            live_inputs: None,
+        }));
+        let meta = offchain_meta();
+        let tx = TxMeta {
+            from: "0x1111111111111111111111111111111111111111",
+            to: "0x2222222222222222222222222222222222222222",
+        };
+        // symbol "BTC" → leverage 26 injected (the live-verified 26x case).
+        let mut map = std::collections::BTreeMap::new();
+        map.insert("BTC".to_owned(), 26i64);
+        let lev = AccountLeverage::new(map);
+
+        let lowered =
+            lower_action_enriched(&body, &meta, &tx, &TokenDecimals::default(), &lev).unwrap();
+        assert_eq!(lowered.context["leverage"], 26);
+
+        let manifest: crate::policy_rpc::ManifestV2 = serde_json::from_value(serde_json::json!({
+            "id": "place_order-schema",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "place_order" } } }
+        }))
+        .unwrap();
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
+        let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
+        cedar_policy::Context::from_json_value(lowered.context, Some((&schema, &uid)))
+            .unwrap_or_else(|e| panic!("place_order leverage context must conform: {e:?}"));
     }
 }

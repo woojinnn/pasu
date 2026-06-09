@@ -75,7 +75,7 @@ const SPECS: Spec[] = [
   {
     type: "order",
     category: "modeled",
-    expectTag: "hl_order",
+    expectTag: "place_order",
     action: (g) => {
       const legs = 1 + Math.floor(g.rnd() * 3);
       return {
@@ -95,7 +95,7 @@ const SPECS: Spec[] = [
   {
     type: "twapOrder",
     category: "modeled",
-    expectTag: "hl_twap_order",
+    expectTag: "place_order",
     action: (g) => ({
       type: "twapOrder",
       twap: {
@@ -310,7 +310,11 @@ describe("HL /exchange fuzz coverage (real info-API-seeded)", () => {
         expect(payloads, `${spec.type} must produce a payload`).not.toBeNull();
         for (const p of payloads!) {
           const { action } = hlOrderToAction(p);
-          expect(action.domain).toBe("hyperliquid_core");
+          // HL orders decode to the generic `perp` domain (Perp::PlaceOrder);
+          // every other HL Core action stays in the `hyperliquid_core` domain.
+          expect(action.domain).toBe(
+            action.action === "place_order" ? "perp" : "hyperliquid_core",
+          );
           if (spec.category === "modeled") {
             bucket.handled.add(spec.type);
             expect(action.action, `${spec.type} → ${spec.expectTag}`).toBe(spec.expectTag);

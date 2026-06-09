@@ -17,29 +17,31 @@
 
 use std::collections::BTreeMap;
 
-/// Host-injected effective per-asset leverage, keyed by the decimal-string
-/// `asset_index` (HL `meta.universe` index). Built by the service-worker from
-/// on-demand `activeAssetData` info lookups; an empty map (the [`Default`])
-/// means "no leverage known" — every [`Self::leverage_for`] returns `None` and
-/// the lowering omits the optional `leverage` field.
+/// Host-injected effective per-asset leverage, keyed by the market **symbol**
+/// (HL coin, e.g. `"BTC"`). Built by the service-worker from on-demand
+/// `activeAssetData` info lookups; an empty map (the [`Default`]) means "no
+/// leverage known" — every [`Self::leverage_for_symbol`] returns `None` and the
+/// lowering omits the optional `leverage` field.
 ///
-/// String keys (not `u32`) match the JSON object the host sends and mirror
+/// Keyed by symbol (not the venue `asset_index`) because the generic
+/// `Perp::PlaceOrder` body carries `market.symbol`, not the HL numeric index.
+/// String keys match the JSON object the host sends and mirror
 /// [`TokenDecimals`](super::amount::TokenDecimals)' address-keyed map.
 #[derive(Debug, Default, Clone)]
 pub struct AccountLeverage(BTreeMap<String, i64>);
 
 impl AccountLeverage {
-    /// Build from a raw `asset_index_string → leverage` map.
+    /// Build from a raw `market_symbol → leverage` map.
     #[must_use]
     pub const fn new(map: BTreeMap<String, i64>) -> Self {
         Self(map)
     }
 
-    /// Effective leverage for an `asset_index`, or `None` when the host did not
+    /// Effective leverage for a market `symbol`, or `None` when the host did not
     /// inject it (→ the lowering omits the optional `leverage` field).
     #[must_use]
-    pub fn leverage_for(&self, asset_index: u32) -> Option<i64> {
-        self.0.get(&asset_index.to_string()).copied()
+    pub fn leverage_for_symbol(&self, symbol: &str) -> Option<i64> {
+        self.0.get(symbol).copied()
     }
 }
 
@@ -49,20 +51,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn leverage_for_returns_injected_value() {
+    fn leverage_for_symbol_returns_injected_value() {
         let mut map = BTreeMap::new();
-        map.insert("0".to_owned(), 26i64);
-        map.insert("5".to_owned(), 3i64);
+        map.insert("BTC".to_owned(), 26i64);
+        map.insert("ETH".to_owned(), 3i64);
         let lev = AccountLeverage::new(map);
-        assert_eq!(lev.leverage_for(0), Some(26));
-        assert_eq!(lev.leverage_for(5), Some(3));
+        assert_eq!(lev.leverage_for_symbol("BTC"), Some(26));
+        assert_eq!(lev.leverage_for_symbol("ETH"), Some(3));
     }
 
     #[test]
-    fn leverage_for_absent_index_is_none() {
+    fn leverage_for_absent_symbol_is_none() {
         let lev = AccountLeverage::new(BTreeMap::new());
-        assert_eq!(lev.leverage_for(0), None);
+        assert_eq!(lev.leverage_for_symbol("BTC"), None);
         // Default (empty) map → always None.
-        assert_eq!(AccountLeverage::default().leverage_for(7), None);
+        assert_eq!(AccountLeverage::default().leverage_for_symbol("SOL"), None);
     }
 }
