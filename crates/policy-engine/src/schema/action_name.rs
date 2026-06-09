@@ -142,7 +142,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "commit",
     "refund",
     "withdraw_commit",
-    // Perp (11)
+    // Perp (10)
     "adjust_margin",
     "cancel_order",
     "change_leverage",
@@ -152,8 +152,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "decrease_position",
     "increase_position",
     "open_position",
-    "place_limit_order",
-    "place_stop_order",
+    "place_order",
     // Permission (1)
     "protocol_authorization",
     // Restaking (7) — `delegate` already listed above under Airdrop, so `delegate_to`
@@ -276,7 +275,7 @@ mod tests {
         // + Aave `gsm_swap` + governance + lending periphery + staking
         // redeem/stake/cooldown) = 118, plus Marketplace (Seaport) sign_order +
         // fulfill_order (cancel_order dedups against Perp) = 120.
-        assert_eq!(REGISTERED_ACTIONS.len(), 110);
+        assert_eq!(REGISTERED_ACTIONS.len(), 109);
     }
 
     #[test]

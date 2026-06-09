@@ -6924,7 +6924,7 @@
         "op": "==",
         "entity": {
           "type": "Perp::Action",
-          "id": "PlaceStopOrder"
+          "id": "PlaceOrder"
         }
       },
       "resource": {
@@ -6938,11 +6938,35 @@
               "left": {
                 "&&": {
                   "left": {
-                    "has": {
+                    "&&": {
                       "left": {
-                        "Var": "context"
+                        "==": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                ".": {
+                                  "left": {
+                                    "Var": "context"
+                                  },
+                                  "attr": "orderType"
+                                }
+                              },
+                              "attr": "kind"
+                            }
+                          },
+                          "right": {
+                            "Value": "stop"
+                          }
+                        }
                       },
-                      "attr": "custom"
+                      "right": {
+                        "has": {
+                          "left": {
+                            "Var": "context"
+                          },
+                          "attr": "custom"
+                        }
+                      }
                     }
                   },
                   "right": {

@@ -6,8 +6,7 @@ use serde_json::Value;
 use policy_state::{SignedI256, Time};
 use policy_transition::action::perp::{
     AdjustMarginAction, ChangeLeverageAction, ChangeMarginModeAction, ClaimFundingAction,
-    ClosePerpAction, DecreasePerpAction, IncreasePerpAction, OpenPerpAction, PlaceLimitOrderAction,
-    PlaceStopOrderAction,
+    ClosePerpAction, DecreasePerpAction, IncreasePerpAction, OpenPerpAction, PlaceOrderAction,
 };
 use policy_transition::action::PerpAction;
 
@@ -30,8 +29,7 @@ pub(super) fn walk(
         PerpAction::AdjustMargin(a) => walk_adjust(a, ix, now, st, sx),
         PerpAction::ChangeLeverage(c) => walk_change_lev(c, ix, now, st, sx),
         PerpAction::ChangeMarginMode(c) => walk_change_mm(c, ix, now, st, sx),
-        PerpAction::PlaceLimitOrder(p) => walk_place_limit(p, ix, now, st, sx),
-        PerpAction::PlaceStopOrder(p) => walk_place_stop(p, ix, now, st, sx),
+        PerpAction::PlaceOrder(p) => walk_place_order(p, ix, now, st, sx),
         PerpAction::CancelOrder(_) => {}
         PerpAction::ClaimFunding(c) => walk_claim_funding(c, ix, now, st, sx),
     }
@@ -373,14 +371,17 @@ fn walk_change_mm(
     );
 }
 
-fn walk_place_limit(
-    p: &PlaceLimitOrderAction,
+fn walk_place_order(
+    p: &PlaceOrderAction,
     ix: usize,
     now: Time,
     st: &mut Vec<StaleField>,
     sx: &mut WalkStats,
 ) {
-    let li = &p.live_inputs;
+    // Hyperliquid pre-sign orders carry no live inputs — nothing to refresh.
+    let Some(li) = &p.live_inputs else {
+        return;
+    };
     push_if_stale(
         st,
         sx,
@@ -415,32 +416,6 @@ fn walk_place_limit(
     );
 }
 
-fn walk_place_stop(
-    p: &PlaceStopOrderAction,
-    ix: usize,
-    now: Time,
-    st: &mut Vec<StaleField>,
-    sx: &mut WalkStats,
-) {
-    let li = &p.live_inputs;
-    push_if_stale(
-        st,
-        sx,
-        &li.mark_price,
-        now,
-        ix,
-        ActionSlot::PerpPlaceStopMarkPrice,
-    );
-    push_if_stale(
-        st,
-        sx,
-        &li.user_account_state,
-        now,
-        ix,
-        ActionSlot::PerpPlaceStopUserAccountState,
-    );
-}
-
 fn walk_claim_funding(
     c: &ClaimFundingAction,
     ix: usize,
@@ -470,8 +445,7 @@ pub(super) fn apply(pa: &mut PerpAction, slot: &ActionSlot, value: Value, now: T
         PerpAction::AdjustMargin(a) => apply_adjust(a, slot, value, now),
         PerpAction::ChangeLeverage(c) => apply_change_lev(c, slot, value, now),
         PerpAction::ChangeMarginMode(c) => apply_change_mm(c, slot, value, now),
-        PerpAction::PlaceLimitOrder(p) => apply_place_limit(p, slot, value, now),
-        PerpAction::PlaceStopOrder(p) => apply_place_stop(p, slot, value, now),
+        PerpAction::PlaceOrder(p) => apply_place_order(p, slot, value, now),
         PerpAction::CancelOrder(_) => {}
         PerpAction::ClaimFunding(c) => apply_claim_funding(c, slot, value, now),
     }
@@ -701,8 +675,11 @@ fn apply_change_mm(c: &mut ChangeMarginModeAction, slot: &ActionSlot, value: Val
     }
 }
 
-fn apply_place_limit(p: &mut PlaceLimitOrderAction, slot: &ActionSlot, value: Value, now: Time) {
-    let li = &mut p.live_inputs;
+fn apply_place_order(p: &mut PlaceOrderAction, slot: &ActionSlot, value: Value, now: Time) {
+    // Hyperliquid pre-sign orders carry no live inputs — nothing to enrich.
+    let Some(li) = &mut p.live_inputs else {
+        return;
+    };
     match slot {
         ActionSlot::PerpPlaceLimitMarkPrice => {
             if let Some(d) = value_to_decimal(&value) {
@@ -720,23 +697,6 @@ fn apply_place_limit(p: &mut PlaceLimitOrderAction, slot: &ActionSlot, value: Va
             }
         }
         ActionSlot::PerpPlaceLimitUserAccountState => {
-            if let Ok(v) = serde_json::from_value(value) {
-                set_field(&mut li.user_account_state, v, now);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn apply_place_stop(p: &mut PlaceStopOrderAction, slot: &ActionSlot, value: Value, now: Time) {
-    let li = &mut p.live_inputs;
-    match slot {
-        ActionSlot::PerpPlaceStopMarkPrice => {
-            if let Some(d) = value_to_decimal(&value) {
-                set_field(&mut li.mark_price, d, now);
-            }
-        }
-        ActionSlot::PerpPlaceStopUserAccountState => {
             if let Ok(v) = serde_json::from_value(value) {
                 set_field(&mut li.user_account_state, v, now);
             }

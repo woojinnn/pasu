@@ -13,7 +13,7 @@
 //! ## Orderbook vs on-chain
 //! (Hyperliquid / Aevo / `DyDx` V4) the increase is a separate orderbook
 //! signing event that should be modeled by a dedicated
-//! `PlaceLimitOrderAction` (with `reduce_only = false`) and is therefore
+//! `PlaceOrderAction` (with `reduce_only = false`) and is therefore
 //! out of scope for this reducer. The reducer rejects orderbook venues
 //! with `Invariant`.
 
@@ -33,7 +33,7 @@ impl Reducer for IncreasePerpAction {
 
         if common::is_orderbook_venue(&self.venue) {
             return Err(ReducerError::Invariant(format!(
-                "increase_perp: orderbook venue {} requires PlaceLimitOrderAction \
+                "increase_perp: orderbook venue {} requires PlaceOrderAction \
                  (with reduce_only=false), not IncreasePerpAction",
                 common::venue_tag(&self.venue),
             )));

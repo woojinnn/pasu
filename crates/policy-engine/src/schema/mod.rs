@@ -215,10 +215,8 @@ const PERP_INCREASE_POSITION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/perp/increase_position.cedarschema");
 const PERP_OPEN_POSITION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/perp/open_position.cedarschema");
-const PERP_PLACE_LIMIT_ORDER_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/perp/place_limit_order.cedarschema");
-const PERP_PLACE_STOP_ORDER_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/perp/place_stop_order.cedarschema");
+const PERP_PLACE_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/perp/place_order.cedarschema");
 
 // permission (alphabetical)
 const PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA: &str = include_str!(
@@ -371,8 +369,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     PERP_DECREASE_POSITION_SCHEMA,
     PERP_INCREASE_POSITION_SCHEMA,
     PERP_OPEN_POSITION_SCHEMA,
-    PERP_PLACE_LIMIT_ORDER_SCHEMA,
-    PERP_PLACE_STOP_ORDER_SCHEMA,
+    PERP_PLACE_ORDER_SCHEMA,
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
     RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA,
     RESTAKING_DELEGATE_TO_SCHEMA,
@@ -893,8 +890,7 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("decrease_position", "DecreasePositionContext"),
     ("increase_position", "IncreasePositionContext"),
     ("open_position", "OpenPositionContext"),
-    ("place_limit_order", "PlaceLimitOrderContext"),
-    ("place_stop_order", "PlaceStopOrderContext"),
+    ("place_order", "PlaceOrderContext"),
     // permission (alphabetical)
     ("protocol_authorization", "ProtocolAuthorizationContext"),
     // token (alphabetical)

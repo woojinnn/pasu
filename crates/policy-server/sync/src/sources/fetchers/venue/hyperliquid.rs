@@ -1029,8 +1029,7 @@ pub(crate) fn parse_live_input_value(
             | ActionSlot::PerpCloseMarkPrice
             | ActionSlot::PerpIncreaseMarkPrice
             | ActionSlot::PerpDecreaseMarkPrice
-            | ActionSlot::PerpPlaceLimitMarkPrice
-            | ActionSlot::PerpPlaceStopMarkPrice,
+            | ActionSlot::PerpPlaceLimitMarkPrice,
         ) => parse_all_mids_value(payload, market_symbol),
 
         ("hl_oracle", ActionSlot::PerpOpenOraclePrice | ActionSlot::PerpIncreaseOraclePrice) => {
@@ -1078,8 +1077,7 @@ pub(crate) fn parse_live_input_value(
             "hl_account",
             ActionSlot::PerpOpenUserAccountState
             | ActionSlot::PerpIncreaseUserAccountState
-            | ActionSlot::PerpPlaceLimitUserAccountState
-            | ActionSlot::PerpPlaceStopUserAccountState,
+            | ActionSlot::PerpPlaceLimitUserAccountState,
         ) => serde_json::to_value(parse_perp_account_state(payload)?)
             .map_err(|e| sync_error(format!("serialize account state: {e}"))),
 

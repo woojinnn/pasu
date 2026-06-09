@@ -10,8 +10,7 @@ mod close;
 mod decrease;
 mod increase;
 mod open;
-mod place_limit_order;
-mod place_stop_order;
+mod place_order;
 
 // Venue-specific math:
 mod aevo;
@@ -45,8 +44,7 @@ impl Reducer for PerpAction {
             Self::AdjustMargin(a) => a.apply(state, ctx),
             Self::ChangeLeverage(a) => a.apply(state, ctx),
             Self::ChangeMarginMode(a) => a.apply(state, ctx),
-            Self::PlaceLimitOrder(a) => a.apply(state, ctx),
-            Self::PlaceStopOrder(a) => a.apply(state, ctx),
+            Self::PlaceOrder(a) => a.apply(state, ctx),
             Self::CancelOrder(a) => a.apply(state, ctx),
             Self::ClaimFunding(a) => a.apply(state, ctx),
         }

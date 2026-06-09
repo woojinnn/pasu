@@ -52,7 +52,7 @@ use super::{
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
     PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
     PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
-    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
+    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_ORDER_SCHEMA,
     RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA, RESTAKING_DELEGATE_TO_SCHEMA, RESTAKING_DEPOSIT_SCHEMA,
     RESTAKING_QUEUE_WITHDRAWAL_SCHEMA, RESTAKING_REDELEGATE_SCHEMA,
     RESTAKING_REGISTER_OPERATOR_SCHEMA, RESTAKING_UNDELEGATE_SCHEMA, STAKING_CLAIM_REWARDS_SCHEMA,
@@ -506,15 +506,9 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     },
     ActionEntry {
         domain: "perp",
-        action_tag: Some("place_limit_order"),
-        schema_text: PERP_PLACE_LIMIT_ORDER_SCHEMA,
-        pascal_stub: "PlaceLimitOrder",
-    },
-    ActionEntry {
-        domain: "perp",
-        action_tag: Some("place_stop_order"),
-        schema_text: PERP_PLACE_STOP_ORDER_SCHEMA,
-        pascal_stub: "PlaceStopOrder",
+        action_tag: Some("place_order"),
+        schema_text: PERP_PLACE_ORDER_SCHEMA,
+        pascal_stub: "PlaceOrder",
     },
     ActionEntry {
         domain: "perp",
@@ -1314,8 +1308,8 @@ mod tests {
         // (domain, action_tag), so cancel_order is a distinct row from perp's.)
         assert_eq!(
             RESOLVER_TABLE.len(),
-            121,
-            "resolver table must have 121 rows"
+            120,
+            "resolver table must have 120 rows"
         );
     }
 

@@ -1,4 +1,4 @@
-//! `PerpAction` — `OpenPosition`/`ClosePosition`/`AdjustMargin`/`PlaceLimitOrder`/`PlaceStopOrder`/`CancelOrder`/`ClaimFunding`. See spec §9.
+//! `PerpAction` — `OpenPosition`/`ClosePosition`/`AdjustMargin`/`PlaceOrder`/`CancelOrder`/`ClaimFunding`. See spec §9.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -14,8 +14,7 @@ pub mod close;
 pub mod decrease;
 pub mod increase;
 pub mod open;
-pub mod place_limit;
-pub mod place_stop;
+pub mod place_order;
 
 pub use self::adjust_margin::*;
 pub use self::cancel::*;
@@ -26,8 +25,7 @@ pub use self::close::*;
 pub use self::decrease::*;
 pub use self::increase::*;
 pub use self::open::*;
-pub use self::place_limit::*;
-pub use self::place_stop::*;
+pub use self::place_order::*;
 
 // ---------------------------------------------------------------------------
 // Domain enum
@@ -52,10 +50,8 @@ pub enum PerpAction {
     ChangeLeverage(ChangeLeverageAction),
     /// Cross <-> Isolated margin mode switch.
     ChangeMarginMode(ChangeMarginModeAction),
-    /// Place a limit order on the venue's orderbook.
-    PlaceLimitOrder(PlaceLimitOrderAction),
-    /// `StopMarket` | `StopLimit` | `TakeProfit` | `TakeProfitLimit`.
-    PlaceStopOrder(PlaceStopOrderAction),
+    /// Place an order (limit / stop / twap) on the venue's orderbook.
+    PlaceOrder(PlaceOrderAction),
     /// Cancel a previously placed open order.
     CancelOrder(CancelOrderAction),
     /// Claim accrued funding payments.
@@ -76,8 +72,7 @@ impl PerpAction {
             Self::AdjustMargin(_) => "adjust_margin",
             Self::ChangeLeverage(_) => "change_leverage",
             Self::ChangeMarginMode(_) => "change_margin_mode",
-            Self::PlaceLimitOrder(_) => "place_limit_order",
-            Self::PlaceStopOrder(_) => "place_stop_order",
+            Self::PlaceOrder(_) => "place_order",
             Self::CancelOrder(_) => "cancel_order",
             Self::ClaimFunding(_) => "claim_funding",
         }
@@ -94,8 +89,7 @@ impl PerpAction {
             Self::AdjustMargin(a) => Some(a.venue.name()),
             Self::ChangeLeverage(a) => Some(a.venue.name()),
             Self::ChangeMarginMode(a) => Some(a.venue.name()),
-            Self::PlaceLimitOrder(a) => Some(a.venue.name()),
-            Self::PlaceStopOrder(a) => Some(a.venue.name()),
+            Self::PlaceOrder(a) => Some(a.venue.name()),
             Self::CancelOrder(a) => Some(a.venue.name()),
             Self::ClaimFunding(a) => Some(a.venue.name()),
         }
