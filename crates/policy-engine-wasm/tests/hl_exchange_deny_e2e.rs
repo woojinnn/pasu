@@ -29,19 +29,20 @@ fn hl_meta() -> Value {
     })
 }
 
-/// A HyperliquidCore order action JSON — the exact `hl-order-to-action.ts` shape
-/// (doubly-tagged `{ domain, action, ...fields }`). `is_buy=false` ⇒ short.
+/// A Hyperliquid limit order JSON — the exact `hl-order-to-action.ts` shape: a
+/// generic `Perp::PlaceOrder` body (`{ domain:"perp", action:"place_order", … }`)
+/// with the HL venue, a fractional `base_decimal` size, and `orderType.kind ==
+/// "limit"`. `is_buy=false` ⇒ short; non-reduce-only (opens exposure).
 fn order_action(is_buy: bool, size: &str) -> Value {
     json!({
-        "domain": "hyperliquid_core",
-        "action": "hl_order",
-        "asset_index": 0,
-        "symbol": "BTC",
-        "is_buy": is_buy,
-        "price": "60000",
-        "size": size,
+        "domain": "perp",
+        "action": "place_order",
+        "venue": { "name": "hyperliquid", "chain": "hyperliquid:mainnet" },
+        "market": { "symbol": "BTC", "venue": { "name": "hyperliquid" } },
+        "side": if is_buy { "long" } else { "short" },
+        "size": { "kind": "base_decimal", "amount": size },
         "reduce_only": false,
-        "tif": "gtc"
+        "order_type": { "kind": "limit", "price": "60000", "time_in_force": { "kind": "gtc" } }
     })
 }
 
@@ -73,8 +74,8 @@ const DENY_SHORT: &str = "\
 @id(\"hl/no-short\")\n\
 @severity(\"deny\")\n\
 @reason(\"Opening a new short on Hyperliquid is blocked by policy\")\n\
-forbid(principal, action == HyperliquidCore::Action::\"HlOrder\", resource)\n\
-when { context.venue.name == \"hyperliquid\" && context.side == \"short\" && context.positionEffect == \"open\" };\n";
+forbid(principal, action == Perp::Action::\"PlaceOrder\", resource)\n\
+when { context.venue.name == \"hyperliquid\" && context.side == \"short\" && context.reduceOnly == false };\n";
 
 /// Assemble the `EvaluateActionInput` envelope and run it through the entry
 /// point. Returns the parsed output envelope.
@@ -116,7 +117,7 @@ fn seed_bundle(id: &str) -> Value {
 fn hyperliquid_short_order_denied_through_entry_point() {
     let parsed = run(
         order_action(false, "0.1"),
-        json!([{ "policy": DENY_SHORT, "manifest": manifest("hl_order") }]),
+        json!([{ "policy": DENY_SHORT, "manifest": manifest("place_order") }]),
     );
     assert_eq!(parsed["ok"], true, "envelope ok: {parsed}");
     assert_eq!(
@@ -136,7 +137,7 @@ fn hyperliquid_short_order_denied_through_entry_point() {
 fn hyperliquid_long_order_passes_through_entry_point() {
     let parsed = run(
         order_action(true, "0.1"),
-        json!([{ "policy": DENY_SHORT, "manifest": manifest("hl_order") }]),
+        json!([{ "policy": DENY_SHORT, "manifest": manifest("place_order") }]),
     );
     assert_eq!(parsed["ok"], true, "{parsed}");
     assert_eq!(
@@ -425,52 +426,51 @@ fn shipped_seed_policy_confirms_unknown_hl_action() {
 //
 // The order wire carries NO leverage — it is per-(user,asset) account state the
 // venue applies at fill. The SW resolves it from `activeAssetData` and injects
-// `account_leverage` (asset_index string → leverage); the lowering fills the
+// `account_leverage` (market symbol → leverage); the lowering fills the
 // optional `context.leverage` Long. A `context has leverage` guard keeps the
 // policy DORMANT (not over-blocking) when the host could not resolve it.
 
-// Covers BOTH plain orders AND TWAP orders (a TWAP opens the same leveraged
-// exposure, so a cap scoped only to HlOrder would be evaded by routing through
-// a TWAP). Both HlOrderContext and HlTwapOrderContext carry `leverage?: Long`.
+// Covers BOTH plain orders AND TWAP orders: they are now the SAME
+// `Perp::PlaceOrder` action (orderType limit/twap), so one rule cannot be
+// evaded by routing exposure through a TWAP. `PlaceOrderContext` carries the
+// optional host-enriched `leverage?: Long`.
 const WARN_HIGH_LEVERAGE_ORDER: &str = "\
 @id(\"hl/order-high-leverage\")\n\
 @severity(\"warn\")\n\
 @reason(\"Opening a Hyperliquid order at effective leverage above 20x\")\n\
-forbid(principal, action in [HyperliquidCore::Action::\"HlOrder\", HyperliquidCore::Action::\"HlTwapOrder\"], resource)\n\
+forbid(principal, action == Perp::Action::\"PlaceOrder\", resource)\n\
 when { context.venue.name == \"hyperliquid\" && context has leverage && context.leverage > 20 };\n";
 
-/// A HyperliquidCore TWAP order action JSON — the `hl-order-to-action.ts` shape.
+/// A Hyperliquid TWAP order JSON — the `hl-order-to-action.ts` shape: the same
+/// `Perp::PlaceOrder` body with `orderType.kind == "twap"`.
 fn twap_order_action(is_buy: bool, size: &str) -> Value {
     json!({
-        "domain": "hyperliquid_core",
-        "action": "hl_twap_order",
-        "asset_index": 0,
-        "symbol": "BTC",
-        "is_buy": is_buy,
-        "size": size,
+        "domain": "perp",
+        "action": "place_order",
+        "venue": { "name": "hyperliquid", "chain": "hyperliquid:mainnet" },
+        "market": { "symbol": "BTC", "venue": { "name": "hyperliquid" } },
+        "side": if is_buy { "long" } else { "short" },
+        "size": { "kind": "base_decimal", "amount": size },
         "reduce_only": false,
-        "minutes": 30,
-        "randomize": true
+        "order_type": { "kind": "twap", "duration_minutes": 30, "randomize": true }
     })
 }
 
-/// Manifest whose trigger matches the order FAMILY (`hl_order` + `hl_twap_order`)
-/// — required so `compose_per_policy` includes BOTH action schemas, letting a
-/// single `action in [HlOrder, HlTwapOrder]` policy compile (mirrors the shipped
-/// `hl-reduce-only-mode` manifest). A single-tag `eq` manifest would compose
-/// only one action and reject the other as `unrecognized action`.
+/// Manifest triggering on `place_order` — plain orders AND TWAP orders are now
+/// the same `Perp::PlaceOrder` action, so a single-tag manifest composes the one
+/// schema both order kinds share (no `action in [...]` multi-tag needed).
 fn order_family_manifest() -> Value {
     json!({
         "id": "hl-order-family-guard",
         "schema_version": 2,
-        "trigger": { "where": { "action.tag": { "in": ["hl_order", "hl_twap_order"] } } },
+        "trigger": { "where": { "action.tag": { "eq": "place_order" } } },
         "policy_rpc": [],
         "custom_context": { "fields": {} }
     })
 }
 
 /// Like [`run`] but with the host-injected `account_leverage` map the SW adds
-/// for the venue path (asset_index string → effective leverage).
+/// for the venue path (market symbol → effective leverage).
 fn run_with_leverage(action: Value, bundles: Value, account_leverage: Value) -> Value {
     let input = json!({
         "action": action,
@@ -497,7 +497,7 @@ fn hl_order_high_leverage_warns_when_injected() {
     let parsed = run_with_leverage(
         order_action(true, "0.1"),
         json!([{ "policy": WARN_HIGH_LEVERAGE_ORDER, "manifest": order_family_manifest() }]),
-        json!({ "0": 26 }),
+        json!({ "BTC": 26 }),
     );
     assert_eq!(parsed["ok"], true, "{parsed}");
     assert_eq!(
@@ -534,7 +534,7 @@ fn hl_order_modest_leverage_passes_when_injected() {
     let parsed = run_with_leverage(
         order_action(true, "0.1"),
         json!([{ "policy": WARN_HIGH_LEVERAGE_ORDER, "manifest": order_family_manifest() }]),
-        json!({ "0": 20 }),
+        json!({ "BTC": 20 }),
     );
     assert_eq!(parsed["ok"], true, "{parsed}");
     assert_eq!(
@@ -544,15 +544,15 @@ fn hl_order_modest_leverage_passes_when_injected() {
 }
 
 /// TWAP BYPASS CLOSED: the same high-leverage exposure routed through a TWAP
-/// (a first-class HL UI order type) now ALSO trips the order-leverage warn.
-/// Previously hl_twap_order carried no leverage field and silently evaded a cap
-/// scoped to HlOrder.
+/// (a first-class HL UI order type) now ALSO trips the order-leverage warn —
+/// a TWAP is the same `Perp::PlaceOrder` action (orderType "twap"), so it
+/// cannot evade an order-leverage cap.
 #[test]
 fn hl_twap_high_leverage_warns_when_injected() {
     let parsed = run_with_leverage(
         twap_order_action(true, "10"),
         json!([{ "policy": WARN_HIGH_LEVERAGE_ORDER, "manifest": order_family_manifest() }]),
-        json!({ "0": 26 }),
+        json!({ "BTC": 26 }),
     );
     assert_eq!(parsed["ok"], true, "{parsed}");
     assert_eq!(

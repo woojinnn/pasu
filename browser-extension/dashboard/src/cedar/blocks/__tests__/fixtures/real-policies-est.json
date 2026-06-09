@@ -4094,8 +4094,8 @@
       "action": {
         "op": "==",
         "entity": {
-          "type": "HyperliquidCore::Action",
-          "id": "HlOrder"
+          "type": "Perp::Action",
+          "id": "PlaceOrder"
         }
       },
       "resource": {
@@ -4107,22 +4107,41 @@
           "body": {
             "&&": {
               "left": {
-                "==": {
+                "&&": {
                   "left": {
-                    ".": {
+                    "==": {
+                      "left": {
+                        ".": {
+                          "left": {
+                            ".": {
+                              "left": {
+                                "Var": "context"
+                              },
+                              "attr": "venue"
+                            }
+                          },
+                          "attr": "name"
+                        }
+                      },
+                      "right": {
+                        "Value": "hyperliquid"
+                      }
+                    }
+                  },
+                  "right": {
+                    "==": {
                       "left": {
                         ".": {
                           "left": {
                             "Var": "context"
                           },
-                          "attr": "venue"
+                          "attr": "side"
                         }
                       },
-                      "attr": "name"
+                      "right": {
+                        "Value": "short"
+                      }
                     }
-                  },
-                  "right": {
-                    "Value": "hyperliquid"
                   }
                 }
               },
@@ -4133,11 +4152,11 @@
                       "left": {
                         "Var": "context"
                       },
-                      "attr": "side"
+                      "attr": "reduceOnly"
                     }
                   },
                   "right": {
-                    "Value": "short"
+                    "Value": false
                   }
                 }
               }

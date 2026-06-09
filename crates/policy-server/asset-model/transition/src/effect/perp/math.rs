@@ -126,6 +126,13 @@ pub(super) fn resolve_size_base(spec: &SizeSpec, mark: &Price) -> ReducerResult<
             let lev = parse_decimal(leverage)?;
             decimal_trunc_to_u256(coll * lev / mark_d, "size_base from LeverageImplied")
         }
+        // Off-chain orderbook venues (Hyperliquid) quote fractional base sizes
+        // and are evaluated through lowering/policy, not this reducer — no
+        // on-chain producer emits `BaseDecimal`, so reaching it is a bug.
+        SizeSpec::BaseDecimal { .. } => Err(ReducerError::Invariant(
+            "resolve_size_base: BaseDecimal size is off-chain-only (no on-chain reducer support)"
+                .into(),
+        )),
     }
 }
 

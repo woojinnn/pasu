@@ -21,10 +21,17 @@
  * falls back to `ASSET-<index>` when unresolved).
  */
 
-import type { VenueActionWire, VenueOrderPayload } from "@lib/types";
+import type {
+  HyperliquidOrderWire,
+  VenueActionWire,
+  VenueOrderPayload,
+} from "@lib/types";
 
 /** The off-chain venue chain id used for Hyperliquid in the v2 model. */
 export const HL_CHAIN_ID = "hl-mainnet";
+
+/** The `PerpVenue::Hyperliquid` chain id used in the generic `Perp::` model. */
+export const HL_PERP_CHAIN = "hyperliquid:mainnet";
 
 /** `tx.to` sentinel — Hyperliquid CORE actions have no on-chain settlement address. */
 export const HL_TO_SENTINEL = "0x0000000000000000000000000000000000000000";
@@ -48,6 +55,69 @@ function tifFromWire(t: unknown): string {
   }
 }
 
+/** The `PerpVenue::Hyperliquid` object for the generic perp body. */
+function hlPerpVenue(): Record<string, unknown> {
+  return { name: "hyperliquid", chain: HL_PERP_CHAIN };
+}
+
+/**
+ * A `MarketRef` for an HL asset. `symbol` falls back to `ASSET-<index>` when the
+ * venue meta cache has not yet resolved the numeric index (matching the old HL
+ * lowering); the venue is the HL coin universe.
+ */
+function hlMarketRef(
+  assetIndex: number,
+  symbol: string | undefined,
+): Record<string, unknown> {
+  return {
+    symbol: symbol ?? `ASSET-${assetIndex}`,
+    venue: { name: "hyperliquid" },
+  };
+}
+
+/**
+ * Map an HL trigger order's `{ isMarket, tpsl }` to the engine `StopOrderKind`
+ * spelling. `tpsl == "tp"` ⇒ take-profit, else stop-loss; `isMarket` chooses the
+ * market vs limit lane.
+ */
+function stopKind(isMarket: boolean, tpsl: unknown): string {
+  if (tpsl === "tp") return isMarket ? "take_profit" : "take_profit_limit";
+  return isMarket ? "stop_market" : "stop_limit";
+}
+
+/**
+ * Build the discriminated `orderType` record from one wire order spec. A
+ * `t.trigger` spec is a stop / take-profit (carries `triggerPx`, `isMarket`,
+ * `tpsl`); otherwise it is a limit order (carries the tif). The typed Rust
+ * `OrderType` enforces the per-kind required fields on decode.
+ */
+function orderTypeFromWire(o: HyperliquidOrderWire): Record<string, unknown> {
+  const t = o.t as
+    | {
+        limit?: { tif?: string };
+        trigger?: { triggerPx?: unknown; isMarket?: boolean; tpsl?: unknown };
+      }
+    | undefined;
+  const trigger = t?.trigger;
+  if (trigger) {
+    const isMarket = trigger.isMarket === true;
+    const ot: Record<string, unknown> = {
+      kind: "stop",
+      trigger_price: String(trigger.triggerPx ?? ""),
+      order_kind: stopKind(isMarket, trigger.tpsl),
+    };
+    // A stop_limit / take_profit_limit fills at the order's limit price `p`;
+    // a market-triggered stop carries no limit price.
+    if (!isMarket) ot.limit_price = String(o.p);
+    return ot;
+  }
+  return {
+    kind: "limit",
+    price: String(o.p),
+    time_in_force: { kind: tifFromWire(o.t) },
+  };
+}
+
 /** Build the `ActionBody::HyperliquidCore` JSON for one parsed CORE action. */
 function actionBody(
   a: VenueActionWire,
@@ -56,18 +126,18 @@ function actionBody(
   switch (a.kind) {
     case "order": {
       const o = a.order;
-      const body: Record<string, unknown> = {
-        domain: "hyperliquid_core",
-        action: "hl_order",
-        asset_index: o.a,
-        is_buy: o.b,
-        price: String(o.p),
-        size: String(o.s),
+      // HL orders decode to the generic `Perp::PlaceOrder` (orderType
+      // limit/stop). Fractional size flows through the `base_decimal` SizeSpec.
+      return {
+        domain: "perp",
+        action: "place_order",
+        venue: hlPerpVenue(),
+        market: hlMarketRef(o.a, symbol),
+        side: o.b ? "long" : "short",
+        size: { kind: "base_decimal", amount: String(o.s) },
         reduce_only: o.r ?? false,
-        tif: tifFromWire(o.t),
+        order_type: orderTypeFromWire(o),
       };
-      if (symbol !== undefined) body.symbol = symbol;
-      return body;
     }
     case "update_leverage": {
       const body: Record<string, unknown> = {
@@ -166,18 +236,21 @@ function actionBody(
         wei: String(a.wei),
       };
     case "twap_order": {
-      const body: Record<string, unknown> = {
-        domain: "hyperliquid_core",
-        action: "hl_twap_order",
-        asset_index: a.assetIndex,
-        is_buy: a.isBuy,
-        size: String(a.size),
+      // A TWAP is the same `Perp::PlaceOrder` action with orderType "twap".
+      return {
+        domain: "perp",
+        action: "place_order",
+        venue: hlPerpVenue(),
+        market: hlMarketRef(a.assetIndex, symbol),
+        side: a.isBuy ? "long" : "short",
+        size: { kind: "base_decimal", amount: String(a.size) },
         reduce_only: a.reduceOnly,
-        minutes: a.minutes,
-        randomize: a.randomize,
+        order_type: {
+          kind: "twap",
+          duration_minutes: a.minutes,
+          randomize: a.randomize,
+        },
       };
-      if (symbol !== undefined) body.symbol = symbol;
-      return body;
     }
     case "update_isolated_margin": {
       const body: Record<string, unknown> = {

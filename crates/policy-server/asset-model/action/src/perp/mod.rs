@@ -204,6 +204,14 @@ pub enum SizeSpec {
         /// Leverage multiplier applied to `collateral`.
         leverage: Decimal,
     },
+    /// Base-asset units expressed as a fractional `Decimal` (e.g. "0.1" BTC).
+    /// Off-chain orderbook venues (Hyperliquid) quote size this way; on-chain
+    /// venues use the integer [`SizeSpec::BaseAmount`]. The on-chain reducer
+    /// does not resolve this variant (no on-chain producer emits it).
+    BaseDecimal {
+        /// Amount denominated in the base asset, as a fractional decimal.
+        amount: Decimal,
+    },
 }
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,6 @@
 //! `helpers::delta::apply_delta` layering the delta onto a Sync-populated base.
 
 mod common;
-mod order;
 mod update_leverage;
 mod usd_send;
 mod withdraw;
@@ -21,7 +20,6 @@ use crate::error::ReducerResult;
 impl Reducer for HyperliquidCoreAction {
     fn apply(&self, state: &WalletState, ctx: &EvalContext) -> ReducerResult<StateDelta> {
         match self {
-            Self::Order(a) => order::apply(a, state, ctx),
             Self::UpdateLeverage(a) => update_leverage::apply(a, state, ctx),
             Self::Withdraw(a) => withdraw::apply(a, state, ctx),
             Self::UsdSend(a) => usd_send::apply(a, state, ctx),
@@ -40,7 +38,6 @@ impl Reducer for HyperliquidCoreAction {
             | Self::VaultTransfer(_)
             | Self::SubAccountTransfer(_)
             | Self::TokenDelegate(_)
-            | Self::TwapOrder(_)
             | Self::UpdateIsolatedMargin(_)
             | Self::Unknown(_) => Ok(StateDelta::new()),
         }

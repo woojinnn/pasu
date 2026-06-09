@@ -867,7 +867,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       declarativeV3: {
         outcome: "hit",
         nature,
-        decoder_id: "hl_order",
+        decoder_id: "hl_place_order",
         action_count: 1,
       },
     };

@@ -32,52 +32,77 @@ const shortBtc = (): VenueOrderPayload =>
   });
 
 describe("hlOrderToAction", () => {
-  it("converts a Hyperliquid short order to the canonical HyperliquidCore ActionBody", () => {
+  it("converts a Hyperliquid short order to the canonical Perp::PlaceOrder ActionBody", () => {
     const { action, meta } = hlOrderToAction(shortBtc());
     expect(action).toEqual({
-      domain: "hyperliquid_core",
-      action: "hl_order",
-      asset_index: 0,
-      is_buy: false,
-      price: "60000",
-      size: "0.1",
+      domain: "perp",
+      action: "place_order",
+      venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+      market: { symbol: "ASSET-0", venue: { name: "hyperliquid" } },
+      side: "short",
+      size: { kind: "base_decimal", amount: "0.1" },
       reduce_only: false,
-      tif: "gtc",
+      order_type: { kind: "limit", price: "60000", time_in_force: { kind: "gtc" } },
     });
-    // Fractional size is preserved verbatim (no truncation to "0").
-    expect(action.size).toBe("0.1");
+    // Fractional size is preserved verbatim through the base_decimal SizeSpec.
+    expect((action.size as { amount: string }).amount).toBe("0.1");
     expect(meta).toMatchObject({
       submitter: expect.any(String),
       nature: { kind: "offchain_sig" },
     });
   });
 
-  it("maps buy=true to is_buy and carries reduce_only + symbol when resolved", () => {
+  it("maps buy=true to side long and carries reduce_only + market.symbol when resolved", () => {
     const { action } = hlOrderToAction(
       payload(
         { kind: "order", order: { a: 0, b: true, p: "60000", s: "0.5", r: true } },
         "BTC-USD",
       ),
     );
-    expect(action.is_buy).toBe(true);
+    expect(action.side).toBe("long");
     expect(action.reduce_only).toBe(true);
-    expect(action.symbol).toBe("BTC-USD");
+    expect(action.market).toEqual({ symbol: "BTC-USD", venue: { name: "hyperliquid" } });
   });
 
-  it("omits symbol when unresolved (Rust lowering falls back to ASSET-<index>)", () => {
+  it("falls back to ASSET-<index> market symbol when unresolved", () => {
     const { action } = hlOrderToAction(shortBtc());
-    expect(action.symbol).toBeUndefined();
+    expect(action.market).toEqual({ symbol: "ASSET-0", venue: { name: "hyperliquid" } });
   });
 
-  it("normalizes Alo → post_only and Ioc → ioc", () => {
-    const alo = hlOrderToAction(
-      payload({ kind: "order", order: { a: 0, b: true, p: "1", s: "1", t: { limit: { tif: "Alo" } } } }),
-    ).action;
-    expect(alo.tif).toBe("post_only");
-    const ioc = hlOrderToAction(
-      payload({ kind: "order", order: { a: 0, b: true, p: "1", s: "1", t: { limit: { tif: "Ioc" } } } }),
-    ).action;
-    expect(ioc.tif).toBe("ioc");
+  it("normalizes Alo → post_only and Ioc → ioc in orderType.time_in_force", () => {
+    const tif = (a: VenueOrderPayload) =>
+      (hlOrderToAction(a).action.order_type as { time_in_force: unknown }).time_in_force;
+    expect(
+      tif(payload({ kind: "order", order: { a: 0, b: true, p: "1", s: "1", t: { limit: { tif: "Alo" } } } })),
+    ).toEqual({ kind: "post_only" });
+    expect(
+      tif(payload({ kind: "order", order: { a: 0, b: true, p: "1", s: "1", t: { limit: { tif: "Ioc" } } } })),
+    ).toEqual({ kind: "ioc" });
+  });
+
+  it("converts a trigger order to orderType stop — the four StopOrderKind arms", () => {
+    const ot = (isMarket: boolean, tpsl: string) =>
+      hlOrderToAction(
+        payload({
+          kind: "order",
+          order: { a: 0, b: false, p: "59000", s: "0.1", r: true, t: { trigger: { triggerPx: "58000", isMarket, tpsl } } },
+        }),
+      ).action.order_type;
+    // Market-triggered stops carry NO limit price; limit-triggered carry `p`.
+    expect(ot(true, "sl")).toEqual({ kind: "stop", trigger_price: "58000", order_kind: "stop_market" });
+    expect(ot(false, "sl")).toEqual({
+      kind: "stop",
+      trigger_price: "58000",
+      order_kind: "stop_limit",
+      limit_price: "59000",
+    });
+    expect(ot(true, "tp")).toEqual({ kind: "stop", trigger_price: "58000", order_kind: "take_profit" });
+    expect(ot(false, "tp")).toEqual({
+      kind: "stop",
+      trigger_price: "58000",
+      order_kind: "take_profit_limit",
+      limit_price: "59000",
+    });
   });
 
   it("converts updateLeverage", () => {
@@ -194,7 +219,7 @@ describe("hlOrderToAction", () => {
     });
   });
 
-  it("converts twapOrder (side + minutes + randomize), with symbol when resolved", () => {
+  it("converts twapOrder to a Perp::PlaceOrder with orderType twap", () => {
     const { action } = hlOrderToAction(
       payload(
         {
@@ -210,15 +235,14 @@ describe("hlOrderToAction", () => {
       ),
     );
     expect(action).toEqual({
-      domain: "hyperliquid_core",
-      action: "hl_twap_order",
-      asset_index: 0,
-      is_buy: true,
-      size: "10",
+      domain: "perp",
+      action: "place_order",
+      venue: { name: "hyperliquid", chain: "hyperliquid:mainnet" },
+      market: { symbol: "BTC-USD", venue: { name: "hyperliquid" } },
+      side: "long",
+      size: { kind: "base_decimal", amount: "10" },
       reduce_only: false,
-      minutes: 30,
-      randomize: true,
-      symbol: "BTC-USD",
+      order_type: { kind: "twap", duration_minutes: 30, randomize: true },
     });
   });
 

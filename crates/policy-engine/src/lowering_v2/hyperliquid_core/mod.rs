@@ -16,13 +16,11 @@ use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 mod amount;
 mod c_deposit;
 mod c_withdraw;
-mod order;
 mod send_asset;
 mod send_to_evm_with_data;
 mod spot_send;
 mod sub_account_transfer;
 mod token_delegate;
-mod twap_order;
 mod unknown;
 mod update_isolated_margin;
 mod update_leverage;
@@ -42,7 +40,6 @@ pub(crate) fn lower(
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
     match action {
-        HyperliquidCoreAction::Order(a) => order::lower(a, ctx),
         HyperliquidCoreAction::UpdateLeverage(a) => update_leverage::lower(a, ctx),
         HyperliquidCoreAction::Withdraw(a) => withdraw::lower(a, ctx),
         HyperliquidCoreAction::UsdSend(a) => usd_send::lower(a, ctx),
@@ -55,7 +52,6 @@ pub(crate) fn lower(
         HyperliquidCoreAction::VaultTransfer(a) => vault_transfer::lower(a, ctx),
         HyperliquidCoreAction::SubAccountTransfer(a) => sub_account_transfer::lower(a, ctx),
         HyperliquidCoreAction::TokenDelegate(a) => token_delegate::lower(a, ctx),
-        HyperliquidCoreAction::TwapOrder(a) => twap_order::lower(a, ctx),
         HyperliquidCoreAction::UpdateIsolatedMargin(a) => update_isolated_margin::lower(a, ctx),
         HyperliquidCoreAction::Unknown(a) => unknown::lower(a, ctx),
     }

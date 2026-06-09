@@ -215,36 +215,4 @@ mod tests {
         assert_eq!(hl_of(&next).pending_outflow, Decimal::new("500"));
     }
 
-    #[test]
-    fn multicall_order_then_withdraw_on_empty_base_succeeds() {
-        use crate::action::hyperliquid_core::{HlOrderAction, HyperliquidCoreAction};
-        use crate::action::ActionBody;
-        use crate::apply::Reducer;
-        // An order opens the HlAccount (perp_usdc None); a following withdraw in
-        // the same bundle must NOT false-underflow against the placeholder.
-        let order = ActionBody::HyperliquidCore(HyperliquidCoreAction::Order(HlOrderAction {
-            asset_index: 0,
-            symbol: Some("BTC".to_owned()),
-            is_buy: true,
-            price: Decimal::new("60000"),
-            size: Decimal::new("0.1"),
-            reduce_only: false,
-            tif: "gtc".to_owned(),
-        }));
-        let withdraw =
-            ActionBody::HyperliquidCore(HyperliquidCoreAction::Withdraw(HlWithdrawAction {
-                destination: Address::from([0xde; 20]),
-                amount: Decimal::new("50"),
-            }));
-        let body = ActionBody::Multicall {
-            actions: vec![order, withdraw],
-        };
-        // Must not error (previously: Invariant underflow against placeholder 0).
-        let delta = body.apply(&empty_state(), &ctx()).unwrap();
-        let next = crate::helpers::delta::apply_delta(&empty_state(), &delta).unwrap();
-        let a = hl_of(&next);
-        assert_eq!(a.perp_usdc, None); // never synced
-        assert_eq!(a.open_orders.len(), 1); // order recorded
-        assert_eq!(a.pending_outflow, Decimal::new("50")); // withdraw intent recorded
-    }
 }

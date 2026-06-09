@@ -360,14 +360,14 @@
 ,
 {
   "id": "hl-no-short-perp",
-  "cedar": "@id(\"hl-no-short-perp\")\n@severity(\"deny\")\n@reason(\"Short perp orders on Hyperliquid are blocked by policy\")\nforbid(\n  principal,\n  action == HyperliquidCore::Action::\"HlOrder\",\n  resource\n)\nwhen {\n  context.venue.name == \"hyperliquid\" && context.side == \"short\"\n};",
+  "cedar": "@id(\"hl-no-short-perp\")\n@severity(\"deny\")\n@reason(\"Short perp orders on Hyperliquid are blocked by policy\")\nforbid(principal, action == Perp::Action::\"PlaceOrder\", resource)\nwhen {\n  context.venue.name == \"hyperliquid\" && context.side == \"short\" && context.reduceOnly == false\n};",
   "manifest": {
     "id": "hl-no-short-perp",
     "schema_version": 2,
     "trigger": {
       "where": {
         "action.tag": {
-          "eq": "hl_order"
+          "eq": "place_order"
         }
       }
     },

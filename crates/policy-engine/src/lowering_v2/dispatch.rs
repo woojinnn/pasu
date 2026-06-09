@@ -114,11 +114,11 @@ impl LowerCtx<'_> {
         super::common::amount::nano_from_decimals(raw, 18)
     }
 
-    /// Host-injected effective leverage for a venue `asset_index`, or `None`
+    /// Host-injected effective leverage for a market `symbol`, or `None`
     /// when it was not injected (the lowering then omits the optional
     /// `leverage` field). See [`AccountLeverage`].
-    pub(crate) fn leverage_for(&self, asset_index: u32) -> Option<i64> {
-        self.leverage.leverage_for(asset_index)
+    pub(crate) fn leverage_for_symbol(&self, symbol: &str) -> Option<i64> {
+        self.leverage.leverage_for_symbol(symbol)
     }
 }
 
