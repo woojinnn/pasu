@@ -1,4 +1,4 @@
-//! `RedelegateAction` — atomically undelegate and delegate to a new operator.
+//! `RedelegateAction` — undelegate the current operator and delegate to a new one in one call.
 
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
@@ -7,7 +7,7 @@ use policy_state::primitives::Address;
 
 use super::RestakingVenue;
 
-/// Redelegate to a new operator (ELIP-003).
+/// Redelegate to a new operator (EigenLayer DelegationManager `redelegate`).
 ///
 /// Models `DelegationManager`
 /// `redelegate(address newOperator, SignatureWithExpiry newOperatorApproverSig, bytes32 approverSalt)`:

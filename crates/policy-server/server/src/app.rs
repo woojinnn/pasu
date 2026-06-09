@@ -26,7 +26,7 @@ use crate::coordination::DynCoordinator;
 use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
-use crate::handler::{evaluate, HandlerError, PriceBook, PriceFact};
+use crate::handler::{evaluate, HandlerError, PriceBook, PriceFact, SanctionsScreen};
 use crate::market_handlers;
 use crate::read_handlers;
 use crate::write_handlers;
@@ -333,6 +333,56 @@ impl PriceBook for DbPriceBook {
     }
 }
 
+/// Chainalysis sanctions-list address `0x40C5…c8fb` is the canonical on-chain
+/// oracle on Ethereum mainnet (verified contract; `name()` = "Chainalysis
+/// sanctions oracle"). v1 is mainnet-only — the `EigenLayer` delegation chain.
+const CHAINALYSIS_ORACLE_MAINNET: &str = "0x40c57923924b5c5c5455c48d93317139addac8fb";
+
+/// On-chain sanctions screen for [`SanctionsScreen`], backed by the Chainalysis
+/// oracle (`isSanctioned(address)`). Reads the Ethereum-mainnet JSON-RPC URL from
+/// `POLICY_SANCTIONS_RPC_URL`; when unset the screen returns `None` (screen
+/// unavailable → the optional `address.sanctions` call fail-opens, so a
+/// deployment without an RPC stays dormancy-safe). The `eth_call` is hard-bounded
+/// (1.5 s) so a slow/dead RPC degrades to `None`, never blocking the verdict.
+/// Honest limit: the oracle is bool-only (no list/label/timestamp) and lags OFAC
+/// designations — a `true` is high-signal, a `false` is NOT an authoritative
+/// "clean".
+struct ChainalysisSanctionsOracle {
+    client: reqwest::Client,
+    rpc_url: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl SanctionsScreen for ChainalysisSanctionsOracle {
+    async fn is_sanctioned(&self, chain_id: i64, address: &str) -> Option<bool> {
+        if chain_id != 1 {
+            return None; // v1: Ethereum mainnet only (the EigenLayer chain).
+        }
+        let rpc_url = self.rpc_url.as_deref()?;
+        let data = crate::handler::sanctions_calldata(address)?;
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_call",
+            "params": [{ "to": CHAINALYSIS_ORACLE_MAINNET, "data": data }, "latest"],
+        });
+        let resp = self
+            .client
+            .post(rpc_url)
+            .json(&body)
+            .timeout(std::time::Duration::from_millis(1500))
+            .send()
+            .await
+            .ok()?
+            .json::<serde_json::Value>()
+            .await
+            .ok()?;
+        // A revert / error surfaces as a JSON-RPC `error` with no `result` → None.
+        let result = resp.get("result")?.as_str()?;
+        crate::handler::decode_sanctioned(result)
+    }
+}
+
 async fn evaluate_handler(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
@@ -359,7 +409,11 @@ async fn evaluate_handler(
     let price_book = DbPriceBook {
         global_db: state.global_db.clone(),
     };
-    match evaluate(&*store, &price_book, req).await {
+    let sanctions = ChainalysisSanctionsOracle {
+        client: reqwest::Client::new(),
+        rpc_url: std::env::var("POLICY_SANCTIONS_RPC_URL").ok(),
+    };
+    match evaluate(&*store, &price_book, &sanctions, req).await {
         Ok(resp) => Json(resp).into_response(),
         Err(err @ HandlerError::Reducer(_)) => {
             (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into_response()

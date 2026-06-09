@@ -51,6 +51,21 @@ pub struct PriceFact {
     pub decimals: u8,
 }
 
+/// Screens an address against an on-chain sanctions oracle (Chainalysis
+/// `isSanctioned(address)` — Ethereum mainnet `0x40C5…c8fb`), independent of any
+/// wallet. `Some(true)` = on the list, `Some(false)` = explicitly clean, `None` =
+/// could not screen (RPC error / unconfigured / unsupported chain). A `None`
+/// leaves the result absent — fail-open for the optional `address.sanctions`
+/// call, fail-closed for a required one — never fabricating a verdict. The v1
+/// production oracle is mainnet-only (the `EigenLayer` chain); `chain_id` is
+/// advisory.
+#[async_trait]
+pub trait SanctionsScreen: Send + Sync {
+    /// `Some(bool)` sanctioned-or-clean for `address` (0x-hex), `None` when the
+    /// oracle could not answer.
+    async fn is_sanctioned(&self, chain_id: i64, address: &str) -> Option<bool>;
+}
+
 /// Error surfaced by [`evaluate`].
 /// `Reducer` is a *client* error (the action could not be applied to the given
 /// state — map to `422 Unprocessable Entity`); `Store` is a *server* error (the
@@ -111,6 +126,7 @@ impl From<StoreError> for HandlerError {
 pub async fn evaluate(
     store: &dyn WalletStore,
     price_book: &dyn PriceBook,
+    sanctions: &dyn SanctionsScreen,
     req: EvaluateRequest,
 ) -> Result<EvaluateResponse, HandlerError> {
     // This handler is db-agnostic: production passes the PostgreSQL-backed
@@ -170,7 +186,7 @@ pub async fn evaluate(
     // USD-cap policy's `context.custom.*Usd` field is populated even for a wallet
     // that was never registered/synced.
     let (results, mut diagnostics) =
-        execute_call_specs(&state_before, &req.call_specs, price_book).await;
+        execute_call_specs(&state_before, &req.call_specs, price_book, sanctions).await;
     diagnostics.append(&mut sim_diagnostics);
 
     let note = if req.envelopes.is_empty() {
@@ -207,6 +223,7 @@ async fn execute_call_specs(
     state: &WalletState,
     specs: &[CallSpec],
     price_book: &dyn PriceBook,
+    sanctions: &dyn SanctionsScreen,
 ) -> (BTreeMap<String, Value>, Vec<Diagnostic>) {
     let mut results = BTreeMap::new();
     let mut diagnostics = Vec::new();
@@ -238,6 +255,23 @@ async fn execute_call_specs(
                     call_id: Some(spec.call_id.clone()),
                 }),
             },
+            "oracle.steth_peg_status_bps" => {
+                match oracle_steth_peg_status_bps(&spec.params, price_book).await {
+                    Some(value) => {
+                        tracing::debug!(call_id = %spec.call_id, "oracle.steth_peg_status_bps: OK");
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "oracle.steth_peg_status_bps: stETH/ETH price unavailable \
+                             (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
             "token.normalize_to_nano" => match normalize_to_nano(&spec.params, price_book).await {
                 Some(nano) => {
                     tracing::debug!(call_id = %spec.call_id, nano, "token.normalize_to_nano: OK");
@@ -305,6 +339,21 @@ async fn execute_call_specs(
                     }),
                 }
             }
+            "address.sanctions" => match address_sanctions(&spec.params, sanctions).await {
+                Some(value) => {
+                    tracing::debug!(call_id = %spec.call_id, "address.sanctions: OK");
+                    results.insert(spec.call_id.clone(), value);
+                }
+                None => diagnostics.push(Diagnostic {
+                    level: "warn".to_owned(),
+                    message: format!(
+                        "address.sanctions: missing address or oracle unavailable \
+                         (call {}) — field left unset",
+                        spec.call_id
+                    ),
+                    call_id: Some(spec.call_id.clone()),
+                }),
+            },
             other => diagnostics.push(Diagnostic {
                 level: "info".to_owned(),
                 message: format!(
@@ -365,6 +414,55 @@ async fn oracle_usd_value(
     Some(format!("{usd:.4}"))
 }
 
+/// Server-side `oracle.steth_peg_status_bps` (preset P4 — peg-aware stake safety):
+/// directional stETH/ETH peg status in basis points, computed from the
+/// market-global [`PriceBook`] ratio `price(stETH) / price(WETH)` — both USD, so
+/// the USD unit cancels and the result is the stETH/ETH price ratio. WETH is the
+/// ETH price proxy (native ETH is not a `(chain, address)` token).
+///
+/// Returns the shape P4 projects (`$.result.discountBps → stethDiscountBps`):
+/// `{ discountBps, premiumBps, deviationBps, pegRatio }` as 4dp decimal strings
+/// (`pegRatio` 6dp). Definitions (`r = stETH/ETH`):
+///   - `discountBps  = max(1 − r, 0) × 10000`
+///   - `premiumBps   = max(r − 1, 0) × 10000`
+///   - `deviationBps = |1 − r|      × 10000`
+///
+/// `None` when either price is unknown / unparseable / non-positive → the optional
+/// call's result is omitted (P4 stays dormant, fail-open), never a fabricated peg.
+async fn oracle_steth_peg_status_bps(params: &Value, price_book: &dyn PriceBook) -> Option<Value> {
+    /// Lido stETH (mainnet).
+    const STETH: &str = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
+    /// Canonical WETH (mainnet) — the ETH price proxy.
+    const WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let steth_p: f64 = price_book
+        .price(chain, STETH)
+        .await?
+        .price_usd
+        .parse()
+        .ok()?;
+    let weth_p: f64 = price_book
+        .price(chain, WETH)
+        .await?
+        .price_usd
+        .parse()
+        .ok()?;
+    if !(steth_p.is_finite() && weth_p.is_finite()) || weth_p <= 0.0 {
+        return None;
+    }
+    let ratio = steth_p / weth_p;
+    let discount_bps = (1.0 - ratio).max(0.0) * 10_000.0;
+    let premium_bps = (ratio - 1.0).max(0.0) * 10_000.0;
+    let deviation_bps = (1.0 - ratio).abs() * 10_000.0;
+    Some(json!({
+        "discountBps": format!("{discount_bps:.4}"),
+        "premiumBps": format!("{premium_bps:.4}"),
+        "deviationBps": format!("{deviation_bps:.4}"),
+        "pegRatio": format!("{ratio:.6}"),
+    }))
+}
+
 /// Server-side `token.normalize_to_nano`: rescale a raw token amount to
 /// token-native nano (`raw × 10^(9 − decimals)`, i.e. `token_amount × 10^9`),
 /// resolving the token's REAL `decimals` from the market-global [`PriceBook`] by
@@ -414,6 +512,46 @@ fn asset_address(v: &Value) -> Option<String> {
     Some(raw.to_lowercase())
 }
 
+/// Server-side `address.sanctions`: screen the delegation operator (or any
+/// counterparty) `address` via the injected on-chain [`SanctionsScreen`]. Params
+/// are the manifest's `{ address, chain_id? }` — `address` is the lowered
+/// operator/newOperator (0x-hex), `chain_id` the EIP-155 id (advisory; the v1
+/// oracle is Ethereum mainnet, the `EigenLayer` chain, so a non-numeric CAIP-2
+/// `chain_id` falls back to mainnet). Returns `{ "sanctioned": bool }` — the
+/// shape both the delegate (`$.result.sanctioned → sanctioned`) and redelegate
+/// (`$.result.sanctioned → newOperatorSanctioned`) manifests project. `None` when
+/// the address is missing or the oracle could not answer → the result is omitted
+/// (fail-open for the optional call), never a fabricated `false`.
+async fn address_sanctions(params: &Value, sanctions: &dyn SanctionsScreen) -> Option<Value> {
+    let address = params.get("address").and_then(asset_address)?;
+    let chain_id = params.get("chain_id").and_then(Value::as_i64).unwrap_or(1);
+    let flag = sanctions.is_sanctioned(chain_id, &address).await?;
+    Some(json!({ "sanctioned": flag }))
+}
+
+/// ABI-encode `isSanctioned(address)` calldata: 4-byte selector `0xdf592f7d`
+/// (`keccak256("isSanctioned(address)")[..4]`) + the 32-byte left-padded
+/// lowercased address. `None` for a malformed (non-20-byte / non-hex) address.
+pub(crate) fn sanctions_calldata(address: &str) -> Option<String> {
+    let addr = address.trim_start_matches("0x").to_lowercase();
+    if addr.len() != 40 || !addr.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    Some(format!("0xdf592f7d{addr:0>64}"))
+}
+
+/// Decode the `bool` returned by `isSanctioned`: a single 32-byte word, any
+/// non-zero byte = `true`. `None` for an empty return (a revert surfaces as a
+/// JSON-RPC error with no `result`, so an empty/odd word means "could not
+/// screen" — never coerced to `false`).
+pub(crate) fn decode_sanctioned(result_hex: &str) -> Option<bool> {
+    let hex = result_hex.trim_start_matches("0x");
+    if hex.is_empty() {
+        return None;
+    }
+    Some(hex.bytes().any(|b| b != b'0'))
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -450,6 +588,179 @@ mod tests {
     /// computed value MUST have come from the wallet's own synced holding.
     fn no_price_book() -> StubPriceBook {
         StubPriceBook(None, None)
+    }
+
+    /// A test [`SanctionsScreen`] returning a fixed answer for ANY address.
+    struct StubSanctions(Option<bool>);
+    #[async_trait]
+    impl SanctionsScreen for StubSanctions {
+        async fn is_sanctioned(&self, _chain_id: i64, _address: &str) -> Option<bool> {
+            self.0
+        }
+    }
+    /// Default: the oracle cannot answer (`None`) → `address.sanctions` stays absent.
+    fn no_sanctions() -> StubSanctions {
+        StubSanctions(None)
+    }
+
+    /// A test [`PriceBook`] returning DISTINCT prices for stETH vs WETH (keyed by
+    /// address); any other asset → `None`. Lets `oracle.steth_peg_status_bps` see
+    /// a real ratio (the shared `StubPriceBook` returns one price for everything).
+    struct StethWethBook {
+        steth: Option<&'static str>,
+        weth: Option<&'static str>,
+    }
+    #[async_trait]
+    impl PriceBook for StethWethBook {
+        async fn price(&self, _chain: &str, address: &str) -> Option<PriceFact> {
+            let p = match address.to_lowercase().as_str() {
+                "0xae7ab96520de3a18e5e111b5eaab095312d7fe84" => self.steth?,
+                "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" => self.weth?,
+                _ => return None,
+            };
+            Some(PriceFact {
+                price_usd: p.to_owned(),
+                decimals: 18,
+            })
+        }
+        async fn decimals(&self, _chain: &str, _address: &str) -> Option<u8> {
+            Some(18)
+        }
+    }
+
+    #[tokio::test]
+    async fn steth_peg_discount_projects_directional_bps() {
+        // stETH $2970 / ETH $3000 = 0.99 ⇒ 100 bps discount, 0 premium.
+        let book = StethWethBook {
+            steth: Some("2970.0"),
+            weth: Some("3000.0"),
+        };
+        let params = serde_json::json!({ "chain_id": "eip155:1" });
+        let v = super::oracle_steth_peg_status_bps(&params, &book)
+            .await
+            .unwrap();
+        assert_eq!(v["discountBps"], "100.0000");
+        assert_eq!(v["premiumBps"], "0.0000");
+        assert_eq!(v["deviationBps"], "100.0000");
+    }
+
+    #[tokio::test]
+    async fn steth_peg_premium_has_zero_discount() {
+        // stETH $3030 / ETH $3000 = 1.01 ⇒ 0 discount, 100 bps premium.
+        let book = StethWethBook {
+            steth: Some("3030.0"),
+            weth: Some("3000.0"),
+        };
+        let params = serde_json::json!({ "chain_id": "eip155:1" });
+        let v = super::oracle_steth_peg_status_bps(&params, &book)
+            .await
+            .unwrap();
+        assert_eq!(v["discountBps"], "0.0000");
+        assert_eq!(v["premiumBps"], "100.0000");
+    }
+
+    #[tokio::test]
+    async fn steth_peg_missing_price_is_none_dormant() {
+        // ETH price unknown ⇒ None ⇒ P4 stays dormant (fail-open), never fabricated.
+        let book = StethWethBook {
+            steth: Some("2970.0"),
+            weth: None,
+        };
+        let params = serde_json::json!({ "chain_id": "eip155:1" });
+        assert!(super::oracle_steth_peg_status_bps(&params, &book)
+            .await
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn address_sanctions_true_projects_sanctioned_true() {
+        let params = serde_json::json!({ "address": "0xABCdef0000000000000000000000000000000001", "chain_id": 1 });
+        let v = super::address_sanctions(&params, &StubSanctions(Some(true)))
+            .await
+            .unwrap();
+        assert_eq!(v, serde_json::json!({ "sanctioned": true }));
+    }
+
+    #[tokio::test]
+    async fn address_sanctions_false_projects_sanctioned_false() {
+        let params = serde_json::json!({ "address": "0x0000000000000000000000000000000000000002" });
+        let v = super::address_sanctions(&params, &StubSanctions(Some(false)))
+            .await
+            .unwrap();
+        assert_eq!(v, serde_json::json!({ "sanctioned": false }));
+    }
+
+    #[tokio::test]
+    async fn address_sanctions_oracle_unavailable_is_none() {
+        let params = serde_json::json!({ "address": "0x0000000000000000000000000000000000000003" });
+        assert!(super::address_sanctions(&params, &no_sanctions())
+            .await
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn address_sanctions_missing_address_is_none() {
+        let params = serde_json::json!({ "chain_id": 1 });
+        assert!(
+            super::address_sanctions(&params, &StubSanctions(Some(true)))
+                .await
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn execute_call_specs_serves_address_sanctions() {
+        let st = WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        let spec = CallSpec {
+            manifest_id: "delegate-operator-sanctioned-warn".into(),
+            call_id: "m::operator-sanctions".into(),
+            method: "address.sanctions".into(),
+            params: serde_json::json!({ "address": "0xabc0000000000000000000000000000000000001", "chain_id": 1 }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+        let (results, _diag) =
+            super::execute_call_specs(&st, &[spec], &no_price_book(), &StubSanctions(Some(true)))
+                .await;
+        assert_eq!(
+            results["m::operator-sanctions"],
+            serde_json::json!({ "sanctioned": true })
+        );
+    }
+
+    #[test]
+    fn sanctions_calldata_pads_address_and_prefixes_selector() {
+        let cd = super::sanctions_calldata("0xABCdef0000000000000000000000000000000001").unwrap();
+        assert_eq!(
+            cd,
+            "0xdf592f7d000000000000000000000000abcdef0000000000000000000000000000000001"
+        );
+        assert_eq!(cd.len(), 2 + 8 + 64);
+    }
+
+    #[test]
+    fn sanctions_calldata_rejects_malformed() {
+        assert!(super::sanctions_calldata("0x1234").is_none()); // wrong length
+        assert!(super::sanctions_calldata("0xzz000000000000000000000000000000000000").is_none());
+        // non-hex
+    }
+
+    #[test]
+    fn decode_sanctioned_true_false_and_empty() {
+        assert_eq!(
+            super::decode_sanctioned(
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+            ),
+            Some(true)
+        );
+        assert_eq!(
+            super::decode_sanctioned(
+                "0x0000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            Some(false)
+        );
+        assert_eq!(super::decode_sanctioned("0x"), None);
+        assert_eq!(super::decode_sanctioned(""), None);
     }
 
     /// A wallet holding 100 USDC on mainnet with a synced $1.0001 price — the
@@ -626,9 +937,14 @@ mod tests {
         let seeded = non_trivial_state();
         store.seed(seeded.clone());
 
-        let resp = evaluate(&store, &no_price_book(), empty_envelope_request())
-            .await
-            .unwrap();
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            empty_envelope_request(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(resp.policy_request.state_before, seeded);
         assert_eq!(resp.policy_request.state_after, seeded);
@@ -651,9 +967,14 @@ mod tests {
         assert_eq!(loaded, WalletState::new(id.clone()));
 
         // And the handler echoes that empty state for an empty request.
-        let resp = evaluate(&store, &no_price_book(), empty_envelope_request())
-            .await
-            .unwrap();
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            empty_envelope_request(),
+        )
+        .await
+        .unwrap();
         assert_eq!(resp.policy_request.state_before, WalletState::new(id));
         assert!(resp.policy_request.deltas.is_empty());
     }
@@ -670,6 +991,7 @@ mod tests {
         let resp = evaluate(
             &store,
             &no_price_book(),
+            &no_sanctions(),
             request_with_envelope(hyperliquid_order_action()),
         )
         .await
@@ -708,7 +1030,9 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, &no_price_book(), req).await.unwrap();
+        let resp = evaluate(&store, &no_price_book(), &no_sanctions(), req)
+            .await
+            .unwrap();
         assert_eq!(
             resp.policy_request.results["swap-usdc-usd-cap-deny::usd"],
             serde_json::json!({ "usd": "100.0100" })
@@ -731,7 +1055,7 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, &no_price_book(), req)
+        let resp = evaluate(&store, &no_price_book(), &no_sanctions(), req)
             .await
             .expect("a non-reducible action must NOT fail the request");
 
@@ -765,7 +1089,9 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, &no_price_book(), req).await.unwrap();
+        let resp = evaluate(&store, &no_price_book(), &no_sanctions(), req)
+            .await
+            .unwrap();
         assert!(
             resp.policy_request.results.is_empty(),
             "no price → no result"
@@ -800,7 +1126,9 @@ mod tests {
             None,
         );
 
-        let resp = evaluate(&store, &price_book, req).await.unwrap();
+        let resp = evaluate(&store, &price_book, &no_sanctions(), req)
+            .await
+            .unwrap();
 
         // 60_000 / 1e6 × 0.9996 = 0.059976 → "0.0600" (≥ 0.05 ⇒ a USD cap denies).
         assert_eq!(
@@ -831,7 +1159,9 @@ mod tests {
         // Empty wallet — decimals can ONLY come from the global book (=6, USDC).
         let price_book = StubPriceBook(None, Some(6));
 
-        let resp = evaluate(&store, &price_book, req).await.unwrap();
+        let resp = evaluate(&store, &price_book, &no_sanctions(), req)
+            .await
+            .unwrap();
 
         assert_eq!(
             resp.policy_request.results["swap-intoken-cap-deny::nano"],
@@ -860,7 +1190,9 @@ mod tests {
         });
         let price_book = StubPriceBook(None, Some(18));
 
-        let resp = evaluate(&store, &price_book, req).await.unwrap();
+        let resp = evaluate(&store, &price_book, &no_sanctions(), req)
+            .await
+            .unwrap();
 
         assert_eq!(
             resp.policy_request.results["swap-intoken-cap-deny::nano"],
@@ -954,8 +1286,13 @@ mod tests {
             optional: true,
         };
 
-        let (results, _diag) =
-            execute_call_specs(&state, std::slice::from_ref(&spec), &no_price_book()).await;
+        let (results, _diag) = execute_call_specs(
+            &state,
+            std::slice::from_ref(&spec),
+            &no_price_book(),
+            &no_sanctions(),
+        )
+        .await;
         assert_eq!(
             results.get(&spec.call_id),
             Some(&serde_json::json!({ "capSumOverBalance": true }))
@@ -1041,6 +1378,7 @@ mod tests {
             &state,
             &[dup_spec.clone(), horizon_spec.clone()],
             &no_price_book(),
+            &no_sanctions(),
         )
         .await;
         assert_eq!(

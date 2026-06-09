@@ -1,5 +1,23 @@
 {
   "methods": {
+    "address.sanctions": {
+      "name": "address.sanctions",
+      "description": "Is an address on an on-chain sanctions oracle (Chainalysis isSanctioned — OFAC/EU/UN)? Legal-list membership, distinct from a scam/drainer heuristic. v1 screens Ethereum mainnet (the EigenLayer chain).",
+      "params": {
+        "address": {
+          "type": "String",
+          "required": true,
+          "description": "Address under review (delegation operator / newOperator / counterparty), 0x-hex."
+        },
+        "chain_id": {
+          "type": "Long",
+          "required": false,
+          "defaultSelector": "$.root.chain_id"
+        }
+      },
+      "returns": { "kind": "scalar", "type": "Bool", "from": "$.result.sanctioned" },
+      "origin": "bundled"
+    },
     "approval.allowance": {
       "name": "approval.allowance",
       "description": "Inspect a token allowance: surfaces raw value, unlimited-allowance flag, and coverage of a requested amount.",

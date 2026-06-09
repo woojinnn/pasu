@@ -13,7 +13,7 @@
     "0xa33a3433": {
       "name": "redelegate",
       "decision": "cover",
-      "reason": "PERMISSION DELEGATION primitive (NEW, ELIP-003) — atomically undelegate from current operator and delegate to a new one. Same risk surface as delegateTo."
+      "reason": "PERMISSION DELEGATION primitive (NEW) — undelegate from current operator and delegate to a new one in one call. Same risk surface as delegateTo."
     },
     "0xda8be864": {
       "name": "undelegate",
