@@ -214,5 +214,4 @@ mod tests {
         let next = crate::helpers::delta::apply_delta(&state_unsynced("100"), &delta).unwrap();
         assert_eq!(hl_of(&next).pending_outflow, Decimal::new("500"));
     }
-
 }

@@ -3,7 +3,7 @@
 //! `PlaceStopOrderAction` reducers; the order kind is dispatched on
 //! [`OrderType`](crate::action::perp::OrderType).
 //!
-//! ## live_inputs
+//! ## `live_inputs`
 //! `live_inputs` is `Option`. The on-chain `Sync` path always populates it;
 //! the Hyperliquid pre-sign path leaves it `None` and is never reduced (it is
 //! evaluated through the policy/lowering path, not this stateful reducer). A
@@ -32,7 +32,9 @@ use policy_state::position::PerpSide;
 use policy_state::primitives::Price;
 use policy_state::{EvalContext, PendingChange, StateDelta, WalletState};
 
-use crate::action::perp::{OrderType, PlaceOrderAction, PlaceOrderLiveInputs, StopOrderKind, TimeInForce};
+use crate::action::perp::{
+    OrderType, PlaceOrderAction, PlaceOrderLiveInputs, StopOrderKind, TimeInForce,
+};
 use crate::apply::Reducer;
 use crate::error::{ReducerError, ReducerResult};
 
@@ -56,7 +58,14 @@ impl Reducer for PlaceOrderAction {
                 trigger_price,
                 order_kind,
                 limit_price,
-            } => stop_pending(self, li, trigger_price, order_kind, limit_price.as_ref(), ctx)?,
+            } => stop_pending(
+                self,
+                li,
+                trigger_price,
+                order_kind,
+                limit_price.as_ref(),
+                ctx,
+            )?,
             OrderType::Twap {
                 duration_minutes, ..
             } => twap_pending(self, li, *duration_minutes, ctx)?,
@@ -112,8 +121,12 @@ fn limit_pending(
         TimeInForce::Gtc | TimeInForce::Ioc | TimeInForce::Fok | TimeInForce::PostOnly => None,
     };
 
-    let pending_id =
-        common::pending_id_for_limit_order(&action.venue, &action.market.symbol, &action.side, price);
+    let pending_id = common::pending_id_for_limit_order(
+        &action.venue,
+        &action.market.symbol,
+        &action.side,
+        price,
+    );
     Ok(PendingTx {
         id: pending_id,
         kind: PendingKind::PerpVenueOrder {
@@ -425,7 +438,7 @@ mod tests {
         assert!(matches!(err, ReducerError::Invariant(msg) if msg.contains("soft cap")));
     }
 
-    /// Missing live_inputs (the Hyperliquid pre-sign shape) → MissingField.
+    /// Missing `live_inputs` (the Hyperliquid pre-sign shape) → `MissingField`.
     #[test]
     fn missing_live_inputs_rejected() {
         let mut action = base(
@@ -438,10 +451,13 @@ mod tests {
         );
         action.live_inputs = None;
         let err = action.apply(&state(), &ctx()).unwrap_err();
-        assert!(matches!(err, ReducerError::MissingField("place_order.live_inputs")));
+        assert!(matches!(
+            err,
+            ReducerError::MissingField("place_order.live_inputs")
+        ));
     }
 
-    /// `StopMarket` Long: trigger below mark → valid, maps to StopMarket.
+    /// `StopMarket` Long: trigger below mark → valid, maps to `StopMarket`.
     #[test]
     fn stop_market_long_below_mark_emits_pending() {
         let action = base(
@@ -499,7 +515,7 @@ mod tests {
         );
     }
 
-    /// `TakeProfitLimit` short collapses to StopLimit lane.
+    /// `TakeProfitLimit` short collapses to `StopLimit` lane.
     #[test]
     fn take_profit_limit_short_collapses_to_stop_limit() {
         let action = base(

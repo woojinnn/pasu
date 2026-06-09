@@ -133,10 +133,16 @@ mod tests {
         let v = serde_json::to_value(&action).unwrap();
         assert!(v.get("reduce_only").is_some(), "snake_case reduce_only");
         assert!(v.get("reduceOnly").is_none(), "no camelCase reduceOnly");
-        assert!(v.get("live_inputs").is_none(), "None live_inputs is omitted");
+        assert!(
+            v.get("live_inputs").is_none(),
+            "None live_inputs is omitted"
+        );
         let ot = v.get("order_type").expect("snake_case order_type");
         assert_eq!(ot.get("kind").unwrap(), "limit");
-        assert!(ot.get("time_in_force").is_some(), "snake_case time_in_force");
+        assert!(
+            ot.get("time_in_force").is_some(),
+            "snake_case time_in_force"
+        );
         // Round-trips back to the identical action.
         let back: PlaceOrderAction = serde_json::from_value(v).unwrap();
         assert_eq!(back, action);

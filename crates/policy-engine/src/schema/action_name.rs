@@ -205,9 +205,9 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     // `hl_twap_order` now decode (TS) directly to `Perp::PlaceOrder` (off-chain
     // perp placement; orderType limit/stop/twap). `hl_update_leverage` →
     // `Perp::ChangeLeverage`, `hl_update_isolated_margin` → `Perp::AdjustMargin`
-    // (the perp leverage/margin actions). All are therefore absent here.
+    // (the perp leverage/margin actions). `hl_usd_class_transfer` (benign
+    // intra-account move) → `Core::Unknown`. All are therefore absent here.
     "hl_withdraw",
-    "hl_usd_class_transfer",
     "hl_send_asset",
     "hl_token_delegate",
 ];
@@ -274,7 +274,7 @@ mod tests {
         // + Aave `gsm_swap` + governance + lending periphery + staking
         // redeem/stake/cooldown) = 118, plus Marketplace (Seaport) sign_order +
         // fulfill_order (cancel_order dedups against Perp) = 120.
-        assert_eq!(REGISTERED_ACTIONS.len(), 105);
+        assert_eq!(REGISTERED_ACTIONS.len(), 104);
     }
 
     #[test]

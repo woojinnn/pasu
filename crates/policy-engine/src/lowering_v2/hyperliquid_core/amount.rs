@@ -24,6 +24,9 @@ pub(super) struct HlAmount {
 /// `decimals` (USDC = 6) to raw smallest-unit hex + nano. Parses the decimal as
 /// integer-part + fractional-part to avoid float error; pads/truncates the
 /// fraction to `decimals` digits.
+// Casts are over a tiny domain — `decimals` is a token-decimals count (≤ 18),
+// so the int/scale conversions never truncate, wrap, or lose a sign.
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub(super) fn hl_amount_projection(amount: &Decimal, decimals: u32) -> HlAmount {
     let s = amount.0.as_str();
     let (int_part, frac_part) = s.split_once('.').unwrap_or((s, ""));
@@ -49,6 +52,9 @@ pub(super) fn hl_amount_projection(amount: &Decimal, decimals: u32) -> HlAmount 
 }
 
 /// raw × 10^scale (scale = 9 − decimals), as i64; `None` on overflow.
+// `scale` ∈ [−9, 9] (9 − decimals, decimals ≤ 18) and each branch guards its
+// sign, so the `u64` casts never lose a sign.
+#[allow(clippy::cast_sign_loss)]
 fn compute_nano(raw: U256, scale: i32) -> Option<i64> {
     let scaled = if scale >= 0 {
         raw.checked_mul(U256::from(10u64).pow(U256::from(scale as u64)))?
