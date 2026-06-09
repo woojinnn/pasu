@@ -216,6 +216,63 @@ fn shipped_seed_policy_confirms_hyperliquid_withdraw() {
     );
 }
 
+/// PHASE-2 SHIPPED-SEED PROOF (coverage preserved across a schema deletion): a
+/// `usdSend` now lowers to `Token::Action::"Erc20Transfer"` (its own HL schema is
+/// deleted), and the shipped `hl-confirm-usd-send` seed — rewritten onto
+/// `Erc20Transfer` but KEEPING its `hl_usd_send` trigger — still FIRES `warn`
+/// end-to-end. This is the firing oracle conformance tests cannot provide.
+#[test]
+fn shipped_seed_policy_confirms_hyperliquid_usd_send() {
+    let usd_send = json!({
+        "domain": "hyperliquid_core",
+        "action": "hl_usd_send",
+        "destination": "0x000000000000000000000000000000000000dead",
+        "amount": "250"
+    });
+    let parsed = run(usd_send, json!([seed_bundle("hl-confirm-usd-send")]));
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "warn",
+        "usd_send must WARN via the rewritten Erc20Transfer policy: {parsed}"
+    );
+    assert_eq!(
+        parsed["data"]["verdict"]["matched"][0]["policy_id"], "hl-confirm-usd-send",
+        "matched policy must be the shipped seed id: {parsed}"
+    );
+}
+
+/// PHASE-2 PROOF: a `spotSend` lowers to `Token::Action::"Erc20Transfer"` and a
+/// transfer-shaped policy selected by the `hl_spot_send` trigger FIRES — the
+/// migrated lowering + tag-based selection preserve HL spot-send coverage.
+#[test]
+fn hyperliquid_spot_send_confirmed_via_erc20_transfer() {
+    const CONFIRM_ERC20: &str = "\
+@id(\"hl/spot-send-confirm\")\n\
+@severity(\"warn\")\n\
+@reason(\"Sending a spot token off Hyperliquid — confirm the destination\")\n\
+forbid(principal, action == Token::Action::\"Erc20Transfer\", resource);\n";
+    let spot_send = json!({
+        "domain": "hyperliquid_core",
+        "action": "hl_spot_send",
+        "destination": "0x000000000000000000000000000000000000dead",
+        "token": "USDC:0xc1fb593aeffbeb02f85e0308e9956a90",
+        "amount": "500.25"
+    });
+    let parsed = run(
+        spot_send,
+        json!([{ "policy": CONFIRM_ERC20, "manifest": manifest("hl_spot_send") }]),
+    );
+    assert_eq!(parsed["ok"], true, "{parsed}");
+    assert_eq!(
+        parsed["data"]["verdict"]["kind"], "warn",
+        "spot_send must WARN via Erc20Transfer: {parsed}"
+    );
+    assert_eq!(
+        parsed["data"]["verdict"]["matched"][0]["policy_id"], "hl/spot-send-confirm",
+        "{parsed}"
+    );
+}
+
 /// D4 SHIPPED-SEED PROOF: the shipped `hl-confirm-high-leverage` bundle FLAGS a
 /// high-leverage `updateLeverage` (`warn`) — closes the D4 gap where leverage
 /// changes shipped no policy.

@@ -13,6 +13,7 @@ use policy_transition::action::hyperliquid_core::HyperliquidCoreAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
+mod amount;
 mod c_deposit;
 mod c_withdraw;
 mod order;
@@ -78,4 +79,27 @@ pub(crate) fn hl_market(asset_index: u32, symbol: Option<&str>) -> Value {
     m.insert("symbol".into(), Value::String(sym));
     m.insert("assetIndex".into(), Value::from(i64::from(asset_index)));
     Value::Object(m)
+}
+
+/// USDC decimals on Hyperliquid (the implied token of `usd_send` / `vault_transfer`
+/// / `sub_account_transfer`, all USDC-denominated).
+pub(crate) const HL_USDC_DECIMALS: u32 = 6;
+
+/// HL `Core::TokenRef` for a spot token id (`"USDC"` / `"USDC:0x.."`). The
+/// `standard = "hyperliquid"` arm of `Core::TokenKey` carries the raw HL token
+/// id in `hlToken` (no on-chain ERC-20 address exists for an HL spot balance).
+pub(crate) fn hl_token_ref(hl_token: &str) -> Value {
+    let mut key = Map::new();
+    key.insert("standard".into(), Value::String("hyperliquid".into()));
+    key.insert("chain".into(), Value::String("hyperliquid:mainnet".into()));
+    key.insert("hlToken".into(), Value::String(hl_token.to_owned()));
+    let mut m = Map::new();
+    m.insert("key".into(), Value::Object(key));
+    Value::Object(m)
+}
+
+/// HL `Core::TokenRef` for USDC — the implied token of `usd_send` /
+/// `vault_transfer` / `sub_account_transfer`.
+pub(crate) fn hl_usdc_token_ref() -> Value {
+    hl_token_ref("USDC")
 }

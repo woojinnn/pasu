@@ -34,11 +34,12 @@ namespace Core {
   //   - Erc1155{ chain, contract, token_id }   standard = "erc1155"
   // -------------------------------------------------------------------------
   type TokenKey = {
-    standard: String,         // "native" | "erc20" | "erc721" | "erc1155"
-    chain: String,            // CAIP-2 id, e.g. "eip155:1"
+    standard: String,         // "native" | "erc20" | "erc721" | "erc1155" | "hyperliquid"
+    chain: String,            // CAIP-2 id, e.g. "eip155:1"; HL sentinel "hyperliquid:mainnet"
     address?: String,         // present iff standard = "erc20"
     contract?: String,        // present iff standard ∈ {"erc721","erc1155"}
     tokenId?: String,         // U256 hex; present iff standard ∈ {"erc721","erc1155"}
+    hlToken?: String,         // present iff standard = "hyperliquid": HL token id ("USDC" / "USDC:0x..")
   };
 
   type TokenRef = {

@@ -198,20 +198,18 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "wrap_native",
     // HyperliquidCore — thin off-chain L1 action model. `hl_`-prefixed so the
     // tags stay globally unique (e.g. `withdraw` already exists in Lending).
-    // `hl_unknown` / `hl_send_to_evm_with_data` now resolve to `Core::Unknown`
-    // (no own schema), and `hl_approve_agent` / `hl_approve_builder_fee` were
-    // dropped, so they are absent from this shipped-schema set.
+    // `hl_unknown` / `hl_send_to_evm_with_data` now resolve to `Core::Unknown`,
+    // and `hl_usd_send` / `hl_spot_send` / `hl_vault_transfer` /
+    // `hl_sub_account_transfer` now resolve to `Token::Erc20Transfer` (no own
+    // schema). `hl_approve_agent` / `hl_approve_builder_fee` were dropped. All
+    // are therefore absent from this shipped-schema set.
     "hl_order",
     "hl_update_leverage",
     "hl_withdraw",
-    "hl_usd_send",
-    "hl_spot_send",
     "hl_usd_class_transfer",
     "hl_send_asset",
     "hl_c_deposit",
     "hl_c_withdraw",
-    "hl_vault_transfer",
-    "hl_sub_account_transfer",
     "hl_token_delegate",
     "hl_twap_order",
     "hl_update_isolated_margin",
@@ -279,7 +277,7 @@ mod tests {
         // + Aave `gsm_swap` + governance + lending periphery + staking
         // redeem/stake/cooldown) = 118, plus Marketplace (Seaport) sign_order +
         // fulfill_order (cancel_order dedups against Perp) = 120.
-        assert_eq!(REGISTERED_ACTIONS.len(), 116);
+        assert_eq!(REGISTERED_ACTIONS.len(), 112);
     }
 
     #[test]

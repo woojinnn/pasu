@@ -36,10 +36,10 @@ use super::{
     GOVERNANCE_START_VOTE_SCHEMA, GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA, GOVERNANCE_VOTE_SCHEMA,
     HL_C_DEPOSIT_SCHEMA,
     HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA,
-    HL_SPOT_SEND_SCHEMA, HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_TOKEN_DELEGATE_SCHEMA,
+    HL_TOKEN_DELEGATE_SCHEMA,
     HL_TWAP_ORDER_SCHEMA, HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
-    HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA,
-    HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
+    HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA,
+    HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
     LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
     LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
     LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
@@ -767,8 +767,8 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_usd_send"),
-        schema_text: HL_USD_SEND_SCHEMA,
-        pascal_stub: "HlUsdSend",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",
@@ -779,8 +779,8 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_spot_send"),
-        schema_text: HL_SPOT_SEND_SCHEMA,
-        pascal_stub: "HlSpotSend",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",
@@ -815,14 +815,14 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_vault_transfer"),
-        schema_text: HL_VAULT_TRANSFER_SCHEMA,
-        pascal_stub: "HlVaultTransfer",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_sub_account_transfer"),
-        schema_text: HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
-        pascal_stub: "HlSubAccountTransfer",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",

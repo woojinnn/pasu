@@ -3967,31 +3967,6 @@
     }
   },
   {
-    "name": "hl-confirm-approve-agent",
-    "est": {
-      "effect": "forbid",
-      "principal": {
-        "op": "All"
-      },
-      "action": {
-        "op": "==",
-        "entity": {
-          "type": "HyperliquidCore::Action",
-          "id": "HlApproveAgent"
-        }
-      },
-      "resource": {
-        "op": "All"
-      },
-      "conditions": [],
-      "annotations": {
-        "id": "hl-confirm-approve-agent",
-        "reason": "Authorizing an agent wallet to trade on your behalf — confirm before approving",
-        "severity": "warn"
-      }
-    }
-  },
-  {
     "name": "hl-confirm-high-leverage",
     "est": {
       "effect": "forbid",
@@ -4069,8 +4044,8 @@
       "action": {
         "op": "==",
         "entity": {
-          "type": "HyperliquidCore::Action",
-          "id": "HlUsdSend"
+          "type": "Token::Action",
+          "id": "Erc20Transfer"
         }
       },
       "resource": {

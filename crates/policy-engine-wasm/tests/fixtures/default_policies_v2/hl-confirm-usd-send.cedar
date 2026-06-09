@@ -3,6 +3,6 @@
 @reason("Sending USDC to another account on Hyperliquid — confirm before sending")
 forbid(
   principal,
-  action == HyperliquidCore::Action::"HlUsdSend",
+  action == Token::Action::"Erc20Transfer",
   resource
 );

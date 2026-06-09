@@ -283,10 +283,6 @@ const HL_UPDATE_LEVERAGE_SCHEMA: &str = include_str!(
 );
 const HL_WITHDRAW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/withdraw.cedarschema");
-const HL_USD_SEND_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/usd_send.cedarschema");
-const HL_SPOT_SEND_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/spot_send.cedarschema");
 const HL_USD_CLASS_TRANSFER_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/usd_class_transfer.cedarschema"
 );
@@ -297,12 +293,6 @@ const HL_C_DEPOSIT_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/c_deposit.cedarschema");
 const HL_C_WITHDRAW_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/c_withdraw.cedarschema"
-);
-const HL_VAULT_TRANSFER_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/vault_transfer.cedarschema"
-);
-const HL_SUB_ACCOUNT_TRANSFER_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/sub_account_transfer.cedarschema"
 );
 const HL_TOKEN_DELEGATE_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/token_delegate.cedarschema"
@@ -426,14 +416,10 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     HL_ORDER_SCHEMA,
     HL_UPDATE_LEVERAGE_SCHEMA,
     HL_WITHDRAW_SCHEMA,
-    HL_USD_SEND_SCHEMA,
-    HL_SPOT_SEND_SCHEMA,
     HL_USD_CLASS_TRANSFER_SCHEMA,
     HL_SEND_ASSET_SCHEMA,
     HL_C_DEPOSIT_SCHEMA,
     HL_C_WITHDRAW_SCHEMA,
-    HL_VAULT_TRANSFER_SCHEMA,
-    HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
     HL_TOKEN_DELEGATE_SCHEMA,
     HL_TWAP_ORDER_SCHEMA,
     HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
@@ -938,15 +924,11 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("hl_c_withdraw", "HlCWithdrawContext"),
     ("hl_order", "HlOrderContext"),
     ("hl_send_asset", "HlSendAssetContext"),
-    ("hl_spot_send", "HlSpotSendContext"),
-    ("hl_sub_account_transfer", "HlSubAccountTransferContext"),
     ("hl_token_delegate", "HlTokenDelegateContext"),
     ("hl_twap_order", "HlTwapOrderContext"),
     ("hl_update_isolated_margin", "HlUpdateIsolatedMarginContext"),
     ("hl_update_leverage", "HlUpdateLeverageContext"),
     ("hl_usd_class_transfer", "HlUsdClassTransferContext"),
-    ("hl_usd_send", "HlUsdSendContext"),
-    ("hl_vault_transfer", "HlVaultTransferContext"),
     ("hl_withdraw", "HlWithdrawContext"),
 ];
 
