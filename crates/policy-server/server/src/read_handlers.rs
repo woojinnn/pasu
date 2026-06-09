@@ -97,7 +97,7 @@ pub async fn get_positions(
 }
 
 /// `GET /wallets/:address/pending` — off-chain / unsettled intent orders
-/// (`UniswapX`, `CoW` Swap, `1inch` Fusion) as a typed array of `PendingTx`.
+/// (`UniswapX`, `CoW` Swap, 1inch Fusion) as a typed array of `PendingTx`.
 pub async fn get_pending(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,

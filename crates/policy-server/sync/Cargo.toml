@@ -26,6 +26,10 @@ rust_decimal = { workspace = true }
 # Errors
 thiserror = { workspace = true }
 
+# Observability — surface non-fatal fetch failures (oracle/venue) that were
+# otherwise swallowed silently.
+tracing = "0.1"
+
 # EVM types for eth_call ABI encoding.
 alloy-primitives = { workspace = true }
 # Dynamic ABI decoding — generic decoder + Sourcify integration

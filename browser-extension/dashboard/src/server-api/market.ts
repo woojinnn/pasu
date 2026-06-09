@@ -82,6 +82,28 @@ export interface Review {
   created_at: number;
 }
 
+export type ReportReason =
+  | "unsafe_policy"
+  | "misleading"
+  | "spam"
+  | "abuse"
+  | "other";
+
+export type ReportStatus = "open" | "resolved";
+
+export interface MarketReport {
+  id: string;
+  listing_id?: string;
+  review_id?: string;
+  reporter_id: string;
+  reason: ReportReason;
+  details?: string;
+  status: ReportStatus;
+  resolved_by?: string;
+  resolved_at?: number;
+  created_at: number;
+}
+
 export interface ListingDetail extends ListingSummary {
   latest_version: ListingVersion | null;
   recent_reviews: Review[];
@@ -139,6 +161,20 @@ export interface CreateReviewBody {
   version: string;
   rating: number;
   body: I18nText;
+}
+
+export interface CreateReportBody {
+  reason: ReportReason;
+  details?: string;
+}
+
+export interface ListReportsParams {
+  status?: ReportStatus;
+  limit?: number;
+}
+
+export interface UpdateReportStatusBody {
+  status: ReportStatus;
 }
 
 /** `GET /market/listings` — browse + filter + sort. */
@@ -222,6 +258,55 @@ export async function createReview(
 ): Promise<Review> {
   return request<Review>(`/market/listings/id/${listingId}/reviews`, {
     method: "POST",
+    body,
+  });
+}
+
+/** `POST /market/listings/id/:id/report` — report a listing. */
+export async function reportListing(
+  listingId: string,
+  body: CreateReportBody,
+): Promise<MarketReport> {
+  return request<MarketReport>(`/market/listings/id/${listingId}/report`, {
+    method: "POST",
+    body,
+  });
+}
+
+/** `POST /market/reviews/:id/report` — report a review. */
+export async function reportReview(
+  reviewId: string,
+  body: CreateReportBody,
+): Promise<MarketReport> {
+  return request<MarketReport>(`/market/reviews/${reviewId}/report`, {
+    method: "POST",
+    body,
+  });
+}
+
+/** `GET /market/reports/mine` — reports submitted by the caller. */
+export async function listMyReports(): Promise<MarketReport[]> {
+  return request<MarketReport[]>("/market/reports/mine");
+}
+
+/** `GET /market/reports` — admin moderation queue. */
+export async function listReports(
+  params: ListReportsParams = {},
+): Promise<MarketReport[]> {
+  const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.limit != null) search.set("limit", String(params.limit));
+  const qs = search.toString();
+  return request<MarketReport[]>(qs ? `/market/reports?${qs}` : "/market/reports");
+}
+
+/** `PATCH /market/reports/:id` — admin moderation status update. */
+export async function updateReportStatus(
+  reportId: string,
+  body: UpdateReportStatusBody,
+): Promise<MarketReport> {
+  return request<MarketReport>(`/market/reports/${reportId}`, {
+    method: "PATCH",
     body,
   });
 }

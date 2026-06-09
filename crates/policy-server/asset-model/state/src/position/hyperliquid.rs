@@ -27,6 +27,12 @@ pub struct HlAccount {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub perp_usdc: Option<Decimal>,
+    /// Perp-account equity / account value in USD from `marginSummary.accountValue`.
+    /// Prefer this for portfolio totals; `perp_usdc` is the withdrawable/free
+    /// margin balance and can understate an account with open positions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub perp_account_value_usd: Option<Decimal>,
     /// Cumulative USDC outflow intent recorded by withdraw / `usd_send`, kept
     /// even when no base balance is known (so a no-fetch caller still sees it).
     pub pending_outflow: Decimal,
@@ -58,6 +64,7 @@ impl Default for HlAccount {
     fn default() -> Self {
         Self {
             perp_usdc: None,
+            perp_account_value_usd: None,
             pending_outflow: Decimal::new("0"),
             positions: Vec::new(),
             open_orders: Vec::new(),
@@ -112,6 +119,7 @@ impl HlAccount {
     pub fn merge_core(&mut self, core: Self, which: CoreFresh) {
         if which.clearinghouse {
             self.perp_usdc = core.perp_usdc;
+            self.perp_account_value_usd = core.perp_account_value_usd;
             self.positions = core.positions;
             self.leverage_settings = core.leverage_settings;
         }
@@ -432,6 +440,7 @@ mod tests {
     fn hl_account_round_trips_through_json() {
         let acct = HlAccount {
             perp_usdc: Some(Decimal::new("1000.5")),
+            perp_account_value_usd: Some(Decimal::new("1000.5")),
             pending_outflow: Decimal::new("0"),
             positions: vec![HlPosition {
                 asset_index: 0,

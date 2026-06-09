@@ -90,6 +90,20 @@ pub struct ReviewRow {
     pub created_at: i64,
 }
 
+#[derive(Clone, Debug)]
+pub struct ReportRow {
+    pub id: Uuid,
+    pub listing_id: Option<Uuid>,
+    pub review_id: Option<Uuid>,
+    pub reporter_id: String,
+    pub reason: String,
+    pub details: Option<String>,
+    pub status: String,
+    pub resolved_by: Option<String>,
+    pub resolved_at: Option<i64>,
+    pub created_at: i64,
+}
+
 /// Sort orderings exposed to the browse query. The integer values keep the
 /// caller stable when serde maps query strings to the enum.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -605,6 +619,139 @@ pub async fn vote_helpful(
     Ok(inserted)
 }
 
+pub async fn create_listing_report(
+    pool: &PgPool,
+    listing_id: Uuid,
+    reporter_id: &str,
+    reason: &str,
+    details: Option<&str>,
+    now: i64,
+) -> DbResult<Option<ReportRow>> {
+    let row = query(
+        "INSERT INTO market_reports (id, listing_id, reporter_id, reason, details, status, created_at)
+         SELECT $1, l.id, $3, $4, $5, 'open', $6
+         FROM market_listings l
+         WHERE l.id = $2
+         RETURNING id, listing_id, review_id, reporter_id, reason, details, status,
+                   resolved_by, resolved_at, created_at",
+    )
+    .bind(Uuid::new_v4())
+    .bind(listing_id)
+    .bind(reporter_id)
+    .bind(reason)
+    .bind(details)
+    .bind(now)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| DbError::Invariant(e.to_string()))?;
+    Ok(row.as_ref().map(row_to_report))
+}
+
+pub async fn create_review_report(
+    pool: &PgPool,
+    review_id: Uuid,
+    reporter_id: &str,
+    reason: &str,
+    details: Option<&str>,
+    now: i64,
+) -> DbResult<Option<ReportRow>> {
+    let row = query(
+        "INSERT INTO market_reports (id, review_id, reporter_id, reason, details, status, created_at)
+         SELECT $1, r.id, $3, $4, $5, 'open', $6
+         FROM market_reviews r
+         WHERE r.id = $2
+         RETURNING id, listing_id, review_id, reporter_id, reason, details, status,
+                   resolved_by, resolved_at, created_at",
+    )
+    .bind(Uuid::new_v4())
+    .bind(review_id)
+    .bind(reporter_id)
+    .bind(reason)
+    .bind(details)
+    .bind(now)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| DbError::Invariant(e.to_string()))?;
+    Ok(row.as_ref().map(row_to_report))
+}
+
+pub async fn list_reports_by_reporter(
+    pool: &PgPool,
+    reporter_id: &str,
+    limit: i64,
+) -> DbResult<Vec<ReportRow>> {
+    let limit = limit.clamp(1, 200);
+    let rows = query(
+        "SELECT id, listing_id, review_id, reporter_id, reason, details, status,
+                resolved_by, resolved_at, created_at
+         FROM market_reports
+         WHERE reporter_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2",
+    )
+    .bind(reporter_id)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| DbError::Invariant(e.to_string()))?;
+    Ok(rows.iter().map(row_to_report).collect())
+}
+
+pub async fn list_reports(
+    pool: &PgPool,
+    status: Option<&str>,
+    limit: i64,
+) -> DbResult<Vec<ReportRow>> {
+    let limit = limit.clamp(1, 500);
+    let rows = query(
+        "SELECT id, listing_id, review_id, reporter_id, reason, details, status,
+                resolved_by, resolved_at, created_at
+         FROM market_reports
+         WHERE ($1::text IS NULL OR status = $1)
+         ORDER BY
+           CASE status WHEN 'open' THEN 0 ELSE 1 END,
+           created_at DESC
+         LIMIT $2",
+    )
+    .bind(status)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| DbError::Invariant(e.to_string()))?;
+    Ok(rows.iter().map(row_to_report).collect())
+}
+
+pub async fn update_report_status(
+    pool: &PgPool,
+    report_id: Uuid,
+    status: &str,
+    moderator_id: &str,
+    now: i64,
+) -> DbResult<Option<ReportRow>> {
+    let (resolved_by, resolved_at) = if status == "resolved" {
+        (Some(moderator_id), Some(now))
+    } else {
+        (None, None)
+    };
+    let row = query(
+        "UPDATE market_reports
+         SET status = $2,
+             resolved_by = $3,
+             resolved_at = $4
+         WHERE id = $1
+         RETURNING id, listing_id, review_id, reporter_id, reason, details, status,
+                   resolved_by, resolved_at, created_at",
+    )
+    .bind(report_id)
+    .bind(status)
+    .bind(resolved_by)
+    .bind(resolved_at)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| DbError::Invariant(e.to_string()))?;
+    Ok(row.as_ref().map(row_to_report))
+}
+
 pub async fn watch(pool: &PgPool, user_id: &str, listing_id: Uuid, now: i64) -> DbResult<()> {
     query(
         "INSERT INTO market_watches (user_id, listing_id, subscribed_at)
@@ -731,6 +878,21 @@ fn row_to_review(row: &PgRow) -> ReviewRow {
         rating: row.get("rating"),
         body: row.get("body"),
         helpful_count: row.get("helpful_count"),
+        created_at: row.get("created_at"),
+    }
+}
+
+fn row_to_report(row: &PgRow) -> ReportRow {
+    ReportRow {
+        id: row.get("id"),
+        listing_id: row.get("listing_id"),
+        review_id: row.get("review_id"),
+        reporter_id: row.get("reporter_id"),
+        reason: row.get("reason"),
+        details: row.get("details"),
+        status: row.get("status"),
+        resolved_by: row.get("resolved_by"),
+        resolved_at: row.get("resolved_at"),
         created_at: row.get("created_at"),
     }
 }

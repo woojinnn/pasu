@@ -18,23 +18,27 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use policy_db::market::{
-    create_listing as db_create_listing, create_version as db_create_version,
+    create_listing as db_create_listing, create_listing_report as db_create_listing_report,
+    create_review_report as db_create_review_report, create_version as db_create_version,
     delete_listing as db_delete_listing, get_latest_version as db_get_latest_version,
     get_listing_by_id as db_get_listing_by_id, get_listing_by_slug as db_get_listing_by_slug,
     get_version as db_get_version, list_listings as db_list_listings,
+    list_reports as db_list_reports, list_reports_by_reporter as db_list_reports_by_reporter,
     list_reviews as db_list_reviews, list_watches as db_list_watches,
-    record_install as db_record_install, unwatch as db_unwatch, upsert_review as db_upsert_review,
+    record_install as db_record_install, unwatch as db_unwatch,
+    update_report_status as db_update_report_status, upsert_review as db_upsert_review,
     validate_semver, vote_helpful as db_vote_helpful, watch as db_watch, ListingFilter, ListingRow,
-    ListingSort as DbListingSort, NewListing, ReviewRow, VersionBody, VersionRow,
+    ListingSort as DbListingSort, NewListing, ReportRow, ReviewRow, VersionBody, VersionRow,
     LIST_LIMIT_DEFAULT,
 };
 
 use crate::app::AppState;
 use crate::auth::AuthUser;
 use crate::market_dto::{
-    CreateInstallReq, CreateListingReq, CreateReviewReq, CreateVersionReq, I18nText,
-    ListListingsQuery, ListingDetail, ListingKind, ListingSort, ListingStatus, ListingSummary,
-    ListingVersion, PublisherTier, Review, SetMember, Severity,
+    CreateInstallReq, CreateListingReq, CreateReportReq, CreateReviewReq, CreateVersionReq,
+    I18nText, ListListingsQuery, ListingDetail, ListingKind, ListingSort, ListingStatus,
+    ListingSummary, ListingVersion, MarketReport, PublisherTier, ReportReason, ReportStatus,
+    Review, SetMember, Severity, UpdateReportStatusReq,
 };
 
 // ---------------------------------------------------------------------------
@@ -129,6 +133,45 @@ pub async fn list_reviews(
     match db_list_reviews(pool, listing_id, 200).await {
         Ok(rows) => {
             let dtos: Vec<Review> = rows.iter().map(review_row_to_dto).collect();
+            Json(dtos).into_response()
+        }
+        Err(e) => server_error(&e.to_string()),
+    }
+}
+
+/// `GET /market/reports/mine` — reports submitted by the caller.
+pub async fn list_my_reports(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+) -> Response {
+    match db_list_reports_by_reporter(state.global_db.pool(), &user.user_id, 200).await {
+        Ok(rows) => {
+            let dtos: Vec<MarketReport> = rows.iter().map(report_row_to_dto).collect();
+            Json(dtos).into_response()
+        }
+        Err(e) => server_error(&e.to_string()),
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct ListReportsQuery {
+    pub status: Option<ReportStatus>,
+    pub limit: Option<i64>,
+}
+
+/// `GET /market/reports` — admin moderation queue.
+pub async fn list_reports(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Query(q): Query<ListReportsQuery>,
+) -> Response {
+    if let Some(resp) = require_market_admin(&user) {
+        return resp;
+    }
+    let status = q.status.map(serde_report_status);
+    match db_list_reports(state.global_db.pool(), status, q.limit.unwrap_or(200)).await {
+        Ok(rows) => {
+            let dtos: Vec<MarketReport> = rows.iter().map(report_row_to_dto).collect();
             Json(dtos).into_response()
         }
         Err(e) => server_error(&e.to_string()),
@@ -347,6 +390,88 @@ pub async fn create_review(
     }
 }
 
+/// `POST /market/listings/:id/report` — report a marketplace listing.
+pub async fn create_listing_report(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(listing_id): Path<Uuid>,
+    Json(req): Json<CreateReportReq>,
+) -> Response {
+    if let Err(msg) = validate_report_req(&req) {
+        return (StatusCode::BAD_REQUEST, msg).into_response();
+    }
+
+    let details = normalized_report_details(&req);
+    match db_create_listing_report(
+        state.global_db.pool(),
+        listing_id,
+        &user.user_id,
+        serde_report_reason(req.reason),
+        details.as_deref(),
+        now_secs(),
+    )
+    .await
+    {
+        Ok(Some(row)) => (StatusCode::CREATED, Json(report_row_to_dto(&row))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "listing not found").into_response(),
+        Err(e) => server_error(&e.to_string()),
+    }
+}
+
+/// `POST /market/reviews/:id/report` — report a marketplace review.
+pub async fn create_review_report(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(review_id): Path<Uuid>,
+    Json(req): Json<CreateReportReq>,
+) -> Response {
+    if let Err(msg) = validate_report_req(&req) {
+        return (StatusCode::BAD_REQUEST, msg).into_response();
+    }
+
+    let details = normalized_report_details(&req);
+    match db_create_review_report(
+        state.global_db.pool(),
+        review_id,
+        &user.user_id,
+        serde_report_reason(req.reason),
+        details.as_deref(),
+        now_secs(),
+    )
+    .await
+    {
+        Ok(Some(row)) => (StatusCode::CREATED, Json(report_row_to_dto(&row))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "review not found").into_response(),
+        Err(e) => server_error(&e.to_string()),
+    }
+}
+
+/// `PATCH /market/reports/:id` — admin moderation status update.
+pub async fn update_report_status(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthUser>,
+    Path(report_id): Path<Uuid>,
+    Json(req): Json<UpdateReportStatusReq>,
+) -> Response {
+    if let Some(resp) = require_market_admin(&user) {
+        return resp;
+    }
+    let status = serde_report_status(req.status);
+    match db_update_report_status(
+        state.global_db.pool(),
+        report_id,
+        status,
+        &user.user_id,
+        now_secs(),
+    )
+    .await
+    {
+        Ok(Some(row)) => Json(report_row_to_dto(&row)).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "report not found").into_response(),
+        Err(e) => server_error(&e.to_string()),
+    }
+}
+
 /// `POST /market/reviews/:id/helpful` — vote helpful (idempotent per user).
 pub async fn vote_helpful(
     State(state): State<AppState>,
@@ -447,6 +572,49 @@ fn validate_create_req(req: &CreateListingReq) -> Result<(), String> {
     Ok(())
 }
 
+const REPORT_DETAILS_MAX_CHARS: usize = 1_000;
+
+fn validate_report_req(req: &CreateReportReq) -> Result<(), String> {
+    match req.details.as_deref() {
+        Some(details) if details.trim().is_empty() => {
+            return Err("details must not be blank".to_owned());
+        }
+        Some(details) if details.chars().count() > REPORT_DETAILS_MAX_CHARS => {
+            return Err("details must be at most 1000 characters".to_owned());
+        }
+        _ => {}
+    }
+    if req.reason == ReportReason::Other && req.details.is_none() {
+        return Err("details are required when reason is other".to_owned());
+    }
+    Ok(())
+}
+
+fn require_market_admin(user: &AuthUser) -> Option<Response> {
+    let admin_emails = std::env::var("MARKET_ADMIN_EMAILS").unwrap_or_default();
+    if is_market_admin_email(&user.email, &admin_emails) {
+        None
+    } else {
+        Some((StatusCode::FORBIDDEN, "market admin access required").into_response())
+    }
+}
+
+fn is_market_admin_email(email: &str, allowlist: &str) -> bool {
+    let email = email.trim().to_ascii_lowercase();
+    if email.is_empty() {
+        return false;
+    }
+    allowlist
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .any(|admin| admin.eq_ignore_ascii_case(&email))
+}
+
+fn normalized_report_details(req: &CreateReportReq) -> Option<String> {
+    req.details.as_deref().map(str::trim).map(str::to_owned)
+}
+
 fn version_is_strictly_greater(listing: &ListingRow, new_version: &str) -> bool {
     let Ok((nmaj, nmin, npat)) = validate_semver(new_version) else {
         return false;
@@ -510,6 +678,21 @@ fn review_row_to_dto(r: &ReviewRow) -> Review {
         rating: r.rating,
         body: json_to_i18n(&r.body),
         helpful_count: r.helpful_count,
+        created_at: r.created_at,
+    }
+}
+
+fn report_row_to_dto(r: &ReportRow) -> MarketReport {
+    MarketReport {
+        id: r.id,
+        listing_id: r.listing_id,
+        review_id: r.review_id,
+        reporter_id: r.reporter_id.clone(),
+        reason: parse_report_reason(&r.reason),
+        details: r.details.clone(),
+        status: parse_report_status(&r.status),
+        resolved_by: r.resolved_by.clone(),
+        resolved_at: r.resolved_at,
         created_at: r.created_at,
     }
 }
@@ -603,6 +786,40 @@ fn parse_status(s: &str) -> ListingStatus {
     }
 }
 
+const fn serde_report_reason(reason: ReportReason) -> &'static str {
+    match reason {
+        ReportReason::UnsafePolicy => "unsafe_policy",
+        ReportReason::Misleading => "misleading",
+        ReportReason::Spam => "spam",
+        ReportReason::Abuse => "abuse",
+        ReportReason::Other => "other",
+    }
+}
+
+fn parse_report_reason(s: &str) -> ReportReason {
+    match s {
+        "unsafe_policy" => ReportReason::UnsafePolicy,
+        "misleading" => ReportReason::Misleading,
+        "spam" => ReportReason::Spam,
+        "abuse" => ReportReason::Abuse,
+        _ => ReportReason::Other,
+    }
+}
+
+fn parse_report_status(s: &str) -> ReportStatus {
+    match s {
+        "resolved" => ReportStatus::Resolved,
+        _ => ReportStatus::Open,
+    }
+}
+
+const fn serde_report_status(status: ReportStatus) -> &'static str {
+    match status {
+        ReportStatus::Open => "open",
+        ReportStatus::Resolved => "resolved",
+    }
+}
+
 fn now_secs() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -618,3 +835,58 @@ fn server_error(msg: &str) -> Response {
 #[allow(dead_code)]
 #[derive(Deserialize)]
 struct _QueryProbe;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn report_request_validation_requires_details_for_other() {
+        let req = CreateReportReq {
+            reason: ReportReason::Other,
+            details: None,
+        };
+
+        assert_eq!(
+            validate_report_req(&req),
+            Err("details are required when reason is other".to_owned())
+        );
+    }
+
+    #[test]
+    fn report_request_validation_rejects_blank_details() {
+        let req = CreateReportReq {
+            reason: ReportReason::UnsafePolicy,
+            details: Some("   ".to_owned()),
+        };
+
+        assert_eq!(
+            validate_report_req(&req),
+            Err("details must not be blank".to_owned())
+        );
+    }
+
+    #[test]
+    fn report_request_validation_accepts_standard_reason_without_details() {
+        let req = CreateReportReq {
+            reason: ReportReason::Spam,
+            details: None,
+        };
+
+        assert_eq!(validate_report_req(&req), Ok(()));
+    }
+
+    #[test]
+    fn market_admin_email_allowlist_is_fail_closed_when_empty() {
+        assert!(!is_market_admin_email("dandi@upside.center", ""));
+        assert!(!is_market_admin_email("dandi@upside.center", " , "));
+    }
+
+    #[test]
+    fn market_admin_email_allowlist_trims_and_ignores_case() {
+        assert!(is_market_admin_email(
+            "DANDI@UPSIDE.CENTER",
+            " alice@example.com, dandi@upside.center "
+        ));
+    }
+}

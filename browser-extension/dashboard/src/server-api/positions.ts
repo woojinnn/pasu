@@ -48,20 +48,37 @@ export interface HlLeverageSetting {
   leverage: number;
 }
 
-/** The HL L1 account snapshot. Sub-domains (spot/staking/vaults/borrow-lend)
- *  are kept loose — surfaced later as the UI grows. */
+export interface HlSpotBalance {
+  coin: string;
+  token: number;
+  total: Decimal;
+  hold: Decimal;
+  entry_ntl: Decimal;
+  available_after_maintenance?: Decimal;
+}
+
+export interface HlVaultEquity {
+  vault_address: string;
+  equity: Decimal;
+  locked_until_timestamp?: number;
+}
+
+/** The HL L1 account snapshot. Some sub-domains (staking/borrow-lend) are kept
+ * loose until the UI surfaces them in detail. */
 export interface HlAccount {
   /** Perp margin balance (USDC). */
   perp_usdc?: Decimal;
+  /** Perp account equity from `marginSummary.accountValue`, preferred for totals. */
+  perp_account_value_usd?: Decimal;
   pending_outflow: Decimal;
   positions: HlPosition[];
   open_orders: HlOpenOrder[];
   leverage_settings: HlLeverageSetting[];
   /** Authorized agent (API) wallets — a security-relevant surface. */
   agents: unknown[];
-  spot_balances?: unknown[];
+  spot_balances?: HlSpotBalance[];
   staking?: unknown;
-  vault_equities?: unknown[];
+  vault_equities?: HlVaultEquity[];
   borrow_lend?: unknown;
 }
 

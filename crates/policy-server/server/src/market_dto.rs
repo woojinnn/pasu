@@ -256,6 +256,61 @@ pub struct CreateReviewReq {
     pub body: I18nText,
 }
 
+/// User-facing reason categories for marketplace reports.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReportReason {
+    UnsafePolicy,
+    Misleading,
+    Spam,
+    Abuse,
+    Other,
+}
+
+/// Moderation status for a marketplace report.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReportStatus {
+    Open,
+    Resolved,
+}
+
+/// A marketplace report submitted by an authenticated user. Exactly one of
+/// `listing_id` or `review_id` is set by the creation endpoint.
+#[derive(Clone, Debug, Serialize)]
+pub struct MarketReport {
+    pub id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub listing_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_id: Option<Uuid>,
+    pub reporter_id: String,
+    pub reason: ReportReason,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    pub status: ReportStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_at: Option<i64>,
+    pub created_at: i64,
+}
+
+/// `POST /market/listings/:id/report` and
+/// `POST /market/reviews/:id/report` body.
+#[derive(Clone, Debug, Deserialize)]
+pub struct CreateReportReq {
+    pub reason: ReportReason,
+    #[serde(default)]
+    pub details: Option<String>,
+}
+
+/// `PATCH /market/reports/:id` body.
+#[derive(Clone, Debug, Deserialize)]
+pub struct UpdateReportStatusReq {
+    pub status: ReportStatus,
+}
+
 /// Mirror of `market_listings` row used by the publisher's
 /// "My Publishes" view. Same shape as `ListingSummary` for now; kept
 /// distinct so future fields (draft state, analytics) can land here.

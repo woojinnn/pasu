@@ -98,6 +98,7 @@ export {
   type DashboardSummary,
   type DashboardWalletSummary,
   type ChainShare,
+  type VenueShare,
 } from "./dashboard";
 
 // Verdict / audit / history / findings — backed by

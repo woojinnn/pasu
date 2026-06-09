@@ -9,7 +9,7 @@ use axum::extract::{FromRef, State};
 use axum::http::{header, HeaderValue, Method, StatusCode};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Json, Router};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -217,12 +217,29 @@ pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Route
             get(market_handlers::list_reviews).post(market_handlers::create_review),
         )
         .route(
+            "/market/listings/id/:id/report",
+            post(market_handlers::create_listing_report),
+        )
+        .route(
+            "/market/reviews/:id/report",
+            post(market_handlers::create_review_report),
+        )
+        .route(
             "/market/listings/id/:id/watch",
             post(market_handlers::watch).delete(market_handlers::unwatch),
         )
         .route(
             "/market/reviews/:id/helpful",
             post(market_handlers::vote_helpful),
+        )
+        .route("/market/reports", get(market_handlers::list_reports))
+        .route(
+            "/market/reports/mine",
+            get(market_handlers::list_my_reports),
+        )
+        .route(
+            "/market/reports/:id",
+            patch(market_handlers::update_report_status),
         )
         .route("/market/watches", get(market_handlers::list_watches))
         // Selector decode + revoke calldata builder + Cedar sequence sim

@@ -20,6 +20,9 @@ api:
   # targets — e.g. a browser extension's https://<id>.chromiumapp.org/.
   # Empty = only the default DASHBOARD_URL flow is allowed (fail-closed).
   oauthAllowedRedirectUris: ""
+  # Comma-separated admin email allowlist for marketplace moderation.
+  # Empty is fail-closed: /market/reports admin routes return 403.
+  marketAdminEmails: ""
   corsAllowPrivateNetwork: false
   corsAllowedOrigins:
     - https://pasu-policy.duckdns.org

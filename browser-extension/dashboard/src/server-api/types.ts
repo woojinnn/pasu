@@ -178,6 +178,7 @@ export interface DashboardSummary {
   wallet_count: number;
   total_portfolio_usd: Decimal;
   chain_breakdown: Array<{ chain: ChainId; usd: Decimal; pct: number }>;
+  venue_breakdown: Array<{ venue: string; usd: Decimal; pct: number }>;
   wallets: Array<{
     id: number;
     address: Address;

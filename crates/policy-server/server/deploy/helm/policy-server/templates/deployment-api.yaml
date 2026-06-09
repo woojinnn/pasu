@@ -46,6 +46,8 @@ spec:
               value: {{ join "," .Values.api.corsAllowedOrigins | quote }}
             - name: CORS_ALLOW_PRIVATE_NETWORK
               value: {{ .Values.api.corsAllowPrivateNetwork | quote }}
+            - name: MARKET_ADMIN_EMAILS
+              value: {{ .Values.api.marketAdminEmails | quote }}
             - name: PASU_SYNC_CONFIG
               value: /app/pasu-sync.toml
             - name: REQUIRE_SYNC_CONFIG

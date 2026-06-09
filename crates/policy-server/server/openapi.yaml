@@ -30,6 +30,8 @@ tags:
     description: Token catalog (logo / website / description)
   - name: transactions
     description: Tx lifecycle log (state_deltas table)
+  - name: market
+    description: Policy marketplace listings, reviews, and reports
   - name: meta
     description: Health, evaluate, events, ops
 
@@ -358,6 +360,14 @@ paths:
                         chain: { type: string }
                         usd:   { type: string }
                         pct:   { type: number }
+                  venue_breakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        venue: { type: string }
+                        usd:   { type: string }
+                        pct:   { type: number }
                   wallets:
                     type: array
                     items:
@@ -369,6 +379,108 @@ paths:
                         total_usd:       { type: string }
                         unlimited_count: { type: integer }
                         pending_count:   { type: integer }
+
+  /market/listings/id/{id}/report:
+    post:
+      tags: [market]
+      summary: Report a marketplace listing
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMarketReportRequest" }
+      responses:
+        "201":
+          description: Report created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketReport" }
+        "400": { description: Invalid report body }
+        "404": { description: Listing not found }
+
+  /market/reviews/{id}/report:
+    post:
+      tags: [market]
+      summary: Report a marketplace review
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMarketReportRequest" }
+      responses:
+        "201":
+          description: Report created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketReport" }
+        "400": { description: Invalid report body }
+        "404": { description: Review not found }
+
+  /market/reports/mine:
+    get:
+      tags: [market]
+      summary: Reports submitted by the authenticated user
+      responses:
+        "200":
+          description: MarketReport[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MarketReport" }
+
+  /market/reports:
+    get:
+      tags: [market]
+      summary: Admin moderation queue
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, resolved]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+      responses:
+        "200":
+          description: MarketReport[]
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MarketReport" }
+        "403": { description: Market admin access required }
+
+  /market/reports/{id}:
+    patch:
+      tags: [market]
+      summary: Admin moderation status update
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMarketReportRequest" }
+      responses:
+        "200":
+          description: Updated report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MarketReport" }
+        "403": { description: Market admin access required }
+        "404": { description: Report not found }
 
   /events/stream:
     get:
@@ -397,6 +509,45 @@ components:
       example: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"
 
   schemas:
+    CreateMarketReportRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [unsafe_policy, misleading, spam, abuse, other]
+        details:
+          type: string
+          nullable: true
+          maxLength: 1000
+
+    MarketReport:
+      type: object
+      required: [id, reporter_id, reason, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        listing_id: { type: string, format: uuid, nullable: true }
+        review_id: { type: string, format: uuid, nullable: true }
+        reporter_id: { type: string }
+        reason:
+          type: string
+          enum: [unsafe_policy, misleading, spam, abuse, other]
+        details: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [open, resolved]
+        resolved_by: { type: string, nullable: true }
+        resolved_at: { type: integer, nullable: true }
+        created_at: { type: integer }
+
+    UpdateMarketReportRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [open, resolved]
+
     WalletId:
       type: object
       properties:

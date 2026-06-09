@@ -85,6 +85,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 errors = report.errors.len(),
                 "sync worker tick complete"
             );
+            // Surface the actual error strings — the count alone is undiagnosable
+            // (e.g. which venue/source failed and why). These are non-fatal
+            // best-effort failures (one dead venue never aborts a tick), so warn.
+            for err in &report.errors {
+                tracing::warn!(user_id, error = %err, "sync worker: non-fatal sync error");
+            }
 
             // Push one live `wallet_synced` per refreshed wallet so dashboards
             // update without waiting for the next manual sync or page reload.

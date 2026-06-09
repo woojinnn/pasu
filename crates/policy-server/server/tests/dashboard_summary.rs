@@ -6,9 +6,10 @@ use policy_server::app::{build_router, AppState};
 use policy_server::auth::jwt::{issue, TokenType};
 use policy_server::events::{EventBus, LocalEventPublisher};
 use policy_state::approval::{AllowanceSpec, ApprovalSet};
-use policy_state::primitives::{Address, ChainId, Time, U256};
+use policy_state::position::{HlAccount, HlSpotBalance, HlVaultEquity, Position, PositionKind};
+use policy_state::primitives::{Address, ChainId, Decimal, Time, U256};
 use policy_state::token::{Balance, TokenHolding, TokenKey, TokenKind};
-use policy_state::{WalletId, WalletState, WalletStore};
+use policy_state::{ProtocolRef, WalletId, WalletState, WalletStore};
 use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
@@ -137,6 +138,59 @@ async fn seed_state_with_holding(multi_user: &MultiUserStore, user_id: &str) {
     store.save(&s).await.unwrap();
 }
 
+async fn seed_state_with_holding_and_hyperliquid(multi_user: &MultiUserStore, user_id: &str) {
+    use policy_state::live_field::DataSource;
+
+    let store = multi_user.for_user(user_id).unwrap();
+    let id = WalletId::new(
+        Address::from_str(WALLET_ADDR).unwrap(),
+        [ChainId::ethereum_mainnet()],
+    );
+    let mut s = WalletState::new(id);
+    let h = usdc_holding_with_value(10_000_000_000, "1.0001"); // 10000 USDC × $1.0001
+    s.tokens.insert(h.key.clone(), h);
+    s.positions.push(Position {
+        id: "hyperliquid/account".into(),
+        protocol: ProtocolRef::new("hyperliquid"),
+        chain: None,
+        kind: PositionKind::HyperliquidAccount(HlAccount {
+            // Perp free margin; summary must prefer account value when present.
+            perp_usdc: Some(Decimal::new("10")),
+            perp_account_value_usd: Some(Decimal::new("123.45")),
+            pending_outflow: Decimal::zero(),
+            positions: Vec::new(),
+            open_orders: Vec::new(),
+            // USDC spot can be counted directly as USD; non-stable spot needs
+            // a price field before it can be included in the dashboard total.
+            spot_balances: vec![HlSpotBalance {
+                coin: "USDC".into(),
+                token: 0,
+                total: Decimal::new("50.25"),
+                hold: Decimal::zero(),
+                entry_ntl: Decimal::zero(),
+                available_after_maintenance: None,
+            }],
+            staking: None,
+            vault_equities: vec![HlVaultEquity {
+                vault_address: Address::from_str("0x1111111111111111111111111111111111111111")
+                    .unwrap(),
+                equity: Decimal::new("200.75"),
+                locked_until_timestamp: None,
+            }],
+            borrow_lend: None,
+            leverage_settings: Vec::new(),
+            agents: Vec::new(),
+        }),
+        primitives_synced_at: Time::from_unix(1_730_000_000),
+        primitives_source: DataSource::VenueApi {
+            endpoint: "https://api.hyperliquid.xyz/info".into(),
+            parser_id: "hl_account".into(),
+            auth: None,
+        },
+    });
+    store.save(&s).await.unwrap();
+}
+
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn dashboard_summary_aggregates_portfolio() {
@@ -174,6 +228,34 @@ async fn dashboard_summary_aggregates_portfolio() {
 
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
+async fn dashboard_summary_includes_hyperliquid_account_assets() {
+    let (addr, mu, _tmp, token, user_id) = spawn_server().await;
+    seed_state_with_holding_and_hyperliquid(&mu, &user_id).await;
+
+    let body: serde_json::Value = reqwest::Client::new()
+        .get(format!("http://{addr}/dashboard/summary"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    // Token total: 10000 USDC × $1.0001 = 10001.
+    // Hyperliquid total: perp USDC 123.45 + spot USDC 50.25 + vault equity 200.75.
+    assert_eq!(body["total_portfolio_usd"], "10375.450000");
+    let wallets = body["wallets"].as_array().unwrap();
+    assert_eq!(wallets[0]["total_usd"], "10375.450000");
+
+    let venues = body["venue_breakdown"].as_array().unwrap();
+    assert_eq!(venues.len(), 1);
+    assert_eq!(venues[0]["venue"], "hyperliquid");
+    assert_eq!(venues[0]["usd"], "374.450000");
+}
+
+#[tokio::test]
+#[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn dashboard_summary_empty_when_no_wallets() {
     let (addr, _mu, _tmp, token, _user_id) = spawn_server().await;
     let body: serde_json::Value = reqwest::Client::new()
@@ -188,6 +270,7 @@ async fn dashboard_summary_empty_when_no_wallets() {
     assert_eq!(body["wallet_count"], 0);
     assert_eq!(body["total_portfolio_usd"], "0.000000");
     assert!(body["chain_breakdown"].as_array().unwrap().is_empty());
+    assert!(body["venue_breakdown"].as_array().unwrap().is_empty());
 }
 
 #[tokio::test]
