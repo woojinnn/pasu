@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
   "snapshot": "wsteth.abi.json",
-  "note": "Surface-completeness triage for wstETH (non-proxy). ERC20+EIP-2612 standard funcs are exclude — covered by the erc20 standard adapter via tokens:erc20 auto-enumerate. Lido-specific surface = wrap (stETH->wstETH) / unwrap (wstETH->stETH), and the selector-less bare-ETH stake+wrap via the payable receive() (0x00000000 native-transfer sentinel, grounded by the snapshot's receive entry).",
+  "note": "Surface-completeness triage for wstETH (non-proxy). Plain ERC20 funcs (transfer/approve/allowance helpers) are exclude — covered by the erc20 standard adapter via tokens:erc20 auto-enumerate. EIP-2612 permit is a Lido-SPECIFIC cover (lido/wsteth/permit) because the standard/erc20/permit adapter pins only USDC; it backs the P3 approval-drain-shield. Lido-specific surface = wrap (stETH->wstETH) / unwrap (wstETH->stETH), and the selector-less bare-ETH stake+wrap via the payable receive() (0x00000000 native-transfer sentinel, grounded by the snapshot's receive entry).",
   "functions": {
     "0xea598cb0": { "name": "wrap",              "decision": "cover",   "reason": "LIQUID-STAKING wrap — converts stETH to non-rebasing wstETH (locks shares); user fund-move. New liquid_staking domain (Tier 3)." },
     "0xde0e9a3e": { "name": "unwrap",            "decision": "cover",   "reason": "LIQUID-STAKING unwrap — converts wstETH back to stETH; user fund-move." },
@@ -12,8 +12,11 @@
     "0x095ea7b3": { "name": "approve",           "decision": "exclude", "reason": "standard ERC20 approve — erc20 standard adapter (tokens:erc20 auto-enumerate)." },
     "0xa9059cbb": { "name": "transfer",          "decision": "exclude", "reason": "standard ERC20 transfer — erc20 standard adapter." },
     "0x23b872dd": { "name": "transferFrom",      "decision": "exclude", "reason": "standard ERC20 transferFrom — erc20 standard adapter." },
-    "0xd505accf": { "name": "permit",            "decision": "exclude", "reason": "EIP-2612 permit — standard ERC-2612 off-chain allowance, handled by the erc20 standard path." },
+    "0xd505accf": { "name": "permit",            "decision": "cover",   "reason": "EIP-2612 permit (standard OZ ERC20Permit; permit/nonces/DOMAIN_SEPARATOR verified via Etherscan getabi). The standard/erc20/permit adapter pins ONLY USDC, so wstETH permit needs a Lido-specific manifest — covers the P3 approval-drain-shield (typed-data sign route + on-chain permit() by-callkey). Manifest: lido/wsteth/permit." },
     "0x39509351": { "name": "increaseAllowance", "decision": "exclude", "reason": "OZ ERC20 allowance helper — erc20 standard adapter." },
     "0xa457c2d7": { "name": "decreaseAllowance", "decision": "exclude", "reason": "OZ ERC20 allowance helper — erc20 standard adapter." }
+  },
+  "signed_structs": {
+    "Permit": { "decision": "cover", "reason": "EIP-2612 off-chain Permit typed-data (Permit(owner,spender,value,nonce,deadline)) signed against the wstETH EIP-712 domain (verifyingContract 0x7f39c5..2ca0). The pre-sign drain shield (P3) intercepts this signature. Manifest: lido/wsteth/permit (typed_data primary_type Permit)." }
   }
 }
