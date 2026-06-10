@@ -63,12 +63,13 @@ const mocks = vi.hoisted(() => {
     dispatchCallsV2: vi.fn<(...args: unknown[]) => Promise<unknown>>(
       async () => ({}),
     ),
-    getDefaultPolicyBundlesV2: vi.fn<() => unknown[]>(() => [
-      { policy: "forbid(...);", manifest: { id: "high-slippage-warning", schema_version: 2 } },
+    resolveBundlesForWallet: vi.fn<(...args: unknown[]) => Promise<unknown[]>>(async () => [
+      {
+        id: "high-slippage-warning",
+        policy: "forbid(...);",
+        manifest: { id: "high-slippage-warning", schema_version: 2 },
+      },
     ]),
-    loadDefaultPolicySetV2: vi.fn<(...args: unknown[]) => Promise<unknown>>(
-      async () => [],
-    ),
     tryDeclarativeRouteV3: vi.fn<
       (...args: unknown[]) => Promise<unknown>
     >(async () => ({
@@ -145,9 +146,14 @@ vi.mock("../wasm-bridge", () => ({
   planActionRpcV2: mocks.planActionRpcV2,
   evaluateActionV2: mocks.evaluateActionV2,
 }));
-vi.mock("../policies-loader-v2", () => ({
-  getDefaultPolicyBundlesV2: mocks.getDefaultPolicyBundlesV2,
-  loadDefaultPolicySetV2: mocks.loadDefaultPolicySetV2,
+vi.mock("../policy-store/resolve", () => ({
+  resolveBundlesForWallet: mocks.resolveBundlesForWallet,
+  // 픽스처 번들은 trigger 인덱스가 없으므로(=항상 포함) 필터는 패스스루로 충분.
+  filterForAction: (bundles: unknown[]) => bundles,
+  collectActionMetas: () => [{}],
+}));
+vi.mock("../dashboard/current-user", () => ({
+  getCurrentUserId: vi.fn(async () => "u-test"),
 }));
 vi.mock("../policy-rpc", () => ({
   dispatchCallsV2: mocks.dispatchCallsV2,
@@ -283,8 +289,9 @@ describe("orchestrator", () => {
     mocks.planActionRpcV2.mockResolvedValue([]);
     mocks.dispatchCallsV2.mockResolvedValue({});
     mocks.evaluateActionV2.mockResolvedValue({ kind: "pass" });
-    mocks.getDefaultPolicyBundlesV2.mockReturnValue([
+    mocks.resolveBundlesForWallet.mockResolvedValue([
       {
+        id: "high-slippage-warning",
         policy: "forbid(...);",
         manifest: { id: "high-slippage-warning", schema_version: 2 },
       },
@@ -706,7 +713,7 @@ describe("orchestrator", () => {
 
   it("p3: a v3 hit but no v2 bundles loaded fails closed", async () => {
     mocks.tryDeclarativeRouteV3.mockResolvedValueOnce(v3HitOutcome);
-    mocks.getDefaultPolicyBundlesV2.mockReturnValueOnce([]);
+    mocks.resolveBundlesForWallet.mockResolvedValueOnce([]);
 
     const result = await decideAndApprove(txMessage("p3-nobundles-1"), true);
 
