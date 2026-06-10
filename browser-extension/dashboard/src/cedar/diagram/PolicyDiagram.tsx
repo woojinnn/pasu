@@ -122,7 +122,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
     return {
       path,
       kind: e.op === "&&" ? "and" : "or",
-      title: e.op === "&&" ? "AND" : "OR",
+      title: e.op === "&&" ? "모두 해당" : "하나라도 해당",
       children: operands.map((c) => exprToNode(c, pathOf)),
     };
   }
@@ -140,7 +140,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
     return { path: pathOf.get(inner) ?? path, kind: "leaf", ...leafParts(negated), children: [] };
   }
   if (e.kind === "unary" && e.op === "!") {
-    return { path, kind: "not", title: "NOT", children: [exprToNode(e.operand, pathOf)] };
+    return { path, kind: "not", title: "아니다", children: [exprToNode(e.operand, pathOf)] };
   }
   if (e.kind === "if") {
     const branch = (b: Expr, tag: string): DNode => ({
@@ -185,7 +185,7 @@ function buildTree(ir: PolicyIR): DNode {
     // Display wrapper for the clause; its body carries the canonical `c{i}.body`.
     path: `clause${i}`,
     kind: c.kind === "unless" ? "unless" : "when",
-    title: c.kind === "unless" ? "UNLESS" : "WHEN",
+    title: c.kind === "unless" ? "예외" : "발동 조건",
     children: [exprToNode(c.body, pathOf)],
   }));
   // The FORBID/PERMIT head is dropped — the action is shown in the form's
@@ -455,9 +455,17 @@ function isStacked(n: DNode): boolean {
   );
 }
 
+/** Label width in latin-char units — CJK glyphs run ~1.8× a latin char at the
+ *  diagram's 12px font, so width math counts them accordingly. */
+function textUnits(s: string): number {
+  let u = 0;
+  for (const ch of s) u += /[ᄀ-ᇿ　-〿一-鿿가-힯＀-￯]/.test(ch) ? 1.8 : 1;
+  return u;
+}
+
 function nodeWidth(n: DNode): number {
   if (n.kind === "memberset") return membersetSize(n).w;
-  const text = Math.max(n.title.length, (n.detail ?? "").length);
+  const text = Math.max(textUnits(n.title), textUnits(n.detail ?? ""));
   return Math.min(MAX_W, Math.max(MIN_W, Math.min(text, LABEL_CAP) * CHAR_W + PAD_X));
 }
 /** Box height of a node (taller for a memberset chip box). */
