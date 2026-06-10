@@ -66,19 +66,77 @@ describe("formToIr / irToForm", () => {
     expect(irToForm(formToIr(m))).toEqual(m);
   });
 
-  it("round-trips a per-row NOT", () => {
+  it("canonicalizes a hand-written `!(a == b)` into the complement operator", () => {
+    const ir = formToIr({
+      trigger: { kind: "any" },
+      when: [cond("context.flagged", "==", { kind: "bool", value: true })],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    });
+    const negated: PolicyIR = {
+      ...ir,
+      conditions: [{ kind: "when", body: { kind: "unary", op: "!", operand: ir.conditions[0].body } }],
+    };
+    expect(irToForm(negated)?.when).toEqual([
+      cond("context.flagged", "!=", { kind: "bool", value: true }),
+    ]);
+  });
+
+  it("round-trips the negative memberships (notIn / notContains)", () => {
     const m: FormModel = {
       trigger: { kind: "any" },
-      when: [cond("context.flagged", "==", { kind: "bool", value: true }, { not: true })],
+      when: [
+        cond("context.target", "notIn", { kind: "set", values: ["0xaa", "0xbb"] }),
+        cond("context.tags", "notContains", { kind: "string", value: "risky" }),
+      ],
       unless: [],
       id: "p",
       severity: "warn",
       reason: "",
     };
     const ir = formToIr(m);
-    // body is `!(context.flagged == true)`
-    expect(ir.conditions[0].body.kind).toBe("unary");
+    // both emit `!(…contains…)`
+    expect(ir.conditions[0].body.kind).toBe("binary"); // && of the two
     expect(irToForm(ir)).toEqual(m);
+  });
+
+  it("De-Morgans `!(A || B)` in an AND context into complemented rows", () => {
+    // when { z == 0 && !(a == 1 || b == 2) }  →  [z==0, a!=1, b!=2]
+    const cmp3 = (n: string, v: number): Expr => ({
+      kind: "binary",
+      op: "==",
+      left: { kind: "attr", of: { kind: "var", name: "context" }, attr: n },
+      right: { kind: "lit", litType: "long", value: v },
+    });
+    const ir: PolicyIR = {
+      ...formToIr(richModel),
+      conditions: [
+        {
+          kind: "when",
+          body: {
+            kind: "binary",
+            op: "&&",
+            left: cmp3("z", 0),
+            right: {
+              kind: "unary",
+              op: "!",
+              operand: { kind: "binary", op: "||", left: cmp3("a", 1), right: cmp3("b", 2) },
+            },
+          },
+        },
+      ],
+    };
+    const form = irToForm(ir);
+    expect(form?.when).toEqual([
+      cond("context.z", "==", { kind: "long", value: 0 }),
+      cond("context.a", "!=", { kind: "long", value: 1 }),
+      cond("context.b", "!=", { kind: "long", value: 2 }),
+    ]);
+    // and the canonical form round-trips stably
+    const m: FormModel = { ...richModel, when: form!.when, unless: [] };
+    expect(irToForm(formToIr(m))?.when).toEqual(form?.when);
   });
 
   it("emits forbid + action scope + @id/@severity/@reason", () => {
@@ -313,7 +371,7 @@ describe("formToIr / irToForm", () => {
       ],
     };
     expect(irToForm(ir)?.when).toEqual([
-      cond("context.target", "in", { kind: "set", values: ["0xaa", "0xbb"] }, { not: true }),
+      cond("context.target", "notIn", { kind: "set", values: ["0xaa", "0xbb"] }),
     ]);
   });
 
@@ -322,7 +380,7 @@ describe("formToIr / irToForm", () => {
       trigger: { kind: "any" },
       when: [
         cond("context.a", "==", { kind: "long", value: 1 }),
-        cond("context.flagged", "==", { kind: "bool", value: true }, { not: true }),
+        cond("context.flagged", "notIn", { kind: "set", values: ["a", "b"] }),
         cond("context.spender", "in", { kind: "set", values: ["0xaa", "0xbb"] }, { joiner: "or" }),
         {
           kind: "group",

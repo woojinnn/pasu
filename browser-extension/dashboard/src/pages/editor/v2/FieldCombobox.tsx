@@ -42,13 +42,10 @@ export function FieldCombobox({
   value,
   fields,
   onChange,
-  onCreateCustom,
 }: {
   value: string;
   fields: FieldOption[];
   onChange: (path: string) => void;
-  /** When set, the list ends with a "+ 새 보강 필드 만들기" action. */
-  onCreateCustom?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -186,18 +183,6 @@ export function FieldCombobox({
                 onClick={() => setShowAdvanced((s) => !s)}
               >
                 {showAdvanced ? "▾ 고급 필드 숨기기" : `▸ 고급 필드 보기 (${advancedCount})`}
-              </button>
-            )}
-            {onCreateCustom && (
-              <button
-                type="button"
-                className="fc-create"
-                onClick={() => {
-                  setOpen(false);
-                  onCreateCustom();
-                }}
-              >
-                ＋ 새 보강 필드 만들기 <span className="fc-create-sub">서버 조회 값으로 조건 걸기</span>
               </button>
             )}
           </div>

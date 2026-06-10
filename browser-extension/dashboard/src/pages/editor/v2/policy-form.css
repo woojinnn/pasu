@@ -299,18 +299,8 @@
   cursor: grabbing;
 }
 
-.pf-not {
-  flex: none;
-  color: var(--muted, #9ca3af);
-}
-.pf-not.on {
-  border-color: #ef4444;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-weight: 600;
-}
 .pf-leaf-op {
-  width: 92px;
+  width: 112px;
   flex: none;
   font-weight: 600;
 }
@@ -383,10 +373,6 @@
   margin: 8px 0;
   background: #f8f9ff;
 }
-.pf-box.neg {
-  border-color: #fecaca;
-  background: #fef6f6;
-}
 .pf-box.droppable {
   border-style: dashed;
   border-color: #818cf8;
@@ -403,9 +389,6 @@
   font-weight: 700;
   color: #4f46e5;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.pf-box.neg .pf-box-label {
-  color: #b91c1c;
 }
 .pf-spc {
   flex: 1;
@@ -725,26 +708,15 @@
 }
 .pf-addrchip .x:hover { background: var(--fail-100, #fee2e2); color: var(--fail-600, #dc2626); }
 
-/* ── "+ 새 보강 필드 만들기" — 콤보박스 진입점 + 모달 ─────────────────── */
-.fc-create {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 9px 12px;
-  border: 0;
-  border-top: 1px solid var(--hairline, #d7dbe0);
-  background: var(--info-50, #eff6ff);
+/* ── "+ 새 보강 필드 만들기" — 조건 섹션 버튼 + 모달 ──────────────────── */
+.pf-add-cond.accent {
+  border-color: var(--info-300, #93c5fd);
   color: var(--info-700, #1d4ed8);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
+  background: var(--info-50, #eff6ff);
 }
-.fc-create:hover { background: #e0ecff; }
-.fc-create-sub {
-  font-weight: 500;
-  color: var(--slate-500, #64748b);
-  margin-left: 6px;
-  font-size: 11.5px;
+.pf-add-cond.accent:hover {
+  border-color: var(--info-400, #60a5fa);
+  color: var(--info-800, #1e40af);
 }
 
 .cfm-bd {

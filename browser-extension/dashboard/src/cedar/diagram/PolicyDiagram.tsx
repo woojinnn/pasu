@@ -139,6 +139,43 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
     const negated: Expr = { kind: "binary", op: NEGATE_OP[inner.op] ?? inner.op, left: inner.left, right: inner.right };
     return { path: pathOf.get(inner) ?? path, kind: "leaf", ...leafParts(negated), children: [] };
   }
+  // `!(x contains v)` / `!([…].contains(x))` — the form's negative membership
+  // ops. Fold to a leaf/memberset phrased negatively, carrying the INNER
+  // comparison's path (what a diagnosis blames) so highlight lines up.
+  if (
+    e.kind === "unary" &&
+    e.op === "!" &&
+    e.operand.kind === "binary" &&
+    e.operand.op === "contains"
+  ) {
+    const inner = e.operand;
+    const innerPath = pathOf.get(inner) ?? path;
+    const mem = setLiteralOperand(inner);
+    if (mem) {
+      const fieldPath = attrPath(mem.other);
+      return {
+        path: innerPath,
+        kind: "memberset",
+        title: (fieldPath && getGloss(fieldPath)?.ko) || exprToText(mem.other),
+        detail: "다음 중 어느 것도 아님",
+        memberset: {
+          mode: "any",
+          members: mem.set.elements.map((m) => ({ text: exprToText(m), path: pathOf.get(m) ?? "?" })),
+        },
+        children: [],
+      };
+    }
+    const lp = leafParts(inner);
+    return {
+      path: innerPath,
+      kind: "leaf",
+      // No structured detail (e.g. an empty-set placeholder) → mark the
+      // negation in the title so the box never reads as the positive form.
+      title: lp.detail ? lp.title : `${lp.title} — 아님`,
+      ...(lp.detail ? { detail: lp.detail.replace(/^포함/, "포함 안 함") } : {}),
+      children: [],
+    };
+  }
   if (e.kind === "unary" && e.op === "!") {
     return { path, kind: "not", title: "아니다", children: [exprToNode(e.operand, pathOf)] };
   }

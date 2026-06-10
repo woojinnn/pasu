@@ -301,9 +301,9 @@ export function operatorsFor(kind: FieldKind): FormOp[] {
     case "primitive.decimal":
       return ["<", "<=", ">", ">=", "==", "!="];
     case "primitive.String":
-      return ["==", "!=", "in"];
+      return ["==", "!=", "in", "notIn"];
     case "collection":
-      return ["contains"];
+      return ["contains", "notContains"];
     case "ref":
       return ["==", "!="];
     case "record":
