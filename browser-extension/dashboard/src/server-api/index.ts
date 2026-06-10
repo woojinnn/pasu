@@ -128,28 +128,9 @@ export {
 // Dashboard ↔ extension SW bridge for managed policies. Replaces the
 // retired server-side `user_policies` CRUD (see policies.ts stubs).
 export {
-  putPolicy,
-  deletePolicy as deleteManagedPolicy,
-  listManagedPolicies,
-  getEnabledPolicyIds,
-  setEnabledPolicyIds,
-  getPolicyCatalog,
-  type PolicyCatalog,
-  type CatalogPolicy,
-  ENABLED_IDS_STORAGE_KEY,
   dashboardId,
   stripDashboardId,
-  type ManagedPolicy,
-  type PolicyLife,
-  type PolicySource,
   type PolicyMethod,
-  listPolicySets,
-  putPolicySet,
-  deletePolicySet,
-  dashboardSetId,
-  stripDashboardSetId,
-  type PolicySet,
-  type PutPolicySetOpts,
   // Per-user namespacing handshake — call setCurrentUser after fetchMe()
   // resolves so the SW scopes every subsequent storage op to the right user.
   setCurrentUser,

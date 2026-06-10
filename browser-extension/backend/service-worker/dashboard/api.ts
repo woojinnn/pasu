@@ -1,395 +1,56 @@
-import {
-  type ParamsSchema,
-  type ParamValues,
-  validateParams,
-} from "../adapter-loader/params-validator";
-import { renderAndVerify } from "../adapter-loader/template-renderer";
-import { reinstallAllPolicies } from "../policies-loader";
-import {
-  applyEnabledIds,
-  type ApplyResult,
-  getCatalog,
-  getEnabledIds,
-} from "../policy-selection";
-import { auditRead, type AuditEntry } from "../storage";
-import {
-  DASHBOARD_ID_PREFIX,
-  type ManagedPolicy,
-  deleteManaged,
-  listManaged,
-  upsertManaged,
-} from "./storage";
-import {
-  DASHBOARD_SET_ID_PREFIX,
-  type PolicySet,
-  deleteSet,
-  listSets,
-  upsertSet,
-} from "./sets-storage";
+/**
+ * dashboard:* SW 메시지 — 정책 스토리지가 ps2(policy-store/)로 이관된 뒤 남은
+ * 표면: ping + current-user 네임스페이스 핸드셰이크.
+ * (구 put-raw/list-managed/sets/enabled-ids/catalog/audit 핸들러와 그 스토리지
+ * 모듈 의존은 P3에서 제거 — 유일한 송신자였던 dashboard extension-sync v1
+ * 클라이언트와 SDK v1 메서드도 함께 제거됨.)
+ */
 import {
   clearCurrentUserId,
   getCurrentUserId,
   setCurrentUserId,
 } from "./current-user";
 
-// Hard ceiling for audit-log responses so a wedged dashboard can't pull
-// the entire ring buffer in one shot. The underlying buffer is capped at
-// AUDIT_MAX (100) so this is mostly defensive.
-const AUDIT_DEFAULT_LIMIT = 100;
-const AUDIT_MAX_LIMIT = 200;
-
-const RULE_KEYWORD_RE = /\b(forbid|permit)\s*\(/;
-
 export type DashboardRequest =
   | { type: "dashboard:ping" }
-  | { type: "dashboard:list-managed" }
-  | { type: "dashboard:get-catalog" }
-  | {
-      type: "dashboard:put-raw";
-      id: string;
-      text: string;
-      manifest?: unknown;
-      manifests?: readonly unknown[];
-      /** v7 builder tree snapshot — preserved opaquely. */
-      policyTree?: string;
-      /** Human-readable label; shown in popup + dashboard. */
-      displayName?: string;
-      /** Lifecycle stage. Defaults to `publish` when omitted. */
-      life?: "draft" | "publish";
-      /** Provenance. Defaults to `mine` when omitted. */
-      source?: "mine" | "market";
-      cat?: string;
-      method?: "form" | "block" | "cedar";
-      dupKey?: string;
-      memo?: string;
-      sourceListingId?: string;
-      sourceVersion?: string;
-    }
-  | {
-      type: "dashboard:put-template";
-      id: string;
-      templateText: string;
-      paramsSchema: ParamsSchema;
-      paramValues: ParamValues;
-      manifest?: unknown;
-      manifests?: readonly unknown[];
-    }
-  | { type: "dashboard:delete"; id: string }
-  | { type: "dashboard:set-enabled-ids"; ids: string[] }
-  | {
-      type: "dashboard:get-audit-log";
-      opts?: {
-        limit?: number;
-        since?: number;
-      };
-    }
-  | { type: "dashboard:list-sets" }
-  | {
-      type: "dashboard:put-set";
-      id: string;
-      displayName: string;
-      description?: string;
-      memberIds: readonly string[];
-      mutedMemberIds?: readonly string[];
-      source?: "mine" | "market";
-      readOnly?: boolean;
-      cat?: string;
-      sourceListingId?: string;
-      sourceVersion?: string;
-    }
-  | { type: "dashboard:delete-set"; id: string }
   | { type: "dashboard:get-current-user" }
   | { type: "dashboard:set-current-user"; userId: string }
   | { type: "dashboard:clear-current-user" };
 
-export type DashboardResponse<T = unknown> =
-  | { ok: true; data: T }
-  | { ok: false; error: { kind: string; message: string } };
+const TYPES = new Set<DashboardRequest["type"]>([
+  "dashboard:ping",
+  "dashboard:get-current-user",
+  "dashboard:set-current-user",
+  "dashboard:clear-current-user",
+]);
 
 export function isDashboardRequest(value: unknown): value is DashboardRequest {
-  if (!value || typeof value !== "object") return false;
-  const t = (value as { type?: unknown }).type;
-  return typeof t === "string" && t.startsWith("dashboard:");
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { type?: unknown }).type === "string" &&
+    TYPES.has((value as { type: DashboardRequest["type"] }).type)
+  );
 }
 
-function fail(kind: string, message: string): DashboardResponse {
+interface Ok {
+  ok: true;
+  data: unknown;
+}
+interface Fail {
+  ok: false;
+  error: { kind: string; message: string };
+}
+
+function fail(kind: string, message: string): Fail {
   return { ok: false, error: { kind, message } };
 }
 
-function classify(err: unknown): { kind: string; message: string } {
-  if (err instanceof Error) {
-    const m = err.message.match(/^([a-z_]+):\s*(.*)$/);
-    if (m) return { kind: m[1], message: m[2] };
-    return { kind: "dashboard_failed", message: err.message };
-  }
-  return { kind: "dashboard_failed", message: String(err) };
-}
-
-/**
- * On any put/delete, auto-extend the enabled set with the new id (or remove
- * the deleted one) and run `applyEnabledIds(reinstallAllPolicies)`. This keeps
- * "store changed → engine reflects it" as a single, serialized hop — the
- * dashboard never has to know about the apply queue.
- */
-async function autoApplyEnabled(
-  changeFn: (current: Set<string>) => Set<string>,
-): Promise<ApplyResult> {
-  const current = new Set(await getEnabledIds());
-  const next = changeFn(current);
-  const nextIds = [...next];
-  return applyEnabledIds(nextIds, reinstallAllPolicies);
-}
-
-/**
- * Persist + apply + rollback wrapper. Used by put-raw and put-template so a
- * policy whose Cedar (or schema) fails WASM validation doesn't leave the store
- * in a broken state.
- *
- * Sequence (success path):
- *   1. Snapshot prior storage + enabled-set state.
- *   2. upsertManaged(policy)
- *   3. applyEnabledIds(nextEnabled, reinstall) — publish adds `id`, draft
- *      removes `id`, and WASM validates the resulting enforced set here.
- *   4. Read catalog and return { policy, catalog }.
- *
- * Sequence (failure path — WASM rejected):
- *   3a. Restore the prior managed-policy entry (or remove if it was a fresh
- *       insert).
- *   3b. applyEnabledIds(priorEnabled, reinstall) so ENABLED/APPLIED keys and
- *       the running engine snap back to the last good state. The prior set
- *       was working before this call, so this reinstall must succeed unless
- *       the storage was already broken — in that pathological case we still
- *       surface the original error.
- */
-async function persistThenApply(
-  policy: ManagedPolicy,
-): Promise<DashboardResponse<{ policy: ManagedPolicy; catalog: unknown }>> {
-  const priorList = await listManaged();
-  const priorEntry = priorList.find((p) => p.id === policy.id);
-  const priorEnabled = await getEnabledIds();
-
-  await upsertManaged(policy);
-  const apply = await autoApplyEnabled((cur) => {
-    if (policy.life === "draft") {
-      cur.delete(policy.id);
-    } else {
-      cur.add(policy.id);
-    }
-    return cur;
-  });
-
-  if (!apply.ok) {
-    // Roll storage back to its pre-call shape.
-    if (priorEntry) {
-      await upsertManaged(priorEntry);
-    } else {
-      await deleteManaged(policy.id);
-    }
-    // Snap the engine back to the prior enabled set. Best-effort; if this
-    // also fails, surface the *original* error rather than the rollback's.
-    await applyEnabledIds(priorEnabled, reinstallAllPolicies).catch(
-      () => undefined,
-    );
-    return { ok: false, error: apply.error };
-  }
-
-  const catalog = await getCatalog();
-  return { ok: true, data: { policy, catalog } };
-}
-
-export async function handleDashboardRequest(
-  req: DashboardRequest,
-): Promise<DashboardResponse> {
+export async function handleDashboardRequest(req: DashboardRequest): Promise<Ok | Fail> {
   try {
     switch (req.type) {
       case "dashboard:ping": {
-        return { ok: true, data: { version: 1 } };
-      }
-
-      case "dashboard:list-managed": {
-        const list = await listManaged();
-        return { ok: true, data: list };
-      }
-
-      case "dashboard:get-catalog": {
-        const cat = await getCatalog();
-        return { ok: true, data: cat };
-      }
-
-      case "dashboard:put-raw": {
-        if (typeof req.id !== "string" || typeof req.text !== "string") {
-          return fail("invalid_request", "id and text must be strings");
-        }
-        // Pre-filter obvious garbage. The WASM engine does real validation
-        // when policies are installed; this is just so the storage can't
-        // accumulate text that has no chance of ever being a Cedar policy.
-        if (!RULE_KEYWORD_RE.test(req.text)) {
-          return fail(
-            "parse_failed",
-            "policy text contains no forbid/permit rule",
-          );
-        }
-        const policy: ManagedPolicy = {
-          id: req.id,
-          kind: "raw",
-          text: req.text,
-          ...(req.manifest !== undefined ? { manifest: req.manifest } : {}),
-          ...(req.manifests !== undefined ? { manifests: req.manifests } : {}),
-          ...(typeof req.policyTree === "string" ? { policyTree: req.policyTree } : {}),
-          ...(typeof req.displayName === "string" ? { displayName: req.displayName } : {}),
-          ...(req.life === "draft" || req.life === "publish" ? { life: req.life } : {}),
-          ...(req.source === "mine" || req.source === "market" ? { source: req.source } : {}),
-          ...(typeof req.cat === "string" ? { cat: req.cat } : {}),
-          ...(req.method === "form" || req.method === "block" || req.method === "cedar"
-            ? { method: req.method }
-            : {}),
-          ...(typeof req.dupKey === "string" ? { dupKey: req.dupKey } : {}),
-          ...(typeof req.memo === "string" ? { memo: req.memo } : {}),
-          ...(typeof req.sourceListingId === "string"
-            ? { sourceListingId: req.sourceListingId }
-            : {}),
-          ...(typeof req.sourceVersion === "string"
-            ? { sourceVersion: req.sourceVersion }
-            : {}),
-          updatedAtMs: Date.now(),
-          schemaVersion: 1,
-        };
-        return await persistThenApply(policy);
-      }
-
-      case "dashboard:put-template": {
-        if (
-          typeof req.id !== "string" ||
-          typeof req.templateText !== "string" ||
-          !req.paramsSchema ||
-          typeof req.paramsSchema !== "object" ||
-          !req.paramValues ||
-          typeof req.paramValues !== "object"
-        ) {
-          return fail(
-            "invalid_request",
-            "id, templateText, paramsSchema, paramValues required",
-          );
-        }
-        validateParams(req.paramsSchema, req.paramValues);
-        const rendered = renderAndVerify({
-          policyId: req.id,
-          templateText: req.templateText,
-          paramsSchema: req.paramsSchema,
-          paramValues: req.paramValues,
-        });
-        const policy: ManagedPolicy = {
-          id: req.id,
-          kind: "template",
-          text: rendered,
-          template: {
-            source: req.templateText,
-            paramsSchema: req.paramsSchema,
-            paramValues: req.paramValues,
-          },
-          ...(req.manifest !== undefined ? { manifest: req.manifest } : {}),
-          ...(req.manifests !== undefined ? { manifests: req.manifests } : {}),
-          updatedAtMs: Date.now(),
-          schemaVersion: 1,
-        };
-        return await persistThenApply(policy);
-      }
-
-      case "dashboard:delete": {
-        if (typeof req.id !== "string" || !req.id.startsWith(DASHBOARD_ID_PREFIX)) {
-          return fail("invalid_request", "id must be a dashboard:: id");
-        }
-        await deleteManaged(req.id);
-        const apply = await autoApplyEnabled((cur) => {
-          cur.delete(req.id);
-          return cur;
-        });
-        if (!apply.ok) return { ok: false, error: apply.error };
-        const catalog = await getCatalog();
-        return { ok: true, data: { catalog } };
-      }
-
-      case "dashboard:set-enabled-ids": {
-        if (
-          !Array.isArray(req.ids) ||
-          !req.ids.every((id) => typeof id === "string")
-        ) {
-          return fail("invalid_request", "ids must be string[]");
-        }
-        const result = await applyEnabledIds(req.ids, reinstallAllPolicies);
-        if (!result.ok) return { ok: false, error: result.error };
-        const catalog = await getCatalog();
-        return { ok: true, data: { catalog } };
-      }
-
-      case "dashboard:get-audit-log": {
-        const raw = await auditRead();
-        const opts = req.opts ?? {};
-        let entries: AuditEntry[] = raw;
-        if (typeof opts.since === "number") {
-          entries = entries.filter((e) => e.decidedAtMs >= opts.since!);
-        }
-        // Most-recent-first; storage appends so reverse() gives newest first.
-        entries = [...entries].reverse();
-        const requested =
-          typeof opts.limit === "number" && opts.limit > 0
-            ? Math.min(opts.limit, AUDIT_MAX_LIMIT)
-            : AUDIT_DEFAULT_LIMIT;
-        return { ok: true, data: entries.slice(0, requested) };
-      }
-
-      case "dashboard:list-sets": {
-        const list = await listSets();
-        return { ok: true, data: list };
-      }
-
-      case "dashboard:put-set": {
-        if (
-          typeof req.id !== "string" ||
-          typeof req.displayName !== "string" ||
-          !Array.isArray(req.memberIds) ||
-          !req.memberIds.every((m) => typeof m === "string")
-        ) {
-          return fail(
-            "invalid_request",
-            "id, displayName, memberIds[] required",
-          );
-        }
-        const set: PolicySet = {
-          id: req.id,
-          displayName: req.displayName,
-          ...(typeof req.description === "string"
-            ? { description: req.description }
-            : {}),
-          memberIds: req.memberIds.slice(),
-          ...(Array.isArray(req.mutedMemberIds) &&
-          req.mutedMemberIds.every((m) => typeof m === "string")
-            ? { mutedMemberIds: req.mutedMemberIds.slice() }
-            : {}),
-          ...(req.source === "mine" || req.source === "market"
-            ? { source: req.source }
-            : {}),
-          ...(typeof req.readOnly === "boolean" ? { readOnly: req.readOnly } : {}),
-          ...(typeof req.cat === "string" ? { cat: req.cat } : {}),
-          ...(typeof req.sourceListingId === "string"
-            ? { sourceListingId: req.sourceListingId }
-            : {}),
-          ...(typeof req.sourceVersion === "string"
-            ? { sourceVersion: req.sourceVersion }
-            : {}),
-          updatedAtMs: Date.now(),
-          schemaVersion: 1,
-        };
-        await upsertSet(set);
-        return { ok: true, data: set };
-      }
-
-      case "dashboard:delete-set": {
-        if (typeof req.id !== "string" || !req.id.startsWith(DASHBOARD_SET_ID_PREFIX)) {
-          return fail("invalid_request", "id must be a dashboard-set:: id");
-        }
-        await deleteSet(req.id);
-        return { ok: true, data: { id: req.id } };
+        return { ok: true, data: "pong" };
       }
 
       case "dashboard:get-current-user": {
@@ -401,34 +62,24 @@ export async function handleDashboardRequest(
         if (typeof req.userId !== "string" || req.userId.length === 0) {
           return fail("invalid_request", "userId must be a non-empty string");
         }
-        const prior = await getCurrentUserId();
+        // ps2 스토어는 uid 네임스페이스를 호출 시점에 읽으므로 별도 재설치가
+        // 없다 — 다음 resolve/조회가 새 계정 키(ps2:<uid>:*)를 본다.
         await setCurrentUserId(req.userId);
-        // Re-apply the new user's enabled set so the engine snaps to the
-        // freshly-active namespace. If the user just logged in for the first
-        // time, this collapses to "install zero managed policies".
-        if (prior !== req.userId) {
-          await applyEnabledIds(await getEnabledIds(), reinstallAllPolicies).catch(
-            () => undefined,
-          );
-        }
         return { ok: true, data: { userId: req.userId } };
       }
 
       case "dashboard:clear-current-user": {
         await clearCurrentUserId();
-        // Drop dashboard policies from the engine — the per-user namespace
-        // is no longer reachable. Baked policies keep applying.
-        await applyEnabledIds([], reinstallAllPolicies).catch(() => undefined);
         return { ok: true, data: null };
       }
 
       default: {
         const _exhaustive: never = req;
         void _exhaustive;
-        return fail("unknown_request", `unrecognized dashboard request`);
+        return fail("unknown_request", "unrecognized dashboard request");
       }
     }
   } catch (err) {
-    return { ok: false, error: classify(err) };
+    return fail("internal", err instanceof Error ? err.message : String(err));
   }
 }

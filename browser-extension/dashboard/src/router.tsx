@@ -27,7 +27,6 @@ import { LoginPage } from "./pages/LoginPage";
 import { AuthCallbackPage } from "./pages/AuthCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { EditorListPage } from "./pages/editor/EditorListPage";
-import { EditorNewPage } from "./pages/editor/EditorNewPage";
 import { EditorDetailPage } from "./pages/editor/EditorDetailPage";
 import { SimulationPage } from "./pages/SimulationPage";
 import { MonitoringPage } from "./pages/MonitoringPage";
@@ -57,7 +56,7 @@ const router = createRouter([
         children: [
           { index: true, element: <HomePage /> },
           { path: "editor", element: <EditorListPage /> },
-          { path: "editor/new", element: <EditorNewPage /> },
+          { path: "editor/new", element: <Navigate to="/editor" replace /> },
           { path: "editor/:id", element: <EditorDetailPage /> },
           { path: "simulation", element: <SimulationPage /> },
           { path: "monitoring", element: <MonitoringPage /> },

@@ -16,16 +16,10 @@ import {
 import { decideMessage } from "./orchestrator";
 import { reportExecutionOutcome } from "./execution-report";
 import {
-  ensureDefaultPoliciesInstalled,
-  reinstallAllPolicies,
-} from "./policies-loader";
-import { loadDefaultPolicySetV2 } from "./policies-loader-v2";
-import {
   ensureDefaultV3BundlesInstalled,
   getInstalledV3BundleCount,
   v3BundleBootCompleted,
 } from "./v3-bundle-loader";
-import { applyEnabledIds, getCatalog, getEnabledIds } from "./policy-selection";
 import {
   isExecutionReport,
   RequestType,
@@ -193,17 +187,6 @@ async function bootSequence(): Promise<void> {
     console.warn("[Pasu] legacy policy-storage cleanup failed:", err);
   }
 
-  // Cold-start prewarm: kick off WASM module load + default policy
-  // install so the first dApp request doesn't pay the 4.77MB compile
-  // cost inside the 3s lifecycle budget. We await this before hydrating
-  // manifests — otherwise the two install paths would race on the
-  // shared WASM engine state.
-  try {
-    await ensureDefaultPoliciesInstalled();
-  } catch (err) {
-    console.warn("[Pasu] cold-start prewarm failed:", err);
-  }
-
   // Phase 6 / Task 6.3: hydrate the manifest-driven schema on SW boot.
   //
   // Two paths share the same atomic-install plumbing:
@@ -235,24 +218,6 @@ async function bootSequence(): Promise<void> {
     console.warn("[Pasu] v3 default bundle install failed:", err);
   }
 
-  // Phase 1 / P2: warm the in-memory default v2 policy set so the first
-  // decision doesn't pay the fetch. v2 evaluation is STATELESS — this is a
-  // pure asset fetch + module-level cache, with NO WASM state to push, so
-  // its ordering relative to the install stages above does not matter.
-  // Best-effort like the surrounding stages: a failure here logs and leaves
-  // the cache empty (the loader returns `[]`); it must never brick boot.
-  try {
-    const v2 = await loadDefaultPolicySetV2();
-    // Visible boot proof: which v2 deny/warn bundles are actually loaded into
-    // this SW. If this logs `[]`, the policy asset failed to fetch (check the
-    // warning above) and nothing will be enforced.
-    console.log(
-      `[Pasu] v2 default policies loaded (${v2.length}):`,
-      v2.map((b) => b.id),
-    );
-  } catch (err) {
-    console.warn("[Pasu] v2 default policy load failed:", err);
-  }
 }
 
 Browser.runtime.onConnect.addListener((port) => {
@@ -319,13 +284,6 @@ async function handleMessage(
   }
 }
 
-interface PolicyCatalogRequest {
-  type: "policy-catalog";
-}
-interface SetEnabledIdsRequest {
-  type: "set-enabled-ids";
-  ids: string[];
-}
 interface PasuAuthStatusRequest {
   type: "pasu-auth-status";
 }
@@ -485,17 +443,7 @@ interface DiagnosisContextGetRequest {
   type: "diagnosis-context:get";
   id: string;
 }
-/** Read just the enabled-policy id list. The dashboard's policy list
- *  uses this for the checkbox state; the popup also uses it indirectly
- *  via `policy-catalog`. Keeping a dedicated `:get` lets the dashboard
- *  invalidate the lighter query on storage broadcasts. */
-interface PolicySelectionGetRequest {
-  type: "policy-selection:get";
-}
 type PopupRequest =
-  | PolicyCatalogRequest
-  | SetEnabledIdsRequest
-  | PolicySelectionGetRequest
   | PasuAuthStatusRequest
   | PasuAuthSignInRequest
   | PasuAuthSignOutRequest
@@ -549,18 +497,6 @@ Browser.runtime.onMessage.addListener(
           }),
         );
       return true;
-    }
-
-    if (req.type === "policy-catalog") {
-      void getCatalog()
-        .then((cat) => sendResponse({ ok: true, data: cat }))
-        .catch((err: unknown) =>
-          sendResponse({
-            ok: false,
-            error: { kind: "catalog_failed", message: String(err) },
-          }),
-        );
-      return true; // keep the channel open for the async response
     }
 
     // apps/web Cedar editor / simulation. Three message types, all
@@ -1039,44 +975,6 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "state_deltas_clear_failed", message: String(err) },
-          }),
-        );
-      return true;
-    }
-
-    if (req.type === "policy-selection:get") {
-      void getEnabledIds()
-        .then((ids) => sendResponse({ ok: true, data: ids }))
-        .catch((err: unknown) =>
-          sendResponse({
-            ok: false,
-            error: { kind: "policy_selection_get_failed", message: String(err) },
-          }),
-        );
-      return true;
-    }
-
-    if (req.type === "set-enabled-ids") {
-      // Reject malformed `ids` instead of silently coercing to []. A
-      // non-array, or an array containing non-strings, would otherwise
-      // disable all policies without telling the caller.
-      if (
-        !Array.isArray(req.ids) ||
-        !req.ids.every((id) => typeof id === "string")
-      ) {
-        sendResponse({
-          ok: false,
-          error: { kind: "invalid_request", message: "ids must be string[]" },
-        });
-        return true;
-      }
-      const ids = req.ids;
-      void applyEnabledIds(ids, reinstallAllPolicies)
-        .then((result) => sendResponse(result))
-        .catch((err: unknown) =>
-          sendResponse({
-            ok: false,
-            error: { kind: "apply_failed", message: String(err) },
           }),
         );
       return true;

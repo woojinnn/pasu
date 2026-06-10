@@ -4,7 +4,6 @@ import {
   tryDeclarativeRouteV3,
   type DeclarativeRouteV3Outcome,
 } from "./adapter-loader/declarative-route";
-import { ensureDefaultPoliciesInstalled } from "./policies-loader";
 import {
   auditAppend,
   pendingDelete,
@@ -169,7 +168,6 @@ export async function decideMessage(
   message: Message,
   options: DecisionOptions = {},
 ): Promise<DecisionResult> {
-  await ensureDefaultPoliciesInstalled();
   return withActorLock(inferActor(message), () =>
     decideInner(message, options),
   );

@@ -291,26 +291,8 @@ export const V1_TO_V2_AMOUNT_FIELDS: readonly string[] = [
 
 export interface ExtensionClient {
   ping(): Promise<{ version: number }>;
-  getCatalog(): Promise<Catalog>;
-  listManaged(): Promise<ManagedPolicy[]>;
-  putRaw(args: {
-    id: string;
-    text: string;
-    manifest?: unknown;
-    manifests?: readonly unknown[];
-  }): Promise<{ policy: ManagedPolicy; catalog: Catalog }>;
-  putTemplate(args: {
-    id: string;
-    templateText: string;
-    paramsSchema: ParamsSchema;
-    paramValues: ParamValues;
-    manifest?: unknown;
-    manifests?: readonly unknown[];
-  }): Promise<{ policy: ManagedPolicy; catalog: Catalog }>;
-  delete(id: string): Promise<{ catalog: Catalog }>;
-  setEnabledIds(ids: string[]): Promise<{ catalog: Catalog }>;
-  /** Recent verdict history (Pass/Warn/Fail). Ordered most-recent-first. */
-  getAuditLog(opts?: AuditQuery): Promise<AuditEntry[]>;
+  // (v1 정책 CRUD — getCatalog/listManaged/putRaw/putTemplate/delete/
+  //  setEnabledIds/getAuditLog — 는 ps2 정책 스토어 이관과 함께 제거됨.)
   /** Subscribe to extension-side change broadcasts. Returns an unsubscribe fn. */
   onChange(cb: (keys: string[]) => void): () => void;
 
@@ -479,46 +461,6 @@ export function createExtensionClient(
 
   return {
     ping: () => request<{ version: number }>({ type: "dashboard:ping" }),
-    getCatalog: () => request<Catalog>({ type: "dashboard:get-catalog" }),
-    listManaged: () =>
-      request<ManagedPolicy[]>({ type: "dashboard:list-managed" }),
-    putRaw: ({ id, text, manifest, manifests }) =>
-      request<{ policy: ManagedPolicy; catalog: Catalog }>({
-        type: "dashboard:put-raw",
-        id,
-        text,
-        ...(manifest !== undefined ? { manifest } : {}),
-        ...(manifests !== undefined ? { manifests } : {}),
-      }),
-    putTemplate: ({
-      id,
-      templateText,
-      paramsSchema,
-      paramValues,
-      manifest,
-      manifests,
-    }) =>
-      request<{ policy: ManagedPolicy; catalog: Catalog }>({
-        type: "dashboard:put-template",
-        id,
-        templateText,
-        paramsSchema,
-        paramValues,
-        ...(manifest !== undefined ? { manifest } : {}),
-        ...(manifests !== undefined ? { manifests } : {}),
-      }),
-    delete: (id) =>
-      request<{ catalog: Catalog }>({ type: "dashboard:delete", id }),
-    setEnabledIds: (ids) =>
-      request<{ catalog: Catalog }>({
-        type: "dashboard:set-enabled-ids",
-        ids,
-      }),
-    getAuditLog: (opts) =>
-      request<AuditEntry[]>({
-        type: "dashboard:get-audit-log",
-        ...(opts !== undefined ? { opts } : {}),
-      }),
     onChange: (cb) => {
       changeListeners.add(cb);
       return () => {
