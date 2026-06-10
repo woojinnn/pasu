@@ -203,6 +203,14 @@ function exprToLeaf(e: Expr): FormLeaf | null {
       return { fieldPath: path, op, value };
     }
   }
+  // Bare Bool attribute (`context.custom.flag` standalone — Cedar requires a
+  // bare term to be Bool). Open it as the form's `== true` leaf; formToIr
+  // re-emits the equality, which is semantically identical. Negation is
+  // handled by the caller's `neg` flag (`!flag` → `!= true`).
+  if (e.kind === "attr") {
+    const path = exprToPath(e);
+    if (path) return { fieldPath: path, op: "==", value: { kind: "bool", value: true } };
+  }
   return null;
 }
 

@@ -555,3 +555,67 @@ describe("formToIr / irToForm", () => {
     expect(irToForm(formToIr(m))?.when).toEqual(form?.when);
   });
 });
+
+describe("baked day1 shapes (builtin defs must open in the form)", () => {
+  /** unlimited-approval-deny 본문 그대로: has 가드 2단 + bare bool + NOT-contains. */
+  it("has-guarded bare bool + !(set.contains(attr)) round-trips", () => {
+    const attr = (of: Expr, name: string): Expr => ({ kind: "attr", of, attr: name });
+    const ctx: Expr = { kind: "var", name: "context" };
+    const custom = attr(ctx, "custom");
+    const body: Expr = {
+      kind: "binary",
+      op: "&&",
+      left: {
+        kind: "binary",
+        op: "&&",
+        left: {
+          kind: "binary",
+          op: "&&",
+          left: { kind: "has", of: ctx, attr: "custom" },
+          right: { kind: "has", of: custom, attr: "approvalIsUnlimited" },
+        },
+        right: attr(custom, "approvalIsUnlimited"),
+      },
+      right: {
+        kind: "unary",
+        op: "!",
+        operand: {
+          kind: "binary",
+          op: "contains",
+          left: { kind: "set", elements: [{ kind: "lit", litType: "string", value: "0xperm2" }] },
+          right: attr(ctx, "spender"),
+        },
+      },
+    };
+    const ir: PolicyIR = {
+      kind: "policy",
+      effect: "forbid",
+      annotations: [
+        { name: "id", value: "unlimited-approval-deny" },
+        { name: "severity", value: "deny" },
+      ],
+      scope: {
+        principal: { kind: "scopeAll" },
+        action: { kind: "scopeEq", entity: { type: "Token::Action", id: "Erc20Approve" } },
+        resource: { kind: "scopeAll" },
+      },
+      conditions: [{ kind: "when", body }],
+    };
+
+    const model = irToForm(ir);
+    expect(model).not.toBeNull();
+    expect(model!.when).toEqual([
+      expect.objectContaining({
+        fieldPath: "context.custom.approvalIsUnlimited",
+        op: "==",
+        value: { kind: "bool", value: true },
+      }),
+      expect.objectContaining({ fieldPath: "context.spender", op: "notIn" }),
+    ]);
+
+    // 폼 → IR 재방출도 폼 호환 (저장 후 다시 열기 안정성)
+    const reopened = irToForm(formToIr(model!));
+    expect(reopened).not.toBeNull();
+    expect(reopened!.when.length).toBe(2);
+  });
+});
