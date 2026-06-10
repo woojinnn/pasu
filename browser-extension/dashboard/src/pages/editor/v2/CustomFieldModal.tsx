@@ -1,14 +1,19 @@
 /**
  * CustomFieldModal — "+ 새 보강 필드 만들기".
  *
- * policy-server 메서드를 골라 파라미터(셀렉터/리터럴)를 매핑하면
- * `context.custom.<이름>` 필드가 생긴다: 즉시 필드 선택기에 나타나고, 저장 시
- * manifest의 `policy_rpc` + `custom_context`로 직렬화된다(생성 자체는 기존
- * generateManifest가 registry 병합으로 수행).
+ * policy-server 메서드를 골라 파라미터를 매핑하면 `context.custom.<이름>`
+ * 필드가 생긴다: 즉시 필드 선택기에 나타나고, 저장 시 manifest의
+ * `policy_rpc` + `custom_context`로 직렬화된다.
+ *
+ * 파라미터 값은 셀렉터 문법(`$.root.chain_id`)을 직접 쓰게 하지 않는다 —
+ * 폼의 한국어 필드 카탈로그를 재사용한 드롭다운("이 거래에서 가져오기")으로
+ * 고르고, 셀렉터 원문/결과 위치는 "고급" 안에서만 보인다. `context.<X>` Cedar
+ * 경로는 plan-time 셀렉터 `$.action.<X>`와 1:1 대응한다.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { EnrichmentField } from "../../../editor-v9/manifest-gen";
+import type { FieldOption } from "../../../cedar/form";
 
 import { METHOD_CATALOG, type MethodSpec } from "./custom-field-methods";
 
@@ -19,9 +24,32 @@ export interface CustomFieldDraft {
 
 const NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
+/** 거래(tx) 레벨 셀렉터 — 액션 컨텍스트 밖의 몇 안 되는 값들. */
+const ROOT_OPTIONS: { sel: string; label: string }[] = [
+  { sel: "$.root.chain_id", label: "체인 (어느 네트워크인지)" },
+  { sel: "$.root.from", label: "보내는 주소 (내 지갑)" },
+  { sel: "$.root.to", label: "대상 컨트랙트 주소" },
+];
+
+/** 메서드 파라미터 키 → 한국어 라벨 (모르는 키는 키 그대로). */
+const PARAM_KEY_KO: Record<string, string> = {
+  chain_id: "체인",
+  asset: "토큰",
+  amount: "수량",
+  address: "주소",
+  wallet: "지갑",
+  decimals: "소수 자릿수",
+};
+
+interface SelectorOption {
+  sel: string;
+  label: string;
+}
+
 export function CustomFieldModal({
   existingNames,
   actionTag,
+  fields,
   onCreate,
   onClose,
 }: {
@@ -29,6 +57,8 @@ export function CustomFieldModal({
   existingNames: readonly string[];
   /** 현재 trigger의 action tag (appliesTo로 기록). null = 모든 동작. */
   actionTag: string | null;
+  /** 폼의 필드 카탈로그 — 파라미터 드롭다운의 "이 거래에서 가져오기" 항목. */
+  fields: readonly FieldOption[];
   onCreate: (draft: CustomFieldDraft) => void;
   onClose: () => void;
 }) {
@@ -38,6 +68,14 @@ export function CustomFieldModal({
   // 파라미터 값은 메서드 템플릿이 기본값 — 메서드를 바꾸면 그 템플릿으로 리셋.
   const [params, setParams] = useState<Record<string, string>>(() => paramStrings(METHOD_CATALOG[0]));
   const [projection, setProjection] = useState(METHOD_CATALOG[0].projection);
+
+  // 드롭다운 항목: 거래 레벨 값 + (액션의 기본 필드들 → `$.action.*` 셀렉터).
+  const selectorOptions = useMemo<SelectorOption[]>(() => {
+    const action = fields
+      .filter((f) => f.source === "base" && f.path.startsWith("context.") && f.fieldKind.startsWith("primitive."))
+      .map((f) => ({ sel: `$.action.${f.path.slice("context.".length)}`, label: f.label }));
+    return [...ROOT_OPTIONS, ...action];
+  }, [fields]);
 
   const nameErr = !name
     ? null
@@ -135,30 +173,45 @@ export function CustomFieldModal({
 
         <div className="cfm-params">
           <div className="cfm-params-h">
-            파라미터 <span className="cfm-hint">`$.`로 시작하면 거래에서 뽑는 셀렉터, 아니면 고정값</span>
+            서버에 넘길 값 <span className="cfm-hint">각 항목을 이 거래의 어떤 값으로 채울지 골라요</span>
           </div>
           {Object.entries(params).map(([key, v]) => (
-            <label key={key} className="cfm-row">
-              <span className="cfm-label mono">{key}</span>
+            <div key={key} className="cfm-row">
+              <span className="cfm-label">{PARAM_KEY_KO[key] ?? key}</span>
+              <ParamPicker
+                value={v}
+                options={selectorOptions}
+                onChange={(next) => setParams((p) => ({ ...p, [key]: next }))}
+              />
+            </div>
+          ))}
+          <div className="cfm-row">
+            <span className="cfm-label">결과 타입</span>
+            <span className="cfm-type">
+              {method.type === "decimal" ? "소수" : method.type === "Long" ? "숫자" : method.type === "Bool" ? "참/거짓" : "문자"}
+            </span>
+          </div>
+          <details className="cfm-adv">
+            <summary>고급 (셀렉터 원문·결과 위치)</summary>
+            {Object.entries(params).map(([key, v]) => (
+              <label key={key} className="cfm-row">
+                <span className="cfm-label mono">{key}</span>
+                <input
+                  className="pf-val wide mono"
+                  value={v}
+                  onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))}
+                />
+              </label>
+            ))}
+            <label className="cfm-row">
+              <span className="cfm-label mono">결과 위치</span>
               <input
                 className="pf-val wide mono"
-                value={v}
-                onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))}
+                value={projection}
+                onChange={(e) => setProjection(e.target.value)}
               />
             </label>
-          ))}
-          <label className="cfm-row">
-            <span className="cfm-label mono">결과 위치</span>
-            <input
-              className="pf-val wide mono"
-              value={projection}
-              onChange={(e) => setProjection(e.target.value)}
-            />
-          </label>
-          <div className="cfm-row">
-            <span className="cfm-label">값 타입</span>
-            <span className="cfm-type">{method.type === "decimal" ? "소수 (decimal)" : method.type === "Long" ? "숫자 (Long)" : method.type === "Bool" ? "참/거짓" : "문자"}</span>
-          </div>
+          </details>
         </div>
 
         <div className="cfm-actions">
@@ -171,6 +224,53 @@ export function CustomFieldModal({
         </div>
       </div>
     </div>
+  );
+}
+
+/** One param's value picker: a labeled dropdown of transaction values, with
+ *  "고정값"/"셀렉터 직접 입력" as escape hatches (raw `$.…` never required). */
+function ParamPicker({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: SelectorOption[];
+  onChange: (v: string) => void;
+}) {
+  const known = options.find((o) => o.sel === value);
+  const mode = known ? "known" : value.startsWith("$.") ? "raw" : "lit";
+  return (
+    <span className="cfm-pick">
+      <select
+        className="pf-select"
+        value={known ? value : mode === "raw" ? "__raw" : "__lit"}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "__lit") onChange("");
+          else if (v === "__raw") onChange(value.startsWith("$.") ? value : "$.action.");
+          else onChange(v);
+        }}
+      >
+        <optgroup label="이 거래에서 가져오기">
+          {options.map((o) => (
+            <option key={o.sel} value={o.sel}>
+              {o.label}
+            </option>
+          ))}
+        </optgroup>
+        <option value="__lit">고정값 직접 입력…</option>
+        <option value="__raw">셀렉터 직접 입력 (고급)…</option>
+      </select>
+      {mode !== "known" && (
+        <input
+          className="pf-val mono"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={mode === "raw" ? "$.action.…" : "고정값 (예: 6)"}
+        />
+      )}
+    </span>
   );
 }
 

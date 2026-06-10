@@ -614,6 +614,7 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
         <CustomFieldModal
           existingNames={Object.keys(registry)}
           actionTag={actionTagOf(model.trigger)}
+          fields={fields}
           onCreate={({ name, field }) => setUserFields((prev) => ({ ...prev, [name]: field }))}
           onClose={() => setFieldModalOpen(false)}
         />
