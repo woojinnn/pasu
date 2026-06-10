@@ -1,37 +1,9 @@
 /**
- * Phase 4D — Multicall handler scaffold (TS side).
+ * Multicall handler (TS side).
  *
- * Wires the SW orchestrator into the v3 `declarative_route_request_v3_json`
- * WASM entry for Universal-Router (UR) `execute(bytes commands, bytes[] inputs, uint256 deadline)`
- * calls. The handler's surface area is intentionally narrow at Phase 4D:
- *
- *   1. SW receives an `eth_sendTransaction` with calldata starting at
- *      UR's `execute` selector (`0x3593564c`).
- *   2. Orchestrator calls `tryDeclarativeRouteV3` (already wired in Phase 4B).
- *   3. WASM emits a v3 `Action[]` — Phase 4B returns a single
- *      `ActionBody::Unknown` stub. Phase 4D-full will replace the stub
- *      with a real children list (one per UR opcode) wrapped in
- *      `ActionBody::Multicall { actions: [...] }`.
- *   4. This handler validates and surfaces the children for the Cedar
- *      pipeline (or for the upcoming v3 verdict path).
- *
- * Scope split (auto-mode decision):
- *
- * | Layer | Responsibility | Phase |
- * |---|---|---|
- * | TS multicall-handler  | Validate `actions` shape, flatten for audit,
- *                          surface child counts                          | 4D (this file)  |
- * | WASM declarative_route_request_v3_json | Manifest lookup + emit.body
- *                          decode + per_opcode_body recurse              | 4D.5 / Phase 5  |
- * | adapters-v3 (Rust)    | declarative parser: `$args.*` substitution,
- *                          `recurse.strategy: "commands_and_inputs_paired"`,
- *                          per_opcode dispatch                           | 4D.5 / Phase 5  |
- *
- * Phase 4D (this file) stays a thin TS pass-through: it accepts the
- * WASM v3 result, normalises the `actions` array shape, and exposes
- * helpers to inspect a `Multicall` body. The TS handler does NOT
- * decode UR calldata locally — that would duplicate the Rust
- * declarative parser. The WASM remains the single source of truth.
+ * Accepts the WASM v3 route result for Universal-Router calls, normalises the
+ * `actions` array shape, and exposes helpers to inspect a `Multicall` body.
+ * The WASM owns all calldata decoding — this module is a thin pass-through.
  */
 
 import type { DeclarativeRouteV3Outcome } from "./adapter-loader/declarative-route";
@@ -61,7 +33,7 @@ export interface MulticallActionBody {
 
 /**
  * Body discriminator the handler needs to distinguish. We don't strongly
- * type every variant (token / amm / lending / ...) because Phase 4D
+ * type every variant (token / amm / lending / ...) because this layer
  * only cares about the multicall recursion shape; the rest pass
  * through opaquely.
  */
@@ -85,7 +57,7 @@ export interface MulticallHandlerResult {
    * v3 actions surfaced from the WASM result. Always a `V3ActionLike[]`
    * — single-emit bundles return one element; multicall_recurse
    * bundles return a `[{ body: { domain: "multicall", actions: [...] }}]`
-   * action node. Phase 4D keeps both shapes side-by-side so the audit
+   * action node. Both shapes are kept side-by-side so the audit
    * surface doesn't have to choose.
    */
   actions: V3ActionLike[];
@@ -99,32 +71,20 @@ export interface MulticallHandlerResult {
   /** Outer decoder id (UR/SR02/NFPM bundle), forwarded verbatim. */
   decoderId: string;
   /**
-   * Nested-multicall depth observed in the actions list. Always 0 for
-   * the Phase 4B stub (it emits `Unknown` only) and ≤ 1 for the
-   * Phase 4D-full UR `execute` case. The reducer's `apply_multicall`
-   * already supports unbounded depth (`Multicall { actions: Vec<Self> }`),
-   * but Phase 4D caps observed depth at `recurse.max_depth = 3`
-   * matching the registry manifest.
+   * Nested-multicall depth observed in the actions list. The reducer supports
+   * unbounded depth; the registry manifest caps it at `recurse.max_depth = 3`.
    */
   maxDepth: number;
 }
 
 /**
- * Phase 4D — process a `DeclarativeRouteV3Outcome` from
- * `tryDeclarativeRouteV3` into a normalised handler result.
+ * Process a `DeclarativeRouteV3Outcome` into a normalised handler result.
  *
- * - `kind === "hit"` → walks the actions list, identifies any
- *   `Multicall` actions, and produces a flat children list for
- *   downstream consumers.
- * - `kind === "miss"` / `"fault"` → returns `null`; orchestrator falls
- *   through to the static path (Phase 5 makes this the verdict
- *   driver).
+ * - `kind === "hit"` → walks the actions list, identifies any `Multicall`
+ *   actions, and produces a flat children list for downstream consumers.
+ * - `kind === "miss"` / `"fault"` → returns `null`.
  *
- * The handler is a pure-data pass-through: no WASM call, no manifest
- * lookup. The heavy lifting (manifest decode, emit.body substitution,
- * per_opcode recurse) lives behind the v3 WASM entry — Phase 4D-full
- * replaces the stub there, which automatically flows actions through
- * this handler unchanged.
+ * Pure data pass-through: no WASM call, no manifest lookup.
  */
 export function handleV3Outcome(
   outcome: DeclarativeRouteV3Outcome,
@@ -185,31 +145,3 @@ function isMulticallBody(body: ActionBodyLike): body is MulticallActionBody {
   );
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Pending follow-ups (Phase 4D.5 / Phase 5)
-// ───────────────────────────────────────────────────────────────────────────
-//
-// 1. WASM `declarative_route_request_v3_json` (in
-//    `crates/policy-engine-wasm/src/declarative_exports.rs`) currently
-//    emits a single `ActionBody::Unknown` stub. Replace with:
-//      a. callkey lookup against the registry-v2 bridge (`DECLARATIVE_STATE`).
-//      b. manifest.emit.body `$args.*` / `$chain` / `$resolved.*`
-//         substitution into a typed v3 ActionBody.
-//      c. `recurse.strategy === "commands_and_inputs_paired"`:
-//         decode `commands` (bytes) + `inputs` (bytes[]); for each
-//         opcode_byte, look up `per_opcode_body[opcode]`; recurse with
-//         the inner `inputs[i]` as the substitution scope; wrap children
-//         in `ActionBody::Multicall { actions: Vec<ActionBody> }`.
-//
-// 2. Sync orchestrator wire-up: gas_price `LiveField` currently uses a
-//    stub Pyth source; Phase 5 replaces with the real Sync layer feed.
-//
-// 3. Permit2 `nonce_key` follow-through: the typed-sig path emits
-//    `nonce_key: undefined` today. Once Phase 4D wires
-//    `Permit2.nonceBitmap(owner, word)` reads through Sync, the typed-sig
-//    router can attach the LiveField pair.
-//
-// 4. EIP-2612 / UniswapX typed-data manifests: registry-v2 needs the
-//    typed_data index keyed by `(verifyingContract, primaryType)` (not
-//    `domain.name`, which collides across EIP-2612 tokens). Today only
-//    Permit2 / PermitSingle is keyed.

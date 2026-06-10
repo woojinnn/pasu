@@ -26,37 +26,30 @@ export type {
 
 interface WasmExports {
   install_policies_json(input: string): string;
-  // M2 — v3 install entry. Stores the raw v3 manifest
-  // (`type: "adapter_action"`, `schema_version: "3"`, hierarchical
-  // `emit.body`) in `DECLARATIVE_V3_STATE` for the v3 route entry to consume.
-  // Contract documented in
-  // `crates/policy-engine-wasm/src/declarative_exports.rs`.
+  // v3 install entry. Stores the raw v3 manifest in `DECLARATIVE_V3_STATE`
+  // for the v3 route entry to consume.
+  // Contract: `crates/policy-engine-wasm/src/declarative_exports.rs`.
   declarative_install_v3_json(bundle_json: string): string;
-  // Phase 4B — v3 orchestrator route entry. Resolves (chain_id, to, selector)
-  // through the engine-internal bridge populated at install time, then emits
-  // the PDF FSM `policy_transition::action::Action` tree.
+  // v3 orchestrator route entry. Resolves (chain_id, to, selector) through
+  // the engine-internal bridge and emits the `Action` tree.
   declarative_route_request_v3_json(input_json: string): string;
-  // Phase A.1 — v3 typed-data (EIP-712 sign) route entry. Keys on the
-  // typed-data triple `(chain_id, verifying_contract, primary_type)` (+ optional
-  // witness_type) the install bridged; decodes the raw EIP-712 `message` to the
-  // same ActionBody tree as `declarative_route_request_v3_json`.
+  // v3 typed-data (EIP-712 sign) route entry. Keys on the typed-data triple
+  // `(chain_id, verifying_contract, primary_type)` (+ optional witness_type);
+  // decodes the raw EIP-712 `message` to the same ActionBody tree.
   declarative_route_typed_data_v3_json(input_json: string): string;
-  // Phase 1 (v2 ActionBody model) — stateless policy-RPC plan + evaluate.
+  // Stateless policy-RPC plan + evaluate (v2 ActionBody model).
   // Contract: `crates/policy-engine-wasm/src/action_eval_exports.rs`.
-  // `plan_action_rpc_v2_json` lowers the action + plans its policy-RPC calls
-  // (`{ ok, data: { planned: [...] } }` / `{ ok: false, error }`).
+  // Returns `{ ok, data: { planned: [...] } }` / `{ ok: false, error }`.
   plan_action_rpc_v2_json(input_json: string): string;
-  // `evaluate_action_v2_json` replays the host results into context and
-  // aggregates each matching bundle's verdict. ALWAYS returns `ok: true` —
-  // every fault becomes a `Fail` verdict (`__system__` / `__engine::*`).
-  // (`{ ok, data: { verdict: VerdictDto } }`).
+  // Replays host results into context and aggregates each matching bundle's verdict.
+  // ALWAYS returns `ok: true` — every fault becomes a `Fail` verdict.
+  // Returns `{ ok, data: { verdict: VerdictDto } }`.
   evaluate_action_v2_json(input_json: string): string;
-  // DEBUG (diagnostic-only) — lower the action and return the exact lowered
-  // Cedar context (camelCase, cedarschema-shaped) + entity uids the engine
-  // evaluates. Reuses the evaluate input shape. No effect on the verdict path.
-  // (`{ ok, data: { principal, actionUid, resource, context } }`).
+  // Diagnostic-only: lower the action and return the exact lowered Cedar context.
+  // No effect on the verdict path.
+  // Returns `{ ok, data: { principal, actionUid, resource, context } }`.
   debug_lowered_context_v2_json(input_json: string): string;
-  // origin/main — manifest-driven schema preview + alias table.
+  // Manifest-driven schema preview + alias table.
   preview_custom_schema_json(input_json: string): string;
   preview_installed_schema_json(): string;
   field_catalog_json(): string;
@@ -68,17 +61,14 @@ interface WasmExports {
   validate_policy_text(text: string): string;
   test_policy_text(text: string, request_json: string): string;
   simulate_policy_sequence(steps_json: string, policies_json: string): string;
-  // Cedar text↔EST (block-IR engine). Contract:
-  // `crates/policy-engine-wasm/src/cedar_exports.rs`.
+  // Cedar text↔EST conversion. Contract: `crates/policy-engine-wasm/src/cedar_exports.rs`.
   policy_text_to_est_json(text: string): string;
   est_json_to_policy_text(est_json: string): string;
-  // Simulation step — one (state, action, ctx) → (delta, next_state). Contract:
-  // `crates/policy-engine-wasm/src/sim_step_exports.rs`. The host owns the
-  // per-tx loop and feeds `next_state` back as `state` on the next call.
+  // One simulation step: (state, action, ctx) → (delta, next_state).
+  // Contract: `crates/policy-engine-wasm/src/sim_step_exports.rs`.
   simulate_step_json(input_json: string): string;
-  // Denial diagnosis: run Cedar probes against the materialized context and
-  // return which probe ids were true / errored. Contract:
-  // `crates/policy-engine-wasm/src/diagnosis_exports.rs`.
+  // Denial diagnosis: run Cedar probes against the materialized context.
+  // Contract: `crates/policy-engine-wasm/src/diagnosis_exports.rs`.
   run_diagnosis_probes_v2_json(input_json: string): string;
 }
 
@@ -94,19 +84,11 @@ export interface DeclarativeInstallResult {
 }
 
 /**
- * Phase 4B — wire shape for `declarative_route_request_v3_json`.
+ * Wire shape for `declarative_route_request_v3_json`.
  *
- * `(chain_id, to, selector)` form the callkey, plus the meta fields the
- * `policy_transition::action::ActionMeta` carries (`value` / `gas_limit` /
- * `gas_price` / `submitter` / `submitted_at` / `nonce`). All numeric fields
- * are passed as base-10 decimal strings — the WASM converts them to
- * `U256`/`u64` internally; passing JS `number` would lose precision for
- * uint256 values.
- *
- * `selector` and `block_timestamp` are reserved for Phase 4D's registry-v2
- * manifest lookup. They must be supplied; the Phase 4B stub does not read
- * them but the wire shape is locked so adding the lookup later is purely a
- * Rust-side change.
+ * `(chain_id, to, selector)` form the callkey plus the `ActionMeta` fields.
+ * All numeric fields are base-10 decimal strings — passing JS `number` would
+ * lose precision for uint256 values.
  */
 export interface DeclarativeRouteRequestV3Input {
   chain_id: number;
@@ -121,10 +103,8 @@ export interface DeclarativeRouteRequestV3Input {
   /** Declared gas limit as a base-10 decimal string. Defaults to `"0"`. */
   gas_limit?: string;
   /**
-   * Current gas price as a base-10 decimal string. Defaults to `"0"`. The
-   * WASM wraps this in a stub `LiveField` whose source is Pyth
-   * `gas/eip155:<chain_id>` — Phase 5+ replaces this with a Sync
-   * Orchestrator hookup.
+   * Current gas price as a base-10 decimal string. Defaults to `"0"`.
+   * The WASM wraps this in a stub `LiveField` for the gas source.
    */
   gas_price?: string;
   /** `tx.from` — "0x" + 40 hex. */
@@ -134,8 +114,8 @@ export interface DeclarativeRouteRequestV3Input {
   /** Sequential transaction nonce of `submitter`. Defaults to `0`. */
   nonce?: number;
   /**
-   * Optional block.timestamp — distinct from `submitted_at`. Reserved for
-   * Phase 4D's deadline / validity mapping.
+   * Optional block.timestamp — distinct from `submitted_at`. Used for
+   * deadline / validity mapping.
    */
   block_timestamp?: number;
 }
@@ -143,11 +123,7 @@ export interface DeclarativeRouteRequestV3Input {
 /**
  * Result of a successful `declarative_route_request_v3_json` call.
  *
- * `actions` is the JSON-serialised `Vec<policy_transition::action::Action>`
- * the WASM produced. Phase 4B emits a single-element vec whose body is the
- * `Unknown` stub; Phase 4D fills in the real `ActionBody` per registry-v2
- * manifest emit-rule.
- *
+ * `actions` is the JSON-serialised `Vec<policy_transition::action::Action>`.
  * `decoder_id` echoes the matched bundle's declarative decoder id.
  */
 export interface DeclarativeRouteRequestV3Result {
@@ -198,13 +174,11 @@ function unwrap<T>(json: string): T {
 }
 
 /**
- * Result envelope from the manifest-map install path (Phase 5/6).
+ * Result envelope from the manifest-map install path.
  *
- * Present when the caller passes `manifests` as a `{ [action]: manifest }`
- * map — the WASM install path then composes the enriched schema and
- * returns these fields. Absent when the caller passes the legacy
- * `Vec<PolicyManifest>` shape (the install path skips `compose_enriched`
- * and returns a `null` data envelope).
+ * Present when the caller passes `manifests` as a `{ [action]: manifest }` map —
+ * the WASM install path composes the enriched schema and returns these fields.
+ * Absent when the caller passes the legacy `Vec<PolicyManifest>` array shape.
  */
 export interface InstallPoliciesOutput {
   enrichedSchemaHash: string;
@@ -214,20 +188,11 @@ export interface InstallPoliciesOutput {
 /**
  * Install Cedar policies into the WASM engine.
  *
- * **Phase 6 / carry-over E:** `manifests` accepts both the legacy
- * `Vec<PolicyManifest>` (array) and the new `{ [action]: manifest }`
- * map shape. They are NOT equivalent:
- *
- * - Map shape → composes the enriched schema and the returned object
- *   carries `enrichedSchemaHash` + `addedCustomFields`. **All new
- *   Phase-6 callers (the manifest store, atomic-install, dev-seed,
- *   dashboard SDK) must use this shape.**
- * - Array shape → legacy, preserves the pre-Phase-5 install. Returns
- *   `null` for the install output. Only the legacy
- *   `policies-loader.ts` aggregator still uses it.
- *
- * Returns `null` when WASM returned the legacy null envelope, otherwise
- * the populated [`InstallPoliciesOutput`].
+ * `manifests` accepts two shapes:
+ * - Map `{ [action]: manifest }` → composes the enriched schema; the returned
+ *   object carries `enrichedSchemaHash` + `addedCustomFields`. All callers
+ *   that want the enriched schema must use this shape.
+ * - Array `Vec<PolicyManifest>` → legacy shape; returns `null`.
  */
 export async function installPolicies(input: {
   schema_text: string;
@@ -254,25 +219,12 @@ export async function installPolicies(input: {
 }
 
 /**
- * M2 — install a v3 declarative bundle (`type: "adapter_action"`,
- * `schema_version: "3"`, hierarchical `emit.body`) into the engine's
- * `DECLARATIVE_V3_STATE` so subsequent `declarative_route_request_v3_json`
- * calls find it via the callkey `(chain_id, to, selector)` bridge.
+ * Install a v3 declarative bundle into `DECLARATIVE_V3_STATE` so subsequent
+ * `declarative_route_request_v3_json` calls find it via the callkey bridge.
+ * Re-installing the same bundle is idempotent (overwrites the entry).
  *
- * Re-installing the same bundle is idempotent on the engine side — it
- * overwrites the bridge entry + bundle map — so callers don't have to dedupe.
- *
- * Error semantics:
- *   - `EngineError("invalid_bundle_json", …)` — payload is not valid JSON
- *     once stringified on the SW side. The caller built a bad request and
- *     must fix it.
- *   - `EngineError("missing_id", …)` — bundle has no `id` string.
- *   - `EngineError("invalid_match", …)` — `match` is missing or its
- *     `BundleMatch` deserialisation failed inside WASM.
- *
- * The caller MUST stringify the bundle exactly as it received it from the
- * registry (no re-canonicalisation) — `bundle_sha256` integrity downstream
- * depends on byte stability.
+ * The caller must stringify the bundle exactly as received from the registry —
+ * `bundle_sha256` integrity depends on byte stability.
  */
 export async function declarativeInstallV3(
   bundleJson: string,
@@ -305,10 +257,9 @@ export interface AliasTableEntry {
 }
 
 /**
- * Preview the enriched cedarschema produced by a single action's
- * manifest (Phase 6 / D14). Returns the full custom-context list, the
- * generated cedarschema text, a diff against any currently-installed
- * action, and a hash of the previewed schema.
+ * Preview the enriched cedarschema produced by a single action's manifest.
+ * Returns the custom-context list, the generated cedarschema text, a diff
+ * against the currently-installed action, and a hash of the previewed schema.
  */
 export async function previewCustomSchema(input: {
   action: string;
@@ -334,20 +285,10 @@ export async function previewInstalledSchema(): Promise<PreviewInstalledSchemaOu
 }
 
 /**
- * Phase 4B — v3 orchestrator route entry.
+ * v3 orchestrator route entry.
  *
- * Resolves `(chain_id, to, selector)` through the engine-side bridge table
- * populated at install time by `declarative_install_v3_json`, then produces
- * the PDF FSM `policy_transition::action::Action` tree. The wire boundary is
- * locked at Phase 4B; the Rust stub currently returns a single
- * `ActionBody::Unknown` so the SW + Cedar path can already exercise the v3
- * type — manifest lookup + emit-rule decoding lands in Phase 4D.
- *
- * Error semantics:
- *   - `EngineError("invalid_input_json", …)` — malformed wire payload.
- *     The caller built a bad request and must fix it.
- *   - `EngineError("input_too_large", …)` — JSON exceeded the WASM input
- *     budget. Caller should split / shorten the request.
+ * Resolves `(chain_id, to, selector)` through the engine-side bridge populated
+ * at install time and produces the `Action` tree.
  */
 export async function declarativeRouteRequestV3(
   input: DeclarativeRouteRequestV3Input,
@@ -359,16 +300,12 @@ export async function declarativeRouteRequestV3(
 }
 
 /**
- * Phase A.1 — wire shape for `declarative_route_typed_data_v3_json`.
+ * Wire shape for `declarative_route_typed_data_v3_json`.
  *
- * The typed-data analogue of {@link DeclarativeRouteRequestV3Input}: instead
- * of `(to, selector, calldata)` the WASM keys on the typed-data triple
- * `(chain_id, verifying_contract, primary_type)` the install bridged, plus
- * the raw EIP-712 `message` object the manifest `$args.*` placeholders read.
- *
- * `domain_name` is optional — EIP-2612 token Permits carry the token name as
- * `domain.name`, so it can't be part of the routing key; the WASM only uses
- * it for audit / display. `submitted_at` is unix-epoch seconds.
+ * Instead of `(to, selector, calldata)` the WASM keys on the typed-data triple
+ * `(chain_id, verifying_contract, primary_type)`, plus the raw EIP-712 `message`.
+ * `domain_name` is not part of the routing key — EIP-2612 token Permits carry
+ * the token name there, causing collisions if it were keyed on.
  */
 export interface DeclarativeRouteTypedDataV3Input {
   chainId: number;
@@ -377,20 +314,13 @@ export interface DeclarativeRouteTypedDataV3Input {
   /** EIP-712 `primaryType` discriminator (may contain a `:` segment). */
   primaryType: string;
   /**
-   * Optional 4th routing-key component (T1) — the EIP-712 `witness` field's
-   * struct type for Permit2 `permitWitnessTransferFrom` payloads (UniswapX
-   * intent orders etc.), which otherwise all collide on
-   * `(chainId, Permit2, "PermitWitnessTransferFrom")`. Kept VERBATIM (the exact
-   * EIP-712 type name). `undefined` for non-witness payloads → the WASM bridge
-   * key keeps its 3-tuple shape. Typed `string | undefined` so callers can
-   * forward a derived value straight through under `exactOptionalPropertyTypes`.
+   * Optional 4th routing-key component — the EIP-712 `witness` field's struct
+   * type for Permit2 `permitWitnessTransferFrom` payloads, which otherwise
+   * all collide on `(chainId, Permit2, "PermitWitnessTransferFrom")`.
+   * Kept verbatim (exact EIP-712 type name). `undefined` for non-witness payloads.
    */
   witnessType?: string | undefined;
-  /**
-   * Optional EIP-712 `domain.name` — audit only, not part of the key. Typed
-   * as `string | undefined` (not just optional) so callers can forward
-   * `typedData.domain.name` straight through under `exactOptionalPropertyTypes`.
-   */
+  /** Optional EIP-712 `domain.name` — audit/display only, not part of the routing key. */
   domainName?: string | undefined;
   /** Raw EIP-712 `message` object — the manifest `$args.*` decode root. */
   message: unknown;
@@ -401,18 +331,11 @@ export interface DeclarativeRouteTypedDataV3Input {
 }
 
 /**
- * Phase A.1 — v3 typed-data (EIP-712 sign) route entry.
+ * v3 typed-data (EIP-712 sign) route entry.
  *
- * Mirrors {@link declarativeRouteRequestV3} but returns the WASM envelope
- * in a non-throwing `{ ok, data?, error? }` shape so the SW sig-router can
- * treat a `route_failed` / `no_declarative_v3_mapper` miss as a transparent
- * fall-through (`null`) rather than catching an `EngineError`. `actions` is
- * the JSON-serialised `Vec<policy_transition::action::Action>`; `decoder_id`
- * is the matched bundle id (`""` on no match).
- *
- * The caller marshals the snake_case wire keys
- * (`chain_id, verifying_contract, primary_type, domain_name, message,
- * submitter, submitted_at`) the Rust DTO expects.
+ * Returns a non-throwing `{ ok, data?, error? }` envelope so the SW sig-router
+ * treats a route miss as a transparent fall-through (`null`) rather than catching
+ * an `EngineError`. The caller must supply snake_case wire keys matching the Rust DTO.
  */
 export async function declarativeRouteTypedDataV3(
   input: DeclarativeRouteTypedDataV3Input,
@@ -421,11 +344,9 @@ export async function declarativeRouteTypedDataV3(
   data?: { actions: unknown[]; decoder_id: string };
   error?: { kind: string; message: string };
 }> {
-  // T5 review fix — honor the non-throwing contract. A WASM-layer fault
-  // (init failure, a non-JSON panic string from the export, or a serde
-  // hiccup) must surface as a `{ ok: false }` envelope so the SW
-  // sig-router treats it as a transparent miss, NOT as a thrown
-  // `EngineError` that would bubble past the orchestrator's try/catch.
+  // Honor the non-throwing contract. A WASM-layer fault (init failure, serde
+  // hiccup, etc.) must surface as `{ ok: false }` so the sig-router treats
+  // it as a transparent miss, not a thrown error that bypasses the orchestrator.
   try {
     const exports = await load();
     const raw = exports.declarative_route_typed_data_v3_json(
@@ -433,9 +354,8 @@ export async function declarativeRouteTypedDataV3(
         chain_id: input.chainId,
         verifying_contract: input.verifyingContract,
         primary_type: input.primaryType,
-        // T1 — 4th routing-key component. Omitted from the JSON when undefined
-        // (JSON.stringify drops undefined values), so the Rust DTO's
-        // `#[serde(default)]` yields `None` and the bridge key stays a 3-tuple.
+        // Omitted when undefined (JSON.stringify drops undefined values) so the
+        // Rust DTO's `#[serde(default)]` yields `None` and the bridge key stays a 3-tuple.
         witness_type: input.witnessType,
         domain_name: input.domainName,
         message: input.message,
@@ -470,21 +390,12 @@ export async function getAliasTable(): Promise<{ entries: AliasTableEntry[] }> {
 }
 
 /**
- * Phase 1 (v2 ActionBody model) — PLAN phase.
+ * v2 ActionBody PLAN phase.
  *
  * Lowers the decoded `ActionBody` + `ActionMeta` and plans the v2 policy-RPC
  * calls the host must dispatch. Returns the `planned` calls keyed by
- * `call_id` (`<manifest_id>::<spec_id>`); the host fetches each and feeds the
- * raw results back to {@link evaluateActionV2}.
- *
- * Stateless: the `manifests` arrive inline per call rather than via an install
- * step. The WASM returns `{ ok, data: { planned: [...] } }`; this wrapper
- * unwraps the envelope and returns `data.planned`.
- *
- * Error semantics:
- *   - `EngineError("invalid_input_json", …)` — malformed wire payload.
- *   - `EngineError("plan_failed" | "unsupported_action", …)` — the action
- *     could not be lowered / planned.
+ * `call_id` (`<manifest_id>::<spec_id>`); the host feeds raw results back to
+ * {@link evaluateActionV2}. Stateless — `manifests` arrive inline per call.
  */
 export async function planActionRpcV2(
   input: PlanActionRpcV2InputDto,
@@ -497,17 +408,12 @@ export async function planActionRpcV2(
 }
 
 /**
- * Phase 1 (v2 ActionBody model) — EVALUATE phase.
+ * v2 ActionBody EVALUATE phase.
  *
- * Re-lowers the action, replays the host's raw `results` into
- * `context.custom.*`, then evaluates every matching bundle's Cedar policy and
- * aggregates the per-bundle verdicts by deny-overrides.
- *
- * The WASM ALWAYS returns `ok: true` — every fault becomes a `Fail` verdict
- * carrying a synthetic `__system__` (missing required RPC result) or
- * `__engine::<kind>` matched policy, so there is no `ok: false` / `EngineError`
- * path here. The envelope nests the verdict under `data.verdict`; this wrapper
- * runs that through {@link parseVerdict}.
+ * Re-lowers the action, replays the host's raw `results` into `context.custom.*`,
+ * evaluates every matching bundle's Cedar policy, and aggregates verdicts by
+ * deny-overrides. The WASM always returns `ok: true` — every fault becomes a
+ * `Fail` verdict (`__system__` or `__engine::<kind>`).
  */
 export async function evaluateActionV2(
   input: EvaluateActionV2InputDto,
@@ -518,9 +424,8 @@ export async function evaluateActionV2(
     exports.evaluate_action_v2_json(JSON.stringify(input)),
   );
   const verdict = parseVerdict(rawVerdict);
-  // DEBUG: surface the exact lowered Cedar context (camelCase, cedarschema-
-  // shaped) the engine evaluated for this node — otherwise hidden inside WASM.
-  // Diagnostic-only; a separate export, no effect on the verdict above.
+  // Surface the lowered Cedar context for debugging — diagnostic-only, no
+  // effect on the verdict above.
   try {
     const lowered = unwrap<{
       principal?: unknown;

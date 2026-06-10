@@ -1,13 +1,11 @@
 // SW-side message handlers for the manifest CRUD / schema preview /
-// migration surface (Phase 6 / Task 6.5).
+// migration surface.
 //
-// The dashboard SDK builds messages with a `manifest:*` or `migration:*`
-// `type` prefix and forwards them through the content-script bridge.
-// `index.ts` routes those messages here.
+// The dashboard SDK sends `manifest:*` or `migration:*` messages through
+// the content-script bridge; `index.ts` routes them here.
 //
 // All handlers return the standard `{ ok, data | error }` envelope so
-// the SDK can `throw` the error verbatim. The Map-shape WASM install
-// path is the only one we use here — see `wasm-bridge.ts` for why.
+// the SDK can throw the error verbatim.
 
 import {
   type AliasTableEntry,
@@ -53,12 +51,10 @@ export type ManifestRequest =
       type: "migration:rewrite";
       id: string;
       knownFields: readonly string[];
-      // The current `text` of the managed policy. The SW doesn't
-      // touch storage here — the dashboard takes the rewritten text,
-      // pushes it through `dashboard:put-raw`, and on success sends
-      // `migration:ack` to pop the id off the pending set. Splitting
-      // the two avoids a window where pending is empty but storage
-      // still has v0 text.
+      // The SW returns only the rewritten text; the dashboard pushes it
+      // through `dashboard:put-raw` and then sends `migration:ack`.
+      // Splitting the two avoids a window where pending is empty but
+      // storage still has v0 text.
       text: string;
     }
   | { type: "migration:ack"; id: string };
@@ -102,13 +98,8 @@ async function callWasmInstallMap(
   | { enrichedSchemaHash: string; addedCustomFields: Record<string, unknown[]> }
   | null
 > {
-  // Phase 7 codex carry-over H follow-up: the previous implementation
-  // passed `policy_set: []`, which silently wiped every installed
-  // Cedar policy on each manifest:put. `install_policies_json`
-  // *replaces* engine state — so handing it an empty policy set is the
-  // same as `engine.clear_policies()`. We mirror `hydrate.ts`'s pattern
-  // and forward the currently-enabled policy set so the engine keeps
-  // serving real verdicts while the manifest map turns over.
+  // `install_policies_json` replaces all engine state, so always forward
+  // the currently-enabled policy set to avoid wiping installed Cedar policies.
   const policySet = await loadCurrentEnabledPolicySet();
   return installPolicies({
     schema_text: "",
@@ -174,9 +165,8 @@ async function fetchHybridMethodCatalog(): Promise<{
           catalog?: { methods?: Record<string, unknown> };
           methods?: Record<string, unknown> | string[];
         };
-        // Newer daemon shape: `{ methods: [...], catalog: { methods: {...} } }`.
-        // Older daemon shape (pre-Phase-8.5): `{ methods: [...] }` — no
-        // catalog map, treat as empty.
+        // Preferred shape: `{ catalog: { methods: {...} } }`.
+        // Fallback shape: `{ methods: {...} }` (plain object, not array).
         if (raw.catalog && raw.catalog.methods && typeof raw.catalog.methods === "object") {
           dynamic = { methods: raw.catalog.methods };
         } else if (
@@ -253,11 +243,9 @@ export async function handleManifestRequest(
       }
 
       case "manifest:get-bundled": {
-        // Reads from the static asset bundle (`public/default-manifests/`)
-        // rather than chrome.storage — the bundled set is the "starter
-        // pack" we ship in the extension binary, never user state. The
-        // helper returns `{}` when no bundle was copied for this build,
-        // in which case there's no starter pack for the caller to install.
+        // Reads from the static asset bundle, not chrome.storage — the
+        // bundled set is the starter pack shipped with the extension binary,
+        // not user state. Returns `{}` when no bundle was copied.
         const bundled = await fetchBundledDefaultManifests();
         return {
           ok: true,
@@ -266,15 +254,6 @@ export async function handleManifestRequest(
       }
 
       case "manifest:get-method-catalog": {
-        // Hybrid catalog discovery (Phase 8.5):
-        //   1. Bundled `method-catalog.json` from extension assets — always
-        //      available, ships with the extension build.
-        //   2. Optional dynamic `GET /v1/methods` from the configured
-        //      policy-rpc daemon. When present, its entries OVERRIDE
-        //      the bundled set on key collision — that's how a daemon
-        //      built from newer source than the extension surfaces its
-        //      latest catalog without an extension reinstall, and how
-        //      plugin/sidecar methods reach the dashboard's editor.
         const catalog = await fetchHybridMethodCatalog();
         return { ok: true, data: catalog };
       }
@@ -299,11 +278,9 @@ export async function handleManifestRequest(
       }
 
       case "manifest:set-endpoint-url": {
-        // Phase 7 codex carry-over M: server-side URL scheme check.
-        // The dashboard already validates this client-side, but the SDK
-        // is reachable from any content script / Vite test and we
-        // cannot rely on the caller honouring the contract — only
-        // `http(s)://...` (or `null` to clear) should land in storage.
+        // Validate the URL scheme server-side — the SDK is reachable from
+        // any content script and we cannot rely on the caller to honour
+        // the contract. Only `http(s)://...` (or `null`) may land in storage.
         const url = typeof req.url === "string" ? req.url.trim() : null;
         if (url !== null && url !== "") {
           if (!/^https?:\/\/[^\s]+/i.test(url)) {
@@ -346,17 +323,13 @@ export async function handleManifestRequest(
         if (typeof req.id !== "string") {
           return fail("invalid_request", "id required");
         }
-        // Fix R, ack-side restore. The dashboard's rewrite flow runs
-        // `migration:rewrite` → `dashboard:put-raw` → `migration:ack`.
-        // The put-raw step always re-adds the id to `enabled-ids` (see
-        // `persistThenApply` → `autoApplyEnabled`). For users whose
-        // original preference was DISABLED, that's wrong — we strip
-        // the id off again here and reinstall via the apply-queue so
-        // BOTH `enabled-ids` AND `applied-ids` move in lockstep and
-        // serialize against any concurrent popup toggle. For users
-        // whose original preference was ENABLED (or who never had a
-        // snapshot because the detector didn't run for this id),
-        // put-raw's add is exactly right and we leave enabled-ids alone.
+        // The rewrite flow is: `migration:rewrite` → `dashboard:put-raw`
+        // → `migration:ack`. `put-raw` always re-adds the id to
+        // `enabled-ids`. For users whose original preference was DISABLED,
+        // strip it again here and reinstall via the apply-queue so both
+        // `enabled-ids` and `applied-ids` move in lockstep and serialize
+        // against any concurrent popup toggle. If the original preference
+        // was ENABLED, `put-raw`'s add is correct and we leave it alone.
         const original = await getOriginalEnabled();
         const wasEnabled = original[req.id];
         if (wasEnabled === false) {

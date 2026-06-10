@@ -4,8 +4,8 @@
  * Shapes mirror the Rust `policy_state` types (Tsify-exported in
  * `backend/wasm/policy_engine_wasm.d.ts`) and the handlers in
  * `crates/policy-server/server/src/read_handlers.rs`
- * (`get_positions` / `get_pending`). Hyperliquid is fully typed (the current
- * focus); the other position kinds are kept loose until Phase 4 surfaces them.
+ * (`get_positions` / `get_pending`). Hyperliquid is fully typed; other
+ * position kinds are kept loose until the UI surfaces them in detail.
  */
 
 import { request } from "./client";
@@ -87,8 +87,8 @@ export interface HlAccount {
 /** The Hyperliquid variant of `PositionKind` — fully typed. */
 export type HlPositionKind = { kind: "hyperliquid_account" } & HlAccount;
 
-/** Other position kinds (lending/perp/airdrop/launchpad/vesting) — loose
- *  until Phase 4. Narrow on `kind` and read fields as needed. */
+/** Other position kinds (lending/perp/airdrop/launchpad/vesting) — kept loose;
+ *  narrow on `kind` and read fields as needed. */
 export interface OtherPositionKind {
   kind:
     | "perp_position"

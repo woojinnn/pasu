@@ -1,33 +1,20 @@
 /**
- * Phase 7D — Token metadata registry client.
+ * Token metadata registry client.
  *
- * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §8 (`host:token_metadata`
- * enrichment) and §7 (3-layer loading), reused for the
- * `host:token_metadata` enrichment path.
+ * Spec: `ADAPTER_LOADER_ARCHITECTURE.md` §8 (`host:token_metadata` enrichment)
+ * and §7 (3-layer loading).
  *
- * Lookup order (mirrors `jit-fetcher.ts` for adapter bundles):
- *   1. Layer 1 — in-process cache + persistent `Browser.storage.local`
- *      "IndexedDB-style" cache. Hit returns the metadata immediately.
- *   2. Negative cache — known misses cached by `${chainId}__${address}`.
- *      TTL: `no_publisher` 5 min, `integrity_failed` 5 min, `timeout` 30 s.
- *   3. Inflight dedupe — concurrent lookups for the same key share one
- *      Promise so N callers fan into one network round-trip.
- *   4. Layer 2 — HTTP fetch from
- *      `${REGISTRY_BASE_URL}/tokens/${chainId}/${address}.json` per Phase 7C.
+ * Lookup order:
+ *   1. In-process map + persistent `Browser.storage.local` cache — hit returns
+ *      immediately.
+ *   2. Negative cache keyed by `${chainId}__${address}`.
+ *      TTL: `no_publisher` / `integrity_failed` 5 min, `timeout` 30 s.
+ *   3. Inflight dedupe — concurrent lookups for the same key share one Promise.
+ *   4. HTTP fetch from `${REGISTRY_BASE_URL}/tokens/${chainId}/${address}.json`.
  *
- * Address normalisation: every input address is lowercased before being
- * used as a cache key, URL component, or persisted payload. EIP-55
- * checksum is intentionally discarded — the registry filenames are
- * lowercased, so we MUST lowercase to avoid case-sensitive 404s on the
- * static host.
- *
- * Out of scope (per Phase 7D PoC):
- *   - HMAC-SHA256 key obfuscation (§7.5) — raw keys for now.
- *   - True `indexedDB` (use `Browser.storage.local` like the rest of the
- *     adapter-loader stack — quota fits the 4-token PoC comfortably).
- *   - sha256 integrity verification — token metadata is small and the
- *     registry is trusted; integrity_failed remains a slot in case we
- *     add it later.
+ * Every input address is lowercased before use as a cache key, URL component,
+ * or persisted payload — the registry filenames are lowercase, so we must
+ * normalise to avoid case-sensitive 404s.
  */
 import Browser from "webextension-polyfill";
 import { fetchStarted, fetchEnded } from "../diagnostics";
@@ -38,11 +25,8 @@ import { fetchStarted, fetchEnded } from "../diagnostics";
  * other token kinds without changing the cache layout.
  */
 export interface TokenMetadata {
-  // Wire field is `erc_kind` (the registry source files + the deployed
-  // `/tokens/<chain>/<addr>.json` object use `erc_kind`, reserving `kind` for
-  // the nested `token_kind.kind`). Mirror it exactly so `isTokenMetadata`
-  // accepts the real payload — a `kind`-named field silently rejected every
-  // live token (integrity_failed → null), leaving `amountNano` unpopulated.
+  // Wire field is `erc_kind` (registry JSON uses `erc_kind`, not `kind`).
+  // Must match exactly so `isTokenMetadata` accepts live payloads.
   erc_kind: "erc20";
   chainId: number;
   /** Lowercased EVM address — guaranteed by `normaliseAddress`. */
@@ -114,21 +98,10 @@ function isAbortError(err: unknown): boolean {
   return e.name === "AbortError" || e.code === "ABORT_ERR";
 }
 
-/**
- * Single SW-process singleton. Boots a single TokenRegistryClient
- * implementation so caches and inflight dedupe are shared across all
- * callers in the same lifetime.
- */
-/**
- * Round 2 audit (P1) — bound the in-process token cache so a hostile dapp
- * cannot inflate it indefinitely by submitting calldata that references
- * thousands of unique addresses. A simple insertion-order LRU is enough:
- * `Map` preserves insertion order, so re-inserting on hit moves an entry
- * to the back of the queue and `keys().next()` evicts the coldest.
- *
- * 2048 entries × ~150 bytes per `TokenMetadata` payload caps the cache
- * around 300 KiB — comfortably under the SW heap budget.
- */
+// In-process cache is bounded so a hostile dapp cannot inflate it by
+// submitting calldata with thousands of unique addresses. Insertion-order
+// LRU via `Map`: re-inserting on hit moves the entry to the back;
+// `keys().next()` evicts the coldest. 2048 entries × ~150 bytes ≈ 300 KiB.
 const MAX_TOKEN_MEM_CACHE = 2048;
 const MAX_TOKEN_NEGATIVE_ENTRIES = 1024;
 const MAX_TOKEN_INFLIGHT_ENTRIES = 256;
@@ -224,10 +197,8 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
     ttlSec: number,
     reason: NegativeReason,
   ): void {
-    // Round 2 audit (P1) — bound the negative cache so a hostile dapp
-    // cannot accumulate 100K miss-entries by probing unique addresses.
-    // LRU eviction (drop the oldest insertion) is fine: the cache only
-    // suppresses repeat fetches for the same key.
+    // Bound the negative cache (same hostile-dapp concern as memCache).
+    // LRU eviction: the cache only suppresses repeat fetches for the same key.
     while (this.negative.size >= MAX_TOKEN_NEGATIVE_ENTRIES) {
       const oldest = this.negative.keys().next().value;
       if (oldest === undefined) break;
@@ -261,11 +232,9 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
     const existing = this.inflight.get(key);
     if (existing) return existing;
 
-    // Round 2 audit (P1) — refuse new fetches when the inflight slot is
-    // saturated. A hostile dapp could otherwise pump unique addresses to
-    // hold 100K concurrent Promises in memory. Returning `null` matches
-    // the "registry hiccup" path, which downstream consumers treat as a
-    // metadata skip (degrade gracefully without crashing the SW).
+    // Refuse new fetches when the inflight table is saturated — a hostile
+    // dapp pumping unique addresses would otherwise hold unbounded Promises.
+    // `null` degrades to the "registry hiccup" path without crashing the SW.
     if (this.inflight.size >= MAX_TOKEN_INFLIGHT_ENTRIES) {
       return null;
     }

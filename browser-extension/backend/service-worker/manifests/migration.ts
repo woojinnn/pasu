@@ -1,14 +1,11 @@
-// V0 → V1 policy migration helper (D10).
+// V0 → V1 policy migration helper.
 //
-// Before Phase 5, enriched fields lived at the top level of `context`
-// (e.g. `context.totalInputUsd.value`). The Phase-5 enriched schema
-// moves them under `context.custom`, so any user policies authored
-// against the v0 layout have to be rewritten.
+// Enriched fields moved from `context.<field>` to `context.custom.<field>`.
+// Any user policies authored against the v0 layout must be rewritten.
 //
-// This module only does the string-level rewrite + tracks pending
-// migrations; the actual atomic re-install is glued together by the
-// SDK / SW handler that calls `rewritePolicyText`, loads the managed
-// policy, and pushes the rewritten text through `dashboard:put-raw`.
+// This module handles the string-level rewrite and tracks pending migrations;
+// the SDK / SW handler calls `rewritePolicyText`, loads the managed policy,
+// and pushes the rewritten text through `dashboard:put-raw`.
 
 import Browser from "webextension-polyfill";
 
@@ -16,20 +13,16 @@ export const KEY_PENDING_MIGRATION = "migration:pending";
 
 /**
  * Sibling key to `migration:pending`. Stores `Record<policyId, boolean>`
- * captured at detection time: the policy's enabled-state in
- * `policy-selection:enabled-ids` BEFORE the detector force-disabled it.
+ * capturing each policy's enabled-state BEFORE the detector force-disabled it.
  *
- * Fix R: detection alone isn't enough. v0 policies stay in
- * `installFiltered`'s payload until they're stripped from the enabled
- * set, and once we strip them we have to remember whether the user
- * actually wanted them on so a successful Rewrite + ack can restore the
- * preference. `migration:original-enabled[id] === false` means the user
- * had the policy off and ack must remove it from enabled-ids again
- * after `put-raw` re-added it.
+ * v0 policies are stripped from the enabled set to prevent failed installs on
+ * every request. This key remembers whether the user actually wanted them on,
+ * so a successful rewrite + ack can restore the preference.
+ * `migration:original-enabled[id] === false` means the policy was off and
+ * ack must re-disable it after `put-raw` re-adds it.
  *
- * First-write-wins on re-runs (see `mergeOriginalEnabled`): a second
- * detector pass observing the policy already-disabled must NOT overwrite
- * the original `true` snapshot.
+ * First-write-wins on re-runs: a second detector pass observing the policy
+ * already-disabled must NOT overwrite the original `true` snapshot.
  */
 export const KEY_ORIGINAL_ENABLED = "migration:original-enabled";
 
@@ -84,29 +77,18 @@ export function rewritePolicyText(
 }
 
 /**
- * INVERSE of [`rewritePolicyText`] — used to migrate Phase-8 fields that
- * were promoted FROM `context.custom.<field>` BACK to base
- * `context.<field>`. The two fields currently in this category are
- * `inputAmountNano` and `outputAmountNano`; the engine now populates
- * them itself during lowering instead of via a manifest enrichment.
+ * INVERSE of [`rewritePolicyText`] — migrates fields that were promoted
+ * FROM `context.custom.<field>` BACK to base `context.<field>` (for fields
+ * the engine now populates directly during lowering instead of via manifest
+ * enrichment).
  *
  * For each named field:
  *  1. Every `context.custom.<field>` becomes `context.<field>`.
- *  2. The old `context.custom has <field>` (and the umbrella `context has
- *     custom` when no other custom field is referenced) becomes
- *     `context has <field>` — the v8 cedarschema declares the field as
- *     base-optional.
+ *  2. The old `context.custom has <field>` guard becomes `context has <field>`.
+ *     The umbrella `context has custom` guard is dropped when no other
+ *     custom fields remain in the same `when` block.
  *
- * Idempotent: a policy already using the new layout is returned
- * unchanged. The umbrella `context has custom` guard is preserved when
- * OTHER custom fields are still referenced in the same `when` block
- * (we only drop it when our amount-nano rewrite removes the last custom
- * reference).
- *
- * UI integration is deferred — the v0→v1 banner machinery (Fix O) can
- * register a parallel pending-list for these ids once we have a real
- * use case. The helper is exported now so policies installed before
- * Phase 8 keep working through a one-line dashboard upgrade later.
+ * Idempotent: a policy already on the new layout is returned unchanged.
  */
 export function rewritePolicyTextCustomToBase(
   text: string,

@@ -3,19 +3,13 @@
  *
  * Spec: ADAPTER_LOADER_ARCHITECTURE.md §4.1, §5.1 (BNF), §5.3.
  *
- * Phase 0 scope:
- *   - TypeScript types matching the spec 1:1
- *   - A runtime validator (`parseBundle`) that parses unknown JSON into an
- *     `AdapterFunctionBundle` and throws on any shape violation.
- *   - All 4 strategies are parsed; only `single_emit` is the Phase 1
- *     execution target. Strategies parse so the registry / installer can
- *     reject unsupported strategies with clear errors instead of opaque
- *     JSON errors.
+ * Provides TypeScript types and a runtime validator (`parseBundle`) that
+ * parses unknown JSON into an `AdapterFunctionBundle` and throws on any shape
+ * violation. All strategies are parsed so the registry can reject unsupported
+ * ones with clear errors rather than opaque JSON failures.
  *
- * Implementation note: the existing adapter-loader files
- * (`bundle-validator.ts`, `params-validator.ts`) use plain TypeScript +
- * hand-written validators rather than zod. We follow the same convention
- * for consistency (zod is not in the dependency tree).
+ * Uses plain TypeScript hand-written validators for consistency with the rest
+ * of the adapter-loader stack (zod is not in the dependency tree).
  */
 
 // ---------------------------------------------------------------------------
@@ -86,15 +80,11 @@ export interface Requires {
   /**
    * Adapter-layer capabilities — resolved at static lookup time
    * (e.g. "token_metadata" for the registry-side static token endpoint).
-   *
-   * Introduced in Phase 7B alongside narrowing `host_capabilities` to
-   * dynamic-only.
    */
   adapter_capabilities: string[];
   /**
    * Host-layer capabilities — dynamic RPC / oracle enrichment only
-   * (e.g. "host:oracle"). Static lookups moved to `adapter_capabilities`
-   * in Phase 7B.
+   * (e.g. "host:oracle"). Static lookups belong in `adapter_capabilities`.
    */
   host_capabilities: string[];
   /** semver requirement, e.g. ">=0.1.0". */
@@ -126,15 +116,11 @@ export interface TransformExpr {
 
 /**
  * `WhitelistedFn` = `BuiltinFn` ∪ `TierBBackedFn` per §5.1.
- *
- * Note: spec BNF lists `concat`, but §5.3.1 has signature `concat_bytes`.
- * We adopt `concat_bytes` to match the executable signature. See review
- * finding M-3.
+ * Uses `concat_bytes` (executable signature) rather than the BNF name `concat`.
  */
 export type BuiltinFn =
-  // Phase 1
-  | "select_address"
   // §5.3.1 builtins
+  | "select_address"
   | "div"
   | "mul"
   | "concat_bytes"
@@ -148,21 +134,15 @@ export type BuiltinFn =
   // §5.3.2 Tier-B backed
   | "unfold_packed"
   | "unfold_v3_path"
-  // Phase 12.3 — Curve Router NG output-token resolver
+  // Curve Router NG output-token resolver
   | "curve_route_last_token"
-  // Phase 12.7 (P0-2) — Curve V1/V2/NG `exchange` + `remove_liquidity_one_coin`
-  // coins[i]/coins[j] resolver. The old bundles hardcoded `coins[0]` /
-  // `coins[1]`, which silently mislabelled inputs/outputs whenever the
-  // caller passed `(i, j) != (0, 1)`.
+  // Curve V1/V2/NG coins[i]/coins[j] resolver
   | "select_from_literal_array"
-  // Phase 8 — Aerodrome Slipstream CL packed path decoder (int24 tickSpacing)
+  // Aerodrome Slipstream CL packed path decoder (int24 tickSpacing)
   | "unfold_slipstream_path"
-  // Phase 2 — Aerodrome Universal Router `V2_SWAP` packed-path endpoint
-  // resolver. Extracts the first / last 20-byte token from a packed V2
-  // path; the endpoints are invariant across the UniV2 (`20*N`) and
-  // VeloV2 (`20 + 21*N`, 1-byte `stable` flag) layouts.
+  // Aerodrome Universal Router V2_SWAP packed-path endpoint resolver
   | "unfold_velo_v2_path"
-  // F3 — UR/V4 action recipient sentinel resolver (0x..01 → from, 0x..02 → to)
+  // UR/V4 action recipient sentinel resolver (0x..01 → from, 0x..02 → to)
   | "map_recipient";
 
 const ALL_BUILTIN_FNS = new Set<BuiltinFn>([
@@ -288,18 +268,14 @@ export interface AdapterFunctionBundle {
 
 const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
 const HEX_U8_RE = /^0x[0-9a-fA-F]{1,2}$/;
-// Round 3 audit (P1) — bundles claiming arbitrary `to` strings (non-EVM
-// addresses) would corrupt the bridge table. EVM addresses are exactly
-// `"0x" + 40 hex` (EIP-55 checksum or lowercased) — we accept both cases
-// and let the bridge normalise downstream.
+// EVM addresses: exactly `"0x" + 40 hex` (EIP-55 checksum or lowercase).
+// Bridge table would be corrupted by non-address `to` strings.
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const MAX_TRANSFORM_ARGS = 4; // per BNF "max_4"
-// Phase 7B — `array_emit` JsonPaths (`array_path` + each `parallel_paths`
-// value) must be rooted at `$.` like every other DSL path; this matches the
-// Rust `eval::evaluate_json_path` contract which strips the `$.` prefix.
+// `array_emit` JsonPaths must be rooted at `$.` — matches the Rust
+// `eval::evaluate_json_path` contract which strips the `$.` prefix.
 const JSONPATH_PREFIX = "$.";
-// `array_emit.max_elements` ceiling — mirrors the Rust
-// `array_emit::MAX_ARRAY_ELEMENTS` defence-in-depth cap (= 64).
+// `array_emit.max_elements` ceiling — mirrors the Rust defence-in-depth cap.
 const MAX_ARRAY_ELEMENTS = 64;
 
 export class BundleParseError extends Error {
@@ -352,10 +328,8 @@ function reqIntegerArray(v: unknown, path: string): number[] {
 }
 
 /**
- * Round 3 audit (P1) — chain ids must be positive integers. EVM chain ids
- * start at 1 (mainnet); 0 is a sentinel that has no on-chain meaning and
- * would otherwise become a valid bridge key. Reuses `reqIntegerArray` for
- * the shape check, then tightens the lower bound.
+ * Chain ids must be positive integers (EVM chain ids start at 1; 0 is a
+ * sentinel that has no on-chain meaning and must not become a bridge key).
  */
 function reqChainIdArray(v: unknown, path: string): number[] {
   const arr = reqIntegerArray(v, path);
@@ -370,11 +344,9 @@ function reqChainIdArray(v: unknown, path: string): number[] {
 }
 
 /**
- * Round 3 audit (P1) — a bundle's `to` list must contain real EVM
- * addresses. Without this gate a malicious or buggy publisher could push
- * a `to: ["foo"]` payload, which would silently land in the bridge table
- * and never match any legitimate tx. Accepts both lowercase and EIP-55
- * checksum input; the bridge normalises further downstream.
+ * A bundle's `to` list must contain valid EVM addresses — non-address strings
+ * would silently land in the bridge table and never match any legitimate tx.
+ * Accepts lowercase and EIP-55 checksum; the bridge normalises downstream.
  */
 function reqAddressArray(v: unknown, path: string): string[] {
   const arr = reqStringArray(v, path);
@@ -638,8 +610,8 @@ function parseEmitRule(v: unknown, path: string): EmitRule {
 
 function parseRequires(v: unknown, path: string): Requires {
   const obj = reqObj(v, path);
-  // Phase 7B: `adapter_capabilities` is new. Default to [] when omitted so
-  // older bundles still parse during the migration window.
+  // Both capability fields are optional — default to [] when absent so
+  // older bundles without these fields still parse.
   const adapterCaps =
     "adapter_capabilities" in obj
       ? reqStringArray(
@@ -647,8 +619,6 @@ function parseRequires(v: unknown, path: string): Requires {
           `${path}.adapter_capabilities`,
         )
       : [];
-  // `host_capabilities` is also tolerated as missing — narrowed to dynamic
-  // enrichment only (e.g. "host:oracle"); empty for purely static bundles.
   const hostCaps =
     "host_capabilities" in obj
       ? reqStringArray(obj.host_capabilities, `${path}.host_capabilities`)
@@ -725,24 +695,18 @@ function parseAbiFragment(v: unknown, path: string): AbiFragment {
 
 /**
  * Parse arbitrary JSON into an `AdapterFunctionBundle`. Throws
- * `BundleParseError` on any shape violation. This is a pure shape check —
- * semantic validation (e.g. ABI inputs match field paths, Tier B
- * imperatives are installed) lives elsewhere.
+ * `BundleParseError` on any shape violation. Pure shape check — semantic
+ * validation (ABI / Tier-B imperatives) lives elsewhere.
  *
- * Schema version handling (M3 cutover): `parseBundle` rejects
- * `schema_version === "3"` so the v3 path (`parseBundleV3`) can take over
- * without v1/v2 silently swallowing the new hierarchical bundles. v1/v2
- * bundles that omit `schema_version` (legacy fixtures) and v2 bundles that
- * carry `schema_version === "2"` both pass through to the original parser.
+ * Rejects `schema_version === "3"` so the v3 path (`parseBundleV3`) handles
+ * those without v1/v2 silently swallowing the hierarchical bundle shape.
+ * Bundles that omit `schema_version` or carry `"2"` pass through normally.
  */
 export function parseBundle(input: unknown): AdapterFunctionBundle {
   const obj = reqObj(input, "$");
 
-  // M3 — separate v3 path. v3 bundles use `type: "adapter_action"` (not
-  // "adapter_function") and a hierarchical `emit.body` shape that the v1/v2
-  // emit parser does not understand. Reject explicitly so a routing bug
-  // (calling parseBundle with a v3 payload) surfaces a clear error instead
-  // of a cascade of "expected single_emit field" parse failures.
+  // Reject v3 explicitly so a routing bug (calling parseBundle with a v3
+  // payload) surfaces a clear error instead of cascading parse failures.
   const schemaVersionRaw = obj.schema_version;
   if (typeof schemaVersionRaw === "string" && schemaVersionRaw === "3") {
     throw new BundleParseError(
@@ -769,16 +733,13 @@ export function parseBundle(input: unknown): AdapterFunctionBundle {
 }
 
 // ---------------------------------------------------------------------------
-// v3 schema (M3 — hierarchical ActionBody)
+// v3 schema — hierarchical ActionBody
 // ---------------------------------------------------------------------------
 //
-// v3 bundles ship the registry-side hierarchical `emit.body` tree the WASM
-// `action_builder` consumes directly. The SW does NOT shape-validate the
-// emit body — that lives in `declarative_install_v3_json` and the
-// build-time `build-index.ts` (canonical SHA + JSON Schema check). The SW
-// guards only what it routes on (id / type / schema_version / match) plus
-// the ABI fragment so a stray non-v3 payload (v1/v2 emit shape) cannot
-// reach the v3 WASM install entry.
+// v3 bundles ship the hierarchical `emit.body` tree consumed directly by the
+// WASM `action_builder`. The SW validates only routing-critical fields
+// (id / type / schema_version / match / abi_fragment); deep `emit` validation
+// lives in `declarative_install_v3_json` and the build-time `build-index.ts`.
 
 export type V3BundleType = "adapter_action";
 

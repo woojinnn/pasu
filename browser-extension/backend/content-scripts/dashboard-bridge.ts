@@ -73,32 +73,25 @@ async function forward(
 // fan out to the page.
 const WATCHED_KEYS = new Set([
   "adapter-loader:bundles",
-  // Audit log appends on every verdict — dashboard's AuditPage uses this
-  // to refresh on the fly. Storage layer trims to AUDIT_MAX (100), so the
-  // change events fire at most once per decision and the payload stays small.
+  // Audit log appends on every verdict — the dashboard's AuditPage uses this
+  // to refresh live. Trimmed to AUDIT_MAX entries so payloads stay small.
   "requests:audit",
-  // Phase 6 / Task 6.5: manifest store + migration queue. The dashboard
-  // manifest editor and migration banner subscribe so the UI mirrors
-  // installs from other tabs and the popup.
+  // Manifest store + migration queue. The manifest editor and migration banner
+  // subscribe so the UI mirrors installs from other tabs and the popup.
   "rpc:manifests",
   "rpc:endpointUrl",
   "rpc:enrichedSchemaHash",
   "migration:pending",
   // Active-user discriminator — when this flips, all per-user reads change.
   "dashboard:current-user-id",
-  // 익스텐션 로그인 토큰 — 계정 전환/로그아웃을 대시보드가 실시간 감지해
-  // 계정 불일치 시 자동 로그아웃하도록(useAuth) broadcast 한다.
-  // (키 이름은 main 마이그레이션 후 scopeball_jwt → pasu_jwt)
+  // 익스텐션 로그인 토큰 — 계정 전환/로그아웃을 대시보드가 실시간 감지하도록 broadcast.
   "pasu_jwt",
 ]);
 
 /**
- * Prefix-match watchers for keys that are now namespaced per user. Pre-
- * namespacing they were flat strings (`dashboard:policies`); after
- * namespacing they include the user id (`dashboard:policies:<uid>`), and
- * we want to broadcast on ANY user's change so the dashboard's React
- * Query invalidators react across account switches without needing to
- * know the current user id up front.
+ * Prefix-match watchers for per-user namespaced keys. Broadcast on any user's
+ * change so React Query invalidators react across account switches without
+ * needing to know the current user id up front.
  */
 const WATCHED_KEY_PREFIXES = [
   "dashboard:policies:",
