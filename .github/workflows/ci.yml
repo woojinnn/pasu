@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# 같은 브랜치에 새 푸시가 오면 돌고 있던 런을 취소한다 — 반복 푸시 워크플로에서
+# 가장 큰 CI 시간 절약. main 푸시 런은 끝까지 돌린다(릴리스 아티팩트 보존).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   rust:
     runs-on: ubuntu-latest
@@ -45,22 +51,20 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      # `cargo test`는 doctest를 포함하므로 별도 `cargo test --doc`은 두지 않는다.
       - name: Test
         env:
           PASU_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
         run: cargo test --all-features
-
-      - name: Doctest
-        run: cargo test --doc
 
       - name: Docs
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --no-deps --all-features
 
+  # rust 잡과 의존이 없으므로 병렬로 돈다 — extension은 이 잡의 wasm pkg만 기다린다.
   wasm:
     runs-on: ubuntu-latest
-    needs: rust
     steps:
       - uses: actions/checkout@v4
 
@@ -99,7 +103,7 @@ jobs:
 
   extension:
     runs-on: ubuntu-latest
-    needs: [rust, wasm]
+    needs: wasm
     # The wasm pkg is downloaded from the `wasm` job (built once); reuse it for
     # both build:chrome and build:firefox (and `yarn typecheck`) instead of
     # rebuilding via wasm-pack each time. scripts/wasm-build.sh skips its own
@@ -121,17 +125,8 @@ jobs:
       - working-directory: browser-extension
         run: yarn install --immutable
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "ws"
-
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
+      # SKIP_WASM_BUILD=1 + 아래 prebuilt pkg 다운로드로 wasm-build.sh가 빌드를
+      # 건너뛰므로 이 잡에는 rust 툴체인/wasm-pack이 필요 없다.
       - name: Download prebuilt wasm pkg
         uses: actions/download-artifact@v4
         with:
@@ -151,6 +146,7 @@ jobs:
           PASU_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension
+        if: github.ref == 'refs/heads/main'
         run: yarn build:firefox
         env:
           PASU_ALLOW_INSECURE_REGISTRY: '1'
@@ -170,8 +166,8 @@ jobs:
           retention-days: 14
 
       - working-directory: browser-extension
-        name: Package extension zips
-        run: yarn zip
+        name: Package Chrome zip
+        run: yarn zip:chrome
 
       - name: Upload Chrome dist (PR build artifact)
         uses: actions/upload-artifact@v4
@@ -181,37 +177,20 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Firefox dist (PR build artifact)
+      # Firefox 패키징은 main에서만 — PR마다 만들 이유가 없는 릴리스 아티팩트.
+      - working-directory: browser-extension
+        if: github.ref == 'refs/heads/main'
+        name: Package Firefox zip
+        run: yarn zip:firefox
+
+      - name: Upload Firefox dist (main build artifact)
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: pasu-firefox-${{ github.sha }}
           path: browser-extension/dist/firefox.zip
           if-no-files-found: error
           retention-days: 14
-
-  dependency-policy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "ws"
-
-      # Prebuilt binaries instead of `cargo install` from source (much faster,
-      # same checks).
-      - name: Install dependency tools
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-audit,cargo-deny
-
-      - name: Dependency audit
-        run: cargo audit --deny warnings --ignore RUSTSEC-2024-0388 --ignore RUSTSEC-2024-0436 --ignore RUSTSEC-2025-0048
-
-      - name: Dependency policy
-        run: cargo deny check
 
   # Secret scanning over the full git history. Tuned via .gitleaks.toml, which
   # allowlists known non-secret high-entropy data (blockchain fixtures/ABIs,

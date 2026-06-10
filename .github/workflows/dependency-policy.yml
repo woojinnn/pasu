@@ -1,0 +1,44 @@
+# 의존성 감사(cargo audit/deny)는 의존성이 바뀔 때 + 주 1회만 돈다 —
+# 모든 PR에서 돌릴 이유가 없는 검사라 ci.yml에서 분리했다.
+name: dependency-policy
+
+on:
+  pull_request:
+    paths:
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '**/Cargo.toml'
+      - 'deny.toml'
+      - '.github/workflows/dependency-policy.yml'
+  schedule:
+    - cron: '0 1 * * 1' # 매주 월요일 (신규 RUSTSEC 공지 픽업)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "ws"
+
+      # Prebuilt binaries instead of `cargo install` from source (much faster,
+      # same checks).
+      - name: Install dependency tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+
+      - name: Dependency audit
+        run: cargo audit --deny warnings --ignore RUSTSEC-2024-0388 --ignore RUSTSEC-2024-0436 --ignore RUSTSEC-2025-0048
+
+      - name: Dependency policy
+        run: cargo deny check
+
