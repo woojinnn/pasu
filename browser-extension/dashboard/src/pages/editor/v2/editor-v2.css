@@ -2524,3 +2524,49 @@
   border-radius: 9px;
   margin-bottom: 8px;
 }
+
+/* ─────────────── P3+: 지갑별 정책 트리 (def → 패키지별 바인딩 줄) ─────────────── */
+
+.wt-def {
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.wt-def:last-child {
+  border-bottom: none;
+}
+.wt-def .ld-def {
+  border-bottom: none;
+}
+.wt-def .ld-def .nm.dim {
+  color: var(--slate-300);
+  font-weight: 500;
+}
+.wt-binding {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 58px;
+  font-size: 12.5px;
+}
+.wt-binding.off .wt-pkg {
+  color: var(--slate-300);
+}
+.wt-pkg {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--slate-600);
+}
+.wt-pkg::before {
+  content: "└";
+  color: var(--slate-300);
+  font-size: 11px;
+}
+.wt-pkgoff {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  color: var(--slate-400);
+}
