@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { blocksToText } from "../../../cedar";
 import type { PolicyIR } from "../../../cedar/blocks/ir";
+import { pathByNode } from "../../../cedar/diagnosis/path";
 import { naturalCondition } from "../../../cedar/nl";
 import { useAddressBook, shortAddress, type AddressEntry } from "../../../hooks/useAddressBook";
 import { PolicyDiagram } from "../../../cedar/diagram/PolicyDiagram";
@@ -24,7 +25,7 @@ import {
   emptyFormModel,
   fieldsForTrigger,
   flattenSituations,
-  formToIr,
+  formToIrWithMap,
   irToForm,
   isGroupNode,
   KNOWN_ACTIONS,
@@ -130,6 +131,18 @@ function newCond(fields: FieldOption[]): FormCondition {
   return { fieldPath: fields[0]?.path ?? "", op: "==", value: defaultValueOfKind("string"), joiner: "and" };
 }
 
+/** 폼↔다이어그램 동기화의 선택 단위: 행/묶음 노드, 또는 상황 카드(머리 노드). */
+type Selection2 = { kind: "node"; node: FormNode } | { kind: "situation"; head: FormNode };
+
+/** ConditionEditor에 내려보내는 선택 배선. */
+interface EditorSelection {
+  isNodeSelected: (n: FormNode) => boolean;
+  isSituationSelected: (head: FormNode) => boolean;
+  onClickNode: (n: FormNode) => void;
+  onClickSituation: (head: FormNode) => void;
+  registerRow: (n: FormNode, el: HTMLElement | null) => void;
+}
+
 export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) {
   const [model, setModel] = useState<FormModel>(() => initialModel ?? emptyFormModel());
   // We no longer display the Cedar text (the right pane shows the diagram), but
@@ -155,7 +168,76 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
       return e ? `${e.name}(${shortAddress(m)})` : m;
     });
 
-  const ir = useMemo(() => formToIr(model), [model]);
+  const { ir, exprsByNode, runRootByHead } = useMemo(() => formToIrWithMap(model), [model]);
+  const pathOf = useMemo(() => pathByNode(ir), [ir]);
+
+  // ── 폼 ↔ 다이어그램 선택 동기화 ─────────────────────────────────────────
+  // 선택 단위: 폼 노드(행/묶음) 또는 상황 카드(머리 노드로 식별).
+  const [selected, setSelected] = useState<Selection2 | null>(null);
+  // 모델 편집으로 선택 대상이 사라지면 해제된 것으로 취급.
+  const sel =
+    selected &&
+    (selected.kind === "node" ? exprsByNode.has(selected.node) : runRootByHead.has(selected.head))
+      ? selected
+      : null;
+
+  const selectedPaths = useMemo(() => {
+    if (!sel) return [];
+    const exprs =
+      sel.kind === "node"
+        ? (exprsByNode.get(sel.node) ?? [])
+        : [runRootByHead.get(sel.head)].filter((e): e is NonNullable<typeof e> => !!e);
+    return exprs.map((e) => pathOf.get(e)).filter((p): p is string => !!p);
+  }, [sel, exprsByNode, runRootByHead, pathOf]);
+
+  // canonical path → 선택 (다이어그램 클릭의 역방향). run 루트를 먼저 깔고,
+  // 노드가 같은 path를 덮어쓴다(단일 조건 상황 = 행 선택 우선).
+  const selectionByPath = useMemo(() => {
+    const m = new Map<string, Selection2>();
+    for (const [head, e] of runRootByHead) {
+      const p = pathOf.get(e);
+      if (p) m.set(p, { kind: "situation", head });
+    }
+    for (const [node, exprs] of exprsByNode) {
+      for (const e of exprs) {
+        const p = pathOf.get(e);
+        if (p) m.set(p, { kind: "node", node });
+      }
+    }
+    return m;
+  }, [exprsByNode, runRootByHead, pathOf]);
+
+  const sameSelection = (a: Selection2, b: Selection2) =>
+    a.kind === b.kind &&
+    (a.kind === "node" ? a.node === (b as { node: FormNode }).node : a.head === (b as { head: FormNode }).head);
+
+  // 다이어그램 클릭 → 폼 선택 + 해당 행으로 스크롤.
+  const rowElByNode = useRef(new Map<FormNode, HTMLElement>());
+  const onDiagramNodeClick = (path: string) => {
+    const next = selectionByPath.get(path);
+    if (!next) return;
+    if (sel && sameSelection(sel, next)) {
+      setSelected(null);
+      return;
+    }
+    setSelected(next);
+    const el = rowElByNode.current.get(next.kind === "node" ? next.node : next.head);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  const editorSelection: EditorSelection = {
+    isNodeSelected: (n) => !!sel && sel.kind === "node" && sel.node === n,
+    isSituationSelected: (h) => !!sel && sel.kind === "situation" && sel.head === h,
+    onClickNode: (n) =>
+      setSelected((s) => (s?.kind === "node" && s.node === n ? null : { kind: "node", node: n })),
+    onClickSituation: (h) =>
+      setSelected((s) =>
+        s?.kind === "situation" && s.head === h ? null : { kind: "situation", head: h },
+      ),
+    registerRow: (n, el) => {
+      if (el) rowElByNode.current.set(n, el);
+      else rowElByNode.current.delete(n);
+    },
+  };
 
   // Validity badge + manifest preview: cedar rendered + manifest generates
   // cleanly + the IR is still form-representable (round-trips). Manifest gen is
@@ -316,6 +398,7 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
             ctx={ctx}
             emptyHint="조건이 없으면 이 동작은 항상 막힙니다."
             onChange={(when) => patch({ when })}
+            selection={editorSelection}
           />
         </section>
 
@@ -367,7 +450,13 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           <span className={`pf-sync${cedarError ? " err" : ""}`}>{cedarError ? "변환 오류" : "폼과 동기화됨"}</span>
         </div>
         <div className="pf-diagram-body">
-          <PolicyDiagram ir={ir} interactive humanizeLabel={humanizeAddrs} />
+          <PolicyDiagram
+            ir={ir}
+            interactive
+            selectedPaths={selectedPaths}
+            onNodeClick={onDiagramNodeClick}
+            humanizeLabel={humanizeAddrs}
+          />
         </div>
         <ManifestPreview
           open={manifestOpen}
@@ -513,11 +602,13 @@ function ConditionEditor({
   ctx,
   emptyHint,
   onChange,
+  selection,
 }: {
   nodes: FormNode[];
   ctx: EditorCtx;
   emptyHint: string;
   onChange: (nodes: FormNode[]) => void;
+  selection: EditorSelection;
 }) {
   const runs = situationsOf(nodes);
   const commit = (next: FormNode[][]) => onChange(flattenSituations(next));
@@ -563,7 +654,9 @@ function ConditionEditor({
             </div>
           )}
           <div
-            className={`pf-sit${drag ? " droppable" : ""}`}
+            className={`pf-sit${drag ? " droppable" : ""}${
+              selection.isSituationSelected(run[0]) ? " is-selected" : ""
+            }`}
             onDragOver={drag ? (e) => e.preventDefault() : undefined}
             onDrop={
               drag
@@ -574,7 +667,13 @@ function ConditionEditor({
                 : undefined
             }
           >
-            <div className="pf-sit-head">
+            <div
+              className="pf-sit-head"
+              onClick={(ev) => {
+                if ((ev.target as HTMLElement).closest("button")) return;
+                selection.onClickSituation(run[0]);
+              }}
+            >
               <span className="pf-sit-title">상황 {si + 1}</span>
               {run.length > 1 && <span className="pf-sit-mode">다음에 모두 해당</span>}
               <span className="pf-spc" />
@@ -595,6 +694,7 @@ function ConditionEditor({
                   group={n}
                   ctx={ctx}
                   dragging={drag !== null}
+                  selection={selection}
                   onDragStartCond={(c) => setDrag(c)}
                   onDropInto={() => dropTo({ kind: "group", group: n })}
                   onToggleNot={() => updateNode(si, ni, { ...n, not: !n.not })}
@@ -607,6 +707,9 @@ function ConditionEditor({
                   key={ni}
                   cond={n}
                   ctx={ctx}
+                  selected={selection.isNodeSelected(n)}
+                  onSelect={() => selection.onClickNode(n)}
+                  rowRef={(el) => selection.registerRow(n, el)}
                   onDragStart={() => setDrag(n)}
                   onToggleNot={() => updateNode(si, ni, { ...n, not: !n.not })}
                   onField={(p) => updateNode(si, ni, pickFieldCond(n, p, ctx.fieldByPath))}
@@ -650,6 +753,7 @@ function GroupBox({
   group,
   ctx,
   dragging,
+  selection,
   onDragStartCond,
   onDropInto,
   onToggleNot,
@@ -660,6 +764,7 @@ function GroupBox({
   group: FormGroupNode;
   ctx: EditorCtx;
   dragging: boolean;
+  selection: EditorSelection;
   onDragStartCond: (c: FormCondition) => void;
   onDropInto: () => void;
   onToggleNot: () => void;
@@ -675,7 +780,10 @@ function GroupBox({
     onConds(norm(conds.map((x, j) => (j === i ? c : x))));
   return (
     <div
-      className={`pf-box${group.not ? " neg" : ""}${dragging ? " droppable" : ""}`}
+      className={`pf-box${group.not ? " neg" : ""}${dragging ? " droppable" : ""}${
+        selection.isNodeSelected(group) ? " is-selected" : ""
+      }`}
+      ref={(el) => selection.registerRow(group, el)}
       onDragOver={dragging ? (e) => e.preventDefault() : undefined}
       onDrop={
         dragging
@@ -687,7 +795,13 @@ function GroupBox({
           : undefined
       }
     >
-      <div className="pf-box-head">
+      <div
+        className="pf-box-head"
+        onClick={(ev) => {
+          if ((ev.target as HTMLElement).closest("button")) return;
+          selection.onClickNode(group);
+        }}
+      >
         <span className="pf-box-label">다음 중 하나라도</span>
         <button
           type="button"
@@ -717,6 +831,9 @@ function GroupBox({
           cond={c}
           alt
           ctx={ctx}
+          selected={selection.isNodeSelected(c)}
+          onSelect={() => selection.onClickNode(c)}
+          rowRef={(el) => selection.registerRow(c, el)}
           onDragStart={() => onDragStartCond(c)}
           onToggleNot={() => updateCond(i, { ...c, not: !c.not })}
           onField={(p) => updateCond(i, pickFieldCond(c, p, ctx.fieldByPath))}
@@ -742,6 +859,9 @@ function ConditionRow({
   cond,
   alt,
   ctx,
+  selected,
+  onSelect,
+  rowRef,
   onDragStart,
   onToggleNot,
   onField,
@@ -754,6 +874,9 @@ function ConditionRow({
   /** 묶음 안의 선택지 행(◦ 불릿) — 상황 카드의 행은 • 불릿. */
   alt?: boolean;
   ctx: EditorCtx;
+  selected?: boolean;
+  onSelect?: () => void;
+  rowRef?: (el: HTMLElement | null) => void;
   onDragStart?: () => void;
   onToggleNot: () => void;
   onField: (path: string) => void;
@@ -768,7 +891,19 @@ function ConditionRow({
   const canField = SCALAR_OPS.has(cond.op);
   const fieldMode = cond.value.kind === "field";
   return (
-    <div className="pf-cond">
+    <div
+      className={`pf-cond${selected ? " is-selected" : ""}`}
+      ref={rowRef}
+      onClick={
+        onSelect
+          ? (ev) => {
+              // 행의 컨트롤(필드/연산/값/버튼) 조작은 선택 토글이 아니다.
+              if ((ev.target as HTMLElement).closest("button, select, input, [draggable], .fc")) return;
+              onSelect();
+            }
+          : undefined
+      }
+    >
       <div className="pf-cond-main">
         {onDragStart && (
           <span
