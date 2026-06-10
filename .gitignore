@@ -101,3 +101,10 @@ AGENTS.md
 
 # Extension signing key — never commit
 *.pem
+
+# Operational hygiene: env-specific Terraform inputs stay local
+# (terraform.tfvars.example is the tracked template).
+*.tfvars
+!*.tfvars.example
+# browser-extension is a Yarn workspace — never track an npm lockfile there.
+browser-extension/package-lock.json
