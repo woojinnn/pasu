@@ -218,3 +218,14 @@
 }
 /* the memberset box manages its own bg/border via .pd-ms (no rect) */
 .pd-memberset.pd-culprit .pd-ms { box-shadow: 0 0 0 2px var(--fail-400, #f87171); }
+
+/* Editor click-sync: selection (blue) — distinct from diagnosis red. */
+.pd-node.pd-clickable { cursor: pointer; }
+.pd-node.pd-clickable:hover .pd-box { stroke: var(--slate-400, #9aa3ad); }
+.pd-node.pd-selected .pd-box,
+.pd-node.pd-selected:hover .pd-box {
+  stroke: var(--info-600, #2563eb);
+  stroke-width: 2.4;
+}
+.pd-node.pd-selected .pd-title { fill: var(--info-700, #1d4ed8); }
+.pd-memberset.pd-selected .pd-ms { box-shadow: 0 0 0 2px var(--info-400, #60a5fa); }
