@@ -180,18 +180,23 @@ in-extension OAuth flow. For a prod-like local Kubernetes loop see
 
 ## CI
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs four jobs on every
-PR and push to `main`:
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every PR and
+push to `main`; new pushes cancel the previous in-flight run for that branch.
+`rust` and `wasm` run in parallel; `extension` waits only on the wasm pkg
+artifact.
 
 - **rust** — builds the `registryV2` index (npm), then `cargo fmt --check`,
-  `cargo check`, `cargo clippy -D warnings`, `cargo test`, doctests, and
+  `cargo clippy -D warnings`, `cargo test` (doctests included), and
   `cargo doc` with `-D warnings`.
-- **wasm** — `wasm-pack build crates/policy-engine-wasm`, native tests on the
-  wasm crate, and headless-Chrome `wasm-bindgen` tests.
-- **extension** — `yarn typecheck`, vitest, Chrome MV3 + Firefox MV2 builds, the
-  dashboard build, and packaged zips. The Chrome/Firefox/dashboard artifacts are
-  uploaded per-PR so reviewers can sideload without recompiling.
-- **dependency-policy** — `cargo audit` + `cargo deny`.
+- **wasm** — `wasm-pack build crates/policy-engine-wasm` (artifact reused by
+  the extension job) and headless-Chrome `wasm-bindgen` tests.
+- **extension** — `yarn typecheck`, vitest, Chrome MV3 build + zip, the
+  dashboard build (uploaded per-PR so reviewers can sideload). Firefox MV2
+  build/zip runs on `main` only.
+- **secrets-scan** — gitleaks over the full history.
+
+[`dependency-policy.yml`](.github/workflows/dependency-policy.yml) (`cargo
+audit` + `cargo deny`) runs when dependency files change and weekly.
 
 To reproduce the suite locally, run `cargo test` (with the registry index built,
 above) and `cd browser-extension && yarn test`.
