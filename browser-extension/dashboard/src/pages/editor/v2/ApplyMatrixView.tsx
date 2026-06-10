@@ -19,14 +19,15 @@ import {
 } from "../../../server-api/policy-store";
 import { listWallets } from "../../../server-api/wallets";
 import { deriveMatrix, packageDisplayOn } from "./apply-matrix-derive";
+import { DRAG_DEF_MIME, LibraryDirectory } from "./LibraryDirectory";
 import { formatHoleValue, parseHoleInput } from "./hole-params";
 import { FolderIcon, PlusIcon, TrashIcon } from "./icons";
 
 /** 바인딩 행 드래그 페이로드 — 패키지 드롭 = 그 패키지에 인스턴스 "복사". */
 const DRAG_BINDING_MIME = "application/x-pasu-binding-id";
 
-/** 적용 현황 — 기본은 지갑별 워크스페이스(좌: 그 지갑의 패키지, 우: 바인딩),
- *  서브 뷰로 계정 전체 매트릭스(지갑×패키지). */
+/** 적용 현황 — 지갑별 워크스페이스. 좌: 그 지갑의 패키지, 우: 바인딩 카드,
+ *  우측 서랍: 라이브러리 디렉토리(정의를 지갑 패키지로 끌어와 바인딩). */
 export function ApplyMatrixView(props: { onToast: (text: string) => void }) {
   const { onToast } = props;
   const qc = useQueryClient();
@@ -50,7 +51,7 @@ export function ApplyMatrixView(props: { onToast: (text: string) => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletsQ.data, overviewQ.data]);
 
-  const [mode, setMode] = useState<"wallet" | "matrix">("wallet");
+  const [libOpen, setLibOpen] = useState(false);
 
   const snap = overviewQ.data ?? null;
   const matrix = useMemo(
@@ -82,15 +83,7 @@ export function ApplyMatrixView(props: { onToast: (text: string) => void }) {
   return (
     <div className="wd-wrap">
       <div className="wd-modes">
-        <div className="ev2-seg" role="tablist" aria-label="적용 현황 보기">
-          <button type="button" className={mode === "wallet" ? "on" : ""} onClick={() => setMode("wallet")}>
-            지갑별
-          </button>
-          <button type="button" className={mode === "matrix" ? "on" : ""} onClick={() => setMode("matrix")}>
-            전체 표
-          </button>
-        </div>
-        {mode === "wallet" && activeAddr && (
+        {activeAddr && (
           <select className="wd-walletsel" value={activeAddr} onChange={(e) => setAddr(e.target.value)}>
             {matrix.rows.map((r) => (
               <option key={r.address} value={r.address}>
@@ -99,19 +92,21 @@ export function ApplyMatrixView(props: { onToast: (text: string) => void }) {
             ))}
           </select>
         )}
+        <span className="ev2-spc" />
+        <button type="button" className={`ev2-sec${libOpen ? " on" : ""}`} onClick={() => setLibOpen((v) => !v)}>
+          {libOpen ? "라이브러리 닫기" : "라이브러리에서 끌어오기"}
+        </button>
       </div>
 
-      {mode === "wallet" && activeAddr && (
+      {activeAddr && (
         <WalletWorkspace
           snap={snap}
           address={activeAddr}
           allAddresses={matrix.rows.map((r) => r.address)}
+          libOpen={libOpen}
           onToast={onToast}
           invalidate={invalidate}
         />
-      )}
-      {mode === "matrix" && (
-        <MatrixSubView snap={snap} matrix={matrix} onToast={onToast} invalidate={invalidate} />
       )}
     </div>
   );
@@ -127,10 +122,11 @@ function WalletWorkspace(props: {
   snap: StoreSnapshot;
   address: string;
   allAddresses: string[];
+  libOpen: boolean;
   onToast: (text: string) => void;
   invalidate: () => void;
 }) {
-  const { snap, address, allAddresses, onToast, invalidate } = props;
+  const { snap, address, allAddresses, libOpen, onToast, invalidate } = props;
   const wallet: WalletPolicyState = snap.wallets.byAddress[address] ?? {
     bindings: {},
     packageEnabled: {},
@@ -194,7 +190,7 @@ function WalletWorkspace(props: {
       }
     });
 
-  /** 드롭 = 그 패키지에 인스턴스 복사(파라미터 포함). 같은 정의가 이미 있으면 안내. */
+  /** 바인딩 드롭 = 그 패키지에 인스턴스 복사(파라미터 포함). */
   const dropOnPackage = (pkgId: string, bindingId: string) => {
     const src = wallet.bindings[bindingId];
     if (!src) return;
@@ -213,6 +209,25 @@ function WalletWorkspace(props: {
         ...(src.params ? { params: src.params } : {}),
       }),
     ).then((ok) => ok && onToast(`${def?.displayName ?? "정책"}을 복사해 넣었어요`));
+  };
+
+  /** 라이브러리 정의 드롭 = 이 지갑의 그 패키지에 바인딩 추가. */
+  const dropDefOnPackage = (pkgId: string, defId: string) => {
+    const def = snap.library.defs[defId];
+    if (!def) return;
+    const exists = (membersByPkg.get(pkgId) ?? []).some((b) => b.defId === defId);
+    if (exists) {
+      onToast("이미 이 패키지에 같은 정책이 있어요");
+      return;
+    }
+    void run("정책 적용", () =>
+      bindDef({
+        defId,
+        packageId: pkgId,
+        addresses: [address],
+        ...(Object.keys(def.defaults.params).length ? { params: def.defaults.params } : {}),
+      }),
+    ).then((ok) => ok && onToast(`${def.displayName}을 이 지갑에 적용했어요`));
   };
 
   const visible = useMemo(() => {
@@ -256,7 +271,10 @@ function WalletWorkspace(props: {
                   className={`ev2-pkgrow wd-scope${scope === pkg.id ? " on" : ""}${empty ? " dim" : ""}${dropTarget === pkg.id ? " droptarget" : ""}`}
                   onClick={() => setScope(pkg.id)}
                   onDragOver={(e) => {
-                    if (e.dataTransfer.types.includes(DRAG_BINDING_MIME)) {
+                    if (
+                      e.dataTransfer.types.includes(DRAG_BINDING_MIME) ||
+                      e.dataTransfer.types.includes(DRAG_DEF_MIME)
+                    ) {
                       e.preventDefault();
                       setDropTarget(pkg.id);
                     }
@@ -265,8 +283,13 @@ function WalletWorkspace(props: {
                   onDrop={(e) => {
                     e.preventDefault();
                     setDropTarget(null);
-                    const id = e.dataTransfer.getData(DRAG_BINDING_MIME);
-                    if (id) dropOnPackage(pkg.id, id);
+                    const bindingId = e.dataTransfer.getData(DRAG_BINDING_MIME);
+                    if (bindingId) {
+                      dropOnPackage(pkg.id, bindingId);
+                      return;
+                    }
+                    const defId = e.dataTransfer.getData(DRAG_DEF_MIME);
+                    if (defId) dropDefOnPackage(pkg.id, defId);
                   }}
                 >
                   <FolderIcon />
@@ -382,236 +405,23 @@ function WalletWorkspace(props: {
           })}
         </div>
       </section>
-    </div>
-  );
-}
 
-/* ─────────────── 전체 표(매트릭스) 서브 뷰 ─────────────── */
-
-function MatrixSubView(props: {
-  snap: StoreSnapshot;
-  matrix: NonNullable<ReturnType<typeof deriveMatrix>>;
-  onToast: (text: string) => void;
-  invalidate: () => void;
-}) {
-  const { snap, matrix, onToast, invalidate } = props;
-  const [sel, setSel] = useState<{ address: string; packageId: string } | null>(null);
-
-  /** 하이브리드: 켜기 = 게이트 on + (전부 꺼져 있으면) 멤버 일괄 on. */
-  const togglePackage = async (address: string, packageId: string, displayedOn: boolean) => {
-    try {
-      const w = snap.wallets.byAddress[address];
-      const members = w ? Object.values(w.bindings).filter((b) => b.packageId === packageId) : [];
-      if (displayedOn) {
-        await setPackageEnabled({ address, packageId, enabled: false });
-      } else {
-        await setPackageEnabled({ address, packageId, enabled: true });
-        if (members.length > 0 && !members.some((b) => b.enabled)) {
-          for (const b of members) {
-            await updateBinding({ address, bindingId: b.id, patch: { enabled: true } });
-          }
-        }
-      }
-      invalidate();
-    } catch (err) {
-      console.error("[v2 apply] package toggle failed:", err);
-      onToast("패키지 상태를 바꾸지 못했어요");
-    }
-  };
-
-  return (
-    <div className={`pm-wrap${sel ? " with-panel" : ""}`}>
-      <div className="pm-scroll">
-        <table className="pm-grid">
-          <thead>
-            <tr>
-              <th className="pm-walletcol">지갑</th>
-              {matrix.cols.map((c) => (
-                <th key={c.id}>{c.displayName}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {matrix.rows.map((row) => (
-              <tr key={row.address}>
-                <td className="pm-walletcol" title={row.address}>
-                  {row.label ?? shortAddr(row.address)}
-                </td>
-                {matrix.cols.map((col) => {
-                  const cell = matrix.cellOf(row.address, col.id);
-                  const active = sel?.address === row.address && sel?.packageId === col.id;
-                  const displayedOn = packageDisplayOn(cell.packageOn, cell.activeBindings);
-                  return (
-                    <td key={col.id} className={active ? "on" : ""}>
-                      {cell.total === 0 ? (
-                        <button
-                          type="button"
-                          className="pm-empty"
-                          title="정책 추가"
-                          onClick={() => setSel({ address: row.address, packageId: col.id })}
-                        >
-                          –
-                        </button>
-                      ) : (
-                        <span className="pm-cell">
-                          <label className="pm-switch" title="패키지 정책 전체 켜기/끄기">
-                            <input
-                              type="checkbox"
-                              checked={displayedOn}
-                              onChange={() => void togglePackage(row.address, col.id, displayedOn)}
-                            />
-                            <span className="trk" />
-                          </label>
-                          <button
-                            type="button"
-                            className="pm-count"
-                            title="바인딩 상세"
-                            onClick={() => setSel({ address: row.address, packageId: col.id })}
-                          >
-                            {cell.activeBindings}/{cell.total}
-                          </button>
-                        </span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {sel && (
-        <CellPanel
-          snap={snap}
-          address={sel.address}
-          packageId={sel.packageId}
-          allAddresses={matrix.rows.map((r) => r.address)}
-          onClose={() => setSel(null)}
-          onToast={onToast}
-          invalidate={invalidate}
-        />
+      {libOpen && (
+        <aside className="ev2-left wd-libdrawer">
+          <div className="ev2-leftsec">
+            <div className="ev2-lefthead">
+              <span>라이브러리</span>
+            </div>
+            <div className="wd-libdrawer-body">
+              <LibraryDirectory snap={snap} mode="pick" query="" catFilter="all" />
+            </div>
+            <div className="ev2-lefthint">
+              정의를 끌어다 왼쪽 <b>지갑 패키지</b>에 놓으면 이 지갑에 적용돼요.
+            </div>
+          </div>
+        </aside>
       )}
     </div>
-  );
-}
-
-/* ─────────────── 셀 상세 패널 ─────────────── */
-
-function CellPanel(props: {
-  snap: StoreSnapshot;
-  address: string;
-  packageId: string;
-  allAddresses: string[];
-  onClose: () => void;
-  onToast: (text: string) => void;
-  invalidate: () => void;
-}) {
-  const { snap, address, packageId, allAddresses, onClose, onToast, invalidate } = props;
-  const wallet = snap.wallets.byAddress[address] ?? { bindings: {}, packageEnabled: {} };
-  const pkg = snap.library.packages[packageId];
-  const bindings = Object.values(wallet.bindings)
-    .filter((b) => b.packageId === packageId)
-    .sort((a, b) => a.id.localeCompare(b.id));
-
-  const [addDefId, setAddDefId] = useState("");
-  const defs = useMemo(
-    () =>
-      Object.values(snap.library.defs).sort((a, b) =>
-        a.displayName.localeCompare(b.displayName, "ko"),
-      ),
-    [snap],
-  );
-
-  const run = async (label: string, fn: () => Promise<unknown>): Promise<boolean> => {
-    try {
-      await fn();
-      invalidate();
-      return true;
-    } catch (err) {
-      console.error(`[v2 apply] ${label} failed:`, err);
-      onToast(`${label}에 실패했어요`);
-      return false;
-    }
-  };
-
-  return (
-    <aside className="pm-panel">
-      <div className="pm-panel-head">
-        <div className="t">
-          {shortAddr(address)} · {pkg?.displayName ?? packageId}
-        </div>
-        <button type="button" className="ev2-iconbtn" title="닫기" onClick={onClose}>
-          ×
-        </button>
-      </div>
-
-      <div className="pm-panel-body">
-        {bindings.length === 0 && <div className="pm-none">이 칸에 적용된 정책이 없어요.</div>}
-
-        {bindings.map((b) => {
-          const def = snap.library.defs[b.defId];
-          if (!def) return null;
-          return (
-            <BindingCard
-              key={b.id}
-              def={def}
-              binding={b}
-              effective={isEffectiveOn(wallet, b)}
-              pkgName={null}
-              targets={allAddresses.filter((a) => a !== address)}
-              onToggle={(on) =>
-                void run("토글", () =>
-                  updateBinding({ address, bindingId: b.id, patch: { enabled: on } }),
-                )
-              }
-              onParams={(params) =>
-                void run("파라미터 저장", () =>
-                  updateBinding({ address, bindingId: b.id, patch: { params } }),
-                )
-              }
-              onRemove={() =>
-                void run("제거", () => removeBinding({ address, bindingId: b.id }))
-              }
-              onCopy={(to) =>
-                void run("복사", () =>
-                  copyBindings({ fromAddress: address, toAddress: to, bindingIds: [b.id] }),
-                ).then((ok) => ok && onToast(`${shortAddr(to)}로 복사했어요`))
-              }
-              onMove={(to) =>
-                void run("이동", async () => {
-                  await copyBindings({ fromAddress: address, toAddress: to, bindingIds: [b.id] });
-                  await removeBinding({ address, bindingId: b.id });
-                }).then((ok) => ok && onToast(`${shortAddr(to)}로 옮겼어요`))
-              }
-            />
-          );
-        })}
-
-        <div className="pm-add">
-          <select value={addDefId} onChange={(e) => setAddDefId(e.target.value)}>
-            <option value="">정책 선택…</option>
-            {defs.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.displayName}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="ev2-sec"
-            disabled={!addDefId}
-            onClick={() =>
-              void run("정책 추가", () =>
-                bindDef({ defId: addDefId, packageId, addresses: [address] }),
-              ).then((ok) => ok && setAddDefId(""))
-            }
-          >
-            <PlusIcon /> 추가
-          </button>
-        </div>
-      </div>
-    </aside>
   );
 }
 
