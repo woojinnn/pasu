@@ -17,19 +17,11 @@ import {
 } from "../../../server-api/policy-store";
 import { defUsageCount } from "./apply-matrix-derive";
 import { ApplyMatrixView } from "./ApplyMatrixView";
+import { LibraryDirectory } from "./LibraryDirectory";
 import { Topbar } from "../../../shell/Topbar";
 import { NewPolicyChooser } from "./NewPolicyChooser";
 import { CAT_ORDER, catKey, catLabel, catStyle, type CategoryKey } from "./categories";
-import {
-  CopyIcon,
-  FolderIcon,
-  PencilIcon,
-  PlusIcon,
-  SearchIcon,
-  ShieldIcon,
-  TrashIcon,
-} from "./icons";
-import { mtimeLabel } from "./helpers";
+import { PlusIcon, SearchIcon } from "./icons";
 import { blocksToText } from "../../../cedar";
 import type { PolicyIR } from "../../../cedar/blocks";
 import { collectPackageMembers } from "../publish-package";
@@ -47,9 +39,9 @@ interface ToastMsg {
 
 /**
  * /editor — 정책 스토리지 v2의 대시보드 진입점. 두 탭:
- *  - 라이브러리: 계정의 정의(PolicyDef)·패키지(PackageDef) 관리. 지갑 적용과는
- *    분리된 "정의" 차원만 다룬다(켜기/끄기 없음 — 그것은 지갑×바인딩의 일).
- *  - 적용 현황: 지갑×패키지 매트릭스(바인딩 토글·파라미터·복사/이동).
+ *  - 적용 현황(기본): 지갑별 워크스페이스 — 그 지갑의 패키지×바인딩 토글.
+ *  - 라이브러리: 계정의 정의·패키지 관리 — 패키지를 디렉토리처럼 보여주는
+ *    폴더 뷰(폴더 멤버십 = defaults.packageId).
  * 모든 데이터는 ps2:get-overview 한 번으로 읽고, 변이 후 invalidate로 재조회한다.
  */
 export function EditorListPageV2() {
@@ -138,7 +130,7 @@ export function EditorListPageV2() {
   );
 }
 
-/* ─────────────── 라이브러리 탭 ─────────────── */
+/* ─────────────── 라이브러리 탭 (디렉토리 뷰) ─────────────── */
 
 function LibraryTab(props: {
   snap: StoreSnapshot;
@@ -153,11 +145,86 @@ function LibraryTab(props: {
   const [defaultsFor, setDefaultsFor] = useState<PolicyDef | null>(null);
   const [publishSrc, setPublishSrc] = useState<PublishSource | null>(null);
 
+  const presentCats = useMemo(() => {
+    const set = new Set<CategoryKey>();
+    for (const d of Object.values(snap.library.defs)) set.add(catKey(d.cat));
+    return CAT_ORDER.filter((c) => set.has(c));
+  }, [snap]);
+
+  const run = async (label: string, fn: () => Promise<unknown>): Promise<boolean> => {
+    try {
+      await fn();
+      invalidate();
+      return true;
+    } catch (err) {
+      console.error(`[v2 library] ${label} failed:`, err);
+      onToast(`${label}에 실패했어요`);
+      return false;
+    }
+  };
+
+  const onDelete = (d: PolicyDef) => {
+    const n = defUsageCount(snap, d.id);
+    const msg =
+      n > 0
+        ? `정책 "${d.displayName}"를 삭제할까요?\n${n}개 지갑에서 함께 제거됩니다. 되돌릴 수 없어요.`
+        : `정책 "${d.displayName}"를 삭제할까요?\n되돌릴 수 없어요.`;
+    if (!window.confirm(msg)) return;
+    void run("삭제", () => deleteDef(d.id)).then((ok) => ok && onToast("정책을 삭제했어요"));
+  };
+
+  const createPackage = () =>
+    void run("패키지 생성", () =>
+      putPackage({
+        id: `pkg::${crypto.randomUUID()}`,
+        displayName: "새 패키지",
+        source: "mine",
+        updatedAtMs: Date.now(),
+      }),
+    ).then((ok) => ok && onToast("패키지를 만들었어요 — 이름을 바꿔보세요"));
+
+  const renamePackage = (pkg: PackageDef, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === pkg.displayName) return;
+    void run("이름 변경", () =>
+      putPackage({ ...pkg, displayName: trimmed, updatedAtMs: Date.now() }),
+    );
+  };
+
+  const removePackage = (pkg: PackageDef) => {
+    if (
+      !window.confirm(
+        `패키지 "${pkg.displayName}"를 삭제할까요?\n안의 정책은 '미분류'로 이동해요.`,
+      )
+    )
+      return;
+    void run("패키지 삭제", () => deletePackageApi(pkg.id)).then(
+      (ok) => ok && onToast("패키지를 삭제했어요"),
+    );
+  };
+
+  // 디렉토리 드래그: 정의의 라이브러리 소속(defaults.packageId) 이동.
+  const moveDef = (defId: string, packageId: string) => {
+    const d = snap.library.defs[defId];
+    if (!d) return;
+    const next = packageId === UNCATEGORIZED_PKG ? undefined : packageId;
+    if ((d.defaults.packageId ?? undefined) === next) return;
+    void run("폴더 이동", () =>
+      putDef({ ...d, defaults: { ...d.defaults, packageId: next }, updatedAtMs: Date.now() }),
+    ).then(
+      (ok) =>
+        ok &&
+        onToast(
+          `${d.displayName} → ${snap.library.packages[packageId]?.displayName ?? packageId}`,
+        ),
+    );
+  };
+
   // 패키지 발행: defaults.packageId 기준 구성 defs를 렌더해 PublishModal로.
   const publishPackage = async (pkg: PackageDef) => {
     const members = collectPackageMembers(snap.library.defs, pkg.id);
     if (members.length === 0) {
-      onToast("이 패키지를 기본 패키지로 둔 정책이 없어요");
+      onToast("이 패키지에 든 정책이 없어요");
       return;
     }
     try {
@@ -181,170 +248,93 @@ function LibraryTab(props: {
     }
   };
 
-  const defs = useMemo(
-    () =>
-      Object.values(snap.library.defs).sort((a, b) =>
-        a.displayName.localeCompare(b.displayName, "ko"),
-      ),
-    [snap],
-  );
-  const packages = useMemo(
-    () =>
-      Object.values(snap.library.packages).sort((a, b) =>
-        a.id === UNCATEGORIZED_PKG ? 1 : b.id === UNCATEGORIZED_PKG ? -1 : a.id.localeCompare(b.id),
-      ),
-    [snap],
-  );
-
-  const presentCats = useMemo(() => {
-    const set = new Set<CategoryKey>();
-    for (const d of defs) set.add(catKey(d.cat));
-    return CAT_ORDER.filter((c) => set.has(c));
-  }, [defs]);
-
-  const filtered = useMemo(() => {
-    let rows = defs;
-    const q = query.trim().toLowerCase();
-    if (q) {
-      rows = rows.filter(
-        (d) => d.displayName.toLowerCase().includes(q) || d.id.toLowerCase().includes(q),
-      );
-    }
-    if (catFilter !== "all") rows = rows.filter((d) => catKey(d.cat) === catFilter);
-    return rows;
-  }, [defs, query, catFilter]);
-
-  const onDuplicate = async (d: PolicyDef) => {
-    try {
-      await duplicateDef(d.id);
-      invalidate();
-      onToast("정의를 복제했어요");
-    } catch (err) {
-      console.error("[v2 library] duplicate failed:", err);
-      onToast("복제하지 못했어요");
-    }
-  };
-
-  const onDelete = async (d: PolicyDef) => {
-    const n = defUsageCount(snap, d.id);
-    const msg =
-      n > 0
-        ? `정책 "${d.displayName}"를 삭제할까요?\n${n}개 지갑에서 함께 제거됩니다. 되돌릴 수 없어요.`
-        : `정책 "${d.displayName}"를 삭제할까요?\n되돌릴 수 없어요.`;
-    if (!window.confirm(msg)) return;
-    try {
-      await deleteDef(d.id);
-      invalidate();
-      onToast("정책을 삭제했어요");
-    } catch (err) {
-      console.error("[v2 library] delete failed:", err);
-      onToast("삭제하지 못했어요");
-    }
-  };
-
   return (
-    <div className="ev2-2col">
-      <PackageSection snap={snap} packages={packages} onToast={onToast} invalidate={invalidate} onPublish={(pkg) => void publishPackage(pkg)} />
-
-      <section className="ev2-right">
-        <div className="ev2-ctrl">
-          <div className="ev2-search">
-            <SearchIcon />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="정책 이름 검색…"
-            />
-          </div>
-          <span className="ev2-spc" />
+    <div className="ld-wrap">
+      <div className="ev2-ctrl">
+        <div className="ev2-search">
+          <SearchIcon />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="정책 이름 검색…"
+          />
         </div>
+        <span className="ev2-spc" />
+        <button type="button" className="ev2-sec" onClick={createPackage}>
+          <PlusIcon /> 새 패키지
+        </button>
+      </div>
 
-        {presentCats.length > 0 && (
-          <div className="ev2-catbar">
+      {presentCats.length > 0 && (
+        <div className="ev2-catbar">
+          <button
+            type="button"
+            className={`ev2-catchip${catFilter === "all" ? " on" : ""}`}
+            onClick={() => setCatFilter("all")}
+          >
+            모든 카테고리
+          </button>
+          {presentCats.map((c) => (
             <button
+              key={c}
               type="button"
-              className={`ev2-catchip${catFilter === "all" ? " on" : ""}`}
-              onClick={() => setCatFilter("all")}
+              className={`ev2-catchip${catFilter === c ? " on" : ""}`}
+              onClick={() => setCatFilter(c)}
             >
-              모든 카테고리
+              <span className="dot" style={{ background: catStyle(c).hex }} />
+              {catLabel(c)}
             </button>
-            {presentCats.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={`ev2-catchip${catFilter === c ? " on" : ""}`}
-                onClick={() => setCatFilter(c)}
-              >
-                <span className="dot" style={{ background: catStyle(c).hex }} />
-                {catLabel(c)}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="ev2-scroll">
-          {defs.length === 0 && (
-            <div className="ev2-empty">
-              <div className="big">아직 정책 정의가 없습니다</div>
-              <div className="sm">상단 “+ 새 정책” 버튼으로 첫 정의를 만들어 보세요.</div>
-            </div>
-          )}
-
-          {defs.length > 0 && (
-            <div className="ev2-table compact lib">
-              <div className="ev2-thead">
-                <div className="ev2-c-name">정책</div>
-                <div className="ev2-c-cat">카테고리</div>
-                <div className="ev2-c-holes">파라미터</div>
-                <div className="ev2-c-use">적용 지갑</div>
-                <div className="ev2-c-defon">새 지갑 기본</div>
-                <div className="ev2-c-time">마지막 수정</div>
-                <div className="ev2-c-act" />
-              </div>
-
-              {filtered.map((d) => (
-                <DefRow
-                  key={d.id}
-                  def={d}
-                  usage={defUsageCount(snap, d.id)}
-                  onOpen={() => navigate(`/editor/${encodeURIComponent(d.id)}`)}
-                  onDuplicate={() => void onDuplicate(d)}
-                  onDefaults={() => setDefaultsFor(d)}
-                  onDelete={d.source === "builtin" ? null : () => void onDelete(d)}
-                />
-              ))}
-
-              {filtered.length === 0 && (
-                <div className="ev2-empty">
-                  <div className="big">표시할 정책이 없어요</div>
-                  <div className="sm">검색어나 카테고리 필터를 바꿔보세요.</div>
-                </div>
-              )}
-            </div>
-          )}
+          ))}
         </div>
-      </section>
+      )}
+
+      <div className="ev2-scroll">
+        {Object.keys(snap.library.defs).length === 0 ? (
+          <div className="ev2-empty">
+            <div className="big">아직 정책 정의가 없습니다</div>
+            <div className="sm">상단 “+ 새 정책” 버튼으로 첫 정의를 만들어 보세요.</div>
+          </div>
+        ) : (
+          <LibraryDirectory
+            snap={snap}
+            mode="manage"
+            query={query}
+            catFilter={catFilter}
+            onOpenDef={(d) => navigate(`/editor/${encodeURIComponent(d.id)}`)}
+            onDuplicate={(d) =>
+              void run("복제", () => duplicateDef(d.id)).then(
+                (ok) => ok && onToast("정의를 복제했어요"),
+              )
+            }
+            onDelete={onDelete}
+            onDefaults={setDefaultsFor}
+            onRenamePackage={renamePackage}
+            onDeletePackage={removePackage}
+            onPublishPackage={(pkg) => void publishPackage(pkg)}
+            onMoveDef={moveDef}
+          />
+        )}
+        <div className="ev2-lefthint">
+          정책을 끌어다 폴더(패키지)에 놓으면 소속이 바뀌어요 — 지갑별 켜기/끄기는{" "}
+          <b>적용 현황</b> 탭에서.
+        </div>
+      </div>
 
       <PublishModal open={publishSrc !== null} source={publishSrc} onClose={() => setPublishSrc(null)} />
 
       {defaultsFor && (
         <DefDefaultsModal
           def={defaultsFor}
-          packages={packages}
+          packages={Object.values(snap.library.packages)}
           onCancel={() => setDefaultsFor(null)}
-          onSave={async (enabled, packageId) => {
-            try {
-              await putDef({
+          onSave={(enabled, packageId) => {
+            void run("기본값 저장", () =>
+              putDef({
                 ...defaultsFor,
                 defaults: { ...defaultsFor.defaults, enabled, packageId },
                 updatedAtMs: Date.now(),
-              });
-              invalidate();
-              onToast("기본값을 저장했어요");
-            } catch (err) {
-              console.error("[v2 library] defaults save failed:", err);
-              onToast("기본값을 저장하지 못했어요");
-            }
+              }),
+            ).then((ok) => ok && onToast("기본값을 저장했어요"));
             setDefaultsFor(null);
           }}
         />
@@ -353,56 +343,7 @@ function LibraryTab(props: {
   );
 }
 
-const SOURCE_LABEL: Record<PolicyDef["source"], string> = {
-  builtin: "내장",
-  mine: "내 정책",
-  market: "마켓",
-};
-
-function DefRow(props: {
-  def: PolicyDef;
-  usage: number;
-  onOpen: () => void;
-  onDuplicate: () => void;
-  onDefaults: () => void;
-  onDelete: (() => void) | null;
-}) {
-  const { def, usage, onOpen, onDuplicate, onDefaults, onDelete } = props;
-  const cat = catKey(def.cat);
-  return (
-    <div className="ev2-trow" onClick={onOpen}>
-      <div className="ev2-c-name">
-        <div className="nm">{def.displayName}</div>
-        <div className="sub">{SOURCE_LABEL[def.source]}</div>
-      </div>
-      <div className="ev2-c-cat">
-        <span className="ev2-catchip mini">
-          <span className="dot" style={{ background: catStyle(cat).hex }} />
-          {catLabel(cat)}
-        </span>
-      </div>
-      <div className="ev2-c-holes">{def.holes.length > 0 ? `${def.holes.length}개` : "–"}</div>
-      <div className="ev2-c-use">{usage > 0 ? `${usage}개` : "–"}</div>
-      <div className="ev2-c-defon">{def.defaults.enabled ? "적용" : "–"}</div>
-      <div className="ev2-c-time">{mtimeLabel(def.updatedAtMs, false)}</div>
-      <div className="ev2-c-act" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="ev2-iconbtn" title="기본값 설정" onClick={onDefaults}>
-          <PencilIcon />
-        </button>
-        <button type="button" className="ev2-iconbtn" title="복제" onClick={onDuplicate}>
-          <CopyIcon />
-        </button>
-        {onDelete && (
-          <button type="button" className="ev2-iconbtn danger" title="삭제" onClick={onDelete}>
-            <TrashIcon />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** 새 지갑 기본 적용 여부 + 기본 패키지 — def.defaults 편집 모달. */
+/** 새 지갑 기본 적용 여부 + 소속 패키지 — def.defaults 편집 모달. */
 function DefDefaultsModal(props: {
   def: PolicyDef;
   packages: PackageDef[];
@@ -428,7 +369,7 @@ function DefDefaultsModal(props: {
             새 지갑에 기본으로 적용
           </label>
           <label className="ptm-field">
-            기본 패키지
+            소속 패키지
             <select value={packageId} onChange={(e) => setPackageId(e.target.value)}>
               {packages.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -452,149 +393,6 @@ function DefDefaultsModal(props: {
         </div>
       </div>
     </div>
-  );
-}
-
-/* ─────────────── 패키지 섹션 (좌측) ─────────────── */
-
-function PackageSection(props: {
-  snap: StoreSnapshot;
-  packages: PackageDef[];
-  onToast: (text: string) => void;
-  invalidate: () => void;
-  onPublish: (pkg: PackageDef) => void;
-}) {
-  const { snap, packages, onToast, invalidate, onPublish } = props;
-  const [renaming, setRenaming] = useState<string | null>(null);
-  const [draftName, setDraftName] = useState("");
-
-  // 패키지별 멤버 바인딩 인스턴스 수(모든 지갑 합계).
-  const memberCount = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const w of Object.values(snap.wallets.byAddress)) {
-      for (const b of Object.values(w.bindings)) {
-        m.set(b.packageId, (m.get(b.packageId) ?? 0) + 1);
-      }
-    }
-    return m;
-  }, [snap]);
-
-  const createPackage = async () => {
-    try {
-      await putPackage({
-        id: `pkg::${crypto.randomUUID()}`,
-        displayName: "새 패키지",
-        source: "mine",
-        updatedAtMs: Date.now(),
-      });
-      invalidate();
-      onToast("패키지를 만들었어요 — 이름을 바꿔보세요");
-    } catch (err) {
-      console.error("[v2 library] createPackage failed:", err);
-      onToast("패키지를 만들지 못했어요");
-    }
-  };
-
-  const renamePackage = async (pkg: PackageDef) => {
-    const name = draftName.trim();
-    setRenaming(null);
-    if (!name || name === pkg.displayName) return;
-    try {
-      await putPackage({ ...pkg, displayName: name, updatedAtMs: Date.now() });
-      invalidate();
-    } catch (err) {
-      console.error("[v2 library] renamePackage failed:", err);
-      onToast("이름을 바꾸지 못했어요");
-    }
-  };
-
-  const removePackage = async (pkg: PackageDef) => {
-    if (
-      !window.confirm(
-        `패키지 "${pkg.displayName}"를 삭제할까요?\n안의 정책 인스턴스는 '미분류'로 이동해요.`,
-      )
-    )
-      return;
-    try {
-      await deletePackageApi(pkg.id);
-      invalidate();
-      onToast("패키지를 삭제했어요");
-    } catch (err) {
-      console.error("[v2 library] deletePackage failed:", err);
-      onToast("패키지를 삭제하지 못했어요");
-    }
-  };
-
-  return (
-    <aside className="ev2-left">
-      <div className="ev2-leftsec">
-        <div className="ev2-lefthead">
-          <span>패키지</span>
-          <button type="button" className="ev2-iconbtn" title="새 패키지" onClick={() => void createPackage()}>
-            <PlusIcon />
-          </button>
-        </div>
-        <div className="ev2-pkglist">
-          {packages.map((pkg) => {
-            const locked = pkg.id === UNCATEGORIZED_PKG;
-            return (
-              <div key={pkg.id} className="ev2-pkgrow">
-                <FolderIcon />
-                {renaming === pkg.id ? (
-                  <input
-                    autoFocus
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    onBlur={() => void renamePackage(pkg)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void renamePackage(pkg);
-                      if (e.key === "Escape") setRenaming(null);
-                    }}
-                  />
-                ) : (
-                  <span className="nm">{pkg.displayName}</span>
-                )}
-                <span className="cnt">{memberCount.get(pkg.id) ?? 0}</span>
-                {!locked && (
-                  <span className="acts">
-                    <button
-                      type="button"
-                      className="ev2-iconbtn"
-                      title="마켓에 올리기"
-                      onClick={() => onPublish(pkg)}
-                    >
-                      <ShieldIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className="ev2-iconbtn"
-                      title="이름 변경"
-                      onClick={() => {
-                        setRenaming(pkg.id);
-                        setDraftName(pkg.displayName);
-                      }}
-                    >
-                      <PencilIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className="ev2-iconbtn danger"
-                      title="삭제"
-                      onClick={() => void removePackage(pkg)}
-                    >
-                      <TrashIcon />
-                    </button>
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className="ev2-lefthint">
-          패키지 켜기/끄기는 지갑별 설정이에요 — <b>적용 현황</b> 탭에서 관리해요.
-        </div>
-      </div>
-    </aside>
   );
 }
 
