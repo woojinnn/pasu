@@ -718,6 +718,14 @@
   border-color: var(--info-400, #60a5fa);
   color: var(--info-800, #1e40af);
 }
+.pf-add-cond.accent:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pf-add-cond.accent:disabled:hover {
+  border-color: var(--info-300, #93c5fd);
+  color: var(--info-700, #1d4ed8);
+}
 
 .cfm-bd {
   position: fixed;

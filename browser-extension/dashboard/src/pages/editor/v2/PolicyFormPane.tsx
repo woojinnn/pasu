@@ -284,8 +284,8 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
       rhsFields,
       fieldByPath,
       lookupAddr: addrBook.lookup,
-      onCreateCustom:
-        model.trigger.kind === "actionEq" ? () => setFieldModalOpen(true) : undefined,
+      onCreateCustom: () => setFieldModalOpen(true),
+      customFieldEnabled: model.trigger.kind === "actionEq",
     }),
     [fields, rhsFields, fieldByPath, addrBook.lookup, model.trigger.kind],
   );
@@ -592,7 +592,7 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
           />
         </div>
         <div className={`pf-sentence bottom ${model.severity}`}>
-          {model.reason ? `'${model.reason}' 라고 띄우면서 ` : ""}
+          {model.reason ? `'${model.reason}' (이)라는 메시지와 함께 ` : ""}
           {model.severity === "deny" ? "차단" : "경고"}
         </div>
         <ManifestPreview
@@ -725,10 +725,12 @@ interface EditorCtx {
   fieldByPath: Map<string, FieldOption>;
   /** Resolve an address to a friendly name (my wallet / token), or undefined. */
   lookupAddr: (address: string) => AddressEntry | undefined;
-  /** Open the "+ 새 보강 필드 만들기" modal (LHS field picker entry).
-   *  Undefined while the trigger is "모든 동작" — enrichment params are
-   *  action-shaped, so a concrete action must be chosen first. */
-  onCreateCustom?: () => void;
+  /** Open the "+ 새 보강 필드 만들기" modal. */
+  onCreateCustom: () => void;
+  /** False while the trigger is "모든 동작" — enrichment params are
+   *  action-shaped, so a concrete action must be chosen first. The button
+   *  stays visible but disabled with the reason, instead of vanishing. */
+  customFieldEnabled: boolean;
 }
 
 /** Re-derive a condition after the user picks a new field. */
@@ -870,7 +872,7 @@ function ConditionEditor({
               ),
             )}
             <button type="button" className="pf-add-cond sm" onClick={() => addCond(si)}>
-              + 조건 추가
+              + 그리고
             </button>
           </div>
         </div>
@@ -889,18 +891,21 @@ function ConditionEditor({
       )}
       <div className="pf-add-row">
         <button type="button" className="pf-add-cond" onClick={addSituation}>
-          {runs.length === 0 ? "+ 위험 상황 추가" : "+ 다른 위험 상황 추가"}
+          {runs.length === 0 ? "+ 위험 상황 추가" : "+ 또는"}
         </button>
-        {ctx.onCreateCustom && (
-          <button
-            type="button"
-            className="pf-add-cond accent"
-            onClick={ctx.onCreateCustom}
-            title="policy-server 조회 값(context.custom.*)으로 조건을 걸 수 있는 필드를 만들어요"
-          >
-            ＋ 새 보강 필드 만들기
-          </button>
-        )}
+        <button
+          type="button"
+          className="pf-add-cond accent"
+          onClick={ctx.onCreateCustom}
+          disabled={!ctx.customFieldEnabled}
+          title={
+            ctx.customFieldEnabled
+              ? "서버에서 조회한 값(위험 점수, USD 가치 등)으로 조건을 걸 수 있는 필드를 만들어요"
+              : "먼저 ①에서 동작을 골라주세요 — 어떤 값을 넘길 수 있는지가 동작마다 달라요"
+          }
+        >
+          ＋ 새 보강 필드 만들기
+        </button>
       </div>
     </>
   );
@@ -1019,7 +1024,7 @@ function GroupBox({
         ),
       )}
       <button type="button" className="pf-or-btn" onClick={() => onConds(norm([...conds, newCond(ctx.fields)]))}>
-        {orCtx ? "+ 선택지 추가" : "+ 조건 추가"}
+        {orCtx ? "+ 또는" : "+ 그리고"}
       </button>
     </div>
   );
