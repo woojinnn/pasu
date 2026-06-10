@@ -123,6 +123,22 @@ function valueKindFor(field: FieldOption | undefined, op: FormOp): FormValue["ki
   return field ? valueKindForField(field.fieldKind) : "string";
 }
 
+/** RHS options for a field-vs-field comparison: only PRIMITIVE fields whose
+ *  value kind matches the LHS (String↔String, Long↔Long, …), addresses only
+ *  against addresses (another String rarely compares meaningfully against
+ *  one), and never the LHS field itself. */
+function compatibleRhsFields(all: FieldOption[], lhs: FieldOption | undefined): FieldOption[] {
+  if (!lhs) return all;
+  const kind = valueKindForField(lhs.fieldKind);
+  return all.filter(
+    (f) =>
+      f.path !== lhs.path &&
+      f.fieldKind.startsWith("primitive.") &&
+      valueKindForField(f.fieldKind) === kind &&
+      (f.role === "address") === (lhs.role === "address"),
+  );
+}
+
 
 /** Known enum value suggestions (no machine-readable enum list exists; these are
  *  the ones we're confident about — shown as datalist hints, not enforced). */
@@ -576,9 +592,8 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
           />
         </div>
         <div className={`pf-sentence bottom ${model.severity}`}>
-          {model.severity === "deny" ? "🚫 " : "⚠ "}
-          {model.reason ? `'${model.reason}' 이유로 ` : ""}
-          {model.severity === "deny" ? "차단해요" : "경고해요"}
+          {model.reason ? `'${model.reason}' 라고 띄우면서 ` : ""}
+          {model.severity === "deny" ? "차단" : "경고"}
         </div>
         <ManifestPreview
           open={manifestOpen}
@@ -1042,7 +1057,9 @@ function ConditionRow({
   const field = ctx.fieldByPath.get(cond.fieldPath);
   const ops = field ? operatorsFor(field.fieldKind) : (["=="] as FormOp[]);
   const chip = cond.fieldPath ? condChip(cond, ctx) : "…";
-  const canField = SCALAR_OPS.has(cond.op);
+  // 필드-비교 RHS는 LHS와 값 타입이 맞는 필드만 — 하나도 없으면 토글 자체를 숨김.
+  const rhsOptions = compatibleRhsFields(ctx.rhsFields, field);
+  const canField = SCALAR_OPS.has(cond.op) && rhsOptions.length > 0;
   const fieldMode = cond.value.kind === "field";
   return (
     <div
@@ -1087,7 +1104,11 @@ function ConditionRow({
             type="button"
             className="pf-ctl pf-mode"
             onClick={() =>
-              onValue(fieldMode ? defaultValueOfKind(valueKindFor(field, cond.op)) : { kind: "field", path: ctx.rhsFields[0]?.path ?? "principal.address" })
+              onValue(
+                fieldMode
+                  ? defaultValueOfKind(valueKindFor(field, cond.op))
+                  : { kind: "field", path: rhsOptions[0]?.path ?? "principal.address" },
+              )
             }
             title={fieldMode ? "고정 값으로" : "다른 필드와 비교"}
           >
@@ -1097,7 +1118,7 @@ function ConditionRow({
         {fieldMode ? (
           <FieldCombobox
             value={cond.value.kind === "field" ? cond.value.path : ""}
-            fields={ctx.rhsFields}
+            fields={rhsOptions}
             onChange={(p) => onValue({ kind: "field", path: p })}
           />
         ) : (
