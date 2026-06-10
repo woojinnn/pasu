@@ -556,6 +556,12 @@ export interface PolicyDiagramProps {
   erroredPaths?: readonly string[];
   /** Tighter sizing for cramped surfaces (e.g. the confirm popup). */
   compact?: boolean;
+  /** Canonical paths to render as the user's SELECTION (editor click-sync) —
+   *  blue outline, distinct from the diagnosis red. */
+  selectedPaths?: readonly string[];
+  /** Node click callback (editor click-sync). Wrapper nodes (root/when/unless)
+   *  don't fire. */
+  onNodeClick?: (path: string) => void;
   /** Optional resolver: rewrite 0x addresses in node labels to friendly names.
    *  The caller owns the address book (a hook), keeping this module pure. */
   humanizeLabel?: (text: string) => string;
@@ -566,6 +572,8 @@ export function PolicyDiagram({
   highlightPaths,
   erroredPaths,
   compact,
+  selectedPaths,
+  onNodeClick,
   humanizeLabel,
 }: PolicyDiagramProps) {
   const model = useMemo(() => (ir ? layout(buildTree(ir)) : null), [ir]);
@@ -580,6 +588,7 @@ export function PolicyDiagram({
 
   const hl = new Set(highlightPaths ?? []);
   const err = new Set(erroredPaths ?? []);
+  const sel = new Set(selectedPaths ?? []);
   const active = hl.size > 0 || err.size > 0;
   // A node is on the trace if it (or any descendant) is a culprit/errored, so we
   // can dim the branches that did NOT contribute to the block.
@@ -644,13 +653,27 @@ export function PolicyDiagram({
     const title = humanizeAddrs(n.title);
     const detail = n.detail ? humanizeAddrs(n.detail) : undefined;
     const label = title.length > LABEL_CAP ? `${title.slice(0, LABEL_CAP - 1)}…` : title;
+    const isWrapper = n.kind === "root" || n.kind === "when" || n.kind === "unless";
+    const selected =
+      sel.has(n.path) || (n.memberset?.members.some((m) => sel.has(m.path)) ?? false);
+    const clickable = !!onNodeClick && !isWrapper;
     nodes.push(
       <g
         key={`n-${n.path}`}
         className={`pd-node pd-${n.kind}${culprit ? " pd-culprit" : ""}${
           errored ? " pd-errored" : ""
-        }${dimmed ? " pd-dim" : ""}`}
+        }${dimmed ? " pd-dim" : ""}${selected ? " pd-selected" : ""}${
+          clickable ? " pd-clickable" : ""
+        }`}
         transform={`translate(${cx - n.w / 2}, ${cy})`}
+        onClick={
+          clickable
+            ? (ev) => {
+                ev.stopPropagation();
+                onNodeClick(n.path);
+              }
+            : undefined
+        }
       >
         {n.memberset ? (
           <foreignObject width={n.w} height={n.h}>
