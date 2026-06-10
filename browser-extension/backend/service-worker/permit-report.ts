@@ -1,19 +1,10 @@
 /**
- * Backend tracking (Phase 3): report decoded off-chain permit / permit2
- * signatures to the policy-server so it records each outstanding signed permit
- * as a `PendingTx` (the sync reconciler later closes the lifecycle).
+ * Report decoded off-chain permit / permit2 signatures to the policy-server
+ * so it records each outstanding signed permit as a `PendingTx`.
  *
- * This is purely additive observability — it never participates in the verdict
- * and never blocks signing. The caller (`typedSignatureLifecycle`) invokes
- * {@link reportPermitIfApplicable} fire-and-forget AFTER a PASS verdict.
- *
- * Coverage (decided, v1): extension-scoped + partial. Gated on a signed-in
- * server session — permits signed while signed-out are uncapturable and are
- * NOT buffered. Mobile / out-of-extension permits are inherently untrackable.
- * Decoded params only — the raw EIP-712 signature is never sent.
- *
- * Kept in its own module (no heavy static imports) so it stays cheap to unit
- * test and decoupled from the WASM-bridge-laden orchestrator.
+ * Purely additive observability — never participates in the verdict.
+ * Gated on a signed-in server session; permits signed while signed-out are
+ * uncapturable and not buffered. The raw EIP-712 signature is never sent.
  */
 
 import { isTypedSignature, type Message } from "@lib/types";

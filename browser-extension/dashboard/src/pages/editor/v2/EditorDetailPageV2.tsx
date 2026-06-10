@@ -53,12 +53,6 @@ type FormEntry =
   | { kind: "ok"; model: FormModel }
   | { kind: "closed" };
 
-/**
- * Phase 3 detail view — mypolicy-editor.jsx ported to the SPA.
- * Layout: header (title + severity + memo + tabs) → body (active tab) →
- * collapsible manifest panel. Form tab is intentionally disabled —
- * surfaced behind a tooltip so the design intent stays visible.
- */
 /** Seed handed in by {@link NewPolicyChooser} via navigation state. Nothing is
  *  persisted until the user saves, so an abandoned new policy never exists. */
 interface NewPolicySeed {

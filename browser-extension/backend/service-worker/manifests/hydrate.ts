@@ -1,25 +1,15 @@
-// SW boot-time manifest hydration (Phase 6 / Task 6.3, with carry-over G
-// fix from Phase 7.5).
+// SW boot-time manifest hydration.
 //
-// `install_policies_json` REPLACES engine state on every call
-// (`crates/policy-engine-wasm/src/exports.rs` — `*state.borrow_mut() =
-// Some(EngineState { policies, ... })`). The naive hydrate path
-// — passing `policy_set: []` together with the stored manifest map —
-// therefore wipes the Cedar policies that `ensureDefaultPoliciesInstalled`
-// installed during the prior bootSequence stage.
+// `install_policies_json` REPLACES all engine state on each call, so the
+// hydrate path must pass BOTH the stored manifest map AND the
+// currently-enabled policy set together — otherwise the Cedar policies
+// installed earlier in the boot sequence would be wiped.
 //
-// The fix here is to re-read the currently-enabled policy set via
-// `loadCurrentEnabledPolicySet()` and pass it alongside the manifests,
-// so a single install call sets BOTH state slots atomically. The unit
-// test in `hydrate.test.ts` covers the regression.
-//
-// Hydration runs two stages, in order:
-//   1. Cold-start restore — if `rpc:manifests` is non-empty, push the
-//      stored map back into WASM with the currently-enabled policies so
-//      the engine boots with the right schema.
-//   2. Dev seeding — `devSeed()` fills in any missing default actions
-//      from `public/default-manifests/`. Prod builds short-circuit
-//      inside `devSeed`.
+// Two stages, in order:
+//   1. Cold-start restore — re-push the stored manifests + enabled policy
+//      set into WASM so the engine boots with the correct schema.
+//   2. Dev seeding — `devSeed()` configures the local endpoint URL in dev
+//      builds; short-circuits in production.
 
 import { devSeed, fetchBundledDefaultManifests } from "./dev-seed";
 import {
@@ -80,9 +70,8 @@ export async function hydrateManifests(
 
   const existing = await deps.getAllManifests();
   if (Object.keys(existing).length > 0) {
-    // Cold-start restore: re-push the stored manifest map AND the
-    // currently-enabled policy set into WASM so the policies installed
-    // by `ensureDefaultPoliciesInstalled` aren't wiped by this call.
+    // Pass the manifest map AND the enabled policy set together so neither
+    // is wiped by the replace-all semantics of `install_policies_json`.
     const policySet = await deps.loadPolicySet();
     installed = await deps.wasmInstall({
       schema_text: "",
@@ -94,17 +83,12 @@ export async function hydrateManifests(
     }
   }
 
-  // Dev seeding still uses `policy_set: []` because in dev the default
-  // policies aren't yet relevant — `devSeed` itself only fires when
-  // there are missing default actions and `NODE_ENV !== 'production'`.
-  // In prod this short-circuits inside `devSeed`.
   await deps.devSeed({
     fetchDefaults: deps.fetchDefaults,
     wasmInstall: async (manifests: Record<string, PolicyManifest>) => {
-      // dev-seed runs AFTER cold-start restore, so the engine already
-      // holds the enabled policy set from the call above. Re-read it
-      // (cheap; reads storage) so we don't clobber a freshly-enabled
-      // set.
+      // Re-read the enabled policy set so a freshly-enabled set is not
+      // clobbered — dev-seed runs after cold-start restore, which may
+      // have changed the enabled state.
       const policySet = await deps.loadPolicySet();
       return deps.wasmInstall({
         schema_text: "",

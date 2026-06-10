@@ -32,8 +32,7 @@ export interface AuditEntry {
     methods: string[];
   };
   /**
-   * Phase 6 — declarative adapter pipeline audit, only present for
-   * transactions (the only message type the declarative path runs for).
+   * Declarative adapter pipeline audit. Only present for transactions.
    * See `orchestrator.ts::DeclarativeAuditMeta` for the contract.
    */
   declarative?: {
@@ -58,14 +57,11 @@ export interface AuditEntry {
     reason?: string;
   };
   /**
-   * Phase 1 / P3 — which pipeline produced the verdict.
-   * `"declarative-v2"` ⇒ the stateless v2 pipeline
+   * Which pipeline produced the verdict.
+   * `"declarative-v2"` ⇒ stateless v2 pipeline
    *   (`plan_action_rpc_v2_json` → host dispatch → `evaluate_action_v2_json`).
-   * `"fail_closed"` ⇒ no decoder produced an evaluable verdict (v3 miss/fault,
-   *   all-`Unknown` bodies, no v2 bundles, a v2 throw, typed-signature
-   *   route/evaluate miss, the untyped-signature short-circuit, venue-order
-   *   deny-closed paths, or the hard-timeout fallback).
-   * Absent on engine-error short-circuits (where we have no signal).
+   * `"fail_closed"` ⇒ no decoder produced an evaluable verdict.
+   * Absent on engine-error short-circuits.
    */
   verdictSource?: "declarative-v2" | "fail_closed";
   decidedAtMs: number;

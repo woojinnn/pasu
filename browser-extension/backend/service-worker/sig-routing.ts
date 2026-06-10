@@ -1,34 +1,13 @@
 /**
- * Phase A.1 — EIP-712 typed-data signature router (SW side), manifest-driven.
+ * EIP-712 typed-data signature router (SW side), manifest-driven.
  *
- * Maps an `eth_signTypedData{,_v3,_v4}` request onto the v3 `Action` tree the
- * orchestrator hands downstream, by looking the manifest up in the registry-v2
- * `by-typed-data/` index on the routing triple
- * `(chainId, verifyingContract, primaryType)` and decoding it through the
- * WASM `declarative_route_typed_data_v3_json` pipeline.
+ * Maps an `eth_signTypedData{,_v3,_v4}` request onto the v3 `Action` tree by
+ * looking the manifest up in the `by-typed-data/` registry index on the routing
+ * triple `(chainId, verifyingContract, primaryType)` and decoding through
+ * `declarative_route_typed_data_v3_json`.
  *
- *   match.typed_data → index key (build-index.ts Task 2):
- *     `<chainId>__<verifyingContract>__<primaryType>`
- *   (verifyingContract lowercased; `:` in primaryType escaped to `__` in the
- *   filename only — see `typedDataUrl` in registry/client.ts).
- *
- * `domain.name` is NOT part of the key: EIP-2612 token Permits carry the
- * token name there (e.g. "USD Coin"), so it can't disambiguate. It is passed
- * to the WASM for audit / display only.
- *
- * Flow (replaces the Phase 4C per-protocol hardcode):
- *   1. Extract the triple from `typedData.domain` + `primaryType`.
- *   2. `installDeclarativeBundleV3ByTypedData` — fetch the manifest via the
- *      `by-typed-data/` index + install into the WASM typed_data bridge. A
- *      miss (no publisher / fetch fault) returns `{ ok: false }` → router
- *      returns `null` (orchestrator preserves the observability-only row).
- *   3. `declarativeRouteTypedDataV3` — decode the manifest emit-rules over the
- *      typed-data `message`. The WASM owns all `$args.*` substitution and the
- *      numeric coercion (`amount` / `nonce` / `deadline`) that the deleted
- *      Phase 4C per-protocol hardcode used to do by hand.
- *
- * The orchestrator wiring (replacing the legacy typed-sig path with this
- * async router) is Task 6 — this module only exposes the async entries.
+ * `domain.name` is NOT part of the routing key — EIP-2612 token Permits carry the
+ * token name there and it collides across tokens. It is passed to WASM for display only.
  */
 
 import type { TypedSignaturePayload } from "@lib/types";
@@ -95,11 +74,8 @@ export interface OffchainSigNature {
 }
 
 /**
- * Permit2-shaped `TokenAction::Permit2SignAllowance`. Mirrors the Rust
- * variant tagged `"action": "permit2_sign_allowance"`. The body is
- * intentionally flat (no LiveField on `nonce`) for Phase 4C — Phase 4D
- * upgrades `nonce` to a LiveField pair `(word, bit)` once the Sync
- * orchestrator is wired.
+ * Permit2-shaped `TokenAction::Permit2SignAllowance`. Mirrors the Rust variant
+ * tagged `"action": "permit2_sign_allowance"`.
  */
 export interface Permit2SignAllowanceBody {
   domain: "token";
@@ -144,16 +120,12 @@ export interface TypedDataRouteResult {
 }
 
 /**
- * Phase A.1 — typed-data router entry (async, manifest-driven).
+ * Typed-data router entry (async, manifest-driven).
  *
- * Returns the decoded `Action` list when the request matches a manifest in
- * the `by-typed-data/` index AND the WASM decode succeeds, or `null` for a
- * miss (no manifest, or decode failure — orchestrator falls through to the
- * observability-only audit row).
- *
- * Match is strict — the triple must match a published manifest exactly. A
- * dApp-supplied `verifyingContract` / `primaryType` with a subtle typo misses
- * on purpose; we never fuzzy-match a benign signature onto a high-trust body.
+ * Returns the decoded `Action` list when the request matches a manifest in the
+ * `by-typed-data/` index AND the WASM decode succeeds, or `null` on a miss.
+ * Match is strict — the triple must match a published manifest exactly; we never
+ * fuzzy-match a benign signature onto a high-trust body.
  */
 export async function routeTypedData(args: {
   typedData: EIP712TypedData;
@@ -168,25 +140,16 @@ export async function routeTypedData(args: {
     return null;
   }
 
-  // T1 — derive the optional `witness_type` 4th routing-key component. Permit2
-  // `permitWitnessTransferFrom` payloads (UniswapX intent orders etc.) all
-  // share `(chainId, Permit2, "PermitWitnessTransferFrom")`; the actual order
-  // type is the EIP-712 `witness` field's type inside types[primaryType]. We
-  // locate it by the field NAMED "witness" — this is the Permit2 witness
-  // convention (the field is always named `witness` in IPermit2's
-  // `PermitWitnessTransferFrom`). Absent → `undefined` (the 3-tuple key, every
-  // non-witness manifest).
+  // Derive the optional `witness_type` 4th routing-key component.
+  // Permit2 `permitWitnessTransferFrom` payloads all share the same 3-tuple
+  // `(chainId, Permit2, "PermitWitnessTransferFrom")`; the actual order type is
+  // the EIP-712 `witness` field's struct type, located by field name "witness"
+  // (IPermit2 convention). Absent → `undefined` (3-tuple key for non-witness payloads).
   const witnessType = extractWitnessType(args.typedData, primaryType);
 
-  // Thread witnessType into BOTH the install/fetch key and the WASM route
-  // below. The install path builds the `by-typed-data/` index URL from this
-  // key (`typedDataUrl`): without witnessType the live SW would fetch the
-  // 3-segment file and 404 against build-index's 4-segment witness file, so
-  // the manifest would never install and the WASM route would miss. The key
-  // is spread conditionally (omitting `witnessType` rather than setting it to
-  // `undefined`) for `exactOptionalPropertyTypes` — omission keeps the URL +
-  // install cache key byte-identical to the pre-T1 3-tuple for non-witness
-  // payloads.
+  // Thread witnessType into both the install/fetch key and the WASM route.
+  // Spread conditionally so omission keeps the URL and cache key byte-identical
+  // to the 3-tuple form for non-witness payloads.
   const installed = await installDeclarativeBundleV3ByTypedData({
     chainId,
     verifyingContract,
@@ -219,17 +182,11 @@ export async function routeTypedData(args: {
 // ───────────────────────────────────────────────────────────────────────────
 
 /**
- * T1 — extract the EIP-712 `witness` field's struct type from
- * `types[primaryType]`, used as the optional 4th routing-key component to
- * de-collide Permit2 `permitWitnessTransferFrom` payloads.
- *
- * Convention-based: it finds the field literally NAMED `"witness"`. This is
- * the IPermit2 `PermitWitnessTransferFrom` convention — the witness struct is
- * always the field named `witness`. Returns `undefined` when there is no such
- * field (every non-witness payload), keeping the WASM bridge key a 3-tuple.
- *
- * Kept VERBATIM (the exact EIP-712 type name) — the WASM compares it without
- * lowercasing, exactly like `primaryType`.
+ * Extract the EIP-712 `witness` field's struct type from `types[primaryType]`,
+ * used as the optional 4th routing-key component to de-collide Permit2
+ * `permitWitnessTransferFrom` payloads. Locates the field named `"witness"`.
+ * Returns `undefined` for non-witness payloads. Value is kept verbatim —
+ * the WASM compares without lowercasing.
  */
 function extractWitnessType(
   typedData: EIP712TypedData,

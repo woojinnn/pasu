@@ -74,13 +74,10 @@ async function installFiltered(enabledIds: readonly string[]): Promise<void> {
   const enabledSet = new Set(enabledIds);
   const union = [...defaults, ...adapterLoaderPolicies, ...dashboardPolicies];
   const filtered = union.filter((p) => enabledSet.has(p.id));
-  // Phase 7 codex carry-over H follow-up: pass the Map-shape manifest
-  // store through to `install_policies_json` instead of the legacy
-  // embedded-Vec collection. The orchestrator's evaluate path reads
-  // from the same Map; aligning install + evaluate on a single source
-  // closes the hash-mismatch window that appeared after a popup toggle
-  // following a manifest:put. Map shape also triggers the enriched
-  // composer in WASM so the engine sees the user-installed manifests.
+  // Pass the Map-shape manifest store to `install_policies_json`. Aligning
+  // install + evaluate on the same source closes the hash-mismatch window
+  // that would appear after a popup toggle following a manifest:put.
+  // Map shape also triggers the enriched composer in WASM.
   const manifests: Record<string, unknown> = { ...manifestMap };
   await installPolicies({
     schema_text: "",

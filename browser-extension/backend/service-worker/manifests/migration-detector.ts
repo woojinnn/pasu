@@ -1,20 +1,11 @@
-// Migration auto-detection (Fix O).
+// Migration auto-detection.
 //
-// Up to Phase 7 the migration UI (`migration:list` handler + the
-// dashboard banner) read from `chrome.storage.local["migration:pending"]`
-// but nothing in production code ever wrote to that key. The result:
-// post-Phase-5 a user with v0 policies in storage never saw the
-// "Rewrite to context.custom.*" banner — `listPending()` always returned
-// empty, the install path failed closed at runtime, and the user had no
-// affordance to fix it.
+// Scans every managed policy text for `context.<knownEnrichmentField>`
+// references and writes matching ids onto the `migration:pending` set,
+// merging with whatever ids were already there (re-running is a no-op).
 //
-// This module fixes that producer gap: it scans every managed policy
-// text for `context.<knownEnrichmentField>` references and writes the
-// matching ids onto the pending set, **merging** with whatever ids were
-// already there. Re-running is a no-op (Set semantics).
-//
-// Wired into the boot path AFTER `hydrateManifests` so the banner sees
-// the queue on the next dashboard load.
+// Wired into the boot path after `hydrateManifests` so the dashboard
+// migration banner sees the queue on the next load.
 
 import Browser from "webextension-polyfill";
 import { V0_KNOWN_FIELDS } from "../../../sdk/extension-client";
@@ -28,11 +19,10 @@ import {
   listPending,
 } from "./migration";
 
-// Mirrors `policy-selection.ts`'s PER-USER enabled-ids key
-// (`policy-selection:enabled-ids:<userId>`). Built here (not imported) so the
-// detector stays off the catalog/listManaged graph at module init, but it MUST
-// namespace by the current user or it would strip from a stale base key while
-// `installFiltered` reads the real per-user set (Fix R would silently no-op).
+// Mirrors `policy-selection.ts`'s per-user enabled-ids key. Built here
+// (not imported) to keep the detector off the catalog/listManaged graph at
+// module init. Must namespace by user ID — stripping from a stale base key
+// would silently diverge from what `installFiltered` reads.
 const ENABLED_IDS_KEY_PREFIX = "policy-selection:enabled-ids";
 function enabledIdsKey(userId: string): string {
   return `${ENABLED_IDS_KEY_PREFIX}:${userId}`;
@@ -50,29 +40,18 @@ const DEFAULT_DEPS: MigrationDetectorDeps = {
  * Detect v0 policy texts and:
  *   1. Push their ids onto `migration:pending` (set-merge with prior).
  *   2. Strip them from `policy-selection:enabled-ids` so the next
- *      `installFiltered` skips them — without this, every install retry
- *      keeps hitting the enriched schema's "no `context.<field>`" error
- *      and the orchestrator's reject path runs on every request (Fix R).
+ *      `installFiltered` skips them — otherwise every install keeps hitting
+ *      the enriched schema's "no `context.<field>`" error.
  *   3. Snapshot each id's prior enabled-state into
  *      `migration:original-enabled` so `migration:ack` can restore the
- *      preference after the user clicks Rewrite and the rewrite +
- *      put-raw lands. First-write-wins — a second detector pass
- *      observing the policy already-disabled does NOT clobber the
- *      original snapshot.
+ *      preference. First-write-wins — a second detector pass must not
+ *      overwrite the original snapshot.
  *
- * Idempotent: re-running with the same inputs does not change pending,
- * does not re-strip an already-stripped id, and does not flip an
- * existing original-enabled value.
+ * Idempotent: re-running with the same inputs is a no-op.
  *
- * The scan is intentionally conservative: it matches occurrences of
- * `context.<field>` where `<field>` is in [`V0_KNOWN_FIELDS`] and is
- * NOT preceded by `.custom` (those are already migrated). Identifiers
- * outside the known set are never flagged.
- *
- * Storage writes are batched into a single `chrome.storage.local.set`
- * call so an interrupt mid-call can never leave `migration:pending`
- * populated while the enabled-set still contains the id (the exact
- * failure mode Fix R closes).
+ * Storage writes are batched into a single `chrome.storage.local.set` call
+ * so an interrupt cannot leave `migration:pending` populated while the
+ * enabled-set still contains the id.
  */
 export async function detectPendingMigrations(
   overrides: Partial<MigrationDetectorDeps> = {},
@@ -140,15 +119,13 @@ async function readEnabledIds(): Promise<string[]> {
 }
 
 /**
- * Single-`set()` write of all three keys so the storage state is
- * internally consistent even if the SW is suspended mid-flush. The
- * trio:
- *   - `migration:pending` — list of ids the banner shows. Removed when
- *     empty so storage stays tidy.
- *   - `policy-selection:enabled-ids` — the source of truth
- *     `installFiltered` reads. Force-disabled v0 ids are gone.
- *   - `migration:original-enabled` — `{id → wasEnabledPriorToDetection}`.
- *     Drives ack-side restore. Removed when empty.
+ * Single-`set()` write of all three keys so storage stays consistent even
+ * if the SW is suspended mid-flush:
+ *   - `migration:pending` — ids the banner shows; removed when empty.
+ *   - `policy-selection:enabled-ids` — v0 ids stripped so `installFiltered`
+ *     skips them.
+ *   - `migration:original-enabled` — `{id → wasEnabled}` for ack-side
+ *     restore; removed when empty.
  */
 async function writeDetectorState(state: {
   pending: readonly string[];
@@ -179,25 +156,17 @@ async function writeDetectorState(state: {
 }
 
 /**
- * Return true when `text` references any known v0 enrichment field at
- * top-level `context.<field>` (NOT `context.custom.<field>`). The
- * regex tests both:
- *   - `context.<field>` not preceded by `.` or word char (so we don't
- *     match `bla.context.foo` or `xcontext.foo`)
- *   - excludes the v1 `context.custom.<field>` layout via the leading
- *     character class.
+ * Return true when `text` references any known v0 enrichment field as a
+ * top-level `context.<field>` (NOT `context.custom.<field>`). The leading
+ * character class prevents matching chained properties or identifier
+ * prefixes; `context.custom.<field>` is already migrated and excluded.
  */
 function containsV0Reference(text: string): boolean {
   for (const field of V0_KNOWN_FIELDS) {
     if (!isAsciiIdent(field)) continue;
-    // `(^|[^.\w])context.<field>(?![\w])`
-    // The leading group excludes `.context.<field>` (would chain into
-    // another property) and word-char prefixes. The trailing negative
-    // lookahead excludes `context.<field>X` where X is an identifier
-    // continuation. Crucially, this matches `context.<field>` but NOT
-    // `context.custom.<field>` because the `.custom` segment sits
-    // between `context` and `<field>` and won't be tested as the
-    // leading boundary.
+    // `(^|[^.\w])context.<field>(?![\w])` — excludes chained properties,
+    // identifier prefixes, identifier continuations, and the already-migrated
+    // `context.custom.<field>` shape.
     const re = new RegExp(`(?:^|[^.\\w])context\\.${field}(?![\\w])`);
     if (re.test(text)) return true;
   }

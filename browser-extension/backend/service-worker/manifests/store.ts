@@ -1,17 +1,15 @@
-// Storage layer for the manifest-driven cedarschema feature (Phase 6).
+// Storage layer for the manifest-driven cedarschema feature.
 //
-// Three keys live in `chrome.storage.local`:
-// - `rpc:endpointUrl`           — string | null, the active policy-rpc URL.
-// - `rpc:manifests`             — Record<action, PolicyManifest>, keyed by
-//                                  the action snake_case (e.g. "swap").
-// - `rpc:enrichedSchemaHash`    — string | null, the last
-//                                  `enrichedSchemaHash` returned by the
-//                                  WASM install path.
+// Three keys in `chrome.storage.local`:
+// - `rpc:endpointUrl`        — string | null, the active policy-rpc URL.
+// - `rpc:manifests`          — Record<action, PolicyManifest>, keyed by
+//                              action snake_case (e.g. "swap").
+// - `rpc:enrichedSchemaHash` — string | null, last enrichedSchemaHash
+//                              returned by the WASM install path.
 //
-// The store has no opinion about atomicity / WASM install ordering — that
-// lives in `atomic-install.ts`. Callers should not write `rpc:manifests`
-// directly except through `atomicInstall` so storage stays consistent
-// with the WASM engine.
+// Atomicity and WASM install ordering live in `atomic-install.ts`. Do not
+// write `rpc:manifests` directly — use `atomicInstall` to keep storage
+// consistent with the WASM engine.
 
 import Browser from "webextension-polyfill";
 
