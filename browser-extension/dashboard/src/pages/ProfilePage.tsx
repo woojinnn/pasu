@@ -4,15 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   deleteListing,
-  deleteManagedPolicy,
-  deletePolicySet,
   deleteWallet,
   listListings,
-  listManagedPolicies,
-  listPolicySets,
   listWallets,
   pickI18n,
 } from "../server-api";
+import { deleteDef, deletePackage, getOverview, UNCATEGORIZED_PKG } from "../server-api/policy-store";
 import { useAuth } from "../hooks/useAuth";
 import { Topbar } from "../shell/Topbar";
 
@@ -35,15 +32,13 @@ export function ProfilePage() {
     enabled: !!user?.user_id,
   });
   const walletsQ = useQuery({ queryKey: ["wallets"], queryFn: listWallets });
-  const policiesQ = useQuery({
-    queryKey: ["managed-policies"],
-    queryFn: listManagedPolicies,
-  });
-  const setsQ = useQuery({ queryKey: ["policy-sets"], queryFn: listPolicySets });
+  const overviewQ = useQuery({ queryKey: ["ps2-overview"], queryFn: getOverview });
 
   const walletCount = walletsQ.data?.length ?? 0;
-  const policyCount = policiesQ.data?.length ?? 0;
-  const setCount = setsQ.data?.length ?? 0;
+  const policyCount = overviewQ.data ? Object.keys(overviewQ.data.library.defs).length : 0;
+  const setCount = overviewQ.data
+    ? Object.keys(overviewQ.data.library.packages).filter((id) => id !== UNCATEGORIZED_PKG).length
+    : 0;
 
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -61,15 +56,16 @@ export function ProfilePage() {
 
   const resetPoliciesMut = useMutation({
     mutationFn: async () => {
-      const policies = policiesQ.data ?? [];
-      const sets = setsQ.data ?? [];
-      for (const s of sets) await deletePolicySet(s.id);
-      for (const p of policies) await deleteManagedPolicy(p.id);
+      const snap = overviewQ.data;
+      if (!snap) return;
+      // 정의 삭제가 바인딩을 cascade하고, 패키지 삭제는 미분류로 해체한다.
+      for (const id of Object.keys(snap.library.defs)) await deleteDef(id);
+      for (const id of Object.keys(snap.library.packages)) {
+        if (id !== UNCATEGORIZED_PKG) await deletePackage(id);
+      }
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["managed-policies"] });
-      void qc.invalidateQueries({ queryKey: ["policy-sets"] });
-      void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+      void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
       setBanner("정책·패키지를 모두 초기화했어요.");
     },
     onError: (e) => setBanner(`정책 초기화 실패: ${String(e)}`),

@@ -35,13 +35,13 @@ import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
-  getEnabledPolicyIds,
   getWalletState,
-  listManagedPolicies,
   listWallets,
   startGoogleLogin,
-  type ManagedPolicy,
 } from "../server-api";
+import { getLibrary } from "../server-api/policy-store";
+import { blocksToText } from "../cedar";
+import type { PolicyIR } from "../cedar/blocks";
 import { Topbar } from "../shell/Topbar";
 import { useAuth } from "../hooks/useAuth";
 
@@ -58,7 +58,7 @@ import {
   type SimStepDelta,
 } from "./simulation/WalletsStatePanel";
 import { VerdictPanel } from "./simulation/VerdictPanel";
-import { PolicyTogglePanel } from "./simulation/PolicyTogglePanel";
+import { PolicyTogglePanel, type SimPolicy } from "./simulation/PolicyTogglePanel";
 import {
   decodeCalldataLocal,
   evaluateActionLocal,
@@ -75,7 +75,7 @@ import "./simulation.css";
 
 /** Mirror of the SW's `managedToV2Bundle` synth: honour an explicit
  *  manifest when present, fall back to a minimal one. */
-function managedToBundle(p: ManagedPolicy): { policy: string; manifest: unknown } {
+function managedToBundle(p: SimPolicy): { policy: string; manifest: unknown } {
   const manifest =
     p.manifest && typeof p.manifest === "object"
       ? p.manifest
@@ -173,20 +173,35 @@ function SimulationPageInner() {
   }, [allWalletAddrs, stateQueries.map((q) => q.dataUpdatedAt).join("|")]);
 
   // ── policies ────────────────────────────────────────────────────────────
+  // ps2 라이브러리 defs를 렌더해 시뮬레이션 번들 후보로 쓴다(지갑 무관 샌드박스).
   const managedQ = useQuery({
-    queryKey: ["managed-policies"],
-    queryFn: listManagedPolicies,
-  });
-  const liveEnabledQ = useQuery({
-    queryKey: ["enabled-policy-ids"],
-    queryFn: getEnabledPolicyIds,
+    queryKey: ["sim-ps2-defs"],
+    queryFn: async () => {
+      const { library } = await getLibrary();
+      const all = await Promise.all(
+        Object.values(library.defs).map(async (d) => ({
+          pol: {
+            id: d.id,
+            displayName: d.displayName,
+            text: await blocksToText(d.skeleton.ir as PolicyIR).catch(() => ""),
+            manifest: d.skeleton.manifest,
+          } satisfies SimPolicy,
+          defaultOn: d.defaults.enabled,
+        })),
+      );
+      const ok = all.filter((x) => x.pol.text.length > 0);
+      return {
+        policies: ok.map((x) => x.pol),
+        defaultOn: ok.filter((x) => x.defaultOn).map((x) => x.pol.id),
+      };
+    },
   });
   const v3Q = useQuery({
     queryKey: ["sim-v3-bundle-count"],
     queryFn: getV3BundleStatus,
     refetchInterval: (q) => (q.state.data?.bootCompleted ? false : 1500),
   });
-  const policies: ReadonlyArray<ManagedPolicy> = managedQ.data ?? [];
+  const policies: ReadonlyArray<SimPolicy> = managedQ.data?.policies ?? [];
 
   // Cedar `@id` → policy text, so the verdict panel can resolve a matched
   // deny back to its source for the structure diagram + diagnosis.
@@ -200,18 +215,14 @@ function SimulationPageInner() {
   }, [policies]);
 
   const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
-  // Seed once when both queries land.
+  // Seed once: defaults.enabled 정의를 켠 상태로 시작(시뮬 전용 — 스토리지 불변).
   useEffect(() => {
-    if (
-      enabledIds.size === 0 &&
-      policies.length > 0 &&
-      (liveEnabledQ.data ?? []).length > 0
-    ) {
-      setEnabledIds(new Set(liveEnabledQ.data));
+    if (enabledIds.size === 0 && (managedQ.data?.defaultOn.length ?? 0) > 0) {
+      setEnabledIds(new Set(managedQ.data!.defaultOn));
     }
     // Intentionally only seed once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [policies.length, liveEnabledQ.data?.length]);
+  }, [managedQ.data?.defaultOn.length]);
   const togglePolicy = (id: string) =>
     setEnabledIds((prev) => {
       const next = new Set(prev);

@@ -3,25 +3,20 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  ENABLED_IDS_STORAGE_KEY,
   deleteWallet,
   getDashboardSummary,
   getAuditCounts,
-  getEnabledPolicyIds,
   listAuditVerdicts,
-  listManagedPolicies,
-  setEnabledPolicyIds,
   subscribeToBroadcast,
   syncWallet,
   type DashboardSummary,
   type DashboardWalletSummary,
-  type ManagedPolicy,
   type VerdictDto,
 } from "../server-api";
+import { getOverview, isEffectiveOn, updateBinding } from "../server-api/policy-store";
 
 import { AddWalletModal } from "../components/AddWalletModal";
 import { RenameWalletModal } from "../components/RenameWalletModal";
-import { nameFromPolicy } from "./editor/policy-meta";
 import { Topbar } from "../shell/Topbar";
 import "./home.css";
 
@@ -36,6 +31,14 @@ import "./home.css";
  * activity log + policy list previously rendered inside the expanded
  * card moved to the dedicated /history and /editor pages.
  */
+interface RelatedPolicy {
+  bindingId: string;
+  defId: string;
+  name: string;
+  enabled: boolean;
+  effective: boolean;
+}
+
 export function HomePage() {
   const [addOpen, setAddOpen] = useState(false);
   const qc = useQueryClient();
@@ -47,22 +50,14 @@ export function HomePage() {
     refetchInterval: (q) => (q.state.error ? false : 60_000),
     retry: false,
   });
-  // Pull the same two data sources EditorListPage / popup use so the
-  // count stays in sync regardless of which surface flipped the toggle.
-  const managedQ = useQuery({
-    queryKey: ["managed-policies"],
-    queryFn: listManagedPolicies,
-  });
-  const enabledQ = useQuery({
-    queryKey: ["enabled-policy-ids"],
-    queryFn: getEnabledPolicyIds,
-  });
+  // 에디터/popup과 같은 ps2 스토어를 읽어 어느 표면이 토글하든 수치가 일치한다.
+  const overviewQ = useQuery({ queryKey: ["ps2-overview"], queryFn: getOverview });
 
-  // Refetch the enabled set when the popup writes it behind our back.
+  // popup 등 다른 컨텍스트가 ps2 키를 쓰면 재조회.
   useEffect(() => {
     const unsubscribe = subscribeToBroadcast((keys) => {
-      if (keys.includes(ENABLED_IDS_STORAGE_KEY)) {
-        void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+      if (keys.some((k) => k.startsWith("ps2:"))) {
+        void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
       }
     });
     return unsubscribe;
@@ -105,52 +100,56 @@ export function HomePage() {
   // Today-evaluated total (PASS+WARN+FAIL).
   const todayTotal = countsQ.data ? countsQ.data.pass + countsQ.data.warn + countsQ.data.fail : null;
 
-  const managed = managedQ.data ?? [];
-  const enabledSet = useMemo(() => new Set(enabledQ.data ?? []), [enabledQ.data]);
-  const enabledPolicyCount = managed.filter((p) => enabledSet.has(p.id)).length;
-  const totalManagedCount = managed.length;
-  const policiesLoading = managedQ.isLoading || enabledQ.isLoading;
+  const snap = overviewQ.data ?? null;
+  const totalManagedCount = snap ? Object.keys(snap.library.defs).length : 0;
+  // "적용 중" = effective 바인딩(패키지∧개별 토글 on)이 하나라도 있는 정의 수.
+  const enabledPolicyCount = useMemo(() => {
+    if (!snap) return 0;
+    const active = new Set<string>();
+    for (const w of Object.values(snap.wallets.byAddress)) {
+      for (const b of Object.values(w.bindings)) {
+        if (isEffectiveOn(w, b)) active.add(b.defId);
+      }
+    }
+    return active.size;
+  }, [snap]);
+  const policiesLoading = overviewQ.isLoading;
 
-  // Policies "about" a wallet: their Cedar text references the wallet's address
-  // (e.g. a recipient block / allowlist entry). Addresses are lowercased on
-  // install, so match case-insensitively.
+  // 지갑 카드의 관련 정책 = 그 지갑의 바인딩(정의 이름 + effective 상태).
   const relatedByWallet = useMemo(() => {
-    const m = new Map<string, ManagedPolicy[]>();
+    const m = new Map<string, RelatedPolicy[]>();
+    if (!snap) return m;
     for (const w of wallets) {
-      const addr = w.address.toLowerCase();
+      const ws = snap.wallets.byAddress[w.address.toLowerCase()];
+      if (!ws) {
+        m.set(w.address, []);
+        continue;
+      }
       m.set(
         w.address,
-        managed.filter((p) => (p.text ?? "").toLowerCase().includes(addr)),
+        Object.values(ws.bindings)
+          .map((b) => ({
+            bindingId: b.id,
+            defId: b.defId,
+            name: snap.library.defs[b.defId]?.displayName ?? b.defId,
+            enabled: b.enabled,
+            effective: isEffectiveOn(ws, b),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, "ko")),
       );
     }
     return m;
-  }, [wallets, managed]);
+  }, [wallets, snap]);
 
-  // Optimistic enable/disable, mirroring the editor list so a wallet-card toggle
-  // and the editor stay in sync.
   const toggleMut = useMutation({
-    mutationFn: async (next: string[]) => {
-      await setEnabledPolicyIds(next);
-      return next;
-    },
-    onMutate: async (next) => {
-      await qc.cancelQueries({ queryKey: ["enabled-policy-ids"] });
-      const previous = qc.getQueryData<string[]>(["enabled-policy-ids"]) ?? [];
-      qc.setQueryData(["enabled-policy-ids"], next);
-      return { previous };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(["enabled-policy-ids"], ctx.previous);
-    },
+    mutationFn: (v: { address: string; bindingId: string; on: boolean }) =>
+      updateBinding({ address: v.address, bindingId: v.bindingId, patch: { enabled: v.on } }),
     onSettled: () => {
-      void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
+      void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
     },
   });
-  const togglePolicy = (id: string, on: boolean) => {
-    const next = new Set(enabledSet);
-    if (on) next.add(id);
-    else next.delete(id);
-    toggleMut.mutate([...next]);
+  const togglePolicy = (address: string, bindingId: string, on: boolean) => {
+    toggleMut.mutate({ address: address.toLowerCase(), bindingId, on });
   };
 
   return (
@@ -183,7 +182,6 @@ export function HomePage() {
         agg={walletStatusAgg}
         verdictsByAddr={verdictsByAddr}
         relatedByWallet={relatedByWallet}
-        enabledSet={enabledSet}
         onTogglePolicy={togglePolicy}
         onAddWallet={() => setAddOpen(true)}
       />
@@ -281,7 +279,6 @@ function WalletList({
   agg,
   verdictsByAddr,
   relatedByWallet,
-  enabledSet,
   onTogglePolicy,
   onAddWallet,
 }: {
@@ -290,9 +287,8 @@ function WalletList({
   error: unknown;
   agg: { pass: number; warn: number; fail: number };
   verdictsByAddr: Map<string, VerdictDto[]>;
-  relatedByWallet: Map<string, ManagedPolicy[]>;
-  enabledSet: Set<string>;
-  onTogglePolicy: (id: string, on: boolean) => void;
+  relatedByWallet: Map<string, RelatedPolicy[]>;
+  onTogglePolicy: (address: string, bindingId: string, on: boolean) => void;
   onAddWallet: () => void;
 }) {
   return (
@@ -334,7 +330,6 @@ function WalletList({
               w={w}
               verdicts={verdictsByAddr.get(w.address) ?? []}
               related={relatedByWallet.get(w.address) ?? []}
-              enabledSet={enabledSet}
               onTogglePolicy={onTogglePolicy}
             />
           ))}
@@ -348,14 +343,12 @@ function WalletCard({
   w,
   verdicts,
   related,
-  enabledSet,
   onTogglePolicy,
 }: {
   w: DashboardWalletSummary;
   verdicts: VerdictDto[];
-  related: ManagedPolicy[];
-  enabledSet: Set<string>;
-  onTogglePolicy: (id: string, on: boolean) => void;
+  related: RelatedPolicy[];
+  onTogglePolicy: (address: string, bindingId: string, on: boolean) => void;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -464,21 +457,21 @@ function WalletCard({
             <span className={`wp-caret${policiesOpen ? " open" : ""}`}>▶</span>
             이 지갑 관련 정책 <b>{related.length}</b>
             <span className="wp-onoff">
-              {related.filter((p) => enabledSet.has(p.id)).length}/{related.length} 켜짐
+              {related.filter((p) => p.effective).length}/{related.length} 켜짐
             </span>
           </button>
           {policiesOpen &&
             related.map((p) => {
-              const on = enabledSet.has(p.id);
+              const on = p.enabled;
               return (
-                <div key={p.id} className={`wp-row${on ? "" : " off"}`}>
-                  <Link to={`/editor/${encodeURIComponent(p.id)}`} className="wp-name" title="에디터에서 열기">
-                    {nameFromPolicy(p)}
+                <div key={p.bindingId} className={`wp-row${p.effective ? "" : " off"}`}>
+                  <Link to={`/editor/${encodeURIComponent(p.defId)}`} className="wp-name" title="에디터에서 열기">
+                    {p.name}
                   </Link>
                   <button
                     type="button"
                     className={`wp-tg${on ? " on" : ""}`}
-                    onClick={() => onTogglePolicy(p.id, !on)}
+                    onClick={() => onTogglePolicy(w.address, p.bindingId, !on)}
                     title={on ? "이 정책 끄기" : "이 정책 켜기"}
                     aria-pressed={on}
                   >

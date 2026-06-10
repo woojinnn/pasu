@@ -6,13 +6,16 @@ import {
   getDiagnosisContextRow,
   getStateDeltaRow,
   listHistoryVerdicts,
-  listManagedPolicies,
   type StateDeltaRow,
   type VerdictDto,
   type VerdictListOpts,
   type VerdictRangeAlias,
 } from "../server-api";
 import { PolicyDiagnosisByText } from "../cedar/diagram/PolicyDiagnosisByText";
+import { getLibrary } from "../server-api/policy-store";
+import { annotationIdOf } from "./history-policy-match";
+import { blocksToText } from "../cedar";
+import type { PolicyIR } from "../cedar/blocks";
 import { Topbar } from "../shell/Topbar";
 import {
   formatBalance,
@@ -176,26 +179,28 @@ export function HistoryPage() {
     });
   }, [allRows, q, verdictFilter]);
 
-  // Managed policies → Cedar `@id` → text, so a deny row can resolve its
-  // policy back to source for the structure diagram + diagnosis.
+  // ps2 라이브러리 defs → Cedar 텍스트 렌더 — deny 행이 정책 소스를 되찾아
+  // 구조 다이어그램/진단을 그린다. builtin def도 포함되므로 baked 정책도 매칭.
   const managedQ = useQuery({
-    queryKey: ["history-managed-policies"],
-    queryFn: listManagedPolicies,
+    queryKey: ["history-ps2-defs"],
+    queryFn: async (): Promise<ManagedPolicyEntry[]> => {
+      const { library } = await getLibrary();
+      const entries = await Promise.all(
+        Object.values(library.defs).map(async (d) => ({
+          dashId: d.id,
+          cedarId: annotationIdOf(d.skeleton.ir),
+          text: await blocksToText(d.skeleton.ir as PolicyIR).catch(() => ""),
+          manifest:
+            d.skeleton.manifest && typeof d.skeleton.manifest === "object"
+              ? d.skeleton.manifest
+              : { id: d.id, schema_version: 2 },
+        })),
+      );
+      return entries.filter((e) => e.text.length > 0);
+    },
     staleTime: 60_000,
   });
-  const managedPolicies = useMemo<ManagedPolicyEntry[]>(
-    () =>
-      (managedQ.data ?? []).map((p) => ({
-        dashId: p.id,
-        cedarId: p.text.match(/@id\("([^"]+)"\)/)?.[1] ?? null,
-        text: p.text,
-        manifest:
-          p.manifest && typeof p.manifest === "object"
-            ? p.manifest
-            : { id: p.id, schema_version: 2 },
-      })),
-    [managedQ.data],
-  );
+  const managedPolicies = useMemo<ManagedPolicyEntry[]>(() => managedQ.data ?? [], [managedQ.data]);
 
   const counts = useMemo(() => {
     let pass = 0;
@@ -849,7 +854,7 @@ function PolicyStructureSection({
   });
   const ctx = ctxQ.data ?? null;
 
-  const byCedarId = managedPolicies.filter((p) => p.cedarId === cedarId);
+  const byCedarId = managedPolicies.filter((p) => p.cedarId === cedarId || p.dashId === cedarId);
   // Prefer the policy that actually enriched this deny (its dashboard id is in
   // the captured results), disambiguating a shared @id; else the @id match.
   const resolved =

@@ -9,11 +9,18 @@
  * at the cursor.
  */
 
-import type { ManagedPolicy } from "../../server-api";
 import type { EvaluateActionVerdict, MatchedPolicy } from "./sim-bridge";
 
+/** 시뮬레이터 패널의 최소 정책 모양 — ps2 def를 렌더한 텍스트 묶음. */
+export interface SimPolicy {
+  id: string;
+  displayName?: string;
+  text: string;
+  manifest?: unknown;
+}
+
 export interface PolicyTogglePanelProps {
-  policies: ReadonlyArray<ManagedPolicy>;
+  policies: ReadonlyArray<SimPolicy>;
   /** Page-local on/off set (sim-only). Toggles do NOT touch storage. */
   enabledIds: Set<string>;
   toggle: (id: string) => void;
