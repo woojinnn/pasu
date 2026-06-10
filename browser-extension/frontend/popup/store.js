@@ -63,73 +63,38 @@
   const POLICIES = {}; // id -> { title, sev }
   let PACKAGES = []; // [{ id, name, source:{kind,label}, members:[id] }]
 
-  // 정책 id → 한국어 표시 제목(사진 기준). 없으면 catalog 의 reason 을 쓴다.
-  const TITLE_KO = {
-    "unlimited-approval-deny": "무제한 승인 차단",
-    "send-first-time-or-burn-recipient-warn": "소각·분실 주소 전송 차단",
-    "unknown-blind-sign-warning": "정체불명 블라인드 서명 경고",
-    "permit2-sign-allowance-confirm": "Permit2 허용량 서명 확인",
-    "swap-recipient-not-self-deny": "스왑 수령처 = 내 지갑",
-  };
+  // ps2 라이브러리(정의/패키지) — loadState 가 채우고, 온보딩/재조회가 쓴다.
+  let LIBRARY = null;
 
-  // baked 기본셋(= day1-safety 5종) 판별 + 단일 "기본 안전팩" 으로 묶기.
-  const DAY1_IDS = new Set(Object.keys(TITLE_KO));
-  const DEFAULT_PKG = {
-    id: "pkg.day1-safety",
-    name: "지갑 처음 켤 때 5",
-    kind: "builtin",
-    label: "기본 제공",
-  };
+  function pkgSource(id) {
+    if (id.indexOf("pkg::builtin") === 0) return { kind: "builtin", label: "기본 제공" };
+    if (id.indexOf("pkg::market") === 0) return { kind: "market", label: "마켓" };
+    return { kind: "org", label: "내 패키지" };
+  }
 
-  function rebuildFromCatalog(catalog) {
+  /** ps2 라이브러리 + 활성 지갑 상태 → POLICIES(bindingId 키)/PACKAGES 갱신.
+   *  반환값: enabled 인 bindingId 배열(appliedByAddress 캐시에 들어간다). */
+  function rebuildFromPs2(lib, walletState) {
+    LIBRARY = lib;
+    api.BASELINE = window.PasuPs2.deriveBaseline(lib);
     for (const k of Object.keys(POLICIES)) delete POLICIES[k];
-    const groups = new Map(); // pkgKey -> { meta, members:[] }
-
-    for (const p of catalog.policies) {
-      const title =
-        TITLE_KO[p.id] ||
-        (p.rules && p.rules[0] && p.rules[0].reason) ||
-        p.id;
-      // reasons: 검색에 쓰도록 정책의 rule reason 들을 보관(원본 index.ts 의
-      // reason 검색 복원). 화면에 세부 설명을 보여주진 않는다.
-      const reasons = (p.rules || [])
-        .map((r) => r.reason)
-        .filter((x, i, a) => x && a.indexOf(x) === i);
-      POLICIES[p.id] = { title, sev: p.dominantSeverity, reasons, category: p.category || p.action || undefined };
-
-      let key, meta;
-      if (DAY1_IDS.has(p.id)) {
-        key = DEFAULT_PKG.id;
-        meta = {
-          id: DEFAULT_PKG.id,
-          name: DEFAULT_PKG.name,
-          source: { kind: DEFAULT_PKG.kind, label: DEFAULT_PKG.label },
-        };
-      } else {
-        // 대시보드/마켓 정책은 sourceLabel 단위로 묶는다.
-        key = "src:" + p.sourceLabel;
-        const isDash = p.sourceLabel === "dashboard";
-        meta = {
-          id: key,
-          name: isDash ? "내 정책 (대시보드)" : p.sourceLabel,
-          source: {
-            kind: isDash ? "org" : "market",
-            label: isDash ? "조직 · 대시보드" : p.sourceLabel,
-          },
-        };
+    const pkgs = window.PasuPs2.derivePopupPackages(lib, walletState || { bindings: {}, packageEnabled: {} });
+    const enabled = [];
+    for (const pkg of pkgs) {
+      for (const m of pkg.members) {
+        POLICIES[m.bindingId] = { title: m.name, sev: m.sev, reasons: [], category: undefined };
+        if (m.enabled) enabled.push(m.bindingId);
       }
-      if (!groups.has(key)) groups.set(key, { meta, members: [] });
-      groups.get(key).members.push(p.id);
     }
-
-    PACKAGES = [...groups.values()].map((g) =>
-      Object.assign({}, g.meta, { members: g.members }),
-    );
-    // 기본 안전팩을 항상 맨 위로
-    PACKAGES.sort((a, b) =>
-      a.id === DEFAULT_PKG.id ? -1 : b.id === DEFAULT_PKG.id ? 1 : 0,
-    );
-    api.PACKAGES = PACKAGES; // popup.js 가 참조하는 전역 핸들 갱신
+    PACKAGES = pkgs.map((p) => ({
+      id: p.id,
+      name: p.name,
+      on: p.on,
+      source: pkgSource(p.id),
+      members: p.members.map((m) => m.bindingId),
+    }));
+    api.PACKAGES = PACKAGES;
+    return enabled;
   }
 
   /* ---------- 설정 프리셋 (options 공유) ---------- */
@@ -140,8 +105,6 @@
   };
   const SETTINGS_DEFAULT = { preset: "std", ...SETTINGS_PRESETS.std };
 
-  // 온보딩 베이스라인 = day1-safety 5종 (welcome 에서 기본 체크)
-  const BASELINE_POLICIES = [...DAY1_IDS];
 
   /* ---------- 계정별 로컬 프로필 (지갑·별칭·핀·주소별 정책) ----------
      지갑 모델 = "로컬 수동 주소". 단, 계정(uid)별로 격리 저장해서
@@ -231,15 +194,8 @@
   }
 
   /* ---------- 상태 로드/저장 ---------- */
-  let lastEnabled = [];
-  let lastApplied = []; // catalog.applied — 서버에 "실제 적용된" 정책 id (원본 index.ts 의 applied)
 
   async function loadState() {
-    const catalog = await send("policy-catalog");
-    rebuildFromCatalog(catalog);
-    lastEnabled = catalog.enabled.slice();
-    lastApplied = Array.isArray(catalog.applied) ? catalog.applied.slice() : catalog.enabled.slice();
-
     // 인증 상태(uid + 이메일)
     let account = null;
     let uid = null;
@@ -295,8 +251,18 @@
       };
     });
 
+    // ps2 라이브러리 — 패키지 카드/베이스라인 목록의 원천. 실패 시 빈 라이브러리.
+    let lib = { defs: {}, packages: {} };
+    try {
+      const r = await send("ps2:get-library");
+      lib = (r && r.library) || lib;
+    } catch (e) {
+      /* SW 미부팅 등 — 빈 카드로 폴백 */
+    }
+
     if (!wallets.length) {
       // 서버에 지갑 없음 → popup 에서 "새 주소 추가" 유도.
+      rebuildFromPs2(lib, null);
       return { account, activeAddress: null, wallets: [], appliedByAddress: {} };
     }
 
@@ -304,11 +270,74 @@
     const active =
       (prof.activeAddress && byAddr.has(prof.activeAddress.toLowerCase()) && prof.activeAddress.toLowerCase()) ||
       wallets[0].address;
-    // 활성 주소 enabled 는 서버 catalog.enabled 를 신뢰(대시보드/다른 기기 반영)
-    appliedByAddress[active] = catalog.enabled.slice();
-    // appliedServer: 서버에 실제 "설치 완료"된 정책 id. popup 풋터가 enabled 와
-    // 비교해 "적용 중…"(진행/실패) 여부를 판단한다.
-    return { account, activeAddress: active, wallets, appliedByAddress, appliedServer: lastApplied.slice() };
+    // 활성 주소의 진짜 per-wallet 상태(ps2) — enabled 캐시는 표시용.
+    let walletState = null;
+    try {
+      walletState = await send("ps2:get-wallet-state", { address: active });
+    } catch (e) {
+      /* 폴백: 빈 상태 */
+    }
+    const enabled = rebuildFromPs2(lib, walletState);
+    appliedByAddress[active] = enabled.slice();
+    return { account, activeAddress: active, wallets, appliedByAddress, appliedServer: enabled.slice() };
+  }
+
+  /** 활성 지갑 재조회(토글/지갑 전환 후) — enabled bindingId 배열 반환. */
+  async function refreshActivePolicies(address) {
+    const walletState = await send("ps2:get-wallet-state", { address });
+    return rebuildFromPs2(LIBRARY || { defs: {}, packages: {} }, walletState);
+  }
+
+  async function setBindingEnabled(address, bindingId, on) {
+    await send("ps2:update-binding", { address, bindingId, patch: { enabled: on } });
+  }
+
+  async function setPackageOn(address, packageId, on) {
+    await send("ps2:set-package-enabled", { address, packageId, enabled: on });
+  }
+
+  /** 전체 켜기/끄기 — 활성 지갑의 모든 바인딩 + 패키지 토글. */
+  async function setAllBindings(address, on) {
+    const ws = await send("ps2:get-wallet-state", { address });
+    for (const pkgId of Object.keys(ws.packageEnabled || {})) {
+      if (ws.packageEnabled[pkgId] === false && on) {
+        await send("ps2:set-package-enabled", { address, packageId: pkgId, enabled: true });
+      }
+    }
+    for (const b of Object.values(ws.bindings || {})) {
+      if (b.enabled !== on) {
+        await send("ps2:update-binding", { address, bindingId: b.id, patch: { enabled: on } });
+      }
+    }
+  }
+
+  /** 온보딩 베이스라인 적용: 체크 해제된 builtin def 는 defaults.enabled=false 로
+   *  내리고(앞으로의 지갑), 프로비저닝 후 기존 바인딩도 동기 off. */
+  async function applyBaseline(addresses, offDefIds) {
+    for (const defId of offDefIds) {
+      const def = LIBRARY && LIBRARY.defs && LIBRARY.defs[defId];
+      if (!def) continue;
+      await send("ps2:put-def", {
+        def: Object.assign({}, def, {
+          defaults: Object.assign({}, def.defaults, { enabled: false }),
+          updatedAtMs: Date.now(),
+        }),
+      });
+    }
+    if (addresses.length) await send("ps2:provision-wallets", { addresses });
+    for (const a of addresses) {
+      let ws;
+      try {
+        ws = await send("ps2:get-wallet-state", { address: a });
+      } catch (e) {
+        continue;
+      }
+      for (const b of Object.values((ws && ws.bindings) || {})) {
+        if (offDefIds.indexOf(b.defId) >= 0 && b.enabled) {
+          await send("ps2:update-binding", { address: a, bindingId: b.id, patch: { enabled: false } });
+        }
+      }
+    }
   }
 
   async function saveState(state) {
@@ -320,17 +349,8 @@
         appliedByAddress: state.appliedByAddress || {},
       });
     }
-    // 2) 활성 주소의 enabled 를 백엔드 정책 엔진에 적용
-    const ids =
-      (state.appliedByAddress &&
-        state.activeAddress &&
-        state.appliedByAddress[state.activeAddress]) ||
-      [];
-    lastEnabled = ids.slice();
-    // 적용 실패는 숨기지 않고 throw — popup 이 풋터에 에러를 표시한다(원본 동작).
-    // 적용 성공이면 서버 applied 도 이 ids 와 같아진 것으로 본다.
-    await send("set-enabled-ids", { ids });
-    lastApplied = ids.slice();
+    // 정책 적용은 ps2 토글(setBindingEnabled/setPackageOn)이 즉시 수행한다 —
+    // 여기는 로컬 프로필(활성 주소/핀)만 저장한다.
   }
 
   /* ---------- 설정(알림 강도) — chrome.storage.sync 직접 ---------- */
@@ -377,7 +397,7 @@
       account: null,
       activeAddress: zero,
       wallets: [{ address: zero, nickname: "내 계정", pinned: true }],
-      appliedByAddress: { [zero]: lastEnabled.slice() },
+      appliedByAddress: { [zero]: [] },
     };
   }
 
@@ -448,18 +468,16 @@
     );
   }
 
-  /* ---------- 패키지 상태 헬퍼 ---------- */
-  function pkgState(pkg, enabledSet) {
-    const on = pkg.members.filter((id) => enabledSet.has(id)).length;
-    if (on === 0) return "off";
-    if (on === pkg.members.length) return "on";
-    return "mixed";
+  /* ---------- 패키지 상태 헬퍼 ----------
+     v2: 패키지 마스터 = 지갑별 packageEnabled(이항). 멤버 on 수는 별도 표기. */
+  function pkgState(pkg) {
+    return pkg.on ? "on" : "off";
   }
 
   const api = {
     POLICIES,
     PACKAGES,
-    BASELINE_POLICIES,
+    BASELINE: [],
     SETTINGS_PRESETS,
     SETTINGS_DEFAULT,
     defaults,
@@ -479,6 +497,11 @@
     checksumWarn,
     identiconSVG,
     pkgState,
+    refreshActivePolicies,
+    setBindingEnabled,
+    setPackageOn,
+    setAllBindings,
+    applyBaseline,
   };
   global.PasuStore = api;
 })(typeof window !== "undefined" ? window : this);

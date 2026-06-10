@@ -21,7 +21,7 @@ const flow = {
   reached: 1,            // 가장 멀리 도달한 스텝(앞으로는 게이팅, 뒤로는 자유)
   email: null,
   wallets: [],           // { address, nickname }
-  baseline: new Set(S.BASELINE_POLICIES), // 기본 전부 체크
+  baseline: new Set(), // loadState 후 S.BASELINE(builtin)으로 시드
 };
 
 const COPY = {
@@ -175,7 +175,7 @@ function paintGate2() {
    STEP 3 — 베이스라인 정책 체크리스트 (최소 1)
    ============================================================ */
 function renderStep3() {
-  const items = S.BASELINE_POLICIES.map((id) => ({ id, ...S.POLICIES[id] }));
+  const items = (S.BASELINE || []).map((b) => ({ id: b.id, title: b.title, sev: b.sev }));
   card.innerHTML =
     '<div class="ob-shead"><div class="st">베이스라인 정책</div><div class="ss">스왑 트랜잭션을 검사하는 기본 가드예요. 기본으로 모두 켜져 있어요.</div></div>' +
     '<div class="ob-checks" id="checks">' +
@@ -227,25 +227,24 @@ function renderStep4() {
 }
 
 async function finish() {
-  // store 영속화 — 팝업/설정이 같은 wallets[] · appliedByAddress 를 본다
+  // v2: 서버 지갑 등록 → 체크 해제 builtin defaults off → ps2 프로비저닝.
   try {
-    // 먼저 loadState 로 현재 로그인 계정(uid)을 store 에 세팅해야
-    // saveState 가 올바른 계정 프로필 키에 저장된다.
+    // loadState 로 현재 로그인 계정(uid)·라이브러리를 store 에 세팅.
     const cur = await S.loadState();
     const account = cur.account || (flow.email ? { email: flow.email } : null);
-    const baseline = [...flow.baseline];
     const wallets = flow.wallets.map((w, i) => ({ address: w.address, nickname: w.nickname || "", pinned: i === 0 }));
-    const appliedByAddress = {};
-    wallets.forEach((w) => { appliedByAddress[w.address] = baseline.slice(); });
-    await S.saveState({
-      account,
-      activeAddress: wallets[0] ? wallets[0].address : null,
-      wallets, appliedByAddress,
-    });
-    // 서버에도 지갑 등록 → 대시보드와 공유
+    const addresses = wallets.map((w) => w.address);
     if (S.addWallet) {
       for (const w of wallets) { try { await S.addWallet(w.address, w.nickname || undefined); } catch (e) {} }
     }
+    const offDefIds = (S.BASELINE || []).map((b) => b.id).filter((id) => !flow.baseline.has(id));
+    try { await S.applyBaseline(addresses, offDefIds); } catch (e) { console.warn("[pasu] baseline apply failed:", e); }
+    await S.saveState({
+      account,
+      activeAddress: wallets[0] ? wallets[0].address : null,
+      wallets,
+      appliedByAddress: {},
+    });
   } catch (e) {}
   if (typeof chrome !== "undefined" && chrome.tabs) chrome.tabs.getCurrent((t) => t && chrome.tabs.remove(t.id));
   else window.close();
@@ -265,6 +264,8 @@ function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<"
 (async function initWelcome() {
   let st = null;
   try { st = await S.loadState(); } catch (e) { st = null; }
+  // builtin 베이스라인을 전부 체크된 상태로 시드 (loadState 가 S.BASELINE 채움)
+  if (!flow.baseline.size) flow.baseline = new Set((S.BASELINE || []).map((b) => b.id));
 
   const loggedIn = !!(st && st.account);
   const hasWallets = !!(st && Array.isArray(st.wallets) && st.wallets.length);

@@ -77,24 +77,30 @@ function pkgInCat(pkg) {
 
 /* ---------- store glue ---------- */
 function enabledSet() { return new Set((state.activeAddress && state.appliedByAddress[state.activeAddress]) || []); }
-function setEnabled(set) {
+// ps2 토글 한 건 적용 → 활성 지갑 상태 재조회 → 캐시/화면 갱신. 실패는 풋터에.
+async function applyMut(fn) {
   if (!state.activeAddress) return;
-  state.appliedByAddress[state.activeAddress] = [...set];
-  void persist();
-}
-// 정책 적용: set-enabled-ids 성공/실패를 사실대로 풋터에 반영한다.
-async function persist() {
   state.applyStatus = "applying"; state.applyError = "";
   renderFooter();
   try {
-    await S.saveState({ account: state.account, activeAddress: state.activeAddress, wallets: state.wallets, appliedByAddress: state.appliedByAddress });
-    state.appliedServer = [...enabledSet()];
+    await fn();
+    const enabled = await S.refreshActivePolicies(state.activeAddress);
+    state.appliedByAddress[state.activeAddress] = enabled;
+    state.appliedServer = enabled.slice();
     state.applyStatus = "idle"; state.applyError = "";
   } catch (e) {
     state.applyStatus = "error";
     state.applyError = String((e && e.message) || e);
   }
-  renderFooter();
+  renderFooter(); renderHero(); renderMain();
+}
+// 로컬 프로필(활성 주소/핀/별칭) 저장 — 정책 적용은 applyMut(ps2)이 담당.
+async function persist() {
+  try {
+    await S.saveState({ account: state.account, activeAddress: state.activeAddress, wallets: state.wallets, appliedByAddress: state.appliedByAddress });
+  } catch (e) {
+    console.warn("[pasu] profile save failed:", e);
+  }
 }
 
 function activeWallet() { return state.wallets.find((w) => w.address === state.activeAddress) || state.wallets[0] || null; }
@@ -105,7 +111,7 @@ function normalizePins() {
 function walletName(w) { return w && w.nickname ? w.nickname : ""; }
 function addrStatus(addr) {
   const set = new Set(state.appliedByAddress[addr] || []);
-  const pkgCount = S.PACKAGES.filter((p) => S.pkgState(p, set) !== "off").length;
+  const pkgCount = S.PACKAGES.filter((p) => p.on).length;
   return { pkgCount, polCount: set.size };
 }
 
@@ -151,7 +157,7 @@ function renderHero() {
   const w = activeWallet();
   const set = enabledSet();
   const on = set.size;
-  const pkgOn = S.PACKAGES.filter((p) => S.pkgState(p, set) !== "off").length;
+  const pkgOn = S.PACKAGES.filter((p) => p.on).length;
   const nm = walletName(w);
   hero.innerHTML =
     '<div class="pc-hero-top">' +
@@ -208,8 +214,8 @@ function renderStick() {
   const s = document.getElementById("search");
   s.value = state.search;
   s.addEventListener("input", () => { state.search = s.value; renderMain(); });
-  document.getElementById("allOn").addEventListener("click", () => { setEnabled(new Set(Object.keys(S.POLICIES))); renderAll(); });
-  document.getElementById("allOff").addEventListener("click", () => { setEnabled(new Set()); renderAll(); });
+  document.getElementById("allOn").addEventListener("click", () => { void applyMut(() => S.setAllBindings(state.activeAddress, true)); });
+  document.getElementById("allOff").addEventListener("click", () => { void applyMut(() => S.setAllBindings(state.activeAddress, false)); });
   // 카테고리 칩 — 단일 선택, 검색어와 AND
   stick.querySelectorAll(".pc-chip").forEach((b) => b.addEventListener("click", () => {
     state.catFilter = b.dataset.cat;
@@ -246,7 +252,7 @@ function renderMain() {
   }
 
   for (const pkg of pkgs) {
-    const st = S.pkgState(pkg, set);
+    const st = S.pkgState(pkg);
     const open = state.expanded.has(pkg.id);
     const onCount = pkg.members.filter((id) => set.has(id)).length;
     html += '<div class="pc-pkg ' + (st === "off" ? "dim" : "") + (open ? " open" : "") + '" data-pkg="' + pkg.id + '">';
@@ -285,20 +291,16 @@ function renderMain() {
     });
     cardEl.querySelector('[data-act="master"]').addEventListener("click", (e) => {
       e.stopPropagation();
-      const set2 = enabledSet();
-      const st = S.pkgState(pkg, set2);
-      if (st === "on") pkg.members.forEach((id) => set2.delete(id));
-      else pkg.members.forEach((id) => set2.add(id));
-      setEnabled(set2); renderHero(); renderMain();
+      // v2: 패키지 마스터 = 지갑별 packageEnabled — 멤버 토글은 보존된다.
+      void applyMut(() => S.setPackageOn(state.activeAddress, pkg.id, !pkg.on));
     });
     cardEl.querySelectorAll('[data-act="member"]').forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (btn.disabled) return;
-        const set2 = enabledSet();
         const id = btn.dataset.id;
-        set2.has(id) ? set2.delete(id) : set2.add(id);
-        setEnabled(set2); renderHero(); renderMain();
+        const on = enabledSet().has(id);
+        void applyMut(() => S.setBindingEnabled(state.activeAddress, id, !on));
       });
     });
   });
@@ -543,9 +545,10 @@ function switchTo(addr) {
   state.activeAddress = addr;
   // 현재 주소가 곧 맨 위 고정 슬롯 — pinned는 항상 활성 주소를 따름
   state.wallets.forEach((w) => { w.pinned = (w.address === addr); });
-  persist();
+  void persist();
   closeOverlay();
-  renderHero(); renderMain(); renderFooter();
+  // 새 활성 지갑의 ps2 상태를 다시 읽어 카드 갱신(per-wallet 뷰).
+  void applyMut(() => Promise.resolve());
 }
 
 /* ---------- add form (shared validation) ---------- */
@@ -669,10 +672,9 @@ function enterOnboarding(step) {
   state.onb = {
     step: step, reached: step,
     email: state.account ? state.account.email : null,
-    // 전부 OFF 로 시작하되, 가장 치명적인 deny 1종만 미리 켜둔다.
-    // (스텝3 게이트가 "최소 1개" 라 빈 상태면 진행이 막힘 → 사용자가 켠 것만
-    //  appliedByAddress 에 들어간다는 원칙은 유지하면서 진행 가능성을 보장.)
-    wallets: [], baseline: new Set(["unlimited-approval-deny"]),
+    // v2: 기본 안전팩(builtin)이 전부 체크된 상태로 시작 — 체크 해제한 것만
+    // defaults.enabled=false 로 내려간다(새 지갑 비적용).
+    wallets: [], baseline: new Set((S.BASELINE || []).map((b) => b.id)),
   };
   document.body.classList.add("onb-mode");
   const root = document.getElementById("root");
@@ -835,7 +837,7 @@ function paintOnbGate2() {
 /* ----- step 3: 베이스라인 ----- */
 function onbStep3() {
   const card = document.getElementById("onbCard");
-  const items = S.BASELINE_POLICIES.map((id) => ({ id, ...(S.POLICIES[id] || { title: id, sev: "unknown" }) }));
+  const items = (S.BASELINE || []).map((b) => ({ id: b.id, title: b.title, sev: b.sev }));
   card.innerHTML =
     '<div class="onb-shead"><div class="st">베이스라인 정책</div><div class="ss">트랜잭션을 검사하는 기본 가드예요. 필요한 것만 켜세요 — 최소 한 개는 켜야 검사가 동작해요.</div></div>' +
     '<div class="onb-checks" id="onbChecks">' +
@@ -884,23 +886,30 @@ function onbStep4() {
 async function onbFinish() {
   const btn = document.getElementById("onbDone");
   if (btn) { btn.disabled = true; btn.textContent = "적용 중…"; }
-  const baseline = [...state.onb.baseline];
   const wallets = state.onb.wallets.map((w, i) => ({ address: w.address, nickname: w.nickname || "", pinned: i === 0 }));
-  const appliedByAddress = {};
-  wallets.forEach((w) => { appliedByAddress[w.address] = baseline.slice(); });
-  // state 반영 (탭 닫지 않음 — 같은 팝업에서 정책 화면으로)
-  state.account = state.account || { email: state.onb.email || "dev@team.xyz" };
-  state.wallets = wallets;
-  state.activeAddress = wallets[0] ? wallets[0].address : null;
-  state.appliedByAddress = appliedByAddress;
-  state.appliedServer = baseline.slice();
-  // 영속화: saveState → set-enabled-ids 로 베이스라인이 서버 enabled 에 반영(§0 carry-over)
-  try { await S.saveState({ account: state.account, activeAddress: state.activeAddress, wallets, appliedByAddress }); } catch (e) {}
-  if (S.addWallet) wallets.forEach((w) => void S.addWallet(w.address, w.nickname || undefined));
+  const addresses = wallets.map((w) => w.address);
+  // 1) 서버에 지갑 등록 → 2) 체크 해제된 builtin 은 defaults.enabled=false →
+  // 3) ps2 프로비저닝(체크 유지 def 만 바인딩) — 전부 best-effort.
+  if (S.addWallet) {
+    for (const w of wallets) {
+      try { await S.addWallet(w.address, w.nickname || undefined); } catch (e) {}
+    }
+  }
+  const offDefIds = (S.BASELINE || []).map((b) => b.id).filter((id) => !state.onb.baseline.has(id));
+  try { await S.applyBaseline(addresses, offDefIds); } catch (e) { console.warn("[pasu] baseline apply failed:", e); }
+  // 영속화(활성 주소/핀) 후 전체 리로드 — ps2 상태가 진실.
+  try {
+    await S.saveState({ account: state.account || { email: state.onb.email || "dev@team.xyz" }, activeAddress: addresses[0] || null, wallets, appliedByAddress: {} });
+  } catch (e) {}
+  let st;
+  try { st = await S.loadState(); } catch (e) { st = S.defaults(); }
+  state.account = st.account; state.activeAddress = st.activeAddress;
+  state.wallets = st.wallets; state.appliedByAddress = st.appliedByAddress || {};
+  state.appliedServer = (st.appliedServer || []).slice();
   state.onb = null;
   state.view = "main";
   state.catFilter = "all"; state.search = "";
-  state.expanded = new Set(state.wallets.length ? [S.PACKAGES[0] ? S.PACKAGES[0].id : "pkg.baseline"] : []);
+  state.expanded = new Set(S.PACKAGES[0] ? [S.PACKAGES[0].id] : []);
   buildShell(); applySize(); renderAll();
 }
 
