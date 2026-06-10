@@ -29,6 +29,7 @@ import { HomePage } from "./pages/HomePage";
 import { EditorListPage } from "./pages/editor/EditorListPage";
 import { EditorDetailPage } from "./pages/editor/EditorDetailPage";
 import { SimulationPage } from "./pages/SimulationPage";
+import { SimulateWizardPage } from "./pages/simulate/SimulateWizardPage";
 import { MonitoringPage } from "./pages/MonitoringPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { MarketPage } from "./pages/MarketPage";
@@ -59,6 +60,7 @@ const router = createRouter([
           { path: "editor/new", element: <Navigate to="/editor" replace /> },
           { path: "editor/:id", element: <EditorDetailPage /> },
           { path: "simulation", element: <SimulationPage /> },
+          { path: "simulate", element: <SimulateWizardPage /> },
           { path: "monitoring", element: <MonitoringPage /> },
           { path: "history", element: <HistoryPage /> },
           { path: "market", element: <MarketPage /> },
