@@ -62,3 +62,15 @@ export const setPackageEnabled = (opts: { address: string; packageId: string; en
 
 export const provisionWallets = (addresses: string[]) =>
   sendToExtension<null>({ type: "ps2:provision-wallets", addresses });
+
+export type MarketInstallScope =
+  | { kind: "wallets"; addresses: string[] }
+  | { kind: "all" }
+  | { kind: "library-only" };
+
+export const installMarket = (opts: {
+  defs: PolicyDef[];
+  pkg?: PackageDef;
+  scope: MarketInstallScope;
+  params?: Record<string, Record<string, HoleValue>>;
+}) => sendToExtension<null>({ type: "ps2:install-market", ...opts });

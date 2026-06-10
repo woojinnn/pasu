@@ -1,19 +1,18 @@
 import { useMemo, useRef, useState } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   getListing,
   listListings,
   pickI18n,
-  type ListingDetail,
   type ListingKind,
   type ListingSort,
   type ListingSummary,
 } from "../server-api";
 import { publisherDisplay } from "../server-api/market";
 import { Topbar } from "../shell/Topbar";
-import { installListingToEditor } from "./market-install";
+import { MarketInstallModal } from "./MarketInstallModal";
 
 import {
   CATEGORY_COLOR,
@@ -677,7 +676,7 @@ function ListView({
       )}
 
       {installTarget && (
-        <InstallModal
+        <MarketInstallModal
           listing={installTarget}
           locale={locale}
           onClose={() => setInstallTarget(null)}
@@ -781,98 +780,6 @@ function InstallBadge({
   );
 }
 
-/** "받기" popup — copies the listing into the local Editor (copy-to-editor). */
-function InstallModal({
-  listing,
-  locale,
-  onClose,
-}: {
-  listing: ListingSummary;
-  locale: MarketLocale;
-  onClose: () => void;
-}) {
-  const ko = locale === "ko";
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const detailQ = useQuery({
-    queryKey: ["market-listing", listing.slug],
-    queryFn: () => getListing(listing.slug),
-  });
-  const [done, setDone] = useState(false);
-  const mut = useMutation({
-    mutationFn: () => installListingToEditor(detailQ.data as ListingDetail, locale),
-    onSuccess: async () => {
-      setDone(true);
-      await qc.invalidateQueries({ queryKey: ["managed-policies"] });
-      await qc.invalidateQueries({ queryKey: ["policy-sets"] });
-    },
-  });
-  const isSet = listing.kind === "set";
-  const name = pickI18n(listing.display_name, locale) || listing.slug;
-  const memberCount = detailQ.data?.latest_version?.members?.length ?? 0;
-
-  return (
-    <div className="im-overlay" onClick={onClose}>
-      <div className="im-box" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="im-x" onClick={onClose} aria-label="close">
-          ×
-        </button>
-        {!done ? (
-          <>
-            <div className="im-kind">{isSet ? (ko ? "패키지" : "Package") : ko ? "정책" : "Policy"}</div>
-            <h3 className="im-title">{name}</h3>
-            <p className="im-sub">
-              {ko
-                ? isSet
-                  ? `이 패키지${memberCount ? ` (정책 ${memberCount}개)` : ""}를 내 Editor로 내려받습니다.`
-                  : "이 정책을 내 Editor로 내려받습니다."
-                : isSet
-                  ? `Copy this package${memberCount ? ` (${memberCount} policies)` : ""} into your Editor.`
-                  : "Copy this policy into your Editor."}
-            </p>
-            <p className="im-note">
-              {ko
-                ? "Editor에서 편집·활성화할 수 있는 복사본으로 받습니다(원본과 분리)."
-                : "Installed as an editable copy, independent of the source."}
-            </p>
-            {mut.isError && <div className="publish-error">{(mut.error as Error).message}</div>}
-            <div className="im-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>
-                {ko ? "취소" : "Cancel"}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={!detailQ.data || mut.isPending}
-                onClick={() => mut.mutate()}
-              >
-                {mut.isPending ? (ko ? "받는 중…" : "Installing…") : ko ? "Editor로 받기" : "Install to Editor"}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="im-ok">✓</div>
-            <h3 className="im-title">{ko ? "받았어요" : "Installed"}</h3>
-            <p className="im-sub">
-              {ko ? `"${name}"을(를) Editor에 추가했습니다.` : `Added "${name}" to your Editor.`}
-            </p>
-            <div className="im-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>
-                {ko ? "계속 둘러보기" : "Keep browsing"}
-              </button>
-              <button type="button" className="btn-primary" onClick={() => navigate("/editor")}>
-                {ko ? "Editor로 이동" : "Open Editor"}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Policy card — leads with what it does (Korean one-liner), severity, category. */
 function PolicyListCard({
   listing,
   locale,
