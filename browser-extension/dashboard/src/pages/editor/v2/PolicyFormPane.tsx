@@ -22,6 +22,7 @@ import { useAddressBook, shortAddress, type AddressEntry } from "../../../hooks/
 import { PolicyDiagram } from "../../../cedar/diagram/PolicyDiagram";
 import { AddressInput, AddressSetInput } from "./AddressPicker";
 import {
+  conditionsDeep,
   emptyFormModel,
   fieldsForTrigger,
   flattenSituations,
@@ -266,8 +267,7 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
   const enrichCount = useMemo(
     () =>
       new Set(
-        [...model.when, ...model.unless]
-          .flatMap((n) => (isGroupNode(n) ? n.conds : [n]))
+        conditionsDeep([...model.when, ...model.unless])
           .map((c) => c.fieldPath)
           .filter((p) => p.startsWith("context.custom.")),
       ).size,
@@ -627,11 +627,15 @@ function ConditionEditor({
     if (isGroupNode(n)) return;
     updateNode(si, ni, { kind: "group", joiner: n.joiner, conds: [{ ...n, joiner: "and" }] });
   };
-  // 단일 선택지 묶음 → 행으로 (선택지가 여럿이면 의미가 바뀌므로 버튼이 비활성)
+  // 단일 leaf 묶음 → 행으로 (항목이 여럿이면 의미가 바뀌므로 버튼이 비활성)
   const unwrap = (si: number, ni: number) => {
     const n = runs[si][ni];
-    if (!isGroupNode(n) || n.conds.length !== 1) return;
-    updateNode(si, ni, { ...n.conds[0], joiner: n.joiner, ...(n.not ? { not: true } : {}) });
+    if (!isGroupNode(n) || n.conds.length !== 1 || isGroupNode(n.conds[0])) return;
+    updateNode(si, ni, {
+      ...(n.conds[0] as FormCondition),
+      joiner: n.joiner,
+      ...(n.not ? { not: true } : {}),
+    });
   };
 
   // Drag-and-drop: drag a row onto a situation card (AND로 합류), a choice
@@ -692,11 +696,12 @@ function ConditionEditor({
                 <GroupBox
                   key={ni}
                   group={n}
+                  orCtx
                   ctx={ctx}
                   dragging={drag !== null}
                   selection={selection}
                   onDragStartCond={(c) => setDrag(c)}
-                  onDropInto={() => dropTo({ kind: "group", group: n })}
+                  onDropIntoGroup={(g) => dropTo({ kind: "group", group: g })}
                   onToggleNot={() => updateNode(si, ni, { ...n, not: !n.not })}
                   onConds={(conds) => updateNode(si, ni, { ...n, conds })}
                   onUngroup={() => unwrap(si, ni)}
@@ -747,50 +752,74 @@ function ConditionEditor({
   );
 }
 
-// ── a "다음 중 하나라도" choice box (OR-only group) ─────────────────────────
+// ── a nested group box — OR("다음 중 하나라도") / AND("다음에 모두 해당") by
+//    nesting parity, recursive ─────────────────────────────────────────────
 
 function GroupBox({
   group,
+  orCtx,
   ctx,
   dragging,
   selection,
   onDragStartCond,
-  onDropInto,
+  onDropIntoGroup,
   onToggleNot,
   onConds,
   onUngroup,
   onRemove,
 }: {
   group: FormGroupNode;
+  /** true = this group ORs its children; false = an AND-subgroup. */
+  orCtx: boolean;
   ctx: EditorCtx;
   dragging: boolean;
   selection: EditorSelection;
   onDragStartCond: (c: FormCondition) => void;
-  onDropInto: () => void;
+  /** Drop the dragged row into `g` (this group or a nested descendant). */
+  onDropIntoGroup: (g: FormGroupNode) => void;
   onToggleNot: () => void;
-  onConds: (conds: FormCondition[]) => void;
+  onConds: (conds: FormNode[]) => void;
   onUngroup: () => void;
   onRemove: () => void;
 }) {
   const { conds } = group;
-  // 선택지 joiner 정규화: 머리 and(무시됨), 나머지 or — 묶음은 항상 OR.
-  const norm = (xs: FormCondition[]): FormCondition[] =>
-    xs.map((c, i) => ({ ...c, joiner: i === 0 ? "and" : "or" }));
-  const updateCond = (i: number, c: FormCondition) =>
-    onConds(norm(conds.map((x, j) => (j === i ? c : x))));
+  // joiner는 그룹 안에서 의미가 없지만 관례(머리 and, 나머지 or)로 정규화.
+  const norm = (xs: FormNode[]): FormNode[] =>
+    xs.map((c, i) => {
+      const want = i === 0 ? "and" : "or";
+      return c.joiner === want ? c : { ...c, joiner: want };
+    });
+  const update = (i: number, n: FormNode) => onConds(norm(conds.map((x, j) => (j === i ? n : x))));
+  const removeAt = (i: number) => {
+    const next = conds.filter((_, j) => j !== i);
+    if (next.length === 0) onRemove(); // emptying the box removes it
+    else onConds(norm(next));
+  };
+  // 자식 행을 반대 패리티 묶음으로 감싸기 / 단일 leaf 묶음 풀기.
+  const wrapChild = (i: number) => {
+    const n = conds[i];
+    if (isGroupNode(n)) return;
+    update(i, { kind: "group", joiner: n.joiner, conds: [{ ...n, joiner: "and" }] });
+  };
+  const unwrapChild = (i: number) => {
+    const n = conds[i];
+    if (!isGroupNode(n) || n.conds.length !== 1 || isGroupNode(n.conds[0])) return;
+    update(i, { ...(n.conds[0] as FormCondition), joiner: n.joiner, ...(n.not ? { not: true } : {}) });
+  };
+  const singleLeaf = conds.length === 1 && !isGroupNode(conds[0]);
   return (
     <div
-      className={`pf-box${group.not ? " neg" : ""}${dragging ? " droppable" : ""}${
-        selection.isNodeSelected(group) ? " is-selected" : ""
-      }`}
+      className={`pf-box ${orCtx ? "or" : "and"}${group.not ? " neg" : ""}${
+        dragging ? " droppable" : ""
+      }${selection.isNodeSelected(group) ? " is-selected" : ""}`}
       ref={(el) => selection.registerRow(group, el)}
       onDragOver={dragging ? (e) => e.preventDefault() : undefined}
       onDrop={
         dragging
           ? (e) => {
-              e.stopPropagation(); // 바깥 상황 카드의 drop이 같이 받지 않게
+              e.stopPropagation(); // 바깥 카드/묶음의 drop이 같이 받지 않게
               e.preventDefault();
-              onDropInto();
+              onDropIntoGroup(group);
             }
           : undefined
       }
@@ -802,12 +831,12 @@ function GroupBox({
           selection.onClickNode(group);
         }}
       >
-        <span className="pf-box-label">다음 중 하나라도</span>
+        <span className="pf-box-label">{orCtx ? "다음 중 하나라도" : "다음에 모두 해당"}</span>
         <button
           type="button"
           className={`pf-ctl pf-not${group.not ? " on" : ""}`}
           onClick={onToggleNot}
-          title="뒤집기 — 다음 중 어느 것도 아닐 때"
+          title={orCtx ? "뒤집기 — 다음 중 어느 것도 아닐 때" : "뒤집기 — 다음에 모두 해당하지는 않을 때"}
         >
           아니다
         </button>
@@ -816,8 +845,8 @@ function GroupBox({
           type="button"
           className="pf-box-act"
           onClick={onUngroup}
-          disabled={conds.length !== 1}
-          title={conds.length === 1 ? "묶음 풀기" : "선택지가 여러 개면 풀 수 없어요"}
+          disabled={!singleLeaf}
+          title={singleLeaf ? "묶음 풀기" : "항목이 여러 개면 풀 수 없어요"}
         >
           해제
         </button>
@@ -825,29 +854,43 @@ function GroupBox({
           ✕
         </button>
       </div>
-      {conds.map((c, i) => (
-        <ConditionRow
-          key={i}
-          cond={c}
-          alt
-          ctx={ctx}
-          selected={selection.isNodeSelected(c)}
-          onSelect={() => selection.onClickNode(c)}
-          rowRef={(el) => selection.registerRow(c, el)}
-          onDragStart={() => onDragStartCond(c)}
-          onToggleNot={() => updateCond(i, { ...c, not: !c.not })}
-          onField={(p) => updateCond(i, pickFieldCond(c, p, ctx.fieldByPath))}
-          onOp={(op) => updateCond(i, pickOpCond(c, op, ctx.fieldByPath))}
-          onValue={(value) => updateCond(i, { ...c, value })}
-          onRemove={() => {
-            const next = conds.filter((_, j) => j !== i);
-            if (next.length === 0) onRemove(); // emptying the box removes it
-            else onConds(norm(next));
-          }}
-        />
-      ))}
+      {conds.map((c, i) =>
+        isGroupNode(c) ? (
+          <GroupBox
+            key={i}
+            group={c}
+            orCtx={!orCtx}
+            ctx={ctx}
+            dragging={dragging}
+            selection={selection}
+            onDragStartCond={onDragStartCond}
+            onDropIntoGroup={onDropIntoGroup}
+            onToggleNot={() => update(i, { ...c, not: !c.not })}
+            onConds={(next) => update(i, { ...c, conds: next })}
+            onUngroup={() => unwrapChild(i)}
+            onRemove={() => removeAt(i)}
+          />
+        ) : (
+          <ConditionRow
+            key={i}
+            cond={c}
+            alt={orCtx}
+            ctx={ctx}
+            selected={selection.isNodeSelected(c)}
+            onSelect={() => selection.onClickNode(c)}
+            rowRef={(el) => selection.registerRow(c, el)}
+            onDragStart={() => onDragStartCond(c)}
+            onToggleNot={() => update(i, { ...c, not: !c.not })}
+            onField={(p) => update(i, pickFieldCond(c, p, ctx.fieldByPath))}
+            onOp={(op) => update(i, pickOpCond(c, op, ctx.fieldByPath))}
+            onValue={(value) => update(i, { ...c, value })}
+            onGroup={() => wrapChild(i)}
+            onRemove={() => removeAt(i)}
+          />
+        ),
+      )}
       <button type="button" className="pf-or-btn" onClick={() => onConds(norm([...conds, newCond(ctx.fields)]))}>
-        + 선택지 추가
+        {orCtx ? "+ 선택지 추가" : "+ 조건 추가"}
       </button>
     </div>
   );
@@ -959,7 +1002,12 @@ function ConditionRow({
         )}
         <span className="pf-grow" />
         {onGroup && (
-          <button type="button" className="pf-iconbtn" onClick={onGroup} title="이 조건을 '다음 중 하나라도' 묶음으로">
+          <button
+            type="button"
+            className="pf-iconbtn"
+            onClick={onGroup}
+            title={alt ? "이 선택지를 '다음에 모두 해당' 묶음으로" : "이 조건을 '다음 중 하나라도' 묶음으로"}
+          >
             묶기
           </button>
         )}

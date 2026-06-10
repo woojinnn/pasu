@@ -16,7 +16,7 @@ export type {
 } from "./model";
 export { emptyFormModel, isGroupNode } from "./model";
 export { formToIr, formToIrWithMap, irToForm, leafToExpr, splitRuns, type FormIrMaps } from "./convert";
-export { situationsOf, flattenSituations, moveCondTo, type DropTarget } from "./situations";
+export { situationsOf, flattenSituations, moveCondTo, conditionsDeep, type DropTarget } from "./situations";
 export {
   fieldsForTrigger,
   operatorsFor,

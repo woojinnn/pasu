@@ -193,6 +193,25 @@
   opacity: 0.4;
   cursor: default;
 }
+/* 패리티 틴트: OR 묶음(하나라도)은 따뜻한 톤, AND 묶음(모두)은 차가운 톤.
+   중첩 박스는 자연스럽게 들여쓰기. */
+.pf-box.or {
+  background: var(--warn-50, #fffbeb);
+  border-color: var(--warn-300, #d8c08a);
+}
+.pf-box.or > .pf-box-head .pf-box-label {
+  color: var(--warn-800, #92400e);
+}
+.pf-box.and {
+  background: var(--info-50, #eef2f7);
+  border-color: var(--info-300, #aab8c8);
+}
+.pf-box.and > .pf-box-head .pf-box-label {
+  color: var(--info-800, #1e40af);
+}
+.pf-box .pf-box {
+  margin: 6px 0 6px 18px;
+}
 
 /* 클릭 동기화: 선택된 행/묶음/카드 (다이어그램의 파란 선택과 짝) */
 .pf-cond.is-selected,

@@ -162,7 +162,7 @@ describe("formToIr / irToForm", () => {
     expect(irToForm(ir)).toBeNull();
   });
 
-  it("rejects a group whose disjunct is an AND-run `X && (A && B || C)` (OR-only groups)", () => {
+  it("opens `X && (A && B || C)` as an OR-group with an AND-subgroup alternative", () => {
     const cmp2 = (n: string, v: number): Expr => ({
       kind: "binary",
       op: "==",
@@ -188,7 +188,105 @@ describe("formToIr / irToForm", () => {
         },
       ],
     };
-    expect(irToForm(ir)).toBeNull();
+    const form = irToForm(ir);
+    expect(form).not.toBeNull();
+    expect(form?.when).toEqual([
+      cond("context.x", "==", { kind: "long", value: 0 }),
+      {
+        kind: "group",
+        joiner: "and",
+        conds: [
+          {
+            kind: "group",
+            joiner: "and",
+            conds: [
+              cond("context.a", "==", { kind: "long", value: 1 }),
+              cond("context.b", "==", { kind: "long", value: 2 }, { joiner: "or" }),
+            ],
+          },
+          cond("context.c", "==", { kind: "long", value: 3 }, { joiner: "or" }),
+        ],
+      },
+    ]);
+    // and round-trips losslessly from the form side
+    const m: FormModel = { ...richModel, when: form!.when, unless: [] };
+    expect(irToForm(formToIr(m))?.when).toEqual(form?.when);
+  });
+
+  it("round-trips the deep nesting (A && (B||C)) && D && (E || (F && (G||H)))", () => {
+    const c1 = (n: string, j: "and" | "or" = "and") =>
+      cond(`context.${n}`, "==", { kind: "long", value: 1 }, j === "or" ? { joiner: "or" } : {});
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        c1("a"),
+        { kind: "group", joiner: "and", conds: [c1("b"), c1("c", "or")] },
+        c1("d"),
+        {
+          kind: "group",
+          joiner: "and",
+          conds: [
+            c1("e"),
+            {
+              kind: "group",
+              joiner: "or",
+              conds: [
+                c1("f"),
+                { kind: "group", joiner: "or", conds: [c1("g"), c1("h", "or")] },
+              ],
+            },
+          ],
+        },
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    const round = irToForm(formToIr(m));
+    expect(round).not.toBeNull();
+    // joiners inside groups are display-dead and normalized (head and, rest or)
+    expect(round?.when).toHaveLength(4);
+    expect(irToForm(formToIr(round!))).toEqual(round);
+  });
+
+  it("guards an optional field inside its nearest AND context only (deep branch)", () => {
+    // when { a == 1 && (b == 2 || custom.x >= 1) } — 가드는 custom.x 선택지에만.
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        cond("context.a", "==", { kind: "long", value: 1 }),
+        {
+          kind: "group",
+          joiner: "and",
+          conds: [
+            cond("context.b", "==", { kind: "long", value: 2 }),
+            cond("context.custom.x", ">=", { kind: "decimal", value: "1" }, { joiner: "or" }),
+          ],
+        },
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    const body = formToIr(m).conditions[0].body;
+    const hasCount = (e: Expr): number => {
+      if (e.kind === "has") return 1;
+      if (e.kind === "binary") return hasCount(e.left) + hasCount(e.right);
+      if (e.kind === "unary") return hasCount(e.operand);
+      return 0;
+    };
+    // body = a==1 && (b==2 || (has·has && x>=1))
+    expect(body.kind).toBe("binary");
+    if (body.kind !== "binary") return;
+    const orNode = body.right;
+    expect(orNode.kind === "binary" && orNode.op === "||").toBe(true);
+    if (orNode.kind !== "binary") return;
+    expect(hasCount(body.left)).toBe(0); // a==1 쪽엔 가드 없음
+    expect(hasCount(orNode.left)).toBe(0); // b==2 선택지엔 없음
+    expect(hasCount(orNode.right)).toBe(2); // custom.x 선택지에만
+    expect(irToForm(formToIr(m))).toEqual(m);
   });
 
   it("normalizes `[set].contains(attr)` to an `in` condition (allowlist policies)", () => {
@@ -373,9 +471,9 @@ describe("formToIr / irToForm", () => {
     expect(irToForm(formToIr(m))).toEqual(m);
   });
 
-  it("rejects a doubly-nested group (hands off to blocks)", () => {
-    // forbid when { z==0 && (a==1 || (b==2 && (c==3 || d==4))) } — a group whose
-    // own internals need another group → beyond the one-level form subset.
+  it("opens a doubly-nested group recursively (parity alternation)", () => {
+    // forbid when { z==0 && (a==1 || (b==2 && (c==3 || d==4))) } — depth 4,
+    // alternating OR/AND containers.
     const cmp = (n: string, v: number): Expr => ({
       kind: "binary",
       op: "==",
@@ -393,6 +491,9 @@ describe("formToIr / irToForm", () => {
         },
       ],
     };
-    expect(irToForm(ir)).toBeNull();
+    const form = irToForm(ir);
+    expect(form).not.toBeNull();
+    const m: FormModel = { ...richModel, when: form!.when, unless: [] };
+    expect(irToForm(formToIr(m))?.when).toEqual(form?.when);
   });
 });

@@ -23,6 +23,7 @@ import type {
 
 import type {
   FormCondition,
+  FormGroupNode,
   FormLeaf,
   FormModel,
   FormNode,
@@ -266,33 +267,51 @@ export function splitRuns<T extends { joiner: GroupOp }>(items: T[]): T[][] {
   return runs;
 }
 
-/** Boolean expr for a flat list of conditions (OR of AND-runs); no guards. */
-function condsExpr(conds: FormCondition[], rec?: Recorder): Expr {
-  return fold("||", splitRuns(conds).map((run) => fold("&&", run.map((c) => condExpr(c, rec)))));
+/** A node holds at least one real condition somewhere (recursively). Groups a
+ *  user emptied out contribute nothing and are dropped before folding. */
+function hasAnyLeaf(n: FormNode): boolean {
+  return !isGroupNode(n) || n.conds.some(hasAnyLeaf);
 }
 
-/** A node's expr — a leaf condition, or a `(…)` group's inner expr (negated). */
-function nodeExpr(node: FormNode, rec?: Recorder): Expr {
-  if (isGroupNode(node)) {
-    const inner = condsExpr(node.conds, rec);
-    const e: Expr = node.not ? { kind: "unary", op: "!", operand: inner } : inner;
-    rec?.exprsByNode.set(node, node.not ? [e, inner] : [e]);
-    return e;
+/** Direct leaf conditions of an AND context (deeper groups guard themselves). */
+function directLeaves(nodes: FormNode[]): FormCondition[] {
+  return nodes.filter((n): n is FormCondition => !isGroupNode(n));
+}
+
+/**
+ * A group's expr by nesting parity: OR of alternatives when `orCtx`, else AND.
+ * `has` guards insert at the NEAREST AND context — an AND group prepends guards
+ * for its direct leaves; a single-leaf OR alternative wraps just itself in
+ * `(guards && leaf)` — so a missing optional field only disables its own
+ * branch, never an OR sibling.
+ */
+function groupExpr(g: FormGroupNode, orCtx: boolean, trigger: FormTrigger, rec?: Recorder): Expr {
+  const present = g.conds.filter(hasAnyLeaf);
+  const terms = present.map((n) => {
+    if (isGroupNode(n)) return groupExpr(n, !orCtx, trigger, rec);
+    const e = condExpr(n, rec);
+    if (!orCtx) return e;
+    const guards = presenceGuards([n], trigger);
+    return guards.length > 0 ? fold("&&", [...guards, e]) : e;
+  });
+  let body = fold(orCtx ? "||" : "&&", terms);
+  if (!orCtx) {
+    const guards = presenceGuards(directLeaves(present), trigger);
+    if (guards.length > 0) body = fold("&&", [...guards, body]);
   }
-  return condExpr(node, rec);
+  const out: Expr = g.not ? { kind: "unary", op: "!", operand: body } : body;
+  rec?.exprsByNode.set(g, g.not ? [out, body] : [out]);
+  return out;
 }
 
-/** Every leaf condition across nodes (for has-guard collection). */
-function allLeaves(nodes: FormNode[]): FormCondition[] {
-  return nodes.flatMap((n) => (isGroupNode(n) ? n.conds : [n]));
-}
-
-/** One AND-run's expr: per-run `has` guards (THIS run's leaves only) + the
- *  run's terms. Guards inside the run keep an OR-sibling run alive when this
- *  run's optional field is absent (fail-open fix). */
+/** One AND-run's expr: guards for the run's DIRECT leaves + the run's terms
+ *  (nested groups carry their own guards — see {@link groupExpr}). */
 function runExpr(run: FormNode[], trigger: FormTrigger, rec?: Recorder): Expr {
-  const body = fold("&&", run.map((n) => nodeExpr(n, rec)));
-  const guards = presenceGuards(allLeaves(run), trigger);
+  const body = fold(
+    "&&",
+    run.map((n) => (isGroupNode(n) ? groupExpr(n, true, trigger, rec) : condExpr(n, rec))),
+  );
+  const guards = presenceGuards(directLeaves(run), trigger);
   const root = guards.length > 0 ? fold("&&", [...guards, body]) : body;
   rec?.runRootByHead.set(run[0], root);
   return root;
@@ -300,46 +319,24 @@ function runExpr(run: FormNode[], trigger: FormTrigger, rec?: Recorder): Expr {
 
 /**
  * Build a clause body from a node list. Nodes split into AND-runs at each `or`
- * joiner; a group node contributes its parenthesized sub-expr. Each run carries
- * its own `has` guards. Null when empty.
+ * joiner; a group node contributes its parity-folded sub-expr. Each AND context
+ * carries its own `has` guards. Null when empty.
  */
 function clauseBody(nodes: FormNode[], trigger: FormTrigger, rec?: Recorder): Expr | null {
-  // Drop empty group boxes (a box the user emptied) so `fold` never sees an
-  // empty list.
-  const present = nodes.filter((n) => !isGroupNode(n) || n.conds.length > 0);
+  const present = nodes.filter(hasAnyLeaf);
   if (present.length === 0) return null;
   return fold("||", splitRuns(present).map((run) => runExpr(run, trigger, rec)));
 }
 
-/** Parse one term into a condition, peeling a `!(…)` negation. Null if not a leaf. */
-function parseCond(expr: Expr, joiner: GroupOp): FormCondition | null {
-  let not = false;
-  let node = expr;
-  if (node.kind === "unary" && node.op === "!") {
-    not = true;
-    node = node.operand;
-  }
-  const leaf = exprToLeaf(node);
-  if (!leaf) return null;
-  return { ...leaf, joiner, ...(not ? { not: true } : {}) };
-}
+/** The dead-but-normalized joiner for a group child (head "and", rest "or"). */
+const groupJoiner = (i: number): GroupOp => (i === 0 ? "and" : "or");
 
-/** Parse a group body into OR-of-leaf conditions ("다음 중 하나라도"). The form
- *  only authors OR-groups; an AND-run inside a group hands off to blocks. */
-function parseConds(body: Expr): FormCondition[] | null {
-  const disj = body.kind === "binary" && body.op === "||" ? flattenBinary(body, "||") : [body];
-  const out: FormCondition[] = [];
-  for (let di = 0; di < disj.length; di++) {
-    const c = parseCond(disj[di], di === 0 ? "and" : "or");
-    if (!c) return null;
-    out.push(c);
-  }
-  return out;
-}
-
-/** Parse one atom (a run element) into a node — a leaf, or a `(…)` group when
- *  the atom is itself a binary connective. Null if not representable. */
-function parseAtom(atom: Expr, joiner: GroupOp): FormNode | null {
+/**
+ * Parse one term of an AND context into a node: a (possibly negated) leaf, or
+ * an `||`-rooted OR-group. A negated `&&` (`!(A && B)`) breaks parity and is
+ * not form-representable. Null when outside the subset.
+ */
+function parseAndAtom(atom: Expr, joiner: GroupOp): FormNode | null {
   let not = false;
   let node = atom;
   if (node.kind === "unary" && node.op === "!") {
@@ -348,11 +345,64 @@ function parseAtom(atom: Expr, joiner: GroupOp): FormNode | null {
   }
   const leaf = exprToLeaf(node);
   if (leaf) return { ...leaf, joiner, ...(not ? { not: true } : {}) };
-  if (node.kind === "binary" && (node.op === "||" || node.op === "&&")) {
-    const conds = parseConds(node);
+  if (node.kind === "binary" && node.op === "||") {
+    const conds = parseOrChildren(node);
     if (conds) return { kind: "group", joiner, conds, ...(not ? { not: true } : {}) };
   }
   return null;
+}
+
+/** Parse an `||` chain into an OR-group's children (each a leaf alternative or
+ *  an AND-subgroup). Mutually recursive with {@link parseAndAtom}. */
+function parseOrChildren(orNode: Expr): FormNode[] | null {
+  const disj = flattenBinary(orNode, "||");
+  const out: FormNode[] = [];
+  for (let i = 0; i < disj.length; i++) {
+    const n = parseOrAlternative(disj[i], groupJoiner(i));
+    if (!n) return null;
+    out.push(n);
+  }
+  return out;
+}
+
+/** One OR alternative: a (guarded) leaf, or an `&&` chain → AND-subgroup. A
+ *  negated `||` alternative breaks parity → null. */
+function parseOrAlternative(alt: Expr, joiner: GroupOp): FormNode | null {
+  // A negated alternative: `!(F && G)` → AND-subgroup with not; `!leaf` → leaf.
+  if (alt.kind === "unary" && alt.op === "!") {
+    const inner = alt.operand;
+    if (inner.kind === "binary" && inner.op === "&&") {
+      const conds = parseAndChildren(flattenBinary(inner, "&&"));
+      if (!conds) return null;
+      return { kind: "group", joiner, conds, not: true };
+    }
+    return parseAndAtom(alt, joiner); // negated leaf (or null)
+  }
+  const terms = flattenBinary(alt, "&&").filter((t) => t.kind !== "has");
+  if (terms.length === 0) return null; // guards-only alternative
+  if (terms.length === 1) {
+    // A lone `||` here would be an OR directly inside an OR (only reachable via
+    // a guard wrapper like `has && (B || C)`) — shared-guard shapes are outside
+    // the parity subset.
+    if (terms[0].kind === "binary" && terms[0].op === "||") return null;
+    return parseAndAtom(terms[0], joiner);
+  }
+  const conds = parseAndChildren(terms);
+  if (!conds) return null;
+  return { kind: "group", joiner, conds };
+}
+
+/** Parse the (guard-stripped) terms of an AND-subgroup into children. */
+function parseAndChildren(terms: Expr[]): FormNode[] | null {
+  const real = terms.filter((t) => t.kind !== "has");
+  if (real.length === 0) return null;
+  const out: FormNode[] = [];
+  for (let i = 0; i < real.length; i++) {
+    const n = parseAndAtom(real[i], groupJoiner(i));
+    if (!n) return null;
+    out.push(n);
+  }
+  return out;
 }
 
 /** Parse one AND-run's terms (its `has` guards stripped) into nodes. Null when
@@ -363,7 +413,7 @@ function parseRun(run: Expr[], joiner: GroupOp): FormNode[] | null {
   if (terms.length === 0) return null;
   const out: FormNode[] = [];
   for (let i = 0; i < terms.length; i++) {
-    const n = parseAtom(terms[i], i === 0 ? joiner : "and");
+    const n = parseAndAtom(terms[i], i === 0 ? joiner : "and");
     if (!n) return null;
     out.push(n);
   }

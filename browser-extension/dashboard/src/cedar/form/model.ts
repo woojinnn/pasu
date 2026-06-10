@@ -4,9 +4,10 @@
  * A policy is a `forbid` over an action-eq trigger with two flat condition lists
  * (`when` and `unless`). Each condition is a single comparison with its own
  * `not` and a `joiner` (AND/OR) to the previous one. AND binds tighter than OR,
- * so the list reads as an OR of AND-runs (e.g. `A 그리고 B 또는 C` = `(A∧B)∨C`)
- * — a flat, query-builder UX that still covers most real policies. Anything
- * deeper (nested OR-groups, if/then/else, …) hands off to the Block tab.
+ * so the list reads as an OR of AND-runs ("위험 상황" cards in the UI). Inside a
+ * run, {@link FormGroupNode} containers nest recursively with alternating
+ * AND/OR parity, covering arbitrary boolean structure. What the form still
+ * can't hold (if/then/else, like/is, …) stays Cedar-text-only.
  *
  * The form NEVER assembles Cedar text. It builds this model, {@link formToIr}
  * turns it into a `PolicyIR`, and the existing pipeline renders Cedar.
@@ -52,14 +53,18 @@ export interface FormCondition extends FormLeaf {
   joiner: GroupOp;
 }
 
-/** An explicit parenthesized group — `(…)` — of conditions, joined to its
- *  siblings by `joiner`. One level deep (its `conds` are plain leaves), which is
- *  enough for CNF like `(A | B) & (C | D)`; deeper nesting hands off to blocks. */
+/** An explicit parenthesized group — `(…)` — of conditions and/or deeper
+ *  groups. A group's MEANING comes from nesting parity, not a stored op: a
+ *  group sitting in an AND context (a situation card, or an AND-subgroup) is an
+ *  OR of its children ("다음 중 하나라도"); a group sitting in an OR group is an
+ *  AND of its children ("다음에 모두 해당"). Alternating containers express any
+ *  boolean formula (NOT stays a per-node toggle). Children's `joiner` carries
+ *  no meaning inside a group and is normalized to head "and" / rest "or". */
 export interface FormGroupNode {
   kind: "group";
   joiner: GroupOp;
   not?: boolean;
-  conds: FormCondition[];
+  conds: FormNode[];
 }
 
 /** A node in a clause's list: either a bare condition or a `(…)` group box.

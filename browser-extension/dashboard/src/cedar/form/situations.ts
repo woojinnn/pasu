@@ -26,33 +26,76 @@ export function flattenSituations(runs: FormNode[][]): FormNode[] {
   return out;
 }
 
+/** Every leaf condition anywhere under `nodes` (recursive). */
+export function conditionsDeep(nodes: FormNode[]): FormCondition[] {
+  return nodes.flatMap((n) => (isGroupNode(n) ? conditionsDeep(n.conds) : [n]));
+}
+
 /** Where a dragged condition can land. */
 export type DropTarget =
   | { kind: "situation"; index: number }
   | { kind: "group"; group: FormGroupNode }
   | { kind: "new-situation" };
 
-/** Move `cond` (matched by identity; a top-level row or a group alternative) to
- *  `target`. Pure; an emptied group is dropped. No-op if already there. */
+/** Remove `cond` (by identity) wherever it sits, recursively. A group emptied
+ *  by the removal is dropped; untouched nodes keep their identity. */
+function removeDeep(
+  nodes: FormNode[],
+  cond: FormCondition,
+): { nodes: FormNode[]; changed: boolean } {
+  let changed = false;
+  const out: FormNode[] = [];
+  for (const n of nodes) {
+    if (n === cond) {
+      changed = true;
+      continue;
+    }
+    if (isGroupNode(n)) {
+      const r = removeDeep(n.conds, cond);
+      if (r.changed) {
+        changed = true;
+        if (r.nodes.length > 0) out.push({ ...n, conds: r.nodes });
+      } else out.push(n);
+    } else out.push(n);
+  }
+  return { nodes: out, changed };
+}
+
+/** Append `cond` to `group` (matched by identity anywhere in the tree).
+ *  `found` is false when the reference didn't match (e.g. the group object was
+ *  rebuilt because the dragged row was removed from inside it). */
+function appendToGroup(
+  nodes: FormNode[],
+  group: FormGroupNode,
+  cond: FormCondition,
+): { nodes: FormNode[]; found: boolean } {
+  let found = false;
+  const out = nodes.map((n): FormNode => {
+    if (!isGroupNode(n) || found) return n;
+    if (n === group) {
+      found = true;
+      return { ...n, conds: [...n.conds, { ...cond, joiner: "or" as const }] };
+    }
+    const r = appendToGroup(n.conds, group, cond);
+    if (r.found) {
+      found = true;
+      return { ...n, conds: r.nodes };
+    }
+    return n;
+  });
+  return { nodes: out, found };
+}
+
+/** Move `cond` (matched by identity; a row anywhere in the tree) to `target`.
+ *  Pure; an emptied group is dropped. No-op if already in the target group, or
+ *  when the target group's identity didn't survive the removal (dropping a row
+ *  onto its own ancestor group). */
 export function moveCondTo(nodes: FormNode[], cond: FormCondition, target: DropTarget): FormNode[] {
   if (target.kind === "group" && target.group.conds.includes(cond)) return nodes;
-  // 1) remove from wherever it is
-  const removed: FormNode[] = [];
-  for (const n of nodes) {
-    if (n === cond) continue;
-    if (isGroupNode(n)) {
-      const conds = n.conds.filter((x) => x !== cond);
-      if (conds.length === 0) continue;
-      removed.push(conds.length === n.conds.length ? n : { ...n, conds });
-    } else removed.push(n);
-  }
-  // 2) insert at the target
+  const removed = removeDeep(nodes, cond).nodes;
   if (target.kind === "group") {
-    // `cond` was never inside `target.group` (guarded above), so the group's
-    // identity survived the removal pass — match it by reference.
-    return removed.map((n) =>
-      n === target.group ? { ...n, conds: [...n.conds, { ...cond, joiner: "or" as const }] } : n,
-    );
+    const r = appendToGroup(removed, target.group, cond);
+    return r.found ? r.nodes : nodes;
   }
   const runs = situationsOf(removed);
   if (target.kind === "new-situation" || runs.length === 0) {
