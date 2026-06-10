@@ -66,6 +66,31 @@ pub trait SanctionsScreen: Send + Sync {
     async fn is_sanctioned(&self, chain_id: i64, address: &str) -> Option<bool>;
 }
 
+/// Resolves an NFT collection's market floor price in ETH, for the
+/// `marketplace.sign_order_proceeds_floor` enrichment (Seaport below-floor drain
+/// shield). The production impl (`AlchemyFloorOracle`, app.rs) calls Alchemy's
+/// `getFloorPrice` (which reports the floor in ETH); the method then converts
+/// ETH→USD via the market-global WETH price. An unknown / unpriceable /
+/// off-mainnet collection returns `None` so the optional call fail-opens (the
+/// below-floor policy stays dormant), never a fabricated floor. Mirrors
+/// [`SanctionsScreen`].
+#[async_trait]
+pub trait NftFloorOracle: Send + Sync {
+    /// Floor price of NFT `collection` (a `0x` contract address, lowercase) on
+    /// `chain` (CAIP-2, e.g. `eip155:1`) in **ETH**, or `None` when unknown.
+    async fn floor_eth(&self, chain: &str, collection: &str) -> Option<f64>;
+}
+
+/// A floor oracle that knows nothing (always `None`) — the safe default when no
+/// floor source is configured: the below-floor policy stays dormant.
+pub struct NoFloorOracle;
+#[async_trait]
+impl NftFloorOracle for NoFloorOracle {
+    async fn floor_eth(&self, _chain: &str, _collection: &str) -> Option<f64> {
+        None
+    }
+}
+
 /// Error surfaced by [`evaluate`].
 /// `Reducer` is a *client* error (the action could not be applied to the given
 /// state — map to `422 Unprocessable Entity`); `Store` is a *server* error (the
@@ -127,6 +152,7 @@ pub async fn evaluate(
     store: &dyn WalletStore,
     price_book: &dyn PriceBook,
     sanctions: &dyn SanctionsScreen,
+    floor: &dyn NftFloorOracle,
     req: EvaluateRequest,
 ) -> Result<EvaluateResponse, HandlerError> {
     // This handler is db-agnostic: production passes the PostgreSQL-backed
@@ -186,7 +212,7 @@ pub async fn evaluate(
     // USD-cap policy's `context.custom.*Usd` field is populated even for a wallet
     // that was never registered/synced.
     let (results, mut diagnostics) =
-        execute_call_specs(&state_before, &req.call_specs, price_book, sanctions).await;
+        execute_call_specs(&state_before, &req.call_specs, price_book, sanctions, floor).await;
     diagnostics.append(&mut sim_diagnostics);
 
     let note = if req.envelopes.is_empty() {
@@ -224,6 +250,7 @@ async fn execute_call_specs(
     specs: &[CallSpec],
     price_book: &dyn PriceBook,
     sanctions: &dyn SanctionsScreen,
+    floor: &dyn NftFloorOracle,
 ) -> (BTreeMap<String, Value>, Vec<Diagnostic>) {
     let mut results = BTreeMap::new();
     let mut diagnostics = Vec::new();
@@ -354,6 +381,40 @@ async fn execute_call_specs(
                     call_id: Some(spec.call_id.clone()),
                 }),
             },
+            "marketplace.sign_order_proceeds_floor" => {
+                match sign_order_proceeds_floor(&spec.params, price_book, floor).await {
+                    Some(value) => {
+                        tracing::debug!(call_id = %spec.call_id, "marketplace.sign_order_proceeds_floor: OK");
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "marketplace.sign_order_proceeds_floor: floor unavailable / \
+                             unpriceable collection (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
+            "marketplace.fulfill_overpay_vs_floor" => {
+                match fulfill_overpay_vs_floor(&spec.params, price_book, floor).await {
+                    Some(value) => {
+                        tracing::debug!(call_id = %spec.call_id, "marketplace.fulfill_overpay_vs_floor: OK");
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "marketplace.fulfill_overpay_vs_floor: floor unavailable / \
+                             unpriceable collection (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
             other => diagnostics.push(Diagnostic {
                 level: "info".to_owned(),
                 message: format!(
@@ -412,6 +473,178 @@ async fn oracle_usd_value(
     }
     let usd = amount_f / divisor * price_f;
     Some(format!("{usd:.4}"))
+}
+
+/// Value a single lowered Seaport `MarketItem` leg in USD via the market-global
+/// price book. `native` legs price against the canonical WETH proxy (ETH has no
+/// `(chain, address)` token); `erc20` legs price against `token`. NFT legs have no
+/// fungible price here (floor is resolved separately) → `None`. Dutch-auction legs
+/// (`startAmount != endAmount`) are valued at `startAmount` (the maximum
+/// realizable), which is conservative against false-positives. Returns `None` when
+/// the price is unknown / the amount unparseable. Mirrors [`oracle_usd_value`].
+async fn value_leg_usd(chain: &str, item: &Value, price_book: &dyn PriceBook) -> Option<f64> {
+    /// Canonical WETH (mainnet) — the ETH price proxy (mirrors `oracle_steth_peg_status_bps`).
+    const WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+    let kind = item.get("kind").and_then(Value::as_str)?;
+    let amount_raw = item.get("startAmount").and_then(Value::as_str)?;
+    let amount = U256::from_str_radix(amount_raw.trim_start_matches("0x"), 16).ok()?;
+    let amount_f: f64 = amount.to_string().parse().ok()?;
+
+    let (asset, fallback_decimals): (String, u8) = match kind {
+        "native" => (WETH.to_owned(), 18),
+        "erc20" => (item.get("token").and_then(Value::as_str)?.to_owned(), 18),
+        _ => return None, // erc721/erc1155(_criteria) have no fungible price here
+    };
+    let fact = price_book.price(chain, &asset).await?;
+    let price_f: f64 = fact.price_usd.parse().ok()?;
+    let decimals = if kind == "erc20" {
+        fact.decimals
+    } else {
+        fallback_decimals
+    };
+    let divisor = 10f64.powi(i32::from(decimals));
+    if divisor <= 0.0 {
+        return None;
+    }
+    Some(amount_f / divisor * price_f)
+}
+
+/// Market-global USD price of 1 ETH, via the canonical WETH proxy (native ETH is
+/// not a `(chain, address)` token). `None` when the price is unknown / unparseable.
+async fn eth_price_usd(chain: &str, price_book: &dyn PriceBook) -> Option<f64> {
+    /// Canonical WETH (mainnet) — the ETH price proxy.
+    const WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+    price_book.price(chain, WETH).await?.price_usd.parse().ok()
+}
+
+/// Server-side `marketplace.sign_order_proceeds_floor` (Seaport preset P1 —
+/// below-floor drain shield): compares the signer's USD proceeds against the
+/// offered NFT collection(s)' USD floor and reports how far below floor the sale
+/// is, in basis points. The two static `SignOrder` flatteners catch zero-proceeds
+/// / giveaway drains; this catches the dust case — the signer IS paid, but for a
+/// tiny fraction of value (e.g. 0.01 ETH for a floor-10-ETH NFT). Floor needs an
+/// oracle (it is not in the signed payload).
+///
+/// Returns `{ proceedsBelowFloorBps, proceedsUsd, floorUsd }` (4dp decimal
+/// strings). `None` (→ field omitted → policy dormant, fail-open) when the floor
+/// is unknown / zero / off-mainnet, or proceeds can't be valued — never warns on a
+/// collection we cannot price.
+async fn sign_order_proceeds_floor(
+    params: &Value,
+    price_book: &dyn PriceBook,
+    floor: &dyn NftFloorOracle,
+) -> Option<Value> {
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let offerer = params
+        .get("offerer")
+        .and_then(Value::as_str)?
+        .to_lowercase();
+    let offer = params.get("offer").and_then(Value::as_array)?;
+    let consideration = params.get("consideration").and_then(Value::as_array)?;
+
+    // floorEth = Σ floor(collection) over offered NFT legs (Alchemy reports ETH).
+    let nft_kinds = ["erc721", "erc1155", "erc721_criteria", "erc1155_criteria"];
+    let mut floor_eth = 0.0f64;
+    for leg in offer {
+        let kind = leg.get("kind").and_then(Value::as_str).unwrap_or_default();
+        if nft_kinds.contains(&kind) {
+            let token = leg.get("token").and_then(Value::as_str)?;
+            floor_eth += floor.floor_eth(chain, &token.to_lowercase()).await?;
+        }
+    }
+    if floor_eth <= 0.0 {
+        return None; // no priceable NFT offered → dormant
+    }
+    // Convert the ETH floor to USD via the market-global WETH proxy price (the
+    // same price `value_leg_usd` uses for native proceeds). No ETH price → dormant.
+    let floor_usd = floor_eth * eth_price_usd(chain, price_book).await?;
+    if floor_usd <= 0.0 {
+        return None;
+    }
+
+    // proceedsUsd = Σ USD of consideration legs paid to the offerer (the signer).
+    let mut proceeds_usd = 0.0f64;
+    for leg in consideration {
+        let recipient = leg
+            .get("recipient")
+            .and_then(Value::as_str)
+            .map(str::to_lowercase);
+        if recipient.as_deref() == Some(offerer.as_str()) {
+            if let Some(usd) = value_leg_usd(chain, leg, price_book).await {
+                proceeds_usd += usd;
+            }
+        }
+    }
+
+    let below = (1.0 - proceeds_usd / floor_usd).max(0.0) * 10_000.0;
+    Some(json!({
+        "proceedsBelowFloorBps": format!("{below:.4}"),
+        "proceedsUsd": format!("{proceeds_usd:.4}"),
+        "floorUsd": format!("{floor_usd:.4}"),
+    }))
+}
+
+/// Server-side `marketplace.fulfill_overpay_vs_floor` (Seaport preset P3 — taker
+/// payment safety): the BUY-side analog of below-floor. Reports how many times the
+/// received NFT collection's USD floor the taker is PAYING in total consideration
+/// (`overpayMultiple = paidUsd / floorUsd`). A fake mint / buy page can show a small
+/// UI price while the calldata pays a huge consideration; this surfaces paying many
+/// times the floor for what you receive.
+///
+/// Returns `{ overpayMultiple, paidUsd, floorUsd }` (4dp decimal strings). `None`
+/// (→ field omitted → policy dormant, fail-open) when the floor is unknown / zero /
+/// off-mainnet, or nothing priceable is paid — never warns on a collection we
+/// cannot price. Floor is a WEAK upper anchor on the buy side (rare items sell far
+/// above floor), so the policy pairs this with a generous threshold and warn-only.
+async fn fulfill_overpay_vs_floor(
+    params: &Value,
+    price_book: &dyn PriceBook,
+    floor: &dyn NftFloorOracle,
+) -> Option<Value> {
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let offer = params.get("offer").and_then(Value::as_array)?;
+    let consideration = params.get("consideration").and_then(Value::as_array)?;
+
+    // floorEth = Σ floor(collection) over the RECEIVED NFT legs (Alchemy reports ETH).
+    let nft_kinds = ["erc721", "erc1155", "erc721_criteria", "erc1155_criteria"];
+    let mut floor_eth = 0.0f64;
+    for leg in offer {
+        let kind = leg.get("kind").and_then(Value::as_str).unwrap_or_default();
+        if nft_kinds.contains(&kind) {
+            let token = leg.get("token").and_then(Value::as_str)?;
+            floor_eth += floor.floor_eth(chain, &token.to_lowercase()).await?;
+        }
+    }
+    if floor_eth <= 0.0 {
+        return None; // no priceable NFT received → dormant
+    }
+    // Convert the ETH floor to USD via the market-global WETH proxy price (the same
+    // price `value_leg_usd` uses for native legs). No ETH price → dormant.
+    let floor_usd = floor_eth * eth_price_usd(chain, price_book).await?;
+    if floor_usd <= 0.0 {
+        return None;
+    }
+
+    // paidUsd = Σ USD over ALL consideration legs (the taker pays the whole
+    // consideration: seller proceeds + fees + royalties), unlike below-floor which
+    // sums only the legs paid TO the offerer.
+    let mut paid_usd = 0.0f64;
+    for leg in consideration {
+        if let Some(usd) = value_leg_usd(chain, leg, price_book).await {
+            paid_usd += usd;
+        }
+    }
+    if paid_usd <= 0.0 {
+        return None; // nothing priceable paid → cannot judge overpay → dormant
+    }
+
+    let multiple = paid_usd / floor_usd;
+    Some(json!({
+        "overpayMultiple": format!("{multiple:.4}"),
+        "paidUsd": format!("{paid_usd:.4}"),
+        "floorUsd": format!("{floor_usd:.4}"),
+    }))
 }
 
 /// Server-side `oracle.steth_peg_status_bps` (preset P4 — peg-aware stake safety):
@@ -603,6 +836,149 @@ mod tests {
         StubSanctions(None)
     }
 
+    /// A test [`NftFloorOracle`] returning a fixed floor (ETH) for ANY collection.
+    struct StubFloor(Option<f64>);
+    #[async_trait]
+    impl NftFloorOracle for StubFloor {
+        async fn floor_eth(&self, _chain: &str, _collection: &str) -> Option<f64> {
+            self.0
+        }
+    }
+
+    /// A priced book: ANY asset = $2000 @ 18 decimals (the ETH/WETH proxy price).
+    fn priced_book() -> StubPriceBook {
+        StubPriceBook(
+            Some(PriceFact {
+                price_usd: "2000".to_owned(),
+                decimals: 18,
+            }),
+            Some(18),
+        )
+    }
+
+    /// A standard Seaport listing params object: offer 1 NFT, consideration one
+    /// native leg of `amount_hex` wei to `recipient`.
+    fn floor_params(recipient: &str, amount_hex: &str) -> Value {
+        serde_json::json!({
+            "chain_id": "eip155:1",
+            "offerer": "0x1111111111111111111111111111111111111111",
+            "offer": [{
+                "kind": "erc721",
+                "token": "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
+                "startAmount": "0x1", "endAmount": "0x1"
+            }],
+            "consideration": [{
+                "kind": "native",
+                "startAmount": amount_hex, "endAmount": amount_hex,
+                "recipient": recipient
+            }]
+        })
+    }
+
+    /// proceeds 0.01 ETH ($20) vs floor 5 ETH × $2000 = $10,000 ⇒ 99.8% below ⇒ 9980 bps.
+    #[tokio::test]
+    async fn proceeds_floor_below_threshold_reports_high_bps() {
+        // 0.01 ETH = 1e16 wei = 0x2386f26fc10000.
+        let params = floor_params(
+            "0x1111111111111111111111111111111111111111",
+            "0x2386f26fc10000",
+        );
+        let v = super::sign_order_proceeds_floor(&params, &priced_book(), &StubFloor(Some(5.0)))
+            .await
+            .expect("priced floor → Some");
+        assert_eq!(v["proceedsBelowFloorBps"], serde_json::json!("9980.0000"));
+    }
+
+    /// Floor unknown (oracle returns None) ⇒ method returns None ⇒ policy dormant.
+    #[tokio::test]
+    async fn proceeds_floor_unknown_floor_is_none_dormant() {
+        let params = floor_params(
+            "0x1111111111111111111111111111111111111111",
+            "0x2386f26fc10000",
+        );
+        assert!(
+            super::sign_order_proceeds_floor(&params, &priced_book(), &StubFloor(None))
+                .await
+                .is_none()
+        );
+    }
+
+    /// The only consideration leg pays a THIRD party (not the offerer) ⇒ proceeds
+    /// $0 ⇒ 10000 bps (the aggregate proceeds filter on recipient == offerer).
+    #[tokio::test]
+    async fn proceeds_floor_ignores_legs_not_paid_to_offerer() {
+        let params = floor_params(
+            "0x000000000000000000000000000000000000a01c",
+            "0x2386f26fc10000",
+        );
+        let v = super::sign_order_proceeds_floor(&params, &priced_book(), &StubFloor(Some(5.0)))
+            .await
+            .expect("priced floor → Some");
+        assert_eq!(v["proceedsBelowFloorBps"], serde_json::json!("10000.0000"));
+    }
+
+    /// Floor known (5 ETH) but the ETH→USD price is unavailable (empty price book)
+    /// ⇒ the floor cannot be converted ⇒ method returns None ⇒ policy dormant.
+    #[tokio::test]
+    async fn proceeds_floor_eth_price_unknown_is_none_dormant() {
+        let params = floor_params(
+            "0x1111111111111111111111111111111111111111",
+            "0x2386f26fc10000",
+        );
+        assert!(
+            super::sign_order_proceeds_floor(&params, &no_price_book(), &StubFloor(Some(5.0)))
+                .await
+                .is_none()
+        );
+    }
+
+    // ── marketplace.fulfill_overpay_vs_floor (P3 taker payment safety) ──────
+
+    /// Pay 60 ETH for a floor-1-ETH NFT ⇒ overpayMultiple 60.0 (the $2000 ETH price
+    /// cancels: multiple = paidEth / floorEth). All consideration legs are summed
+    /// regardless of recipient (the taker pays the whole consideration).
+    #[tokio::test]
+    async fn overpay_above_floor_reports_high_multiple() {
+        // 60 ETH = 0x340aad21b3b700000.
+        let params = floor_params(
+            "0x1111111111111111111111111111111111111111",
+            "0x340aad21b3b700000",
+        );
+        let v = super::fulfill_overpay_vs_floor(&params, &priced_book(), &StubFloor(Some(1.0)))
+            .await
+            .expect("priced floor → Some");
+        assert_eq!(v["overpayMultiple"], serde_json::json!("60.0000"));
+    }
+
+    /// Floor unknown (oracle None) ⇒ method None ⇒ policy dormant.
+    #[tokio::test]
+    async fn overpay_unknown_floor_is_none_dormant() {
+        let params = floor_params(
+            "0x1111111111111111111111111111111111111111",
+            "0x340aad21b3b700000",
+        );
+        assert!(
+            super::fulfill_overpay_vs_floor(&params, &priced_book(), &StubFloor(None))
+                .await
+                .is_none()
+        );
+    }
+
+    /// Floor known (1 ETH) but the ETH→USD price is unavailable ⇒ the floor cannot
+    /// be converted ⇒ method None ⇒ policy dormant.
+    #[tokio::test]
+    async fn overpay_eth_price_unknown_is_none_dormant() {
+        let params = floor_params(
+            "0x1111111111111111111111111111111111111111",
+            "0x340aad21b3b700000",
+        );
+        assert!(
+            super::fulfill_overpay_vs_floor(&params, &no_price_book(), &StubFloor(Some(1.0)))
+                .await
+                .is_none()
+        );
+    }
+
     /// A test [`PriceBook`] returning DISTINCT prices for stETH vs WETH (keyed by
     /// address); any other asset → `None`. Lets `oracle.steth_peg_status_bps` see
     /// a real ratio (the shared `StubPriceBook` returns one price for everything).
@@ -719,12 +1095,112 @@ mod tests {
             outputs: Vec::new(),
             optional: true,
         };
-        let (results, _diag) =
-            super::execute_call_specs(&st, &[spec], &no_price_book(), &StubSanctions(Some(true)))
-                .await;
+        let (results, _diag) = super::execute_call_specs(
+            &st,
+            &[spec],
+            &no_price_book(),
+            &StubSanctions(Some(true)),
+            &NoFloorOracle,
+        )
+        .await;
         assert_eq!(
             results["m::operator-sanctions"],
             serde_json::json!({ "sanctioned": true })
+        );
+    }
+
+    /// WIRING (dispatch): a `marketplace.sign_order_proceeds_floor` call-spec with
+    /// the manifest-shaped lowered params reaches the method through the real
+    /// `execute_call_specs` dispatch and lands the result keyed by `call_id`.
+    #[tokio::test]
+    async fn execute_call_specs_serves_sign_order_proceeds_floor() {
+        let st = WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        let spec = CallSpec {
+            manifest_id: "listing-proceeds-below-floor-warn".into(),
+            call_id: "floor::1".into(),
+            method: "marketplace.sign_order_proceeds_floor".into(),
+            params: floor_params(
+                "0x1111111111111111111111111111111111111111",
+                "0x2386f26fc10000",
+            ),
+            outputs: Vec::new(),
+            optional: true,
+        };
+        let (results, _diag) = super::execute_call_specs(
+            &st,
+            &[spec],
+            &priced_book(),
+            &StubSanctions(None),
+            &StubFloor(Some(5.0)),
+        )
+        .await;
+        assert_eq!(
+            results["floor::1"]["proceedsBelowFloorBps"],
+            serde_json::json!("9980.0000")
+        );
+    }
+
+    /// WIRING (dispatch): the fulfill overpay call-spec reaches the method via the
+    /// real `execute_call_specs` dispatch and lands keyed by `call_id`.
+    #[tokio::test]
+    async fn execute_call_specs_serves_fulfill_overpay_vs_floor() {
+        let st = WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        let spec = CallSpec {
+            manifest_id: "fulfill-overpay-vs-floor-warn".into(),
+            call_id: "overpay::1".into(),
+            method: "marketplace.fulfill_overpay_vs_floor".into(),
+            params: floor_params(
+                "0x1111111111111111111111111111111111111111",
+                "0x340aad21b3b700000",
+            ),
+            outputs: Vec::new(),
+            optional: true,
+        };
+        let (results, _diag) = super::execute_call_specs(
+            &st,
+            &[spec],
+            &priced_book(),
+            &StubSanctions(None),
+            &StubFloor(Some(1.0)),
+        )
+        .await;
+        assert_eq!(
+            results["overpay::1"]["overpayMultiple"],
+            serde_json::json!("60.0000")
+        );
+    }
+
+    /// WIRING (full public entry): an `EvaluateRequest` carrying the floor
+    /// call-spec flows through `evaluate` → `execute_call_specs` → dispatch →
+    /// method, and the computed `proceedsBelowFloorBps` appears in the response
+    /// results map (the same map the SW replays into `context.custom.*`).
+    #[tokio::test]
+    async fn evaluate_serves_sign_order_proceeds_floor_into_results() {
+        let store = InMemoryWalletStore::new();
+        let mut req = empty_envelope_request();
+        req.call_specs.push(CallSpec {
+            manifest_id: "listing-proceeds-below-floor-warn".into(),
+            call_id: "floor::1".into(),
+            method: "marketplace.sign_order_proceeds_floor".into(),
+            params: floor_params(
+                "0x1111111111111111111111111111111111111111",
+                "0x2386f26fc10000",
+            ),
+            outputs: Vec::new(),
+            optional: true,
+        });
+        let resp = evaluate(
+            &store,
+            &priced_book(),
+            &no_sanctions(),
+            &StubFloor(Some(5.0)),
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["floor::1"]["proceedsBelowFloorBps"],
+            serde_json::json!("9980.0000")
         );
     }
 
@@ -936,6 +1412,7 @@ mod tests {
             &store,
             &no_price_book(),
             &no_sanctions(),
+            &NoFloorOracle,
             empty_envelope_request(),
         )
         .await
@@ -966,6 +1443,7 @@ mod tests {
             &store,
             &no_price_book(),
             &no_sanctions(),
+            &NoFloorOracle,
             empty_envelope_request(),
         )
         .await
@@ -987,6 +1465,7 @@ mod tests {
             &store,
             &no_price_book(),
             &no_sanctions(),
+            &NoFloorOracle,
             request_with_envelope(hyperliquid_withdraw_action()),
         )
         .await
@@ -1024,9 +1503,15 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, &no_price_book(), &no_sanctions(), req)
-            .await
-            .unwrap();
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
         assert_eq!(
             resp.policy_request.results["swap-usdc-usd-cap-deny::usd"],
             serde_json::json!({ "usd": "100.0100" })
@@ -1049,9 +1534,15 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, &no_price_book(), &no_sanctions(), req)
-            .await
-            .expect("a non-reducible action must NOT fail the request");
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .expect("a non-reducible action must NOT fail the request");
 
         // The USD value was still computed from the synced price.
         assert_eq!(
@@ -1083,9 +1574,15 @@ mod tests {
             "0x5f5e100",
         ));
 
-        let resp = evaluate(&store, &no_price_book(), &no_sanctions(), req)
-            .await
-            .unwrap();
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
         assert!(
             resp.policy_request.results.is_empty(),
             "no price → no result"
@@ -1120,7 +1617,7 @@ mod tests {
             None,
         );
 
-        let resp = evaluate(&store, &price_book, &no_sanctions(), req)
+        let resp = evaluate(&store, &price_book, &no_sanctions(), &NoFloorOracle, req)
             .await
             .unwrap();
 
@@ -1153,7 +1650,7 @@ mod tests {
         // Empty wallet — decimals can ONLY come from the global book (=6, USDC).
         let price_book = StubPriceBook(None, Some(6));
 
-        let resp = evaluate(&store, &price_book, &no_sanctions(), req)
+        let resp = evaluate(&store, &price_book, &no_sanctions(), &NoFloorOracle, req)
             .await
             .unwrap();
 
@@ -1184,7 +1681,7 @@ mod tests {
         });
         let price_book = StubPriceBook(None, Some(18));
 
-        let resp = evaluate(&store, &price_book, &no_sanctions(), req)
+        let resp = evaluate(&store, &price_book, &no_sanctions(), &NoFloorOracle, req)
             .await
             .unwrap();
 
@@ -1285,6 +1782,7 @@ mod tests {
             std::slice::from_ref(&spec),
             &no_price_book(),
             &no_sanctions(),
+            &NoFloorOracle,
         )
         .await;
         assert_eq!(
@@ -1373,6 +1871,7 @@ mod tests {
             &[dup_spec.clone(), horizon_spec.clone()],
             &no_price_book(),
             &no_sanctions(),
+            &NoFloorOracle,
         )
         .await;
         assert_eq!(

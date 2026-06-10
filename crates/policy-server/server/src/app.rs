@@ -26,7 +26,9 @@ use crate::coordination::DynCoordinator;
 use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
-use crate::handler::{evaluate, HandlerError, PriceBook, PriceFact, SanctionsScreen};
+use crate::handler::{
+    evaluate, HandlerError, NftFloorOracle, PriceBook, PriceFact, SanctionsScreen,
+};
 use crate::market_handlers;
 use crate::read_handlers;
 use crate::write_handlers;
@@ -387,6 +389,88 @@ impl SanctionsScreen for ChainalysisSanctionsOracle {
     }
 }
 
+/// Max age for a marketplace floor quote to be trusted. Alchemy background-
+/// refreshes live marketplaces every ~15 min, so a quote older than this is from a
+/// marketplace Alchemy no longer maintains (e.g. `LooksRare`, observed 17 months
+/// stale) — dropping it stops a dead market's price from dragging the floor down (a
+/// stale-LOW quote would undervalue the floor and miss a real dust drain) or
+/// inflating it. Tunable.
+const MAX_FLOOR_AGE: time::Duration = time::Duration::days(1);
+
+/// Pick the floor (ETH) from an Alchemy `getFloorPrice` response: the LOWEST floor
+/// among marketplaces whose quote is FRESH (`retrievedAt` within [`MAX_FLOOR_AGE`]
+/// of `now`) AND valid (positive `floorPrice`, null `error`). Stale quotes are
+/// dropped FIRST, so "lowest across marketplaces" is the cheapest CURRENT listing,
+/// never the cheapest including months-old garbage. `None` when no marketplace has
+/// a fresh, valid floor.
+fn pick_fresh_floor_eth(body: &serde_json::Value, now: time::OffsetDateTime) -> Option<f64> {
+    use time::format_description::well_known::Rfc3339;
+    ["openSea", "looksRare"]
+        .iter()
+        .filter_map(|mkt| {
+            let m = &body[*mkt];
+            if m.get("error").is_some_and(|e| !e.is_null()) {
+                return None; // marketplace reported an error
+            }
+            let price = m["floorPrice"].as_f64()?;
+            if !(price.is_finite() && price > 0.0) {
+                return None;
+            }
+            let retrieved =
+                time::OffsetDateTime::parse(m["retrievedAt"].as_str()?, &Rfc3339).ok()?;
+            if now - retrieved > MAX_FLOOR_AGE {
+                return None; // stale quote
+            }
+            Some(price)
+        })
+        .reduce(f64::min)
+}
+
+/// NFT floor source for [`NftFloorOracle`], backed by Alchemy's `getFloorPrice`
+/// NFT API. (Reservoir's hosted API was sunset 2025-10-15; Alchemy is its
+/// recommended migration.) `getFloorPrice` reports the floor **in ETH** per
+/// marketplace (`OpenSea` + `LooksRare`), **Ethereum mainnet only** — so v1 returns
+/// `None` off `eip155:1`. We take the LOWEST floor among FRESH quotes
+/// ([`pick_fresh_floor_eth`] drops stale ones first); the consuming method converts
+/// ETH→USD via the WETH price. Reads
+/// `ALCHEMY_NFT_API_URL` — the full NFT-API base incl. key, e.g.
+/// `https://eth-mainnet.g.alchemy.com/nft/v3/<API_KEY>`; when unset the oracle
+/// returns `None` (→ the optional `marketplace.sign_order_proceeds_floor` call
+/// fail-opens, the below-floor policy stays dormant), never a fabricated floor.
+/// Any network / non-200 / parse failure → `None`. The request is hard-bounded
+/// (1.5 s) so a slow/dead API degrades to `None`, never blocking the verdict.
+struct AlchemyFloorOracle {
+    client: reqwest::Client,
+    base_url: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl NftFloorOracle for AlchemyFloorOracle {
+    async fn floor_eth(&self, chain: &str, collection: &str) -> Option<f64> {
+        if chain != "eip155:1" {
+            return None; // getFloorPrice is Ethereum-mainnet-only
+        }
+        let base = self.base_url.as_deref()?;
+        let url = format!("{base}/getFloorPrice?contractAddress={collection}");
+        let resp = self
+            .client
+            .get(&url)
+            .header("accept", "application/json")
+            .timeout(std::time::Duration::from_millis(1500))
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let body = resp.json::<serde_json::Value>().await.ok()?;
+        // Response: `{ "openSea": { "floorPrice": <f64>, "priceCurrency": "ETH",
+        // "retrievedAt": <rfc3339>, "error": null }, "looksRare": { … } }`. Drop
+        // stale quotes, then take the lowest fresh floor.
+        pick_fresh_floor_eth(&body, time::OffsetDateTime::now_utc())
+    }
+}
+
 async fn evaluate_handler(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
@@ -417,7 +501,11 @@ async fn evaluate_handler(
         client: reqwest::Client::new(),
         rpc_url: std::env::var("POLICY_SANCTIONS_RPC_URL").ok(),
     };
-    match evaluate(&*store, &price_book, &sanctions, req).await {
+    let floor = AlchemyFloorOracle {
+        client: reqwest::Client::new(),
+        base_url: std::env::var("ALCHEMY_NFT_API_URL").ok(),
+    };
+    match evaluate(&*store, &price_book, &sanctions, &floor, req).await {
         Ok(resp) => Json(resp).into_response(),
         Err(err @ HandlerError::Reducer(_)) => {
             (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into_response()
@@ -425,5 +513,98 @@ async fn evaluate_handler(
         Err(err @ HandlerError::Store(_)) => {
             (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use time::format_description::well_known::Rfc3339;
+    use time::OffsetDateTime;
+
+    fn at(ts: &str) -> OffsetDateTime {
+        OffsetDateTime::parse(ts, &Rfc3339).unwrap()
+    }
+
+    /// Both quotes fresh → the LOWEST is the floor (cheapest current listing).
+    #[test]
+    fn both_fresh_takes_min() {
+        let now = at("2026-06-10T05:00:00Z");
+        let body = json!({
+            "openSea":   { "floorPrice": 9.0, "retrievedAt": "2026-06-10T04:55:00Z", "error": null },
+            "looksRare": { "floorPrice": 8.0, "retrievedAt": "2026-06-10T04:50:00Z", "error": null },
+        });
+        assert_eq!(super::pick_fresh_floor_eth(&body, now), Some(8.0));
+    }
+
+    /// A stale-HIGH quote is dropped; the fresh one wins (the real BAYC case:
+    /// `OpenSea` 9.1 fresh vs `LooksRare` 69 stale 17 months).
+    #[test]
+    fn stale_high_dropped_fresh_wins() {
+        let now = at("2026-06-10T05:00:00Z");
+        let body = json!({
+            "openSea":   { "floorPrice": 9.09999, "retrievedAt": "2026-06-10T04:51:00Z", "error": null },
+            "looksRare": { "floorPrice": 69.0,    "retrievedAt": "2025-01-13T03:42:00Z", "error": null },
+        });
+        assert_eq!(super::pick_fresh_floor_eth(&body, now), Some(9.09999));
+    }
+
+    /// THE fix: a stale-LOW quote must NOT drag the floor down via min. The old
+    /// raw-min(9.0, 3.0)=3.0 would undervalue the floor and MISS a real dust drain;
+    /// dropping the stale source first yields the correct fresh 9.0.
+    #[test]
+    fn stale_low_dropped_not_min() {
+        let now = at("2026-06-10T05:00:00Z");
+        let body = json!({
+            "openSea":   { "floorPrice": 9.0, "retrievedAt": "2026-06-10T04:55:00Z", "error": null },
+            "looksRare": { "floorPrice": 3.0, "retrievedAt": "2024-06-10T00:00:00Z", "error": null },
+        });
+        assert_eq!(super::pick_fresh_floor_eth(&body, now), Some(9.0));
+    }
+
+    /// Both stale → no trustworthy floor → None (policy dormant, fail-open).
+    #[test]
+    fn both_stale_is_none() {
+        let now = at("2026-06-10T05:00:00Z");
+        let body = json!({
+            "openSea":   { "floorPrice": 9.0, "retrievedAt": "2024-01-01T00:00:00Z", "error": null },
+            "looksRare": { "floorPrice": 8.0, "retrievedAt": "2024-01-01T00:00:00Z", "error": null },
+        });
+        assert_eq!(super::pick_fresh_floor_eth(&body, now), None);
+    }
+
+    /// A marketplace that returned an error (non-null `error`) is skipped; the
+    /// other fresh one wins.
+    #[test]
+    fn error_marketplace_skipped() {
+        let now = at("2026-06-10T05:00:00Z");
+        let body = json!({
+            "openSea":   { "floorPrice": null, "retrievedAt": "2026-06-10T04:55:00Z", "error": "no floor" },
+            "looksRare": { "floorPrice": 8.0,  "retrievedAt": "2026-06-10T04:50:00Z", "error": null },
+        });
+        assert_eq!(super::pick_fresh_floor_eth(&body, now), Some(8.0));
+    }
+
+    /// LIVE e2e (run with `--ignored` + `ALCHEMY_NFT_API_URL` set): the REAL
+    /// `AlchemyFloorOracle` (reqwest fetch + `pick_fresh_floor_eth` stale filter)
+    /// resolves BAYC's floor from live Alchemy to a sane positive ETH value —
+    /// exercising the actual production code path end-to-end against the live API,
+    /// not a stub. Ignored by default (network + key dependent).
+    #[tokio::test]
+    #[ignore = "hits live Alchemy; requires ALCHEMY_NFT_API_URL"]
+    async fn live_alchemy_floor_bayc() {
+        use crate::handler::NftFloorOracle;
+        let base = std::env::var("ALCHEMY_NFT_API_URL").expect("ALCHEMY_NFT_API_URL must be set");
+        let oracle = super::AlchemyFloorOracle {
+            client: reqwest::Client::new(),
+            base_url: Some(base),
+        };
+        let floor = oracle
+            .floor_eth("eip155:1", "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d")
+            .await;
+        assert!(
+            matches!(floor, Some(p) if p.is_finite() && p > 0.0 && p < 100_000.0),
+            "live BAYC floor should be a sane positive ETH value, got {floor:?}"
+        );
     }
 }

@@ -52,6 +52,28 @@ pub(crate) fn is_zero_bytes(hex: &str) -> bool {
     !body.is_empty() && body.bytes().all(|b| b == b'0')
 }
 
+/// Whether a `MarketItem` is a criteria item (`*_criteria` kind) — a Merkle-root
+/// bound item that lets the fulfiller pick ANY tokenId in the committed set. On
+/// the OFFER side this is the multi-token giveaway primitive REGARDLESS of root:
+/// a human-signed maker listing offers concrete tokenIds, never a criteria leg
+/// (legit criteria items live on the CONSIDERATION side of a collection bid).
+pub(crate) const fn is_criteria(item: &MarketItem) -> bool {
+    matches!(
+        item.kind,
+        MarketItemKind::Erc721Criteria | MarketItemKind::Erc1155Criteria
+    )
+}
+
+/// Whether a `MarketItem` is a criteria item bound to ALL tokens in its
+/// collection (a `*_criteria` kind with an all-zero Merkle root) — the strict
+/// "any NFT in collection" sub-case. Shared by the per-item `anyToken`
+/// projection and the `SignOrder` top-level `offerHasAnyToken` flattener (Cedar
+/// cannot inspect `Set<MarketItem>` members, so the offer-side signals are
+/// flattened to base bools at lowering time).
+pub(crate) fn is_any_token(item: &MarketItem) -> bool {
+    is_criteria(item) && item.criteria_root.as_deref().is_some_and(is_zero_bytes)
+}
+
 /// Lower a `&[MarketItem]` → a Cedar `Set<MarketItem>` (JSON array of records).
 pub(crate) fn lower_market_items(items: &[MarketItem]) -> Value {
     Value::Array(items.iter().map(lower_market_item).collect())
@@ -73,15 +95,8 @@ fn lower_market_item(item: &MarketItem) -> Value {
     if let Some(root) = &item.criteria_root {
         m.insert("criteriaRoot".into(), Value::String(root.clone()));
     }
-    // `anyToken` (the load-bearing "any NFT in collection" signal) is derived:
-    // a criteria-kind item whose criteria root is all-zero.
-    let any_token = item.criteria_root.as_deref().is_some_and(|root| {
-        matches!(
-            item.kind,
-            MarketItemKind::Erc721Criteria | MarketItemKind::Erc1155Criteria
-        ) && is_zero_bytes(root)
-    });
-    m.insert("anyToken".into(), Value::Bool(any_token));
+    // `anyToken` (the load-bearing "any NFT in collection" signal).
+    m.insert("anyToken".into(), Value::Bool(is_any_token(item)));
     m.insert(
         "startAmount".into(),
         Value::String(u256_hex(item.start_amount)),

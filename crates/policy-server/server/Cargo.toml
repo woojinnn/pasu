@@ -41,7 +41,7 @@ urlencoding = "2"
 # Decoding the base64-url payload of Google's id_token.
 base64 = "0.22"
 # Time math for token expiry.
-time = { version = "0.3", default-features = false, features = ["std"] }
+time = { version = "0.3", default-features = false, features = ["std", "parsing"] }
 # Loads `.env` at startup so OAuth/JWT config doesn't need to be exported
 # manually in every dev shell.
 dotenvy = "0.15"
