@@ -14,6 +14,7 @@ use policy_transition::action::{ActionBody, ActionMeta};
 
 use super::common::account::AccountLeverage;
 use super::common::amount::TokenDecimals;
+use super::common::enrichment::{AccountEnrichment, MarketEnrichment, OrderEnrichment};
 
 /// A lowered action ready for the Cedar engine: the `principal` / `action` /
 /// `resource` entity uids (as parseable strings) plus the action-context JSON.
@@ -77,6 +78,11 @@ pub(crate) struct LowerCtx<'a> {
     /// `leverage_for` call then returns `None` and the lowering omits the
     /// optional `leverage` field. See [`AccountLeverage`].
     pub(crate) leverage: &'a AccountLeverage,
+    /// Host-injected per-market + account order enrichment (service-worker HL
+    /// info API: `meta` + `activeAssetData` + `clearinghouseState`). Empty when
+    /// the host did not resolve it — every accessor yields `None` and the
+    /// lowering omits the optional enrichment fields. See [`OrderEnrichment`].
+    pub(crate) enrichment: &'a OrderEnrichment,
 }
 
 impl LowerCtx<'_> {
@@ -120,6 +126,19 @@ impl LowerCtx<'_> {
     pub(crate) fn leverage_for_symbol(&self, symbol: &str) -> Option<i64> {
         self.leverage.leverage_for_symbol(symbol)
     }
+
+    /// Host-injected per-market order enrichment for a market `symbol`, or
+    /// `None` when nothing was injected for it (the lowering then omits every
+    /// per-market enrichment field). See [`OrderEnrichment`].
+    pub(crate) fn market_enrichment(&self, symbol: &str) -> Option<&MarketEnrichment> {
+        self.enrichment.market(symbol)
+    }
+
+    /// Host-injected account-wide order enrichment (margin health). Always a
+    /// value; its fields are individually optional. See [`OrderEnrichment`].
+    pub(crate) const fn account_enrichment(&self) -> &AccountEnrichment {
+        self.enrichment.account()
+    }
 }
 
 /// Lower an [`ActionBody`] to a [`LoweredAction`] by delegating to the matching
@@ -143,6 +162,7 @@ pub fn lower_action(
         tx,
         &TokenDecimals::default(),
         &AccountLeverage::default(),
+        &OrderEnrichment::default(),
     )
 }
 
@@ -165,13 +185,22 @@ pub fn lower_action_with_decimals(
     tx: &TxMeta<'_>,
     decimals: &TokenDecimals,
 ) -> Result<LoweredAction, LowerError> {
-    lower_action_enriched(action, meta, tx, decimals, &AccountLeverage::default())
+    lower_action_enriched(
+        action,
+        meta,
+        tx,
+        decimals,
+        &AccountLeverage::default(),
+        &OrderEnrichment::default(),
+    )
 }
 
-/// Lower an [`ActionBody`] with both host-injected `decimals` (for `amountNano`
-/// siblings) and host-injected `leverage` (for the venue order `leverage`
-/// field). [`lower_action`] / [`lower_action_with_decimals`] are the thinner
-/// wrappers that default one or both injected maps to empty.
+/// Lower an [`ActionBody`] with all host-injected venue state: `decimals` (for
+/// `amountNano` siblings), `leverage` (the venue order `leverage` field), and
+/// `enrichment` (the remaining order-time enrichment — maxLeverage / notional /
+/// margin health / position state, see [`OrderEnrichment`]).
+/// [`lower_action`] / [`lower_action_with_decimals`] are the thinner wrappers
+/// that default one or more injected maps to empty.
 ///
 /// `meta` is the outer `Action`'s [`ActionMeta`]; `tx` carries the EVM routing
 /// addresses. See [`LowerCtx`].
@@ -186,12 +215,14 @@ pub fn lower_action_enriched(
     tx: &TxMeta<'_>,
     decimals: &TokenDecimals,
     leverage: &AccountLeverage,
+    enrichment: &OrderEnrichment,
 ) -> Result<LoweredAction, LowerError> {
     let ctx = LowerCtx {
         meta,
         tx,
         decimals,
         leverage,
+        enrichment,
     };
     match action {
         ActionBody::Token(a) => super::token::lower(a, &ctx),

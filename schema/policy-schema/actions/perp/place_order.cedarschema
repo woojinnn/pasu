@@ -40,7 +40,20 @@ namespace Perp {
       durationMinutes?: Long,           // twap
       randomize?: Bool,                 // twap
     },
-    leverage?: Long,                    // host-enriched (HL activeAssetData)
+    leverage?: Long,                    // host-enriched (HL activeAssetData leverage.value)
+    // ── Order-time enrichment (host-injected from the HL info API: meta +
+    //    activeAssetData + clearinghouseState). ALL optional → a policy must
+    //    `context has <field>` before comparing; absent ⇒ that field's lookup
+    //    missed (info-fetch miss / no master / no open position) and the policy
+    //    stays dormant rather than mis-evaluating. Mirrors `leverage?`. ──
+    maxLeverage?: Long,                 // meta: this market's max leverage tier
+    leverageType?: String,              // activeAssetData: "cross" | "isolated"
+    notionalUsd?: Long,                 // order notional USD = round(size × markPx)
+    accountValueUsd?: Long,             // clearinghouseState: account equity (USD)
+    marginUsedRatioBps?: Long,          // clearinghouseState: totalMarginUsed / accountValue, in bps
+    positionRoeBps?: Long,              // clearinghouseState: signed return-on-equity (bps) of the EXISTING position in this market
+    liquidationDistanceBps?: Long,      // |markPx − liquidationPx| / markPx (bps) for this market's position
+    hasOpenPosition?: Bool,             // an open position already exists in this market
     // PlaceOrderLiveInputs flattened — present on-chain, absent for HL pre-sign.
     markPrice?: String,
     bestBid?: String,

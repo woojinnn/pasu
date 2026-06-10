@@ -53,6 +53,8 @@ import {
   collectHlLeverage,
   noteHlLeverageUpdate,
 } from "./venue/collect-hl-leverage";
+import { collectOrderEnrichment } from "./venue/collect-order-enrichment";
+import { resolveOrderSymbol } from "./venue/resolve-order-symbol";
 import {
   normalizeTypedDataPayload,
   routeTypedSignaturePayload,
@@ -826,7 +828,31 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   // omits the leverage (a `context has leverage` policy stays dormant) rather
   // than blocking the order. When this IS an `updateLeverage`, refresh the cache
   // (fire-and-forget) so the next order on that asset sees the just-set value.
-  const account_leverage = await collectHlLeverage(action, message.data);
+  // Two best-effort collectors, fired CONCURRENTLY (they share the HL info-client
+  // caches, so `activeAssetData` is fetched once): `account_leverage` (the bare
+  // leverage field) and `order_enrichment` (maxLeverage / notional / margin
+  // health / position state — the order-risk policy surface). Both NEVER throw
+  // and are NOT part of the deny-closed fault surface below: any miss / timeout /
+  // unknown master just omits the affected field (a `context has <field>` policy
+  // stays dormant) rather than blocking the order. When this IS an
+  // `updateLeverage`, refresh the leverage cache (fire-and-forget) so the next
+  // order on that asset sees the just-set value.
+  // Resolve the human asset symbol (HL meta universe) and patch it into the
+  // built body BEFORE the enrichment collectors run. The order wire carries only
+  // a numeric asset index, so the body is built with an `ASSET-<index>`
+  // placeholder; this overwrites it with the real name (e.g. "BTC") so (a) a
+  // symbol-matching policy (e.g. an order-symbol allowlist) sees the real symbol
+  // and (b) the collectors — which key their per-market enrichment by
+  // `market.symbol` — key by the SAME resolved symbol the lowering looks up by.
+  // Best-effort + NEVER throws: a miss leaves the placeholder (the body stays
+  // internally consistent; only symbol-specific policies stay dormant) and is
+  // NOT part of the deny-closed fault surface.
+  await resolveOrderSymbol(action, message.data);
+
+  const [account_leverage, order_enrichment] = await Promise.all([
+    collectHlLeverage(action, message.data),
+    collectOrderEnrichment(action, message.data),
+  ]);
   void noteHlLeverageUpdate(action, message.data);
 
   try {
@@ -839,6 +865,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       meta,
       tx,
       account_leverage,
+      order_enrichment,
     });
     const results =
       planned.length > 0
@@ -851,6 +878,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       bundles,
       results,
       account_leverage,
+      order_enrichment,
     });
     console.info("[Pasu] venue-order-verdict", {
       requestId: message.requestId,

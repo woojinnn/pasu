@@ -86,6 +86,42 @@ pub(crate) fn lower(
         m.insert("leverage".into(), Value::from(leverage));
     }
 
+    // Remaining order-time enrichment (host-injected from the HL info API: meta
+    // + activeAssetData + clearinghouseState), keyed by market symbol /
+    // account-wide. Each optional field is emitted ONLY when the host resolved
+    // it; absent ⇒ omitted (a `context has <field>` policy stays dormant rather
+    // than mis-evaluating). Values are pre-scaled comparable `Long`s. See
+    // `OrderEnrichment`.
+    if let Some(me) = ctx.market_enrichment(&action.market.symbol) {
+        if let Some(max_lev) = me.max_leverage {
+            m.insert("maxLeverage".into(), Value::from(max_lev));
+        }
+        if let Some(lev_type) = &me.leverage_type {
+            m.insert("leverageType".into(), Value::String(lev_type.clone()));
+        }
+        if let Some(notional) = me.notional_usd {
+            m.insert("notionalUsd".into(), Value::from(notional));
+        }
+        if let Some(roe) = me.position_roe_bps {
+            m.insert("positionRoeBps".into(), Value::from(roe));
+        }
+        if let Some(liq) = me.liquidation_distance_bps {
+            m.insert("liquidationDistanceBps".into(), Value::from(liq));
+        }
+        if let Some(has_pos) = me.has_open_position {
+            m.insert("hasOpenPosition".into(), Value::Bool(has_pos));
+        }
+    }
+    {
+        let acct = ctx.account_enrichment();
+        if let Some(av) = acct.account_value_usd {
+            m.insert("accountValueUsd".into(), Value::from(av));
+        }
+        if let Some(mr) = acct.margin_used_ratio_bps {
+            m.insert("marginUsedRatioBps".into(), Value::from(mr));
+        }
+    }
+
     // Live inputs (flattened) — present on-chain, omitted for HL pre-sign.
     // `best_bid_ask: (Price, Price)` splits into `bestBid` + `bestAsk`.
     if let Some(li) = &action.live_inputs {
@@ -112,7 +148,12 @@ pub(crate) fn lower(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::doc_markdown)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::doc_markdown,
+    clippy::too_many_lines
+)]
 mod tests {
     use policy_state::position::PerpSide;
     use policy_state::primitives::{Price, Time};
@@ -293,7 +334,9 @@ mod tests {
     /// path, now keyed by `market.symbol`).
     #[test]
     fn place_order_with_injected_leverage_emits_long_and_conforms() {
-        use crate::lowering_v2::{lower_action_enriched, AccountLeverage, TokenDecimals, TxMeta};
+        use crate::lowering_v2::{
+            lower_action_enriched, AccountLeverage, OrderEnrichment, TokenDecimals, TxMeta,
+        };
         use policy_state::primitives::{ChainId, Decimal, MarketRef, VenueRef};
 
         let body = ActionBody::Perp(PerpAction::PlaceOrder(PlaceOrderAction {
@@ -325,8 +368,15 @@ mod tests {
         map.insert("BTC".to_owned(), 26i64);
         let lev = AccountLeverage::new(map);
 
-        let lowered =
-            lower_action_enriched(&body, &meta, &tx, &TokenDecimals::default(), &lev).unwrap();
+        let lowered = lower_action_enriched(
+            &body,
+            &meta,
+            &tx,
+            &TokenDecimals::default(),
+            &lev,
+            &OrderEnrichment::default(),
+        )
+        .unwrap();
         assert_eq!(lowered.context["leverage"], 26);
 
         let manifest: crate::policy_rpc::ManifestV2 = serde_json::from_value(serde_json::json!({
@@ -340,5 +390,133 @@ mod tests {
         let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
         cedar_policy::Context::from_json_value(lowered.context, Some((&schema, &uid)))
             .unwrap_or_else(|e| panic!("place_order leverage context must conform: {e:?}"));
+    }
+
+    /// Full order-time enrichment (HL meta + activeAssetData + clearinghouseState)
+    /// surfaces as the optional `Perp::PlaceOrderContext` siblings, with the right
+    /// Cedar types, and the enriched context conforms. Injected → present; a
+    /// `default()` enrichment → every sibling omitted (policy stays dormant).
+    #[test]
+    fn place_order_with_injected_enrichment_emits_all_fields_and_conforms() {
+        use std::collections::BTreeMap;
+
+        use crate::lowering_v2::{
+            lower_action_enriched, AccountEnrichment, AccountLeverage, MarketEnrichment,
+            OrderEnrichment, TokenDecimals, TxMeta,
+        };
+        use policy_state::primitives::{ChainId, Decimal, MarketRef, VenueRef};
+
+        fn btc_order() -> ActionBody {
+            ActionBody::Perp(PerpAction::PlaceOrder(PlaceOrderAction {
+                venue: PerpVenue::Hyperliquid {
+                    chain: ChainId::new("hyperliquid:mainnet"),
+                },
+                market: MarketRef {
+                    symbol: "BTC".into(),
+                    venue: VenueRef::new("hyperliquid"),
+                },
+                side: PerpSide::Long,
+                size: SizeSpec::BaseDecimal {
+                    amount: Decimal::new("0.1"),
+                },
+                reduce_only: false,
+                order_type: OrderType::Limit {
+                    price: Price::new("60000"),
+                    time_in_force: TimeInForce::Gtc,
+                },
+                live_inputs: None,
+            }))
+        }
+
+        let meta = offchain_meta();
+        let tx = TxMeta {
+            from: "0x1111111111111111111111111111111111111111",
+            to: "0x2222222222222222222222222222222222222222",
+        };
+
+        let mut lev_map = BTreeMap::new();
+        lev_map.insert("BTC".to_owned(), 26i64);
+        let lev = AccountLeverage::new(lev_map);
+
+        let mut markets = BTreeMap::new();
+        markets.insert(
+            "BTC".to_owned(),
+            MarketEnrichment {
+                max_leverage: Some(50),
+                leverage_type: Some("cross".to_owned()),
+                notional_usd: Some(12_000),
+                position_roe_bps: Some(-1500),
+                liquidation_distance_bps: Some(800),
+                has_open_position: Some(true),
+            },
+        );
+        let enrichment = OrderEnrichment::new(
+            markets,
+            AccountEnrichment {
+                account_value_usd: Some(50_000),
+                margin_used_ratio_bps: Some(3200),
+            },
+        );
+
+        let lowered = lower_action_enriched(
+            &btc_order(),
+            &meta,
+            &tx,
+            &TokenDecimals::default(),
+            &lev,
+            &enrichment,
+        )
+        .unwrap();
+        let c = &lowered.context;
+        assert_eq!(c["leverage"], 26);
+        assert_eq!(c["maxLeverage"], 50);
+        assert_eq!(c["leverageType"], "cross");
+        assert_eq!(c["notionalUsd"], 12_000);
+        assert_eq!(c["positionRoeBps"], -1500);
+        assert_eq!(c["liquidationDistanceBps"], 800);
+        assert_eq!(c["hasOpenPosition"], true);
+        assert_eq!(c["accountValueUsd"], 50_000);
+        assert_eq!(c["marginUsedRatioBps"], 3200);
+
+        // Conform against the synthesized place_order schema.
+        let manifest: crate::policy_rpc::ManifestV2 = serde_json::from_value(serde_json::json!({
+            "id": "place_order-enrich-schema",
+            "schema_version": 2,
+            "trigger": { "where": { "action.tag": { "eq": "place_order" } } }
+        }))
+        .unwrap();
+        let schema_text = crate::schema::compose_per_policy(&manifest).unwrap();
+        let (schema, _w) = cedar_policy::Schema::from_cedarschema_str(&schema_text).unwrap();
+        let uid: cedar_policy::EntityUid = lowered.action_uid.parse().unwrap();
+        cedar_policy::Context::from_json_value(lowered.context.clone(), Some((&schema, &uid)))
+            .unwrap_or_else(|e| panic!("enriched place_order context must conform: {e:?}"));
+
+        // Default (empty) enrichment → every optional sibling omitted.
+        let bare = lower_action_enriched(
+            &btc_order(),
+            &meta,
+            &tx,
+            &TokenDecimals::default(),
+            &AccountLeverage::default(),
+            &OrderEnrichment::default(),
+        )
+        .unwrap();
+        for k in [
+            "leverage",
+            "maxLeverage",
+            "leverageType",
+            "notionalUsd",
+            "positionRoeBps",
+            "liquidationDistanceBps",
+            "hasOpenPosition",
+            "accountValueUsd",
+            "marginUsedRatioBps",
+        ] {
+            assert!(
+                bare.context.get(k).is_none(),
+                "default enrichment must omit `{k}`, got {:?}",
+                bare.context.get(k)
+            );
+        }
     }
 }
