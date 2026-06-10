@@ -29,10 +29,8 @@ import {
   getAccessToken as pasuGetAccessToken,
   ServerError as PasuServerError,
 } from "./pasu-auth";
-import {
-  getDefaultPolicyBundlesV2,
-  loadDefaultPolicySetV2,
-} from "./policies-loader-v2";
+import { getCurrentUserId } from "./dashboard/current-user";
+import { collectActionMetas, filterForAction, resolveBundlesForWallet } from "./policy-store/resolve";
 import type {
   ActionBundleInputDto,
   ActionTxInputDto,
@@ -795,12 +793,20 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     };
   }
 
-  // Ensure the v2 bundle cache is warmed before reading it. SW boot warms it
-  // fire-and-forget; awaiting the idempotent loader here closes the race where
-  // a venue order arriving pre-boot would see [] and (wrongly) baseline-pass a
-  // policy-relevant order. The loader returns the cached set on warm calls.
-  await loadDefaultPolicySetV2();
-  const bundles = getDefaultPolicyBundlesV2();
+  const tx = {
+    chain_id: "hl-mainnet",
+    from: String(meta.submitter ?? HL_TO_SENTINEL),
+    to: HL_TO_SENTINEL,
+  } as const;
+
+  // 정책 스토리지 v2: 주문 제출자 지갑의 effective 바인딩. resolve가 시드를
+  // 보장하므로 부팅 직후의 빈-캐시 race도 자연히 닫힌다.
+  const venueUid = (await getCurrentUserId()) ?? "anonymous";
+  const resolved = await resolveBundlesForWallet(venueUid, tx.from);
+  // 액션-단위 사전 필터(최적화) — 정밀 게이트는 엔진의 trigger 매칭.
+  const bundles = filterForAction(resolved, collectActionMetas(action)).map(
+    ({ policy, manifest }) => ({ policy, manifest }),
+  );
   // No policies loaded ⇒ baseline pass: blocking requires an explicit deny
   // policy (matches the engine's permit-baseline). This is NOT a fault.
   if (bundles.length === 0) {
@@ -811,12 +817,6 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     };
   }
   const manifests = bundles.map((b) => b.manifest);
-
-  const tx = {
-    chain_id: "hl-mainnet",
-    from: String(meta.submitter ?? HL_TO_SENTINEL),
-    to: HL_TO_SENTINEL,
-  } as const;
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   // Best-effort venue account-state enrichment: resolve this order's effective
@@ -1038,12 +1038,12 @@ async function typedSignatureLifecycle(
     action_count: routed.actions.length,
   };
 
-  // Warm the v2 bundle cache (idempotent) before reading it — closes the
-  // pre-boot race where a sig arriving early sees [] and baseline-passes.
-  await loadDefaultPolicySetV2();
-  const bundles = getDefaultPolicyBundlesV2();
+  // 정책 스토리지 v2: 서명자(message.data.address) 지갑의 effective 바인딩.
+  // resolve가 시드를 보장하므로 부팅 직후의 빈-캐시 race도 자연히 닫힌다.
+  const sigUid = (await getCurrentUserId()) ?? "anonymous";
+  const resolved = await resolveBundlesForWallet(sigUid, message.data.address);
   // No policies ⇒ baseline pass (you cannot deny without a policy).
-  if (bundles.length === 0) {
+  if (resolved.length === 0) {
     // Baseline-pass is still a PASS — report any permit/permit2 sig for backend
     // tracking (fire-and-forget; never blocks signing).
     void reportPermitIfApplicable(routed.actions, message);
@@ -1053,7 +1053,6 @@ async function typedSignatureLifecycle(
       declarativeV3,
     };
   }
-  const manifests = bundles.map((b) => b.manifest);
 
   // Skip `Unknown` bodies — only real ActionBody variants drive a verdict.
   const realActions = routed.actions.filter((a) => {
@@ -1095,6 +1094,12 @@ async function typedSignatureLifecycle(
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
     const meta = (a as { meta?: unknown }).meta;
+    // 액션-단위 사전 필터(최적화) — 정밀 게이트는 엔진의 trigger 매칭. plan은
+    // 번들이 든 manifest 집합과 동일해야 하므로 둘을 같이 파생한다.
+    const bundles = filterForAction(resolved, collectActionMetas(action)).map(
+      ({ policy, manifest }) => ({ policy, manifest }),
+    );
+    const manifests = bundles.map((b) => b.manifest);
     try {
       // Per-child fan-out: evaluate this body and (if a multicall) each inner
       // child. No `recordSimulationOnServer` on the sig path (it never recorded).
@@ -1318,18 +1323,6 @@ async function tryV2VerdictPath(
   });
   if (realActions.length === 0) return undefined;
 
-  // Warm the v2 bundle cache (idempotent) before reading it — closes the
-  // post-SW-restart boot race where a tx arriving early sees [] and degrades an
-  // enforced deny to an approvable warn (F1-1). Mirrors the venue + typed-sig
-  // paths, which already await the loader.
-  await loadDefaultPolicySetV2();
-  const bundles = getDefaultPolicyBundlesV2();
-  if (bundles.length === 0) return undefined;
-  // The plan phase MUST see the identical manifest set the bundles carry —
-  // `evaluate_action_v2_json` re-plans from `bundles[].manifest`, so a
-  // divergent plan-manifest list would mis-key the planned `call_id`s.
-  const manifests = bundles.map((b) => b.manifest);
-
   // CAIP-2 string: `message.data.chainId` is a NUMBER; v2 `tx.chain_id`
   // expects `eip155:<n>` or the serde/trigger match fails.
   const tx = {
@@ -1337,12 +1330,27 @@ async function tryV2VerdictPath(
     from: message.data.transaction.from ?? "0x" + "0".repeat(40),
     to: message.data.transaction.to ?? "0x" + "0".repeat(40),
   } as const;
+
+  // 정책 스토리지 v2: tx.from 지갑의 effective 바인딩을 렌더해서 평가한다.
+  // 미등록 지갑은 defaults.enabled 정의(안전 우선). resolve가 시드를 보장하므로
+  // 부팅 직후의 빈-캐시 race(F1-1)도 자연히 닫힌다.
+  const uid = (await getCurrentUserId()) ?? "anonymous";
+  const resolved = await resolveBundlesForWallet(uid, tx.from);
+  if (resolved.length === 0) return undefined;
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   const verdicts: VerdictDto[] = [];
   let anyLegThrew = false;
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
+    // 액션-단위 사전 필터(최적화) — 정밀 게이트는 엔진의 trigger 매칭.
+    // The plan phase MUST see the identical manifest set the bundles carry —
+    // `evaluate_action_v2_json` re-plans from `bundles[].manifest`, so a
+    // divergent plan-manifest list would mis-key the planned `call_id`s.
+    const bundles = filterForAction(resolved, collectActionMetas(action)).map(
+      ({ policy, manifest }) => ({ policy, manifest }),
+    );
+    const manifests = bundles.map((b) => b.manifest);
     const meta = (a as { meta?: unknown }).meta;
     try {
       // Per-child fan-out: evaluate this action AND, if it is a multicall, each
