@@ -22,7 +22,17 @@ export interface CustomFieldDraft {
   field: EnrichmentField;
 }
 
-const NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+/** 내부 필드 이름 자동 생성: 메서드 꼬리를 camelCase로, 충돌 시 숫자 suffix.
+ *  (`address.risk_score` → `riskScore`, 이미 있으면 `riskScore2`, …) */
+function autoName(methodName: string, existing: readonly string[]): string {
+  const tail = methodName.split(".").pop() ?? "value";
+  const base = tail.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+  if (!existing.includes(base)) return base;
+  for (let i = 2; ; i++) {
+    const cand = `${base}${i}`;
+    if (!existing.includes(cand)) return cand;
+  }
+}
 
 /** 거래(tx) 레벨 셀렉터 — 액션 컨텍스트 밖의 몇 안 되는 값들. */
 const ROOT_OPTIONS: { sel: string; label: string }[] = [
@@ -62,12 +72,16 @@ export function CustomFieldModal({
   onCreate: (draft: CustomFieldDraft) => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [label, setLabel] = useState("");
   const [method, setMethod] = useState<MethodSpec>(METHOD_CATALOG[0]);
+  // 표시 이름은 메서드 라벨이 기본값 — 사용자가 고치기 전까지 메서드를 따라간다.
+  const [label, setLabel] = useState(METHOD_CATALOG[0].label.replace(/\s*\(예시\)\s*$/, ""));
+  const [labelTouched, setLabelTouched] = useState(false);
   // 파라미터 값은 메서드 템플릿이 기본값 — 메서드를 바꾸면 그 템플릿으로 리셋.
   const [params, setParams] = useState<Record<string, string>>(() => paramStrings(METHOD_CATALOG[0]));
   const [projection, setProjection] = useState(METHOD_CATALOG[0].projection);
+
+  // 내부 필드 이름(manifest의 id)은 메서드에서 자동 생성 — 사용자는 안 만진다.
+  const name = useMemo(() => autoName(method.method, existingNames), [method.method, existingNames]);
 
   // 드롭다운 항목: 거래 레벨 값 + (액션의 기본 필드들 → `$.action.*` 셀렉터).
   const selectorOptions = useMemo<SelectorOption[]>(() => {
@@ -77,19 +91,13 @@ export function CustomFieldModal({
     return [...ROOT_OPTIONS, ...action];
   }, [fields]);
 
-  const nameErr = !name
-    ? null
-    : !NAME_RE.test(name)
-      ? "영문/숫자/_ 만, 숫자로 시작 불가"
-      : existingNames.includes(name)
-        ? "이미 있는 이름이에요"
-        : null;
-  const canCreate = name.length > 0 && !nameErr;
+  const canCreate = label.trim().length > 0;
 
   const pickMethod = (m: MethodSpec) => {
     setMethod(m);
     setParams(paramStrings(m));
     setProjection(m.projection);
+    if (!labelTouched) setLabel(m.label.replace(/\s*\(예시\)\s*$/, ""));
   };
 
   const create = () => {
@@ -98,7 +106,7 @@ export function CustomFieldModal({
       name,
       field: {
         type: method.type,
-        label: { ko: label || name, en: name },
+        label: { ko: label.trim() || name, en: name },
         appliesTo: actionTag ? [actionTag] : [],
         method: method.method,
         projection,
@@ -120,37 +128,13 @@ export function CustomFieldModal({
           </button>
         </div>
         <p className="cfm-sub">
-          policy-server 메서드를 호출해 채워지는 <code>context.custom.*</code> 필드를 정의해요.
-          저장 시 manifest에 자동 반영됩니다.
+          서버에서 조회한 값을 조건에 쓸 수 있는 필드로 만들어요 — 무엇을 조회할지 고르고,
+          이 거래의 어떤 값을 넘길지 정하고, 받은 값에 이름을 붙이면 끝.
         </p>
 
+        <div className="cfm-step">① 무엇을 조회할까요?</div>
         <label className="cfm-row">
-          <span className="cfm-label">필드 이름</span>
-          <span className="cfm-name">
-            <code>context.custom.</code>
-            <input
-              className={`pf-val${nameErr ? " invalid" : ""}`}
-              value={name}
-              autoFocus
-              onChange={(e) => setName(e.target.value.trim())}
-              placeholder="myRiskScore"
-            />
-          </span>
-        </label>
-        {nameErr && <div className="cfm-err">{nameErr}</div>}
-
-        <label className="cfm-row">
-          <span className="cfm-label">표시 이름</span>
-          <input
-            className="pf-val wide"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="예: 상대 주소 위험 점수 (비우면 필드 이름)"
-          />
-        </label>
-
-        <label className="cfm-row">
-          <span className="cfm-label">메서드</span>
+          <span className="cfm-label">조회</span>
           <select
             className="pf-select"
             value={method.method}
@@ -161,7 +145,7 @@ export function CustomFieldModal({
           >
             {METHOD_CATALOG.map((m) => (
               <option key={m.method} value={m.method}>
-                {m.label} — {m.method}
+                {m.label}
               </option>
             ))}
           </select>
@@ -172,9 +156,7 @@ export function CustomFieldModal({
         </div>
 
         <div className="cfm-params">
-          <div className="cfm-params-h">
-            서버에 넘길 값 <span className="cfm-hint">각 항목을 이 거래의 어떤 값으로 채울지 골라요</span>
-          </div>
+          <div className="cfm-step">② 서버에 무엇을 넘길까요?</div>
           {Object.entries(params).map(([key, v]) => (
             <div key={key} className="cfm-row">
               <span className="cfm-label">{PARAM_KEY_KO[key] ?? key}</span>
@@ -212,6 +194,25 @@ export function CustomFieldModal({
               />
             </label>
           </details>
+        </div>
+
+        <div className="cfm-step">③ 받은 값을 뭐라고 부를까요?</div>
+        <label className="cfm-row">
+          <span className="cfm-label">이름</span>
+          <input
+            className="pf-val wide"
+            value={label}
+            autoFocus
+            onChange={(e) => {
+              setLabel(e.target.value);
+              setLabelTouched(true);
+            }}
+            placeholder="예: 상대 주소 위험 점수"
+          />
+        </label>
+        <div className="cfm-autoname">
+          필드 선택기와 다이어그램에 이 이름으로 나와요 · 저장 이름은 자동:{" "}
+          <code>context.custom.{name}</code>
         </div>
 
         <div className="cfm-actions">
