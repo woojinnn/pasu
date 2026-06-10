@@ -219,10 +219,8 @@ const PERP_INCREASE_POSITION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/perp/increase_position.cedarschema");
 const PERP_OPEN_POSITION_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/perp/open_position.cedarschema");
-const PERP_PLACE_LIMIT_ORDER_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/perp/place_limit_order.cedarschema");
-const PERP_PLACE_STOP_ORDER_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/perp/place_stop_order.cedarschema");
+const PERP_PLACE_ORDER_SCHEMA: &str =
+    include_str!("../../../../schema/policy-schema/actions/perp/place_order.cedarschema");
 
 // permission (alphabetical)
 const PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA: &str = include_str!(
@@ -280,53 +278,13 @@ const TOKEN_WRAP_NATIVE_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/token/wrap_native.cedarschema");
 
 // hyperliquid_core (alphabetical) — the thin off-chain L1 action model.
-const HL_ORDER_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/order.cedarschema");
-const HL_UPDATE_LEVERAGE_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/update_leverage.cedarschema"
-);
 const HL_WITHDRAW_SCHEMA: &str =
     include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/withdraw.cedarschema");
-const HL_USD_SEND_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/usd_send.cedarschema");
-const HL_APPROVE_AGENT_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/approve_agent.cedarschema"
-);
-const HL_UNKNOWN_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/unknown.cedarschema");
-const HL_SPOT_SEND_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/spot_send.cedarschema");
-const HL_USD_CLASS_TRANSFER_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/usd_class_transfer.cedarschema"
-);
 const HL_SEND_ASSET_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/send_asset.cedarschema"
 );
-const HL_SEND_TO_EVM_WITH_DATA_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/send_to_evm_with_data.cedarschema"
-);
-const HL_C_DEPOSIT_SCHEMA: &str =
-    include_str!("../../../../schema/policy-schema/actions/hyperliquid_core/c_deposit.cedarschema");
-const HL_C_WITHDRAW_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/c_withdraw.cedarschema"
-);
-const HL_VAULT_TRANSFER_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/vault_transfer.cedarschema"
-);
-const HL_SUB_ACCOUNT_TRANSFER_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/sub_account_transfer.cedarschema"
-);
-const HL_APPROVE_BUILDER_FEE_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/approve_builder_fee.cedarschema"
-);
 const HL_TOKEN_DELEGATE_SCHEMA: &str = include_str!(
     "../../../../schema/policy-schema/actions/hyperliquid_core/token_delegate.cedarschema"
-);
-const HL_TWAP_ORDER_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/twap_order.cedarschema"
-);
-const HL_UPDATE_ISOLATED_MARGIN_SCHEMA: &str = include_str!(
-    "../../../../schema/policy-schema/actions/hyperliquid_core/update_isolated_margin.cedarschema"
 );
 
 /// Ordered list of all shipped cedarschema files. The merge in
@@ -402,8 +360,7 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     PERP_DECREASE_POSITION_SCHEMA,
     PERP_INCREASE_POSITION_SCHEMA,
     PERP_OPEN_POSITION_SCHEMA,
-    PERP_PLACE_LIMIT_ORDER_SCHEMA,
-    PERP_PLACE_STOP_ORDER_SCHEMA,
+    PERP_PLACE_ORDER_SCHEMA,
     PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
     RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA,
     RESTAKING_DELEGATE_TO_SCHEMA,
@@ -439,24 +396,9 @@ const SHIPPED_SCHEMA_FILES: &[&str] = &[
     TOKEN_REVOKE_APPROVAL_SCHEMA,
     TOKEN_UNWRAP_NATIVE_SCHEMA,
     TOKEN_WRAP_NATIVE_SCHEMA,
-    HL_ORDER_SCHEMA,
-    HL_UPDATE_LEVERAGE_SCHEMA,
     HL_WITHDRAW_SCHEMA,
-    HL_USD_SEND_SCHEMA,
-    HL_APPROVE_AGENT_SCHEMA,
-    HL_UNKNOWN_SCHEMA,
-    HL_SPOT_SEND_SCHEMA,
-    HL_USD_CLASS_TRANSFER_SCHEMA,
     HL_SEND_ASSET_SCHEMA,
-    HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
-    HL_C_DEPOSIT_SCHEMA,
-    HL_C_WITHDRAW_SCHEMA,
-    HL_VAULT_TRANSFER_SCHEMA,
-    HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
-    HL_APPROVE_BUILDER_FEE_SCHEMA,
     HL_TOKEN_DELEGATE_SCHEMA,
-    HL_TWAP_ORDER_SCHEMA,
-    HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
 ];
 
 /// Composes the shipped core and action Cedar schemas.
@@ -936,8 +878,7 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("decrease_position", "DecreasePositionContext"),
     ("increase_position", "IncreasePositionContext"),
     ("open_position", "OpenPositionContext"),
-    ("place_limit_order", "PlaceLimitOrderContext"),
-    ("place_stop_order", "PlaceStopOrderContext"),
+    ("place_order", "PlaceOrderContext"),
     // permission (alphabetical)
     ("protocol_authorization", "ProtocolAuthorizationContext"),
     // token (alphabetical)
@@ -956,23 +897,8 @@ const ACTION_CONTEXT_TYPES: &[(&str, &str)] = &[
     ("wrap_native", "WrapNativeContext"),
     // hyperliquid_core (alphabetical) — `hl_`-prefixed tags keep these globally
     // unique (notably `withdraw` is already a Lending tag).
-    ("hl_approve_agent", "HlApproveAgentContext"),
-    ("hl_approve_builder_fee", "HlApproveBuilderFeeContext"),
-    ("hl_c_deposit", "HlCDepositContext"),
-    ("hl_c_withdraw", "HlCWithdrawContext"),
-    ("hl_order", "HlOrderContext"),
     ("hl_send_asset", "HlSendAssetContext"),
-    ("hl_send_to_evm_with_data", "HlSendToEvmWithDataContext"),
-    ("hl_spot_send", "HlSpotSendContext"),
-    ("hl_sub_account_transfer", "HlSubAccountTransferContext"),
     ("hl_token_delegate", "HlTokenDelegateContext"),
-    ("hl_twap_order", "HlTwapOrderContext"),
-    ("hl_unknown", "HlUnknownContext"),
-    ("hl_update_isolated_margin", "HlUpdateIsolatedMarginContext"),
-    ("hl_update_leverage", "HlUpdateLeverageContext"),
-    ("hl_usd_class_transfer", "HlUsdClassTransferContext"),
-    ("hl_usd_send", "HlUsdSendContext"),
-    ("hl_vault_transfer", "HlVaultTransferContext"),
     ("hl_withdraw", "HlWithdrawContext"),
 ];
 

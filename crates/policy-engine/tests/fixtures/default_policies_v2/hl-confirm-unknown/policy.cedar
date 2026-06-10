@@ -3,6 +3,6 @@
 @reason("Unrecognized Hyperliquid action — confirm before the request is sent")
 forbid(
   principal,
-  action == HyperliquidCore::Action::"HlUnknown",
+  action == Core::Action::"Unknown",
   resource
 );

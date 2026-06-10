@@ -34,11 +34,12 @@ namespace Core {
   //   - Erc1155{ chain, contract, token_id }   standard = "erc1155"
   // -------------------------------------------------------------------------
   type TokenKey = {
-    standard: String,         // "native" | "erc20" | "erc721" | "erc1155"
-    chain: String,            // CAIP-2 id, e.g. "eip155:1"
+    standard: String,         // "native" | "erc20" | "erc721" | "erc1155" | "hyperliquid"
+    chain: String,            // CAIP-2 id, e.g. "eip155:1"; HL sentinel "hyperliquid:mainnet"
     address?: String,         // present iff standard = "erc20"
     contract?: String,        // present iff standard ∈ {"erc721","erc1155"}
     tokenId?: String,         // U256 hex; present iff standard ∈ {"erc721","erc1155"}
+    hlToken?: String,         // present iff standard = "hyperliquid": HL token id ("USDC" / "USDC:0x..")
   };
 
   type TokenRef = {
@@ -385,13 +386,15 @@ namespace Perp {
   //   "base_amount"       → amount (U256 hex)
   //   "quote_amount"      → amountUsd (U256 hex USD), amountUsdNano
   //   "leverage_implied"  → collateral (U256 hex), leverage (Decimal)
+  //   "base_decimal"      → amountDecimal (fractional base-asset Decimal; HL)
   type SizeSpec = {
-    kind: String,                // "base_amount" | "quote_amount" | "leverage_implied"
+    kind: String,                // "base_amount" | "quote_amount" | "leverage_implied" | "base_decimal"
     amount?: String,             // base_amount: U256 hex
     amountUsd?: String,          // quote_amount: U256 hex (USD units)
     amountUsdNano?: Long,        // host-populated nano view
     collateral?: String,         // leverage_implied: U256 hex
     leverage?: String,           // leverage_implied: Decimal as string
+    amountDecimal?: String,      // base_decimal: fractional base-asset Decimal
   };
 
   // PerpAccountState — aggregated perp account state for one user.

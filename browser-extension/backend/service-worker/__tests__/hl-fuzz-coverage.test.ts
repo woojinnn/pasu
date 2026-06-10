@@ -75,7 +75,7 @@ const SPECS: Spec[] = [
   {
     type: "order",
     category: "modeled",
-    expectTag: "hl_order",
+    expectTag: "place_order",
     action: (g) => {
       const legs = 1 + Math.floor(g.rnd() * 3);
       return {
@@ -95,7 +95,7 @@ const SPECS: Spec[] = [
   {
     type: "twapOrder",
     category: "modeled",
-    expectTag: "hl_twap_order",
+    expectTag: "place_order",
     action: (g) => ({
       type: "twapOrder",
       twap: {
@@ -111,7 +111,7 @@ const SPECS: Spec[] = [
   {
     type: "updateLeverage",
     category: "modeled",
-    expectTag: "hl_update_leverage",
+    expectTag: "change_leverage",
     action: (g) => ({
       type: "updateLeverage",
       asset: g.perp().assetIndex,
@@ -122,7 +122,7 @@ const SPECS: Spec[] = [
   {
     type: "updateIsolatedMargin",
     category: "modeled",
-    expectTag: "hl_update_isolated_margin",
+    expectTag: "adjust_margin",
     action: (g) => ({
       type: "updateIsolatedMargin",
       asset: g.perp().assetIndex,
@@ -221,17 +221,16 @@ const SPECS: Spec[] = [
       usd: Math.floor(g.rnd() * 1e8),
     }),
   },
-  // ── modeled: permission ──
+  // ── catch-all: approve_agent / approve_builder_fee are no longer modeled →
+  // they fall through to hl_unknown (deny-closed) ──
   {
     type: "approveAgent",
-    category: "modeled",
-    expectTag: "hl_approve_agent",
+    category: "catch_all",
     action: (g) => ({ type: "approveAgent", agentAddress: g.addr(), nonce: 1 }),
   },
   {
     type: "approveBuilderFee",
-    category: "modeled",
-    expectTag: "hl_approve_builder_fee",
+    category: "catch_all",
     action: (g) => ({
       type: "approveBuilderFee",
       maxFeeRate: `${(g.rnd() * 0.1).toFixed(4)}%`,
@@ -239,6 +238,7 @@ const SPECS: Spec[] = [
       nonce: 1,
     }),
   },
+  // ── modeled: permission ──
   {
     type: "tokenDelegate",
     category: "modeled",
@@ -310,7 +310,15 @@ describe("HL /exchange fuzz coverage (real info-API-seeded)", () => {
         expect(payloads, `${spec.type} must produce a payload`).not.toBeNull();
         for (const p of payloads!) {
           const { action } = hlOrderToAction(p);
-          expect(action.domain).toBe("hyperliquid_core");
+          // The HL perp family decodes to the generic `perp` domain
+          // (place_order / change_leverage / adjust_margin); every other HL Core
+          // action stays in the `hyperliquid_core` domain.
+          const PERP_ACTIONS = ["place_order", "change_leverage", "adjust_margin"];
+          expect(action.domain).toBe(
+            PERP_ACTIONS.includes(action.action as string)
+              ? "perp"
+              : "hyperliquid_core",
+          );
           if (spec.category === "modeled") {
             bucket.handled.add(spec.type);
             expect(action.action, `${spec.type} → ${spec.expectTag}`).toBe(spec.expectTag);

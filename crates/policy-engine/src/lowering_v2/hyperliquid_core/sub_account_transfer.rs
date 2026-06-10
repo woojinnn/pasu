@@ -1,5 +1,10 @@
-//! `HyperliquidCore::HlSubAccountTransfer` lowering →
-//! `HyperliquidCore::HlSubAccountTransferContext`.
+//! `HyperliquidCore::HlSubAccountTransfer` lowering → `Token::Erc20TransferContext`.
+//!
+//! A USDC move between the master account and a Hyperliquid sub-account. Lowers
+//! to the generic `Token::Action::"Erc20Transfer"`: `recipient` = sub-account
+//! address, `token` = HL USDC, `amount` = raw 6-dp USDC. The `isDeposit`
+//! direction is dropped (not representable in `Erc20Transfer`); the rewritten
+//! confirm policy warns on both directions.
 
 use serde_json::{Map, Value};
 
@@ -7,10 +12,10 @@ use policy_transition::action::hyperliquid_core::HlSubAccountTransferAction;
 
 use super::super::common::cedar::addr;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
-use super::hl_venue;
+use super::amount::hl_amount_projection;
+use super::{hl_usdc_token_ref, HL_USDC_DECIMALS};
 
-/// Lower an `HlSubAccountTransferAction` into the
-/// `HyperliquidCore::HlSubAccountTransferContext` shape.
+/// Lower an `HlSubAccountTransferAction` into the `Token::Erc20TransferContext` shape.
 ///
 /// # Errors
 ///
@@ -20,20 +25,21 @@ pub(crate) fn lower(
     action: &HlSubAccountTransferAction,
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
+    let p = hl_amount_projection(&action.usd, HL_USDC_DECIMALS);
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
-    m.insert("venue".into(), hl_venue());
+    m.insert("token".into(), hl_usdc_token_ref());
     m.insert(
-        "subAccountUser".into(),
+        "recipient".into(),
         Value::String(addr(&action.sub_account_user)),
     );
-    m.insert("isDeposit".into(), Value::Bool(action.is_deposit));
-    m.insert("usd".into(), Value::String(action.usd.0.clone()));
+    m.insert("amount".into(), Value::String(p.raw_hex));
+    if let Some(nano) = p.nano {
+        m.insert("amountNano".into(), Value::from(nano));
+    }
+    // `amountUsd` / `custom` are host-populated — OMITTED here.
 
-    Ok(ctx.lowered(
-        r#"HyperliquidCore::Action::"HlSubAccountTransfer""#,
-        Value::Object(m),
-    ))
+    Ok(ctx.lowered(r#"Token::Action::"Erc20Transfer""#, Value::Object(m)))
 }
 
 #[cfg(test)]
@@ -50,7 +56,7 @@ mod tests {
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 
     #[test]
-    fn sub_account_transfer_lowering_conforms_to_schema() {
+    fn sub_account_transfer_lowering_conforms_to_erc20_transfer() {
         let body = ActionBody::HyperliquidCore(HyperliquidCoreAction::SubAccountTransfer(
             HlSubAccountTransferAction {
                 sub_account_user: Address::from_str("0x000000000000000000000000000000000000bEEF")
@@ -59,6 +65,6 @@ mod tests {
                 usd: Decimal::new("75"),
             },
         ));
-        assert_conforms("hl_sub_account_transfer", &body, &offchain_meta());
+        assert_conforms("erc20_transfer", &body, &offchain_meta());
     }
 }

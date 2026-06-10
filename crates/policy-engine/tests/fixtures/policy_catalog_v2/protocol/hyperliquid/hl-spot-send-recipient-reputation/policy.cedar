@@ -12,7 +12,7 @@
 @id("hl-spot-send-recipient-reputation")
 @severity("deny")
 @reason("spotSend destination is flagged as a known-malicious address — send blocked")
-forbid(principal, action == HyperliquidCore::Action::"HlSpotSend", resource)
+forbid(principal, action == Token::Action::"Erc20Transfer", resource)
 when {
   context has custom
   && context.custom has reputationFlagged

@@ -1,7 +1,7 @@
 {
   "id": "hl-confirm-high-leverage",
   "schema_version": 2,
-  "trigger": { "where": { "action.tag": { "eq": "hl_update_leverage" } } },
+  "trigger": { "where": { "action.tag": { "eq": "change_leverage" } } },
   "policy_rpc": [],
   "custom_context": { "fields": {} }
 }

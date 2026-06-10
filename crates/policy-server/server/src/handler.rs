@@ -565,7 +565,7 @@ mod tests {
         Balance, BaseCategory, DataSource, FiatCurrency, LiveField, OracleProvider, PegTarget,
         RequestKind, TokenHolding, TokenKey, TokenKind, TokenRef, WalletId, WalletState, U256,
     };
-    use policy_transition::action::hyperliquid_core::{HlOrderAction, HyperliquidCoreAction};
+    use policy_transition::action::hyperliquid_core::{HlWithdrawAction, HyperliquidCoreAction};
     use policy_transition::action::token::{Erc20PermitAction, TokenAction};
     use policy_transition::{Action, ActionBody, ActionMeta, ActionNature, Eip712Domain};
 
@@ -894,7 +894,7 @@ mod tests {
         }
     }
 
-    fn hyperliquid_order_action() -> Action {
+    fn hyperliquid_withdraw_action() -> Action {
         Action {
             meta: ActionMeta {
                 submitted_at: Time::from_unix(1_700_000_000),
@@ -911,14 +911,9 @@ mod tests {
                     nonce_key: None,
                 },
             },
-            body: ActionBody::HyperliquidCore(HyperliquidCoreAction::Order(HlOrderAction {
-                asset_index: 0,
-                symbol: Some("BTC".to_owned()),
-                is_buy: true,
-                price: Decimal::new("60000"),
-                size: Decimal::new("0.1"),
-                reduce_only: false,
-                tif: "gtc".to_owned(),
+            body: ActionBody::HyperliquidCore(HyperliquidCoreAction::Withdraw(HlWithdrawAction {
+                destination: Address::from([0xde; 20]),
+                amount: Decimal::new("50"),
             })),
         }
     }
@@ -992,7 +987,7 @@ mod tests {
             &store,
             &no_price_book(),
             &no_sanctions(),
-            request_with_envelope(hyperliquid_order_action()),
+            request_with_envelope(hyperliquid_withdraw_action()),
         )
         .await
         .unwrap();
@@ -1002,8 +997,7 @@ mod tests {
         assert_eq!(resp.policy_request.state_after.positions.len(), 1);
         match &resp.policy_request.state_after.positions[0].kind {
             PositionKind::HyperliquidAccount(account) => {
-                assert_eq!(account.open_orders.len(), 1);
-                assert_eq!(account.open_orders[0].symbol.as_deref(), Some("BTC"));
+                assert_eq!(account.pending_outflow, Decimal::new("50"));
             }
             other => panic!("expected Hyperliquid account prediction, got {other:?}"),
         }

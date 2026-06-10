@@ -19,14 +19,14 @@ import { defaultHlInfoClient, type HlInfoClient } from "./hl-info-client";
 import { resolveHlMaster } from "./resolve-hl-master";
 
 /**
- * Action tags whose context carries the order-leverage field. A TWAP opens the
- * SAME leveraged perp exposure as a regular order, so it is enriched too — else
- * an order-leverage cap on HlOrder is trivially evaded by routing the exposure
- * through a TWAP (a first-class HL UI order type).
+ * The action tag whose context carries the order-leverage field. HL orders and
+ * TWAPs now both decode to the unified `Perp::PlaceOrder` (`place_order`), so a
+ * single tag covers both — a TWAP cannot evade an order-leverage cap.
  */
-const ORDER_TAGS = new Set(["hl_order", "hl_twap_order"]);
-/** The leverage-change tag that triggers a cache invalidation. */
-const UPDATE_LEVERAGE_TAG = "hl_update_leverage";
+const ORDER_TAG = "place_order";
+/** The leverage-change tag that triggers a cache invalidation (HL
+ * updateLeverage now decodes to the generic `Perp::ChangeLeverage`). */
+const UPDATE_LEVERAGE_TAG = "change_leverage";
 
 function asAssetIndex(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value >= 0
@@ -35,9 +35,37 @@ function asAssetIndex(value: unknown): number | null {
 }
 
 /**
- * Resolve `{ "<asset_index>": leverage }` for an order-class action
- * (`hl_order` / `hl_twap_order`), or `{}` for any other action / unresolved
- * input. `action` is the built `ActionBody` (`{ action, asset_index, ... }`).
+ * The numeric HL asset index for an order / twap payload — read from the raw
+ * wire (`payload.hlAction`), since the built `Perp::PlaceOrder` body no longer
+ * carries it (it carries `market.symbol` instead).
+ */
+function assetIndexFromPayload(payload: VenueOrderPayload): number | null {
+  const wire = payload.hlAction;
+  if (!wire) return null;
+  if (wire.kind === "order") return asAssetIndex(wire.order.a);
+  if (wire.kind === "twap_order") return asAssetIndex(wire.assetIndex);
+  if (wire.kind === "update_leverage") return asAssetIndex(wire.assetIndex);
+  return null;
+}
+
+/** The market symbol the built `Perp::PlaceOrder` body carries (the key the
+ * lowering looks `account_leverage` up by). */
+function bodyMarketSymbol(action: Record<string, unknown>): string | null {
+  const market = action.market;
+  if (market && typeof market === "object") {
+    const symbol = (market as { symbol?: unknown }).symbol;
+    if (typeof symbol === "string" && symbol.length > 0) return symbol;
+  }
+  return null;
+}
+
+/**
+ * Resolve `{ "<market_symbol>": leverage }` for an order-class action
+ * (`place_order`), or `{}` for any other action / unresolved input. `action` is
+ * the built `Perp::PlaceOrder` body (`{ action:"place_order", market:{symbol},
+ * … }`); the numeric asset index is read from `payload.hlAction`. The result is
+ * keyed by the body's `market.symbol` so the lowering (which looks leverage up
+ * by symbol) finds it.
  */
 export async function collectHlLeverage(
   action: Record<string, unknown>,
@@ -45,11 +73,11 @@ export async function collectHlLeverage(
   client: HlInfoClient = defaultHlInfoClient(),
 ): Promise<Record<string, number>> {
   try {
-    if (typeof action.action !== "string" || !ORDER_TAGS.has(action.action)) {
-      return {};
-    }
-    const assetIndex = asAssetIndex(action.asset_index);
+    if (action.action !== ORDER_TAG) return {};
+    const assetIndex = assetIndexFromPayload(payload);
     if (assetIndex === null) return {};
+    const symbol = bodyMarketSymbol(action);
+    if (symbol === null) return {};
 
     const master = await resolveHlMaster(payload);
     if (!master) {
@@ -83,9 +111,11 @@ export async function collectHlLeverage(
       master,
       coin,
       assetIndex,
+      symbol,
       leverage,
     });
-    return { [String(assetIndex)]: leverage };
+    // Keyed by the body's market symbol (what the lowering looks up by).
+    return { [symbol]: leverage };
   } catch (err) {
     // Never let leverage collection break (or deny-close) the verdict path.
     console.warn("[Pasu] HL order-leverage collection threw (omitted)", {
@@ -96,9 +126,10 @@ export async function collectHlLeverage(
 }
 
 /**
- * When the SW intercepts an `hl_update_leverage`, INVALIDATE the cached leverage
- * for (master, coin) so the NEXT order on that asset re-fetches the
- * authoritative `activeAssetData`.
+ * When the SW intercepts a leverage change (HL updateLeverage → the generic
+ * `change_leverage` action), INVALIDATE the cached leverage for (master, coin)
+ * so the NEXT order on that asset re-fetches the authoritative
+ * `activeAssetData`. The numeric asset index is read from the wire payload.
  *
  * SECURITY: we deliberately do NOT seed the cache from the page-asserted wire
  * `leverage` value. That value is unauthenticated MAIN-world input; seeding a
@@ -115,7 +146,7 @@ export async function noteHlLeverageUpdate(
 ): Promise<void> {
   try {
     if (action.action !== UPDATE_LEVERAGE_TAG) return;
-    const assetIndex = asAssetIndex(action.asset_index);
+    const assetIndex = assetIndexFromPayload(payload);
     if (assetIndex === null) return;
 
     const master = await resolveHlMaster(payload);

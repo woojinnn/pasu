@@ -4,9 +4,11 @@
 // tags: bucket:protocol cat:hyperliquid static action-family:hl-transfer
 //
 // Catalog — confirm a Hyperliquid subAccountTransfer (USDC move to/from a sub-account).
-// HL usd is a decimal string (magnitude not comparable in Cedar), so this is an
-// unconditional pure-static confirm on the action.
+// subAccountTransfer now lowers to the generic Token::Erc20Transfer (recipient =
+// sub-account address); the `hl_sub_account_transfer` manifest trigger keeps this
+// policy scoped to HL sub-account moves, so it stays an unconditional pure-static
+// confirm.
 @id("hl-sub-account-transfer-confirm")
 @severity("warn")
 @reason("Moving USDC to or from a Hyperliquid sub-account — confirm the sub-account and direction before the request is sent")
-forbid(principal, action == HyperliquidCore::Action::"HlSubAccountTransfer", resource);
+forbid(principal, action == Token::Action::"Erc20Transfer", resource);

@@ -1,7 +1,7 @@
 //! Hyperliquid CORE domain lowering: thin actions with NO live inputs.
 //!
 //! Mirrors the perp/token fan-out: a per-action `lower` leaf for each variant,
-//! plus the shared `hl_venue` / `hl_market` encoders. Every action lowers to a
+//! plus the shared `hl_venue` encoder. Every action lowers to a
 //! `HyperliquidCore::*Context` whose numeric fields (price / size / amount) are
 //! emitted as decimal STRINGS — fractional-safe and free of Cedar's `decimal`
 //! 4-dp limit. Policies match on action type + `context.venue.name` +
@@ -13,20 +13,15 @@ use policy_transition::action::hyperliquid_core::HyperliquidCoreAction;
 
 use super::dispatch::{LowerCtx, LowerError, LoweredAction};
 
-mod approve_agent;
-mod approve_builder_fee;
+mod amount;
 mod c_deposit;
 mod c_withdraw;
-mod order;
 mod send_asset;
 mod send_to_evm_with_data;
 mod spot_send;
 mod sub_account_transfer;
 mod token_delegate;
-mod twap_order;
 mod unknown;
-mod update_isolated_margin;
-mod update_leverage;
 mod usd_class_transfer;
 mod usd_send;
 mod vault_transfer;
@@ -43,11 +38,8 @@ pub(crate) fn lower(
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
     match action {
-        HyperliquidCoreAction::Order(a) => order::lower(a, ctx),
-        HyperliquidCoreAction::UpdateLeverage(a) => update_leverage::lower(a, ctx),
         HyperliquidCoreAction::Withdraw(a) => withdraw::lower(a, ctx),
         HyperliquidCoreAction::UsdSend(a) => usd_send::lower(a, ctx),
-        HyperliquidCoreAction::ApproveAgent(a) => approve_agent::lower(a, ctx),
         HyperliquidCoreAction::SpotSend(a) => spot_send::lower(a, ctx),
         HyperliquidCoreAction::UsdClassTransfer(a) => usd_class_transfer::lower(a, ctx),
         HyperliquidCoreAction::SendAsset(a) => send_asset::lower(a, ctx),
@@ -56,10 +48,7 @@ pub(crate) fn lower(
         HyperliquidCoreAction::CWithdraw(a) => c_withdraw::lower(a, ctx),
         HyperliquidCoreAction::VaultTransfer(a) => vault_transfer::lower(a, ctx),
         HyperliquidCoreAction::SubAccountTransfer(a) => sub_account_transfer::lower(a, ctx),
-        HyperliquidCoreAction::ApproveBuilderFee(a) => approve_builder_fee::lower(a, ctx),
         HyperliquidCoreAction::TokenDelegate(a) => token_delegate::lower(a, ctx),
-        HyperliquidCoreAction::TwapOrder(a) => twap_order::lower(a, ctx),
-        HyperliquidCoreAction::UpdateIsolatedMargin(a) => update_isolated_margin::lower(a, ctx),
         HyperliquidCoreAction::Unknown(a) => unknown::lower(a, ctx),
     }
 }
@@ -73,13 +62,36 @@ pub(crate) fn hl_venue() -> Value {
     Value::Object(m)
 }
 
-/// Lower a market reference → `{ symbol, assetIndex }` (`HyperliquidCore::HlMarket`).
-/// `symbol` falls back to `ASSET-<index>` when the venue meta cache has not yet
-/// resolved the numeric `assetIndex` to a human symbol.
-pub(crate) fn hl_market(asset_index: u32, symbol: Option<&str>) -> Value {
+/// USDC decimals on Hyperliquid (the implied token of `usd_send` / `vault_transfer`
+/// / `sub_account_transfer`, all USDC-denominated).
+pub(crate) const HL_USDC_DECIMALS: u32 = 6;
+
+/// HL `Core::TokenRef` for a spot token id (`"USDC"` / `"USDC:0x.."`). The
+/// `standard = "hyperliquid"` arm of `Core::TokenKey` carries the raw HL token
+/// id in `hlToken` (no on-chain ERC-20 address exists for an HL spot balance).
+pub(crate) fn hl_token_ref(hl_token: &str) -> Value {
+    let mut key = Map::new();
+    key.insert("standard".into(), Value::String("hyperliquid".into()));
+    key.insert("chain".into(), Value::String("hyperliquid:mainnet".into()));
+    key.insert("hlToken".into(), Value::String(hl_token.to_owned()));
     let mut m = Map::new();
-    let sym = symbol.map_or_else(|| format!("ASSET-{asset_index}"), str::to_owned);
-    m.insert("symbol".into(), Value::String(sym));
-    m.insert("assetIndex".into(), Value::from(i64::from(asset_index)));
+    m.insert("key".into(), Value::Object(key));
+    Value::Object(m)
+}
+
+/// HL `Core::TokenRef` for USDC — the implied token of `usd_send` /
+/// `vault_transfer` / `sub_account_transfer`.
+pub(crate) fn hl_usdc_token_ref() -> Value {
+    hl_token_ref("USDC")
+}
+
+/// HL `Staking::StakeVenue` (HYPE staking — `cDeposit` / `cWithdraw`). `name` is
+/// a free string in `StakeVenue`, so no schema change is needed; only the
+/// required `name` + `chain` are emitted (all contract-address arms are
+/// Curve/Aave-specific and absent here).
+pub(crate) fn hl_stake_venue() -> Value {
+    let mut m = Map::new();
+    m.insert("name".into(), Value::String("hyperliquid".into()));
+    m.insert("chain".into(), Value::String("hyperliquid:mainnet".into()));
     Value::Object(m)
 }

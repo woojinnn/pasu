@@ -79,7 +79,6 @@ export type VenueActionWire =
     }
   | { kind: "withdraw"; destination: string; amount: string }
   | { kind: "usd_send"; destination: string; amount: string }
-  | { kind: "approve_agent"; agentAddress: string; agentName?: string }
   | { kind: "spot_send"; destination: string; token: string; amount: string }
   | { kind: "usd_class_transfer"; amount: string; toPerp: boolean }
   | {
@@ -107,7 +106,6 @@ export type VenueActionWire =
       isDeposit: boolean;
       usd: string;
     }
-  | { kind: "approve_builder_fee"; maxFeeRate: string; builder: string }
   | { kind: "token_delegate"; validator: string; isUndelegate: boolean; wei: string }
   | {
       kind: "twap_order";

@@ -4,8 +4,10 @@
 // tags: bucket:protocol cat:hyperliquid static action-family:hl-staking venue:hyperliquid
 //
 // Catalog — confirm a Hyperliquid staking withdrawal (cWithdraw) (hl docs).
-// Pulls HYPE out of the staking balance. Pure-static.
+// cWithdraw now lowers to the generic Staking::Redeem (venue = HL stake venue);
+// the `hl_c_withdraw` manifest trigger keeps this scoped to HL staking
+// withdrawals. Pulls HYPE out of the staking balance. Pure-static.
 @id("hl-c-withdraw-staking-confirm")
 @severity("warn")
 @reason("Withdrawing HYPE from Hyperliquid staking — confirm the amount before the request is sent")
-forbid(principal, action == HyperliquidCore::Action::"HlCWithdraw", resource);
+forbid(principal, action == Staking::Action::"Redeem", resource);

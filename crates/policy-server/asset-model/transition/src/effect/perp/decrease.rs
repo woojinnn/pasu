@@ -33,7 +33,7 @@ impl Reducer for DecreasePerpAction {
 
         if common::is_orderbook_venue(&self.venue) {
             return Err(ReducerError::Invariant(format!(
-                "decrease_perp: orderbook venue {} requires PlaceLimitOrderAction \
+                "decrease_perp: orderbook venue {} requires PlaceOrderAction \
                  (with reduce_only=true), not DecreasePerpAction",
                 common::venue_tag(&self.venue),
             )));

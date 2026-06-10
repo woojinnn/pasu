@@ -148,12 +148,12 @@ pub enum ActionSlot {
     PerpChangeLeverageNewLiqPrices,
     PerpChangeMarginModeAffectedPositions,
     PerpChangeMarginModeReallocation,
+    // Shared by all PlaceOrder kinds (limit / stop / twap) — the merged
+    // `PlaceOrderLiveInputs` is the former limit superset.
     PerpPlaceLimitMarkPrice,
     PerpPlaceLimitBestBidAsk,
     PerpPlaceLimitOpenOrdersCount,
     PerpPlaceLimitUserAccountState,
-    PerpPlaceStopMarkPrice,
-    PerpPlaceStopUserAccountState,
     PerpClaimFundingClaimable,
 
     // ───────── Liquid Staking ─────────

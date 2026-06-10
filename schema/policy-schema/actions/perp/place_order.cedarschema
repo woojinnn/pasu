@@ -1,0 +1,60 @@
+// Perp::PlaceOrder — unified perp order placement (limit / stop / twap).
+//
+// Rust source: `crates/policy-server/asset-model/action/src/perp/place_order.rs`
+// (`PlaceOrderAction` + `OrderType` + `PlaceOrderLiveInputs`). Replaces the
+// former `Perp::PlaceLimitOrder` + `Perp::PlaceStopOrder`.
+//
+// `orderType` is the flattened, discriminated `OrderType` enum — `kind` is
+// always present; the remaining fields are per-kind:
+//   - limit: `price`, `timeInForce`
+//   - stop:  `triggerPrice`, `orderKind`, `limitPrice?` (stop_limit/take_profit_limit)
+//   - twap:  `durationMinutes`, `randomize`
+// The typed Rust enum is the fail-closed guarantee; the Cedar sub-record is
+// intentionally all-optional past `kind`.
+//
+// `live inputs` (markPrice / bestBid / bestAsk / openOrdersCount /
+// userAccountState) are present on the on-chain path and ABSENT for the
+// Hyperliquid pre-sign path — hence optional. `leverage?` is host-enriched
+// (Hyperliquid activeAssetData) and likewise optional.
+
+namespace Perp {
+  type TimeInForce = {
+    kind: String,                // "gtc" | "ioc" | "fok" | "post_only" | "gtd"
+    until?: Long,                // gtd only
+  };
+
+  type PlaceOrderContext = {
+    meta: Core::ActionMeta,
+    venue: PerpVenue,
+    market: MarketRef,
+    side: String,                       // "long" | "short"
+    size: SizeSpec,
+    reduceOnly: Bool,
+    orderType: {
+      kind: String,                     // "limit" | "stop" | "twap"
+      price?: String,                   // limit: Price as string
+      timeInForce?: TimeInForce,        // limit
+      triggerPrice?: String,            // stop
+      orderKind?: String,               // stop: "stop_market"|"stop_limit"|"take_profit"|"take_profit_limit"
+      limitPrice?: String,              // stop_limit / take_profit_limit
+      durationMinutes?: Long,           // twap
+      randomize?: Bool,                 // twap
+    },
+    leverage?: Long,                    // host-enriched (HL activeAssetData)
+    // PlaceOrderLiveInputs flattened — present on-chain, absent for HL pre-sign.
+    markPrice?: String,
+    bestBid?: String,
+    bestAsk?: String,
+    openOrdersCount?: Long,
+    userAccountState?: PerpAccountState,
+    custom?: PlaceOrderCustomContext,
+  };
+
+  type PlaceOrderCustomContext = {};
+
+  action "PlaceOrder" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: PlaceOrderContext,
+  };
+}

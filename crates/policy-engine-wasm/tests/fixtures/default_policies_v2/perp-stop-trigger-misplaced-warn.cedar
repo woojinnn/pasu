@@ -9,12 +9,17 @@
 // manifest's `perp.stop_trigger_misplaced` evaluates the consistency check and
 // emits the `Bool` `stopTriggerMisplaced`. Defined-not-wired → `optional`
 // (fail-open).
+//
+// Order placement is now the unified `Perp::PlaceOrder`; this policy scopes to
+// the stop kind via `context.orderType.kind == "stop"` (covers stop_market /
+// stop_limit / take_profit / take_profit_limit — all carry `triggerPrice`).
 @id("perp-stop-trigger-misplaced-warn")
 @severity("warn")
 @reason("This stop/take-profit trigger is on the wrong side of the current price and would fire immediately")
-forbid(principal, action == Perp::Action::"PlaceStopOrder", resource)
+forbid(principal, action == Perp::Action::"PlaceOrder", resource)
 when {
-  context has custom
+  context.orderType.kind == "stop"
+  && context has custom
   && context.custom has stopTriggerMisplaced
   && context.custom.stopTriggerMisplaced
 };

@@ -1,5 +1,8 @@
-//! `HyperliquidCore::HlSendToEvmWithData` lowering →
-//! `HyperliquidCore::HlSendToEvmWithDataContext`.
+//! `HyperliquidCore::HlSendToEvmWithData` lowering → `Core::UnknownContext`.
+//!
+//! An arbitrary-calldata bridge to an EVM recipient. Lowers to the generic
+//! `Core::Action::"Unknown"` preserving the risk-bearing `(target, calldata)`:
+//! `target` = destinationRecipient, `calldata` = data, `value` = amount.
 
 use serde_json::{Map, Value};
 
@@ -7,14 +10,8 @@ use policy_transition::action::hyperliquid_core::HlSendToEvmWithDataAction;
 
 use super::super::common::cedar::addr;
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
-use super::hl_venue;
+use super::unknown::HL_SENTINEL_CHAIN;
 
-/// Lower an `HlSendToEvmWithDataAction` into the
-/// `HyperliquidCore::HlSendToEvmWithDataContext` shape.
-///
-/// # Errors
-///
-/// Infallible today (returns `Ok`); the `Result` matches the per-action contract.
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn lower(
     action: &HlSendToEvmWithDataAction,
@@ -22,20 +19,15 @@ pub(crate) fn lower(
 ) -> Result<LoweredAction, LowerError> {
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
-    m.insert("venue".into(), hl_venue());
-    m.insert("token".into(), Value::String(action.token.clone()));
-    m.insert("amount".into(), Value::String(action.amount.0.clone()));
-    m.insert("sourceDex".into(), Value::String(action.source_dex.clone()));
     m.insert(
-        "destinationRecipient".into(),
+        "target".into(),
         Value::String(addr(&action.destination_recipient)),
     );
-    m.insert("data".into(), Value::String(action.data.clone()));
+    m.insert("chain".into(), Value::String(HL_SENTINEL_CHAIN.into()));
+    m.insert("calldata".into(), Value::String(action.data.clone()));
+    m.insert("value".into(), Value::String(action.amount.0.clone()));
 
-    Ok(ctx.lowered(
-        r#"HyperliquidCore::Action::"HlSendToEvmWithData""#,
-        Value::Object(m),
-    ))
+    Ok(ctx.lowered(r#"Core::Action::"Unknown""#, Value::Object(m)))
 }
 
 #[cfg(test)]
@@ -52,7 +44,7 @@ mod tests {
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 
     #[test]
-    fn send_to_evm_with_data_lowering_conforms_to_schema() {
+    fn send_to_evm_with_data_lowering_conforms_to_core_unknown_schema() {
         let body = ActionBody::HyperliquidCore(HyperliquidCoreAction::SendToEvmWithData(
             HlSendToEvmWithDataAction {
                 token: "USDC".to_owned(),
@@ -65,6 +57,7 @@ mod tests {
                 data: "0xdeadbeef".to_owned(),
             },
         ));
+        // Phase 0.2: HL action's own tag; resolves Core::Unknown after the repoint.
         assert_conforms("hl_send_to_evm_with_data", &body, &offchain_meta());
     }
 }

@@ -29,23 +29,35 @@ impl Reducer for AdjustMarginAction {
         let _ = ctx;
         let mut delta = StateDelta::new();
 
+        // On-chain reduction requires live inputs (the Hyperliquid pre-sign
+        // path is evaluated through lowering/policy, not this reducer).
+        let li = self
+            .live_inputs
+            .as_ref()
+            .ok_or(ReducerError::MissingField("adjust_margin.live_inputs"))?;
+
+        // On-chain venues reference the position by `position_id`; the
+        // `(market, side)` form is Hyperliquid (off-chain, not reduced here).
+        let position_id = self
+            .position_id
+            .as_ref()
+            .ok_or(ReducerError::MissingField("adjust_margin.position_id"))?;
+
         let position = state
             .positions
             .iter()
-            .find(|p| p.id == self.position_id)
-            .ok_or_else(|| ReducerError::PositionNotFound(self.position_id.clone()))?;
+            .find(|p| &p.id == position_id)
+            .ok_or_else(|| ReducerError::PositionNotFound(position_id.clone()))?;
         let PositionKind::PerpPosition(perp) = &position.kind else {
             return Err(ReducerError::Invariant(format!(
-                "adjust_margin: position {} is not a PerpPosition",
-                self.position_id
+                "adjust_margin: position {position_id} is not a PerpPosition"
             )));
         };
 
         let (collateral_token, current_locked) =
             perp.collateral.first().cloned().ok_or_else(|| {
                 ReducerError::Invariant(format!(
-                    "adjust_margin: position {} has no collateral",
-                    self.position_id
+                    "adjust_margin: position {position_id} has no collateral"
                 ))
             })?;
 
@@ -62,7 +74,7 @@ impl Reducer for AdjustMarginAction {
             // Withdraw: free_margin_after must remain non-negative.
             // SignedI256 has no `is_negative()` shortcut that returns u256;
             // we already pulled `delta.unsigned_abs()` above.
-            let free_after = self.live_inputs.free_margin_after.value;
+            let free_after = li.free_margin_after.value;
             // free_after is U256 — by construction non-negative; the
             // semantic check is "did the orchestrator surface zero?",
             // which means the position would go under maintenance.
@@ -86,7 +98,7 @@ impl Reducer for AdjustMarginAction {
             ));
         };
 
-        helpers::position::upsert_perp_position(state, &mut delta, &self.position_id, |p| {
+        helpers::position::upsert_perp_position(state, &mut delta, position_id, |p| {
             if let PositionKind::PerpPosition(pp) = &mut p.kind {
                 if let Some(first) = pp.collateral.first_mut() {
                     first.1 = new_collateral_amount;
@@ -204,9 +216,11 @@ mod tests {
             venue: PerpVenue::GmxV2 {
                 chain: ChainId::ethereum_mainnet(),
             },
-            position_id: id.to_string(),
+            position_id: Some(id.to_string()),
+            market: None,
+            side: None,
             delta: SignedI256::try_from(delta).unwrap(),
-            live_inputs: AdjustMarginLiveInputs {
+            live_inputs: Some(AdjustMarginLiveInputs {
                 position_state: live(PerpPositionLive {
                     size_base: U256::from(1_u64),
                     notional_usd: U256::from(3_000_u64),
@@ -216,7 +230,7 @@ mod tests {
                     unrealized_pnl: SignedI256::ZERO,
                 }),
                 free_margin_after: live(U256::from(free_after)),
-            },
+            }),
         }
     }
 

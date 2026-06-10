@@ -119,6 +119,22 @@ pub(super) fn pending_id_for_stop_order(
     )
 }
 
+/// Compose a deterministic `PendingTx` id for a TWAP order. TWAP orders carry
+/// no price, so the duration disambiguates repeated submissions on the same
+/// market / side.
+pub(super) fn pending_id_for_twap_order(
+    venue: &PerpVenue,
+    market: &str,
+    side: &PerpSide,
+    duration_minutes: u32,
+) -> String {
+    format!(
+        "twap:{}:{market}:{}:{duration_minutes}",
+        venue_tag(venue),
+        side_tag(side),
+    )
+}
+
 /// Map a `StopOrderKind` to the `PerpOrderKind` carried inside
 /// `PendingKind::PerpVenueOrder`.
 pub(super) const fn perp_order_kind_from_stop(kind: &StopOrderKind) -> PerpOrderKind {

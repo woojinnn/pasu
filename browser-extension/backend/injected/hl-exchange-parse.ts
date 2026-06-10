@@ -313,16 +313,6 @@ export function parseHyperliquidExchangeOrders(
       });
     }
 
-    case "approveAgent": {
-      if (typeof action.agentAddress !== "string") return unknown();
-      const a: VenueActionWire = {
-        kind: "approve_agent",
-        agentAddress: action.agentAddress,
-      };
-      if (typeof action.agentName === "string") a.agentName = action.agentName;
-      return one(a);
-    }
-
     case "spotSend": {
       if (
         typeof action.destination !== "string" ||
@@ -411,17 +401,6 @@ export function parseHyperliquidExchangeOrders(
         subAccountUser: action.subAccountUser,
         isDeposit: action.isDeposit === true,
         usd: String(action.usd),
-      });
-    }
-
-    case "approveBuilderFee": {
-      if (typeof action.builder !== "string" || action.maxFeeRate === undefined) {
-        return unknown();
-      }
-      return one({
-        kind: "approve_builder_fee",
-        maxFeeRate: String(action.maxFeeRate),
-        builder: action.builder,
       });
     }
 

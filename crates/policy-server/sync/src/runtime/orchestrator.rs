@@ -1449,11 +1449,14 @@ fn perp_action_market_symbol(perp: &PerpAction, state: &WalletState) -> Option<S
         PerpAction::ClosePosition(a) => state_position_market_symbol(state, &a.position_id),
         PerpAction::IncreasePosition(a) => state_position_market_symbol(state, &a.position_id),
         PerpAction::DecreasePosition(a) => state_position_market_symbol(state, &a.position_id),
-        PerpAction::AdjustMargin(a) => state_position_market_symbol(state, &a.position_id),
+        PerpAction::AdjustMargin(a) => a
+            .position_id
+            .as_deref()
+            .and_then(|id| state_position_market_symbol(state, id))
+            .or_else(|| a.market.as_ref().map(|m| m.symbol.clone())),
         PerpAction::ChangeLeverage(a) => Some(a.market.symbol.clone()),
         PerpAction::ChangeMarginMode(a) => Some(a.market.symbol.clone()),
-        PerpAction::PlaceLimitOrder(a) => Some(a.market.symbol.clone()),
-        PerpAction::PlaceStopOrder(a) => Some(a.market.symbol.clone()),
+        PerpAction::PlaceOrder(a) => Some(a.market.symbol.clone()),
         PerpAction::CancelOrder(_) => None,
         PerpAction::ClaimFunding(a) => a.market.as_ref().map(|m| m.symbol.clone()),
     }

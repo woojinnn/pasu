@@ -144,7 +144,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "commit",
     "refund",
     "withdraw_commit",
-    // Perp (11)
+    // Perp (10)
     "adjust_margin",
     "cancel_order",
     "change_leverage",
@@ -154,8 +154,7 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "decrease_position",
     "increase_position",
     "open_position",
-    "place_limit_order",
-    "place_stop_order",
+    "place_order",
     // Permission (1)
     "protocol_authorization",
     // Restaking (7) — `delegate` already listed above under Airdrop, so `delegate_to`
@@ -198,26 +197,21 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     "revoke_approval",
     "unwrap_native",
     "wrap_native",
-    // HyperliquidCore (18) — thin off-chain L1 action model. `hl_`-prefixed so
-    // the tags stay globally unique (e.g. `withdraw` already exists in Lending).
-    "hl_order",
-    "hl_update_leverage",
+    // HyperliquidCore — thin off-chain L1 action model. `hl_`-prefixed so the
+    // tags stay globally unique (e.g. `withdraw` already exists in Lending).
+    // `hl_unknown` / `hl_send_to_evm_with_data` now resolve to `Core::Unknown`;
+    // `hl_usd_send` / `hl_spot_send` / `hl_vault_transfer` /
+    // `hl_sub_account_transfer` to `Token::Erc20Transfer`; `hl_c_deposit` /
+    // `hl_c_withdraw` to `Staking::Stake` / `Staking::Redeem` (no own schema).
+    // `hl_approve_agent` / `hl_approve_builder_fee` were dropped. `hl_order` /
+    // `hl_twap_order` now decode (TS) directly to `Perp::PlaceOrder` (off-chain
+    // perp placement; orderType limit/stop/twap). `hl_update_leverage` →
+    // `Perp::ChangeLeverage`, `hl_update_isolated_margin` → `Perp::AdjustMargin`
+    // (the perp leverage/margin actions). `hl_usd_class_transfer` (benign
+    // intra-account move) → `Core::Unknown`. All are therefore absent here.
     "hl_withdraw",
-    "hl_usd_send",
-    "hl_approve_agent",
-    "hl_unknown",
-    "hl_spot_send",
-    "hl_usd_class_transfer",
     "hl_send_asset",
-    "hl_send_to_evm_with_data",
-    "hl_c_deposit",
-    "hl_c_withdraw",
-    "hl_vault_transfer",
-    "hl_sub_account_transfer",
-    "hl_approve_builder_fee",
     "hl_token_delegate",
-    "hl_twap_order",
-    "hl_update_isolated_margin",
 ];
 
 #[cfg(test)]
@@ -280,10 +274,11 @@ mod tests {
         // Union of feat/registry-v2 (incl. weth-wrap `wrap_native`/`unwrap_native`
         // + CoW Swap `pre_sign_intent_order`) and feat/morpho-onboarding (Compound
         // + Aave `gsm_swap` + governance + lending periphery + staking
-        // redeem/stake/cooldown) = 118, plus Marketplace (Seaport) sign_order +
-        // fulfill_order (cancel_order dedups against Perp) = 120, plus bridge
-        // `send` = 121.
-        assert_eq!(REGISTERED_ACTIONS.len(), 121);
+        // redeem/stake/cooldown), plus Marketplace (Seaport) sign_order +
+        // fulfill_order (cancel_order dedups against Perp), plus bridge `send`,
+        // MINUS the origin/main HL→Perp/Token/Staking migration (HL core 18→3).
+        // Build-determined merged count: origin/main 104 + bridge `send` = 105.
+        assert_eq!(REGISTERED_ACTIONS.len(), 105);
     }
 
     #[test]

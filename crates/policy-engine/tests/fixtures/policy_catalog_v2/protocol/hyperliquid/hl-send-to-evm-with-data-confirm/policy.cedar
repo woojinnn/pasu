@@ -5,8 +5,10 @@
 //
 // Catalog F6 — confirm a Hyperliquid sendToEvmWithData (bridge-out + arbitrary calldata).
 // The highest-risk HL fund movement: bridges a token to an EVM recipient WITH
-// attacker-controllable calldata. Confirm unconditionally. Pure-static.
+// attacker-controllable calldata. It now lowers to the generic Core::Unknown;
+// the `hl_send_to_evm_with_data` manifest trigger keeps this scoped to HL
+// bridge-outs. Confirm unconditionally. Pure-static.
 @id("hl-send-to-evm-with-data-confirm")
 @severity("warn")
 @reason("Bridging funds to an EVM address with arbitrary calldata — confirm the recipient before sending")
-forbid(principal, action == HyperliquidCore::Action::"HlSendToEvmWithData", resource);
+forbid(principal, action == Core::Action::"Unknown", resource);

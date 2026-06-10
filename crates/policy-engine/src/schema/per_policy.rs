@@ -34,28 +34,23 @@ use super::{
     GOVERNANCE_CLOSE_VOTE_SCHEMA, GOVERNANCE_DELEGATE_SCHEMA, GOVERNANCE_EXECUTE_SCHEMA,
     GOVERNANCE_PROPOSE_SCHEMA, GOVERNANCE_QUEUE_SCHEMA, GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
     GOVERNANCE_START_VOTE_SCHEMA, GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA, GOVERNANCE_VOTE_SCHEMA,
-    HL_APPROVE_AGENT_SCHEMA, HL_APPROVE_BUILDER_FEE_SCHEMA, HL_C_DEPOSIT_SCHEMA,
-    HL_C_WITHDRAW_SCHEMA, HL_ORDER_SCHEMA, HL_SEND_ASSET_SCHEMA, HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
-    HL_SPOT_SEND_SCHEMA, HL_SUB_ACCOUNT_TRANSFER_SCHEMA, HL_TOKEN_DELEGATE_SCHEMA,
-    HL_TWAP_ORDER_SCHEMA, HL_UNKNOWN_SCHEMA, HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
-    HL_UPDATE_LEVERAGE_SCHEMA, HL_USD_CLASS_TRANSFER_SCHEMA, HL_USD_SEND_SCHEMA,
-    HL_VAULT_TRANSFER_SCHEMA, HL_WITHDRAW_SCHEMA, LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA,
-    LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA, LAUNCHPAD_REFUND_SCHEMA,
-    LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA, LENDING_BUY_COLLATERAL_SCHEMA,
-    LENDING_DELEGATE_BORROW_SCHEMA, LENDING_DISABLE_COLLATERAL_SCHEMA,
-    LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA, LENDING_PERIPHERY_OPERATION_SCHEMA,
-    LENDING_REPAY_SCHEMA, LENDING_SET_AUTHORIZATION_SCHEMA, LENDING_SET_EMODE_SCHEMA,
-    LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA, LENDING_WITHDRAW_SCHEMA,
-    LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA, LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA,
-    LIQUID_STAKING_STAKE_SCHEMA, LIQUID_STAKING_TRANSFER_SHARES_SCHEMA,
-    LIQUID_STAKING_UNWRAP_SCHEMA, LIQUID_STAKING_WRAP_SCHEMA, MARKETPLACE_CANCEL_ORDER_SCHEMA,
-    MARKETPLACE_FULFILL_ORDER_SCHEMA, MARKETPLACE_SIGN_ORDER_SCHEMA,
-    PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA, PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA,
-    PERP_CHANGE_LEVERAGE_SCHEMA, PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA,
-    PERP_CLOSE_POSITION_SCHEMA, PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA,
-    PERP_OPEN_POSITION_SCHEMA, PERP_PLACE_LIMIT_ORDER_SCHEMA, PERP_PLACE_STOP_ORDER_SCHEMA,
-    RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA, RESTAKING_DELEGATE_TO_SCHEMA, RESTAKING_DEPOSIT_SCHEMA,
-    RESTAKING_QUEUE_WITHDRAWAL_SCHEMA, RESTAKING_REDELEGATE_SCHEMA,
+    HL_SEND_ASSET_SCHEMA, HL_TOKEN_DELEGATE_SCHEMA, HL_WITHDRAW_SCHEMA,
+    LAUNCHPAD_CLAIM_ALLOCATION_SCHEMA, LAUNCHPAD_CLAIM_VESTED_SCHEMA, LAUNCHPAD_COMMIT_SCHEMA,
+    LAUNCHPAD_REFUND_SCHEMA, LAUNCHPAD_WITHDRAW_COMMIT_SCHEMA, LENDING_BORROW_SCHEMA,
+    LENDING_BUY_COLLATERAL_SCHEMA, LENDING_DELEGATE_BORROW_SCHEMA,
+    LENDING_DISABLE_COLLATERAL_SCHEMA, LENDING_ENABLE_COLLATERAL_SCHEMA, LENDING_LIQUIDATE_SCHEMA,
+    LENDING_PERIPHERY_OPERATION_SCHEMA, LENDING_REPAY_SCHEMA, LENDING_SET_AUTHORIZATION_SCHEMA,
+    LENDING_SET_EMODE_SCHEMA, LENDING_SUPPLY_SCHEMA, LENDING_SWAP_RATE_MODE_SCHEMA,
+    LENDING_WITHDRAW_SCHEMA, LIQUID_STAKING_CLAIM_WITHDRAWAL_SCHEMA,
+    LIQUID_STAKING_REQUEST_WITHDRAWAL_SCHEMA, LIQUID_STAKING_STAKE_SCHEMA,
+    LIQUID_STAKING_TRANSFER_SHARES_SCHEMA, LIQUID_STAKING_UNWRAP_SCHEMA,
+    LIQUID_STAKING_WRAP_SCHEMA, MARKETPLACE_CANCEL_ORDER_SCHEMA, MARKETPLACE_FULFILL_ORDER_SCHEMA,
+    MARKETPLACE_SIGN_ORDER_SCHEMA, PERMISSION_PROTOCOL_AUTHORIZATION_SCHEMA,
+    PERP_ADJUST_MARGIN_SCHEMA, PERP_CANCEL_ORDER_SCHEMA, PERP_CHANGE_LEVERAGE_SCHEMA,
+    PERP_CHANGE_MARGIN_MODE_SCHEMA, PERP_CLAIM_FUNDING_SCHEMA, PERP_CLOSE_POSITION_SCHEMA,
+    PERP_DECREASE_POSITION_SCHEMA, PERP_INCREASE_POSITION_SCHEMA, PERP_OPEN_POSITION_SCHEMA,
+    PERP_PLACE_ORDER_SCHEMA, RESTAKING_COMPLETE_WITHDRAWAL_SCHEMA, RESTAKING_DELEGATE_TO_SCHEMA,
+    RESTAKING_DEPOSIT_SCHEMA, RESTAKING_QUEUE_WITHDRAWAL_SCHEMA, RESTAKING_REDELEGATE_SCHEMA,
     RESTAKING_REGISTER_OPERATOR_SCHEMA, RESTAKING_UNDELEGATE_SCHEMA, STAKING_CLAIM_REWARDS_SCHEMA,
     STAKING_COOLDOWN_SCHEMA, STAKING_GAUGE_DEPOSIT_SCHEMA, STAKING_GAUGE_WITHDRAW_SCHEMA,
     STAKING_INCREASE_LOCK_AMOUNT_SCHEMA, STAKING_INCREASE_LOCK_TIME_SCHEMA, STAKING_LOCK_SCHEMA,
@@ -514,15 +509,9 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     },
     ActionEntry {
         domain: "perp",
-        action_tag: Some("place_limit_order"),
-        schema_text: PERP_PLACE_LIMIT_ORDER_SCHEMA,
-        pascal_stub: "PlaceLimitOrder",
-    },
-    ActionEntry {
-        domain: "perp",
-        action_tag: Some("place_stop_order"),
-        schema_text: PERP_PLACE_STOP_ORDER_SCHEMA,
-        pascal_stub: "PlaceStopOrder",
+        action_tag: Some("place_order"),
+        schema_text: PERP_PLACE_ORDER_SCHEMA,
+        pascal_stub: "PlaceOrder",
     },
     ActionEntry {
         domain: "perp",
@@ -755,18 +744,6 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     // hyperliquid_core — `hl_`-prefixed tags; namespace `HyperliquidCore`.
     ActionEntry {
         domain: "hyperliquid_core",
-        action_tag: Some("hl_order"),
-        schema_text: HL_ORDER_SCHEMA,
-        pascal_stub: "HlOrder",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_update_leverage"),
-        schema_text: HL_UPDATE_LEVERAGE_SCHEMA,
-        pascal_stub: "HlUpdateLeverage",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
         action_tag: Some("hl_withdraw"),
         schema_text: HL_WITHDRAW_SCHEMA,
         pascal_stub: "HlWithdraw",
@@ -774,32 +751,29 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_usd_send"),
-        schema_text: HL_USD_SEND_SCHEMA,
-        pascal_stub: "HlUsdSend",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_approve_agent"),
-        schema_text: HL_APPROVE_AGENT_SCHEMA,
-        pascal_stub: "HlApproveAgent",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_unknown"),
-        schema_text: HL_UNKNOWN_SCHEMA,
-        pascal_stub: "HlUnknown",
+        schema_text: CORE_UNKNOWN_SCHEMA,
+        pascal_stub: "Unknown",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_spot_send"),
-        schema_text: HL_SPOT_SEND_SCHEMA,
-        pascal_stub: "HlSpotSend",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
+        // usd_class_transfer (benign intra-account perp↔spot move) lowers to
+        // Core::Unknown — no dedicated HL schema (see lowering). Trigger stays
+        // hl_usd_class_transfer so a policy can still scope to it.
         domain: "hyperliquid_core",
         action_tag: Some("hl_usd_class_transfer"),
-        schema_text: HL_USD_CLASS_TRANSFER_SCHEMA,
-        pascal_stub: "HlUsdClassTransfer",
+        schema_text: CORE_UNKNOWN_SCHEMA,
+        pascal_stub: "Unknown",
     },
     ActionEntry {
         domain: "hyperliquid_core",
@@ -810,56 +784,38 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_send_to_evm_with_data"),
-        schema_text: HL_SEND_TO_EVM_WITH_DATA_SCHEMA,
-        pascal_stub: "HlSendToEvmWithData",
+        schema_text: CORE_UNKNOWN_SCHEMA,
+        pascal_stub: "Unknown",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_c_deposit"),
-        schema_text: HL_C_DEPOSIT_SCHEMA,
-        pascal_stub: "HlCDeposit",
+        schema_text: STAKING_STAKE_SCHEMA,
+        pascal_stub: "Stake",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_c_withdraw"),
-        schema_text: HL_C_WITHDRAW_SCHEMA,
-        pascal_stub: "HlCWithdraw",
+        schema_text: STAKING_REDEEM_SCHEMA,
+        pascal_stub: "Redeem",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_vault_transfer"),
-        schema_text: HL_VAULT_TRANSFER_SCHEMA,
-        pascal_stub: "HlVaultTransfer",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_sub_account_transfer"),
-        schema_text: HL_SUB_ACCOUNT_TRANSFER_SCHEMA,
-        pascal_stub: "HlSubAccountTransfer",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_approve_builder_fee"),
-        schema_text: HL_APPROVE_BUILDER_FEE_SCHEMA,
-        pascal_stub: "HlApproveBuilderFee",
+        schema_text: TOKEN_ERC20_TRANSFER_SCHEMA,
+        pascal_stub: "Erc20Transfer",
     },
     ActionEntry {
         domain: "hyperliquid_core",
         action_tag: Some("hl_token_delegate"),
         schema_text: HL_TOKEN_DELEGATE_SCHEMA,
         pascal_stub: "HlTokenDelegate",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_twap_order"),
-        schema_text: HL_TWAP_ORDER_SCHEMA,
-        pascal_stub: "HlTwapOrder",
-    },
-    ActionEntry {
-        domain: "hyperliquid_core",
-        action_tag: Some("hl_update_isolated_margin"),
-        schema_text: HL_UPDATE_ISOLATED_MARGIN_SCHEMA,
-        pascal_stub: "HlUpdateIsolatedMargin",
     },
 ];
 
@@ -903,8 +859,16 @@ pub fn compose_per_policy(manifest: &ManifestV2) -> Result<String, PolicyRpcErro
     // single `namespace <Name> { ... }` (Cedar rejects duplicates).
     let mut inputs: Vec<&str> = Vec::with_capacity(matched.len() + 1);
     inputs.push(CORE_SCHEMA);
+    // Dedup by `schema_text`: multiple (domain, tag) rows can resolve to the SAME
+    // shared schema (retargeted HL actions point at CORE_UNKNOWN_SCHEMA /
+    // TOKEN_ERC20_TRANSFER_SCHEMA / STAKING_*), and including it twice would
+    // duplicate its action/type defs inside the merged namespace (Cedar rejects
+    // duplicates). Identical `&'static str` consts share a data pointer.
+    let mut seen: std::collections::BTreeSet<*const u8> = std::collections::BTreeSet::new();
     for entry in &matched {
-        inputs.push(entry.schema_text);
+        if seen.insert(entry.schema_text.as_ptr()) {
+            inputs.push(entry.schema_text);
+        }
     }
     let mut text = merge_namespace_blocks(&inputs);
 
@@ -1327,8 +1291,8 @@ mod tests {
         // +1 bridge `send` row.)
         assert_eq!(
             RESOLVER_TABLE.len(),
-            124,
-            "resolver table must have 124 rows"
+            117,
+            "resolver table must have 117 rows"
         );
     }
 

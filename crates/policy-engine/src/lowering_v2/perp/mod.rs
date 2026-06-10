@@ -22,8 +22,7 @@ mod close_position;
 mod decrease_position;
 mod increase_position;
 mod open_position;
-mod place_limit_order;
-mod place_stop_order;
+mod place_order;
 
 /// Dispatch a [`PerpAction`] to its per-action lowering.
 ///
@@ -40,8 +39,7 @@ pub(crate) fn lower(action: &PerpAction, ctx: &LowerCtx<'_>) -> Result<LoweredAc
         PerpAction::AdjustMargin(a) => adjust_margin::lower(a, ctx),
         PerpAction::ChangeLeverage(a) => change_leverage::lower(a, ctx),
         PerpAction::ChangeMarginMode(a) => change_margin_mode::lower(a, ctx),
-        PerpAction::PlaceLimitOrder(a) => place_limit_order::lower(a, ctx),
-        PerpAction::PlaceStopOrder(a) => place_stop_order::lower(a, ctx),
+        PerpAction::PlaceOrder(a) => place_order::lower(a, ctx),
         PerpAction::CancelOrder(a) => cancel_order::lower(a, ctx),
         PerpAction::ClaimFunding(a) => claim_funding::lower(a, ctx),
     }
@@ -111,6 +109,12 @@ pub(crate) fn lower_size_spec(size: &SizeSpec) -> Value {
             m.insert("kind".into(), Value::String("leverage_implied".into()));
             m.insert("collateral".into(), Value::String(u256_hex(*collateral)));
             m.insert("leverage".into(), Value::String(leverage.0.clone()));
+        }
+        SizeSpec::BaseDecimal { amount } => {
+            m.insert("kind".into(), Value::String("base_decimal".into()));
+            // Distinct from `amount` (U256 hex) — `amountDecimal` is a
+            // fractional base-asset decimal string (Hyperliquid sizes).
+            m.insert("amountDecimal".into(), Value::String(amount.0.clone()));
         }
     }
     Value::Object(m)

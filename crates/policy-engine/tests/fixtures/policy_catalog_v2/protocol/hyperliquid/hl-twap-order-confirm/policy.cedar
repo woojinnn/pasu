@@ -3,10 +3,11 @@
 // bucket: protocol/hyperliquid  (precedence-won)
 // tags: bucket:protocol cat:hyperliquid static action-family:hl-order
 //
-// Catalog — confirm a Hyperliquid TWAP order (twapOrder).
-// HL numerics are decimal strings (size/minutes magnitude not comparable in Cedar),
-// so this is an unconditional pure-static confirm on the action.
+// Catalog — confirm a Hyperliquid TWAP order. HL orders decode to the unified
+// `Perp::PlaceOrder`; the TWAP sub-kind is `context.orderType.kind == "twap"`.
+// HL-scoped via the venue guard. Pure-static confirm.
 @id("hl-twap-order-confirm")
 @severity("warn")
 @reason("Placing a TWAP order on Hyperliquid — confirm the market, side and size before it executes over time")
-forbid(principal, action == HyperliquidCore::Action::"HlTwapOrder", resource);
+forbid(principal, action == Perp::Action::"PlaceOrder", resource)
+when { context.venue.name == "hyperliquid" && context.orderType.kind == "twap" };

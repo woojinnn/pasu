@@ -1,13 +1,19 @@
-//! `HyperliquidCore::HlCWithdraw` lowering → `HyperliquidCore::HlCWithdrawContext`.
+//! `HyperliquidCore::HlCWithdraw` lowering → `Staking::RedeemContext` (HYPE unstake).
+//!
+//! `cWithdraw` pulls HYPE out of the Hyperliquid staking balance back to spot.
+//! Lowers to the generic `Staking::Action::"Redeem"` on the HL stake venue;
+//! `wei` is already the raw smallest-unit amount, emitted as the `amount` U256
+//! hex slot.
 
 use serde_json::{Map, Value};
 
 use policy_transition::action::hyperliquid_core::HlCWithdrawAction;
 
 use super::super::dispatch::{LowerCtx, LowerError, LoweredAction};
-use super::hl_venue;
+use super::amount::hl_amount_projection;
+use super::hl_stake_venue;
 
-/// Lower an `HlCWithdrawAction` into the `HyperliquidCore::HlCWithdrawContext` shape.
+/// Lower an `HlCWithdrawAction` into the `Staking::RedeemContext` shape.
 ///
 /// # Errors
 ///
@@ -17,15 +23,14 @@ pub(crate) fn lower(
     action: &HlCWithdrawAction,
     ctx: &LowerCtx<'_>,
 ) -> Result<LoweredAction, LowerError> {
+    let p = hl_amount_projection(&action.wei, 0);
     let mut m = Map::new();
     m.insert("meta".into(), ctx.meta());
-    m.insert("venue".into(), hl_venue());
-    m.insert("wei".into(), Value::String(action.wei.0.clone()));
+    m.insert("venue".into(), hl_stake_venue());
+    m.insert("amount".into(), Value::String(p.raw_hex));
+    // `recipient` / `custom` are host-populated or N/A — OMITTED here.
 
-    Ok(ctx.lowered(
-        r#"HyperliquidCore::Action::"HlCWithdraw""#,
-        Value::Object(m),
-    ))
+    Ok(ctx.lowered(r#"Staking::Action::"Redeem""#, Value::Object(m)))
 }
 
 #[cfg(test)]
@@ -38,11 +43,11 @@ mod tests {
     use crate::lowering_v2::perp::test_support::{assert_conforms, offchain_meta};
 
     #[test]
-    fn c_withdraw_lowering_conforms_to_schema() {
+    fn c_withdraw_lowering_conforms_to_redeem() {
         let body =
             ActionBody::HyperliquidCore(HyperliquidCoreAction::CWithdraw(HlCWithdrawAction {
                 wei: Decimal::new("100000000000"),
             }));
-        assert_conforms("hl_c_withdraw", &body, &offchain_meta());
+        assert_conforms("redeem", &body, &offchain_meta());
     }
 }
