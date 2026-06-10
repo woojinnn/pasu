@@ -7,6 +7,12 @@ import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-stora
 import { migratePasuRenameStorageKeys } from "./manifests/pasu-rename-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
 import { cleanupLegacyKeys } from "./policy-store/seed";
+import {
+  handlePs2Request,
+  isPs2Request,
+  provisionFromWalletSync,
+  type Ps2Request,
+} from "./policy-store/api";
 import { decideMessage } from "./orchestrator";
 import { reportExecutionOutcome } from "./execution-report";
 import {
@@ -519,7 +525,8 @@ type PopupRequest =
   | VerdictsClearRequest
   | StateDeltasGetRequest
   | StateDeltasClearRequest
-  | DiagnosisContextGetRequest;
+  | DiagnosisContextGetRequest
+  | Ps2Request;
 
 // webextension-polyfill's listener type accepts `true | void | Promise<any>`,
 // not `boolean`. Returning `undefined` (bare `return;`) closes the channel
@@ -528,6 +535,21 @@ Browser.runtime.onMessage.addListener(
   (message: unknown, _sender, sendResponse: (r: unknown) => void) => {
     const req = message as Partial<PopupRequest> | null;
     if (!req || typeof req !== "object") return;
+
+    // 정책 스토리지 v2 — ps2:* 패밀리는 단일 디스패처로. 핸들러별 분기 대신
+    // api.ts의 switch가 메시지 모양을 ops로 위임한다(쓰기는 전부 mutate 큐).
+    if (isPs2Request(req)) {
+      void bootReady
+        .then(() => handlePs2Request(req))
+        .then((data) => sendResponse({ ok: true, data: data ?? null }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "ps2_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
 
     if (req.type === "policy-catalog") {
       void getCatalog()
@@ -767,9 +789,17 @@ Browser.runtime.onMessage.addListener(
       // Await boot before the token read (see `pasu-auth-status`).
       void bootReady
         .then(() => listWallets())
-        .then((wallets: WalletId[]) =>
-          sendResponse({ ok: true, data: wallets }),
-        )
+        .then(async (wallets: WalletId[]) => {
+          // 정책 스토리지 v2 프로비저닝 훅: 서버 지갑 목록과 동기화되는 이
+          // 경로에서 새 지갑에 defaults를 바인딩한다(멱등). 실패해도 지갑
+          // 목록 응답은 막지 않는다.
+          try {
+            await provisionFromWalletSync(wallets.map((w) => w.address));
+          } catch (err) {
+            console.warn("[Pasu] ps2 wallet provisioning failed:", err);
+          }
+          sendResponse({ ok: true, data: wallets });
+        })
         .catch((err: unknown) =>
           sendResponse({
             ok: false,

@@ -147,6 +147,65 @@ export function setPackageEnabled(
   });
 }
 
+export type MarketInstallScope =
+  | { kind: "wallets"; addresses: string[] }
+  | { kind: "all" }
+  | { kind: "library-only" };
+
+/** 마켓 설치/업데이트 — 정의(+패키지) 등록 후 scope에 따라 바인딩.
+ *  같은 id의 재설치는 정의 업데이트: 기존 바인딩의 params는 보존하되,
+ *  새 정의의 holes에서 사라진 키는 제거한다(렌더 실패 방지). */
+export function installMarket(
+  uid: string,
+  opts: {
+    defs: PolicyDef[];
+    pkg?: PackageDef | undefined;
+    scope: MarketInstallScope;
+    /** defId별 설치 시점 hole 파라미터(설치 모달 입력). */
+    params?: Record<string, Record<string, HoleValue>> | undefined;
+  },
+): Promise<void> {
+  return mutate(uid, (d) => {
+    if (opts.pkg) d.library.packages[opts.pkg.id] = { ...opts.pkg, source: "market" };
+    const defaultPkg = opts.pkg?.id ?? UNCATEGORIZED_PKG;
+
+    for (const def of opts.defs) {
+      const isUpdate = !!d.library.defs[def.id];
+      d.library.defs[def.id] = { ...def, source: "market" };
+      if (isUpdate) {
+        // 업데이트: 모든 지갑의 해당 바인딩에서 사라진 hole 키를 정리.
+        const live = new Set(def.holes.map((h) => h.name));
+        for (const w of Object.values(d.wallets.byAddress)) {
+          for (const b of Object.values(w.bindings)) {
+            if (b.defId !== def.id || !b.params) continue;
+            b.params = Object.fromEntries(Object.entries(b.params).filter(([k]) => live.has(k)));
+            if (Object.keys(b.params).length === 0) b.params = undefined;
+          }
+        }
+      }
+    }
+
+    if (opts.scope.kind === "library-only") return;
+    const addresses =
+      opts.scope.kind === "all" ? Object.keys(d.wallets.byAddress) : opts.scope.addresses.map((a) => a.toLowerCase());
+    for (const address of addresses) {
+      const w = walletAt(d, address);
+      for (const def of opts.defs) {
+        const params = opts.params?.[def.id];
+        const b: Binding = {
+          id: newBindingId(),
+          defId: def.id,
+          packageId: def.defaults.packageId ?? defaultPkg,
+          enabled: true,
+          params: params && Object.keys(params).length ? { ...params } : undefined,
+          updatedAtMs: Date.now(),
+        };
+        w.bindings[b.id] = b;
+      }
+    }
+  });
+}
+
 /** 새 지갑 프로비저닝 — defaults.enabled 정의를 기본 파라미터/패키지로 바인딩.
  *  멱등 단위는 지갑: byAddress에 이미 있는 주소는 건드리지 않는다. */
 export function provisionWallets(uid: string, addresses: string[]): Promise<void> {
