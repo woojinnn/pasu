@@ -178,7 +178,7 @@ relies on the `https://<ext-id>.chromiumapp.org/` entry already in
    `OAUTH_ALLOWED_REDIRECT_URIS` allowlist (policy-server Helm values). One
    sign-in authenticates both the SW (tx eval) and the options-page dashboard.
 
-## Manual smoke test (Plan 3 milestone)
+## Manual smoke test
 
 1. `yarn build:chrome`
 2. Load `dist/chrome/` as an unpacked extension.
