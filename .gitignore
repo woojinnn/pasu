@@ -108,3 +108,5 @@ AGENTS.md
 !*.tfvars.example
 # browser-extension is a Yarn workspace — never track an npm lockfile there.
 browser-extension/package-lock.json
+# generated form field reference (open locally; regenerate via scripts/gen-field-explorer.ts)
+/field-explorer.html
