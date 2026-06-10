@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import {
   createReview,
@@ -22,7 +22,7 @@ import {
 import { CodeTabs, leadingComment } from "./market-code";
 import { policyCopy } from "./market-copy";
 import { packageCopy } from "./market-package-copy";
-import { installListingToEditor } from "./market-install";
+import { MarketInstallModal } from "./MarketInstallModal";
 import { severityFromCedar } from "./editor/policy-meta";
 import { useMarketLocale, type MarketLocale } from "./market-locale";
 
@@ -41,8 +41,6 @@ import "./market.css";
  * until an unused dashboard:: id is found. The user can rename freely after.
  */
 export function MarketDetailPage() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
   const params = useParams<{ slug: string }>();
   const slug = params.slug ? decodeURIComponent(params.slug) : "";
   const [locale] = useMarketLocale();
@@ -53,26 +51,8 @@ export function MarketDetailPage() {
     enabled: slug.length > 0,
   });
 
-  const [installMsg, setInstallMsg] = useState<string | null>(null);
-
-  const installMut = useMutation({
-    mutationFn: (detail: ListingDetail) => installListingToEditor(detail, locale),
-    onSuccess: async (result) => {
-      await qc.invalidateQueries({ queryKey: ["managed-policies"] });
-      await qc.invalidateQueries({ queryKey: ["policy-sets"] });
-      await qc.invalidateQueries({ queryKey: ["market-listing", slug] });
-      setInstallMsg(
-        result.kind === "policy"
-          ? locale === "ko"
-            ? "정책을 받았습니다. 에디터로 이동합니다."
-            : "Policy installed. Heading to editor."
-          : locale === "ko"
-            ? "패키지와 멤버 정책을 받았습니다. 에디터로 이동합니다."
-            : "Package + members installed. Heading to editor.",
-      );
-      window.setTimeout(() => navigate("/editor"), 800);
-    },
-  });
+  // 설치는 공용 MarketInstallModal(범위 선택 + ps2:install-market)이 수행한다.
+  const [installOpen, setInstallOpen] = useState(false);
 
   return (
     <>
@@ -100,15 +80,21 @@ export function MarketDetailPage() {
           <DetailBody
             detail={detailQ.data}
             locale={locale}
-            installing={installMut.isPending}
-            installError={
-              installMut.isError ? (installMut.error as Error).message : null
-            }
-            installMessage={installMsg}
-            onInstall={() => installMut.mutate(detailQ.data!)}
+            installing={false}
+            installError={null}
+            installMessage={null}
+            onInstall={() => setInstallOpen(true)}
           />
         )}
       </div>
+
+      {installOpen && detailQ.data && (
+        <MarketInstallModal
+          listing={detailQ.data}
+          locale={locale}
+          onClose={() => setInstallOpen(false)}
+        />
+      )}
     </>
   );
 }
