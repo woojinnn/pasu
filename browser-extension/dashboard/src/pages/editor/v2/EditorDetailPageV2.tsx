@@ -2,24 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
-import {
-  deleteManagedPolicy,
-  getEnabledPolicyIds,
-  listManagedPolicies,
-  putPolicy,
-  setEnabledPolicyIds,
-  stripDashboardId,
-  type ManagedPolicy,
-  type PolicyMethod,
-} from "../../../server-api";
+import { stripDashboardId, type PolicyMethod } from "../../../server-api";
 import type { PolicySeverity } from "../../../server-api";
+import {
+  bindDef,
+  deleteDef,
+  getOverview,
+  putDef,
+  putPackage,
+  type PolicyDef,
+  type StoreSnapshot,
+} from "../../../server-api/policy-store";
+import { listWallets } from "../../../server-api/wallets";
+import { buildDefPayload } from "./save-def";
+import { SaveScopeModal, type SaveScopeChoice } from "./SaveScopeModal";
+import { defUsageCount } from "./apply-matrix-derive";
 import { Topbar } from "../../../shell/Topbar";
 
 import { stampAnnotations } from "../../../editor-v9/annotations";
 import { generateManifest } from "../../../editor-v9/manifest-gen";
 import type { PolicyIR } from "../../../cedar/blocks";
 
-import { nameFromPolicy, severityFromCedar } from "../policy-meta";
+import { severityFromCedar } from "../policy-meta";
 import { PublishModal, type PublishSource } from "../PublishModal";
 // PublishModal classes (.publish-modal, .publish-modal-backdrop) are
 // authored in market.css; pull it in so the modal renders with a solid
@@ -28,8 +32,7 @@ import "../../market.css";
 
 import { catLabel, catStyle } from "./categories";
 import { CatIcon, ShieldIcon, WarnIcon } from "./icons";
-import { isMarketSource } from "./helpers";
-import { textToBlocks } from "../../../cedar";
+import { blocksToText, textToBlocks } from "../../../cedar";
 import { PolicyFormPane } from "./PolicyFormPane";
 import { emptyFormModel, irToForm, type FormModel } from "../../../cedar/form";
 
@@ -64,6 +67,18 @@ interface NewPolicySeed {
   displayName: string;
 }
 
+/** 에디터 본문이 다루는 뷰모델 — 저장된 def(IR→텍스트 변환) 또는 새 정책 시드. */
+interface EditorPolicy {
+  id: string;
+  displayName: string;
+  text: string;
+  method: PolicyMethod;
+  cat?: string | undefined;
+  source: PolicyDef["source"];
+  sourceVersion?: string | undefined;
+  manifest?: unknown;
+}
+
 export function EditorDetailPageV2() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,41 +86,56 @@ export function EditorDetailPageV2() {
   const id = params.id ? decodeURIComponent(params.id) : "";
   const qc = useQueryClient();
 
-  const listQ = useQuery({
-    queryKey: ["managed-policies"],
-    queryFn: listManagedPolicies,
+  const overviewQ = useQuery({ queryKey: ["ps2-overview"], queryFn: getOverview });
+  const storedDef = overviewQ.data?.library.defs[id] ?? null;
+
+  // def 뼈대(BlockIR)는 텍스트가 아니므로 Cedar 탭용 텍스트는 비동기로 렌더한다.
+  const textQ = useQuery({
+    queryKey: ["ps2-def-text", id, storedDef?.updatedAtMs ?? 0],
+    enabled: !!storedDef,
+    queryFn: () => blocksToText(storedDef!.skeleton.ir as PolicyIR),
   });
-  const stored = useMemo(
-    () => listQ.data?.find((p) => p.id === id) ?? null,
-    [listQ.data, id],
-  );
 
-  // A fresh policy carried in via navigation state — synthesize an in-memory
-  // ManagedPolicy so the editor renders before anything is written to storage.
+  // A fresh policy carried in via navigation state — nothing is written to
+  // storage until the user saves (and picks a scope).
   const seed = (location.state as { newPolicy?: NewPolicySeed } | null)?.newPolicy;
-  const isNew = !stored && !!seed;
-  const draftPolicy = useMemo<ManagedPolicy | null>(() => {
-    if (!seed) return null;
-    return {
-      id,
-      kind: "raw",
-      text: seed.cedarText,
-      displayName: seed.displayName,
-      method: seed.method,
-      source: "mine",
-      life: "publish",
-      updatedAtMs: Date.now(),
-      schemaVersion: 1,
-    };
-  }, [seed, id]);
+  const isNew = !storedDef && !!seed;
 
-  const policy = stored ?? (isNew ? draftPolicy : null);
+  const policy = useMemo<EditorPolicy | null>(() => {
+    if (storedDef) {
+      if (textQ.data === undefined) return null; // IR→텍스트 변환 중
+      return {
+        id: storedDef.id,
+        displayName: storedDef.displayName,
+        text: textQ.data,
+        // def에는 작성 방식이 저장되지 않는다 — 폼 우선으로 열고, 폼으로 표현
+        // 불가하면 openForm이 Cedar 탭 안내로 떨어진다.
+        method: "form",
+        cat: storedDef.cat,
+        source: storedDef.source,
+        sourceVersion: storedDef.sourceVersion,
+        manifest: storedDef.skeleton.manifest,
+      };
+    }
+    if (seed) {
+      return {
+        id,
+        displayName: seed.displayName,
+        text: seed.cedarText,
+        method: seed.method,
+        source: "mine",
+      };
+    }
+    return null;
+  }, [storedDef, textQ.data, seed, id]);
+
+  const loading = overviewQ.isLoading || (!!storedDef && textQ.isLoading);
 
   return (
     <>
       <Topbar
         here="Policy Editor"
-        subtitle={policy ? nameFromPolicy(policy) : id || "…"}
+        subtitle={policy ? policy.displayName : id || "…"}
         right={
           <Link to="/editor" className="ev2-back">
             ← 목록
@@ -113,10 +143,8 @@ export function EditorDetailPageV2() {
         }
       />
       <div className="ev2-detail-body">
-        {listQ.isLoading && !policy && (
-          <div className="ev2-status">불러오는 중…</div>
-        )}
-        {!listQ.isLoading && !policy && (
+        {loading && !policy && <div className="ev2-status">불러오는 중…</div>}
+        {!loading && !policy && (
           <div className="ev2-empty">
             <div className="big">정책을 찾을 수 없습니다</div>
             <div className="sm">
@@ -130,8 +158,11 @@ export function EditorDetailPageV2() {
           <EditorBody
             key={policy.id}
             policy={policy}
+            storedDef={storedDef}
+            snap={overviewQ.data ?? null}
             isNew={isNew}
             onSaved={(savedId) => {
+              void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
               if (savedId !== id) {
                 navigate(`/editor/${encodeURIComponent(savedId)}`, {
                   replace: true,
@@ -140,9 +171,11 @@ export function EditorDetailPageV2() {
                 // Drop the navigation seed so a reload doesn't re-enter new mode.
                 navigate(`/editor/${encodeURIComponent(id)}`, { replace: true });
               }
-              void qc.invalidateQueries({ queryKey: ["managed-policies"] });
             }}
-            onDeleted={() => navigate("/editor")}
+            onDeleted={() => {
+              void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
+              navigate("/editor");
+            }}
           />
         )}
       </div>
@@ -152,32 +185,24 @@ export function EditorDetailPageV2() {
 
 function EditorBody({
   policy,
+  storedDef,
+  snap,
   isNew,
   onSaved,
   onDeleted,
 }: {
-  policy: ManagedPolicy;
+  policy: EditorPolicy;
+  storedDef: PolicyDef | null;
+  snap: StoreSnapshot | null;
   isNew: boolean;
   onSaved: (id: string) => void;
   onDeleted: () => void;
 }) {
-  const qc = useQueryClient();
-
-  const [name, setName] = useState(() => nameFromPolicy(policy));
+  const [name, setName] = useState(() => policy.displayName);
   const [severity, setSeverity] = useState<PolicySeverity>(() =>
     severityFromCedar(policy.text),
   );
   const [cedarText, setCedarText] = useState(policy.text);
-  // Block authoring was removed, but legacy/published policies may still carry a
-  // persisted Blockly snapshot (`policyTree`). We preserve it through save/publish
-  // so existing data isn't dropped, except for `cedar`-method policies where the
-  // cedar text is canonical and any stored tree could be stale.
-  const [treeJson, setTreeJson] = useState<string | null>(
-    policy.method === "cedar" ? null : (policy.policyTree ?? null),
-  );
-  // Memo is no longer edited in the UI (the form's 사유 covers it); preserve any
-  // existing value so saving doesn't wipe it.
-  const memo = policy.memo ?? "";
   const [ir, setIr] = useState<PolicyIR | null>(null);
   // A hand-edited manifest from the form, wrapped so `null` = no override
   // (auto-generate) is distinct from an override whose value is `undefined`.
@@ -192,106 +217,138 @@ function EditorBody({
 
   // Reseed when the parent swaps to a different policy id.
   useEffect(() => {
-    setName(nameFromPolicy(policy));
+    setName(policy.displayName);
     setSeverity(severityFromCedar(policy.text));
     setCedarText(policy.text);
-    setTreeJson(
-      policy.method === "cedar" ? null : (policy.policyTree ?? null),
-    );
     setTab(defaultTab(policy.method));
     setManifestOverride(null);
     setFormEntry(null);
   }, [policy.id]);
 
-  const fromMarket = isMarketSource(policy);
+  const fromMarket = policy.source === "market";
   const cstyle = catStyle(policy.cat);
 
+  // 신규 def 첫 저장의 범위 모달 — prepare()가 만든 페이로드를 들고 띄운다.
+  const [scopeAsk, setScopeAsk] = useState<{ ir: PolicyIR; manifest: unknown } | null>(null);
+
+  /** 저장 페이로드 준비. v2 저장 형식은 BlockIR이므로 IR이 필수 — Cedar 탭에서
+   *  변환 불가한 구문이면 사유와 함께 저장을 거부한다. */
+  const prepare = async (): Promise<{ ir: PolicyIR; manifest: unknown }> => {
+    const stamped = stampAnnotations(cedarText, name.trim() || "untitled", severity);
+    let effectiveIr = ir;
+    if (!effectiveIr) {
+      if (!stamped.trim()) throw new Error("정책 본문이 비어 있어요");
+      try {
+        effectiveIr = (await textToBlocks(stamped))[0] ?? null;
+      } catch (err) {
+        throw new Error(
+          `이 Cedar 구문은 저장 형식(블록)으로 변환할 수 없어요: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      if (!effectiveIr) {
+        throw new Error("이 Cedar 구문은 저장 형식(블록)으로 변환할 수 없어요");
+      }
+    }
+    let manifest: unknown;
+    if (tab === "form" && manifestOverride) {
+      // The form supplied a hand-edited manifest — persist it as-is.
+      manifest = manifestOverride.value;
+    } else {
+      const gen = generateManifest(effectiveIr, undefined, { id: policy.id, severity });
+      if (gen.errors.length > 0) {
+        throw new Error(gen.errors.map((e) => e.message).join("\n"));
+      }
+      manifest = gen.manifest;
+    }
+    return { ir: effectiveIr, manifest };
+  };
+
   const saveMut = useMutation({
-    mutationFn: async () => {
-      const stamped = stampAnnotations(
-        cedarText,
-        name.trim() || "untitled",
-        severity,
-      );
-      // The manifest is generated from the policy IR. The Block tab keeps `ir`
-      // live, but the Cedar tab edits text directly — so when `ir` is null we
-      // parse the text here. Otherwise a `context.custom.*` policy authored in
-      // the Cedar tab saves WITHOUT a manifest, the enrichment is never planned,
-      // its `has` guards short-circuit to false, and the policy silently never
-      // fires.
-      let effectiveIr = ir;
-      if (!effectiveIr && cedarText.trim()) {
-        try {
-          effectiveIr = (await textToBlocks(cedarText))[0] ?? null;
-        } catch {
-          effectiveIr = null; // unparseable in-progress text → save w/o manifest
-        }
-      }
-      let manifest: unknown;
-      if (tab === "form" && manifestOverride) {
-        // The form supplied a hand-edited manifest — persist it as-is.
-        manifest = manifestOverride.value;
-      } else if (effectiveIr) {
-        const gen = generateManifest(effectiveIr, undefined, {
-          id: policy.id,
-          severity,
-        });
-        if (gen.errors.length > 0) {
-          throw new Error(gen.errors.map((e) => e.message).join("\n"));
-        }
-        manifest = gen.manifest;
-      }
-      await putPolicy({
-        id: policy.id,
-        cedarText: stamped,
-        policyTree: treeJson,
-        displayName: name.trim() || "untitled",
-        memo,
-        method: policy.method,
-        // There is no draft lifecycle: every save makes the policy live.
-        life: "publish",
-        source: policy.source,
-        cat: policy.cat,
-        dupKey: policy.dupKey,
-        sourceListingId: policy.sourceListingId,
-        sourceVersion: policy.sourceVersion,
-        ...(manifest !== undefined ? { manifest } : {}),
-      });
-      // A freshly-created policy should be active the moment it's saved
-      // ("저장 = 활성"). Add it to the enabled set (idempotent for re-saves).
+    mutationFn: async (): Promise<string | null> => {
+      const prepared = await prepare();
       if (isNew) {
-        try {
-          const enabled = await getEnabledPolicyIds();
-          if (!enabled.includes(policy.id)) {
-            await setEnabledPolicyIds([...enabled, policy.id]);
-          }
-        } catch {
-          // Non-fatal: the policy is saved; the user can toggle it on manually.
-        }
+        // 첫 저장: 범위 모달이 finishMut로 마무리한다.
+        setScopeAsk(prepared);
+        return null;
       }
-      return policy.id;
+      const { def } = buildDefPayload({
+        existing: storedDef,
+        displayName: name.trim() || "untitled",
+        cat: policy.cat,
+        ir: prepared.ir,
+        manifest: prepared.manifest,
+        scope: null,
+        packageId: null,
+        applyToNewWallets: null,
+      });
+      await putDef(def);
+      return def.id;
     },
-    onSuccess: (id) => {
-      void qc.invalidateQueries({ queryKey: ["managed-policies"] });
-      void qc.invalidateQueries({ queryKey: ["enabled-policy-ids"] });
-      onSaved(id);
+    onSuccess: (savedId) => {
+      if (savedId) onSaved(savedId);
     },
   });
 
-  const deleteMut = useMutation({
-    mutationFn: async () => deleteManagedPolicy(policy.id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["managed-policies"] });
-      onDeleted();
+  // 범위 모달 confirm → (필요시 패키지 생성) → put-def + bind.
+  const finishMut = useMutation({
+    mutationFn: async (choice: SaveScopeChoice): Promise<string> => {
+      if (!scopeAsk) throw new Error("내부 오류: 저장 준비가 비어 있어요");
+      let pkgId = choice.packageId;
+      if (pkgId === "__new__") {
+        pkgId = `pkg::${crypto.randomUUID()}`;
+        await putPackage({
+          id: pkgId,
+          displayName: choice.newPackageName ?? "새 패키지",
+          source: "mine",
+          updatedAtMs: Date.now(),
+        });
+      }
+      const { def, bindPlan } = buildDefPayload({
+        existing: null,
+        displayName: name.trim() || "untitled",
+        cat: policy.cat,
+        ir: scopeAsk.ir,
+        manifest: scopeAsk.manifest,
+        scope: choice.scope,
+        packageId: pkgId,
+        applyToNewWallets: choice.applyToNewWallets,
+      });
+      await putDef(def);
+      if (bindPlan) await bindDef(bindPlan);
+      return def.id;
+    },
+    onSuccess: (savedId) => {
+      setScopeAsk(null);
+      onSaved(savedId);
     },
   });
+
+  const usageCount = snap ? defUsageCount(snap, policy.id) : 0;
+  const deleteMut = useMutation({
+    mutationFn: async () => deleteDef(policy.id),
+    onSuccess: () => onDeleted(),
+  });
+
+  // 범위 모달의 지갑 목록: 서버 지갑 ∪ ps2 지갑(소문자).
+  const walletsQ = useQuery({ queryKey: ["wallets"], queryFn: listWallets, enabled: isNew });
+  const modalWallets = useMemo(() => {
+    const addrs = new Set([
+      ...(walletsQ.data ?? []).map((w) => w.address.toLowerCase()),
+      ...Object.keys(snap?.wallets.byAddress ?? {}),
+    ]);
+    return [...addrs].sort().map((address) => ({ address }));
+  }, [walletsQ.data, snap]);
+  const modalPackages = useMemo(
+    () => Object.values(snap?.library.packages ?? {}),
+    [snap],
+  );
 
   const publishSource: PublishSource = {
     kind: "policy",
     cedarText,
     manifest: policy.manifest,
-    policyTree: treeJson,
-    suggestedDisplayName: nameFromPolicy(policy),
+    policyTree: null,
+    suggestedDisplayName: policy.displayName,
     suggestedSlug: stripDashboardId(policy.id),
   };
 
@@ -406,7 +463,8 @@ function EditorBody({
             type="button"
             className="ev2-pri danger"
             onClick={() => {
-              if (!confirm(`정책 "${name}"을 삭제할까요?`)) return;
+              const extra = usageCount > 0 ? `\n${usageCount}개 지갑에서 함께 제거됩니다.` : "";
+              if (!confirm(`정책 "${name}"을 삭제할까요?${extra}`)) return;
               deleteMut.mutate();
             }}
             disabled={deleteMut.isPending}
@@ -424,10 +482,10 @@ function EditorBody({
         </div>
       </div>
 
-      {(saveMut.error || deleteMut.error) && (
+      {(saveMut.error || finishMut.error || deleteMut.error) && (
         <div className="ev2-err-banner">
           <WarnIcon />
-          {String(saveMut.error || deleteMut.error || "")}
+          {String(saveMut.error || finishMut.error || deleteMut.error || "")}
         </div>
       )}
 
@@ -437,12 +495,7 @@ function EditorBody({
             value={cedarText}
             onChange={(next) => {
               setCedarText(next);
-              // Cedar edits invalidate the Blockly snapshot — otherwise
-              // a subsequent Block-tab visit would re-seed from the
-              // stale `policyTree` (Workspace prefers initialJson over
-              // initialCedarText), silently dropping the new cedar.
-              setTreeJson(null);
-              // Drop the cached IR too. Otherwise the form tab (openForm) and
+              // Drop the cached IR. Otherwise the form tab (openForm) and
               // save (manifest gen) reuse the IR captured by the last form/block
               // edit and the hand-typed cedar never reflects into form/block.
               setIr(null);
@@ -460,9 +513,6 @@ function EditorBody({
                 setIr(nextIr);
                 // Keep the header severity in sync so save stamps it correctly.
                 setSeverity(model.severity as PolicySeverity);
-                // The form edited the cedar; drop any stale block snapshot so a
-                // published policy doesn't carry a tree that no longer matches.
-                setTreeJson(null);
                 // Carry the form's manifest override (if any) so save persists it
                 // instead of re-generating.
                 setManifestOverride(manifestOverridden ? { value: manifest } : null);
@@ -492,6 +542,16 @@ function EditorBody({
         open={publishOpen}
         source={publishSource}
         onClose={() => setPublishOpen(false)}
+      />
+
+      <SaveScopeModal
+        open={scopeAsk !== null}
+        policyName={name.trim() || "untitled"}
+        wallets={modalWallets}
+        packages={modalPackages}
+        busy={finishMut.isPending}
+        onCancel={() => setScopeAsk(null)}
+        onConfirm={(choice) => finishMut.mutate(choice)}
       />
     </div>
   );
