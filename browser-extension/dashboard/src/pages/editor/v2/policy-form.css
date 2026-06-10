@@ -108,11 +108,6 @@
   color: var(--muted, #9ca3af);
   padding: 6px 2px;
 }
-.pf-precedence {
-  font-size: 11px;
-  color: var(--muted, #9ca3af);
-  margin: 6px 0 8px;
-}
 .pf-add-row {
   display: flex;
   gap: 8px;
@@ -130,6 +125,73 @@
 .pf-add-cond:hover {
   border-color: #9ca3af;
   color: #374151;
+}
+
+/* ── 위험 상황 카드 (AND-run) ──────────────────────────────────────────── */
+.pf-sit {
+  border: 1px solid var(--hairline, #d7dbe0);
+  border-radius: 12px;
+  background: var(--surface-raised, #fff);
+  padding: 10px 12px 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.pf-sit.droppable {
+  outline: 2px dashed var(--info-300, #93c5fd);
+  outline-offset: 2px;
+}
+.pf-sit-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.pf-sit-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--slate-800, #1e293b);
+}
+.pf-sit-mode {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-500, #64748b);
+  background: var(--fog-200, #eef1f5);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+/* 카드 사이의 "또는" 구분선 */
+.pf-or-div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 4px;
+  color: var(--warn-700, #8a6d3b);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pf-or-div::before,
+.pf-or-div::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--warn-300, #d8c08a);
+}
+.pf-bullet {
+  width: 14px;
+  flex: none;
+  text-align: center;
+  color: var(--slate-400, #94a3b8);
+  user-select: none;
+}
+.pf-bullet.alt {
+  color: var(--warn-600, #a07d2c);
+}
+.pf-add-cond.sm {
+  font-size: 12px;
+  padding: 4px 10px;
+  margin-top: 6px;
+}
+.pf-box-act:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* a single condition row: a control line + a muted cedar line */
@@ -191,29 +253,6 @@
 }
 .pf-drag:active {
   cursor: grabbing;
-}
-
-.pf-join-tag {
-  width: 88px;
-  flex: none;
-  font-size: 12px;
-  color: var(--muted, #9ca3af);
-  padding-left: 2px;
-}
-.pf-join {
-  width: 88px;
-  flex: none;
-  font-weight: 600;
-}
-.pf-join.and {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-.pf-join.or {
-  color: #a16207;
-  background: #fefce8;
-  border-color: #fde68a;
 }
 
 .pf-not {
