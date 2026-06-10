@@ -41,6 +41,22 @@ dApp → window.ethereum  ──intercept──▶  extension service worker
    the asset-model reducer. The extension owns the final verdict; the server
    supplies state context.
 
+## Naming guide (versioned names you will meet in the code)
+
+The version suffixes are **protocol names, not "old vs new"** — they coexist on
+purpose and renaming them would churn every call site. What each one means:
+
+| Name | What it is |
+|------|------------|
+| `ActionBody` / **v3 decode** | The declarative calldata/typed-data decoder driven by `registryV2` manifests (`declarative_route_*_v3`). "v3" names the decode-registry format. |
+| **v2 evaluation** (`evaluate_action_v2`, `manifest_v2`) | The stateless per-request Cedar evaluation: `{policy, manifest}` bundles + trigger matching + `policy_rpc` enrichment planning. "v2" names the policy-bundle contract. |
+| **`ps2:*`** | The extension's policy-storage namespace (account ⊃ wallets ⊃ bindings/packages) and its service-worker message family. The dashboard/popup manage policies exclusively through it. |
+| `verdictSource: "declarative-v2" \| "fail_closed"` | Where a verdict came from: a real policy evaluation, or the fail-closed tail (undecodable request, engine fault). `fail_closed` is a safety semantic, not a legacy marker. |
+| `registryV2/` | The adapter-manifest registry that feeds the v3 decoder. The `registry-api/` proxy fronts its private deployment. |
+
+If you add a new protocol revision, give it a name here and keep the old one
+documented until it is actually deleted.
+
 ## Workspace layout
 
 | Path | What |
