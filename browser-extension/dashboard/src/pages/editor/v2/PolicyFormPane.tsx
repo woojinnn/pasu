@@ -143,6 +143,10 @@ function compatibleRhsFields(all: FieldOption[], lhs: FieldOption | undefined): 
 const ENUM_SUGGESTIONS: Record<string, string[]> = {
   "context.direction.kind": ["exact_input", "exact_output"],
   "context.side": ["long", "short"],
+  // Perp::PlaceOrder order shape (HL/perp consolidation) — value hints.
+  "context.orderType.kind": ["limit", "stop", "twap"],
+  "context.orderType.timeInForce.kind": ["gtc", "ioc", "fok", "post_only", "gtd"],
+  "context.orderType.orderKind": ["stop_market", "stop_limit", "take_profit", "take_profit_limit"],
   // 프로토콜(venue) 제한 — manifest trigger의 `action.venue`와 같은 어휘.
   "context.venue.name": [
     "uniswap_v2",
