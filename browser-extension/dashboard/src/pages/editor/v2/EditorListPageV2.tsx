@@ -16,6 +16,7 @@ import {
   type StoreSnapshot,
 } from "../../../server-api/policy-store";
 import { defUsageCount } from "./apply-matrix-derive";
+import { ApplyMatrixView } from "./ApplyMatrixView";
 import { Topbar } from "../../../shell/Topbar";
 import { NewPolicyChooser } from "./NewPolicyChooser";
 import { CAT_ORDER, catKey, catLabel, catStyle, type CategoryKey } from "./categories";
@@ -122,7 +123,7 @@ export function EditorListPageV2() {
         {snap && tab === "library" && (
           <LibraryTab snap={snap} onToast={pushToast} invalidate={invalidate} />
         )}
-        {snap && tab === "apply" && <div className="ev2-status">적용 현황 — 준비 중</div>}
+        {snap && tab === "apply" && <ApplyMatrixView onToast={pushToast} />}
       </div>
 
       <ToastStack toasts={toasts} />
