@@ -39,7 +39,7 @@ interface ToastMsg {
 
 /**
  * /editor — 정책 스토리지 v2의 대시보드 진입점. 두 탭:
- *  - 적용 현황(기본): 지갑별 워크스페이스 — 그 지갑의 패키지×바인딩 토글.
+ *  - 지갑별 정책(기본): 그 지갑의 패키지×바인딩 토글 워크스페이스.
  *  - 라이브러리: 계정의 정의·패키지 관리 — 패키지를 디렉토리처럼 보여주는
  *    폴더 뷰(폴더 멤버십 = defaults.packageId).
  * 모든 데이터는 ps2:get-overview 한 번으로 읽고, 변이 후 invalidate로 재조회한다.
@@ -98,7 +98,7 @@ export function EditorListPageV2() {
             className={`ev2-tab${tab === "apply" ? " on" : ""}`}
             onClick={() => setTab("apply")}
           >
-            적용 현황
+            지갑별 정책
           </button>
           <button
             type="button"
