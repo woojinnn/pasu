@@ -17,8 +17,8 @@ export interface PolicyDef {
   holes: HoleSpec[];
   defaults: { enabled: boolean; params: Record<string, HoleValue>; packageId?: string };
   source: "builtin" | "mine" | "market";
-  sourceListingId?: string;
-  sourceVersion?: string;
+  sourceListingId?: string | undefined;
+  sourceVersion?: string | undefined;
   updatedAtMs: number;
 }
 
@@ -27,8 +27,8 @@ export interface PackageDef {
   displayName: string;
   desc?: string;
   source: "builtin" | "mine" | "market";
-  sourceListingId?: string;
-  sourceVersion?: string;
+  sourceListingId?: string | undefined;
+  sourceVersion?: string | undefined;
   updatedAtMs: number;
 }
 
@@ -37,7 +37,7 @@ export interface Binding {
   defId: string;
   packageId: string;
   enabled: boolean;
-  params?: Record<string, HoleValue>;
+  params?: Record<string, HoleValue> | undefined;
   updatedAtMs: number;
 }
 

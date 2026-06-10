@@ -6,6 +6,7 @@ import { hydrateManifests } from "./manifests/hydrate";
 import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-storage-migration";
 import { migratePasuRenameStorageKeys } from "./manifests/pasu-rename-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
+import { cleanupLegacyKeys } from "./policy-store/seed";
 import { decideMessage } from "./orchestrator";
 import { reportExecutionOutcome } from "./execution-report";
 import {
@@ -174,6 +175,16 @@ async function bootSequence(): Promise<void> {
     await Browser.storage.local.remove("registry:adapter-bundles");
   } catch {
     // ignore — key 부재 또는 storage error 시 silent. boot 진행 영향 X.
+  }
+
+  // 정책 스토리지 v2 — 구(v1) 정책 키 리셋(마이그레이션 없음, 스펙 합의).
+  // `dashboard:policies/sets`, `policy-selection:*`, `migration:*` 네임스페이스를
+  // 제거한다. ps2:* 시드는 uid가 필요하므로 여기가 아니라 첫 resolve/프로비저닝
+  // 호출에서 lazy하게 일어난다.
+  try {
+    await cleanupLegacyKeys();
+  } catch (err) {
+    console.warn("[Pasu] legacy policy-storage cleanup failed:", err);
   }
 
   // Cold-start prewarm: kick off WASM module load + default policy
