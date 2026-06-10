@@ -642,22 +642,19 @@
 }
 .pf-addrchip .x:hover { background: var(--fail-100, #fee2e2); color: var(--fail-600, #dc2626); }
 
-/* structure diagram preview (replaces the live cedar pane) */
+/* structure diagram preview (replaces the live cedar pane) — fixed-height
+   pan/zoom canvas (the diagram is interactive on this surface) */
 .pf-diagram-body {
   background: var(--surface, #fff);
-  padding: 16px;
-  overflow: auto;
-  min-height: 120px;
-  max-height: calc(100vh - 150px);
+  padding: 0;
+  overflow: hidden;
+  height: clamp(320px, 52vh, 640px);
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
 }
-/* fit the diagram to the pane width; height follows content (no big gaps) */
 .pf-diagram-body .pdiagram {
-  height: auto;
+  height: 100%;
   width: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 .pf-diagram-body .pdiagram-empty {
   color: var(--slate-400);

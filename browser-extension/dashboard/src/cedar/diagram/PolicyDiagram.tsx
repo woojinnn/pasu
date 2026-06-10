@@ -16,7 +16,7 @@
  * verdict, history detail, confirm popup) — only the data source and `compact`
  * sizing differ.
  */
-import { useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { BinaryOp, Expr, PolicyIR } from "../blocks/ir";
 import { isAllOf, setLiteralOperand } from "../diagnosis/membership";
@@ -556,6 +556,9 @@ export interface PolicyDiagramProps {
   erroredPaths?: readonly string[];
   /** Tighter sizing for cramped surfaces (e.g. the confirm popup). */
   compact?: boolean;
+  /** Pan/zoom canvas (wheel zoom at cursor, drag pan, dblclick/버튼 fit) — the
+   *  editor surface only; other surfaces stay static. */
+  interactive?: boolean;
   /** Canonical paths to render as the user's SELECTION (editor click-sync) —
    *  blue outline, distinct from the diagnosis red. */
   selectedPaths?: readonly string[];
@@ -567,16 +570,92 @@ export interface PolicyDiagramProps {
   humanizeLabel?: (text: string) => string;
 }
 
+/** Zoom clamps for the interactive canvas. */
+const PZ_MIN = 0.25;
+const PZ_MAX = 3;
+
 export function PolicyDiagram({
   ir,
   highlightPaths,
   erroredPaths,
   compact,
+  interactive,
   selectedPaths,
   onNodeClick,
   humanizeLabel,
 }: PolicyDiagramProps) {
   const model = useMemo(() => (ir ? layout(buildTree(ir)) : null), [ir]);
+
+  const PAD = compact ? 8 : 16;
+  const W = (model?.width ?? 0) + PAD * 2;
+  const H = (model?.height ?? 0) + PAD * 2;
+
+  // ── pan/zoom (interactive mode only) ──────────────────────────────────
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<{ k: number; x: number; y: number } | null>(null);
+  // pan 후의 클릭(드래그 잔향)이 노드 선택으로 새지 않게 한 번 삼킨다.
+  const suppressClick = useRef(false);
+  const dragFrom = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+
+  const fit = useCallback(() => {
+    const el = wrapRef.current;
+    if (!el || !W || !H) return;
+    const k = Math.min(el.clientWidth / W, el.clientHeight / H, 1);
+    setView({ k, x: (el.clientWidth - W * k) / 2, y: Math.max((el.clientHeight - H * k) / 2, 8) });
+  }, [W, H]);
+  useLayoutEffect(() => {
+    if (interactive) fit();
+  }, [interactive, fit]);
+
+  // wheel은 React 합성 이벤트가 passive라 preventDefault가 안 먹는다 — native로.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || !interactive) return;
+    const onWheel = (ev: WheelEvent) => {
+      ev.preventDefault();
+      setView((v) => {
+        if (!v) return v;
+        const r = el.getBoundingClientRect();
+        const px = ev.clientX - r.left;
+        const py = ev.clientY - r.top;
+        const k = Math.min(PZ_MAX, Math.max(PZ_MIN, v.k * Math.exp(-ev.deltaY * 0.0015)));
+        return { k, x: px - ((px - v.x) * k) / v.k, y: py - ((py - v.y) * k) / v.k };
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [interactive]);
+
+  const zoomBy = (f: number) =>
+    setView((v) => {
+      const el = wrapRef.current;
+      if (!v || !el) return v;
+      const px = el.clientWidth / 2;
+      const py = el.clientHeight / 2;
+      const k = Math.min(PZ_MAX, Math.max(PZ_MIN, v.k * f));
+      return { k, x: px - ((px - v.x) * k) / v.k, y: py - ((py - v.y) * k) / v.k };
+    });
+
+  const onPointerDown = (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (ev.button !== 0) return;
+    dragFrom.current = { x: ev.clientX, y: ev.clientY, moved: false };
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+  };
+  const onPointerMove = (ev: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragFrom.current;
+    if (!d) return;
+    const dx = ev.clientX - d.x;
+    const dy = ev.clientY - d.y;
+    if (!d.moved && Math.hypot(dx, dy) < 4) return; // 클릭/드래그 구분 임계값
+    d.moved = true;
+    d.x = ev.clientX;
+    d.y = ev.clientY;
+    setView((v) => (v ? { ...v, x: v.x + dx, y: v.y + dy } : v));
+  };
+  const onPointerUp = () => {
+    if (dragFrom.current?.moved) suppressClick.current = true;
+    dragFrom.current = null;
+  };
 
   // Friendly-name resolver for 0x addresses inside labels (supplied by the
   // caller, which owns the address book). Identity when not provided.
@@ -603,10 +682,6 @@ export function PolicyDiagram({
     };
     mark(model.placed);
   }
-
-  const PAD = compact ? 8 : 16;
-  const W = model.width + PAD * 2;
-  const H = model.height + PAD * 2;
 
   const edges: JSX.Element[] = [];
   const nodes: JSX.Element[] = [];
@@ -670,6 +745,10 @@ export function PolicyDiagram({
           clickable
             ? (ev) => {
                 ev.stopPropagation();
+                if (suppressClick.current) {
+                  suppressClick.current = false;
+                  return;
+                }
                 onNodeClick(n.path);
               }
             : undefined
@@ -716,6 +795,44 @@ export function PolicyDiagram({
     );
   };
   walk(model.placed);
+
+  if (interactive) {
+    return (
+      <div
+        className="pdiagram is-interactive"
+        ref={wrapRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onDoubleClick={fit}
+      >
+        <svg
+          className="pdiagram-svg"
+          width="100%"
+          height="100%"
+          role="img"
+          aria-label="정책 구조 다이어그램"
+        >
+          <g transform={view ? `translate(${view.x} ${view.y}) scale(${view.k})` : undefined}>
+            {edges}
+            {nodes}
+          </g>
+        </svg>
+        <div className="pd-controls">
+          <button type="button" onClick={() => zoomBy(1.25)} aria-label="확대">
+            ＋
+          </button>
+          <button type="button" onClick={() => zoomBy(1 / 1.25)} aria-label="축소">
+            −
+          </button>
+          <button type="button" onClick={fit}>
+            맞춤
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`pdiagram${compact ? " is-compact" : ""}`}>

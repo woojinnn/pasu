@@ -388,7 +388,7 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           <span className={`pf-sync${cedarError ? " err" : ""}`}>{cedarError ? "변환 오류" : "폼과 동기화됨"}</span>
         </div>
         <div className="pf-diagram-body">
-          <PolicyDiagram ir={ir} humanizeLabel={humanizeAddrs} />
+          <PolicyDiagram ir={ir} interactive humanizeLabel={humanizeAddrs} />
         </div>
         <ManifestPreview
           open={manifestOpen}

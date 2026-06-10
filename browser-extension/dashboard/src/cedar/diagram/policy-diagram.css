@@ -219,6 +219,37 @@
 /* the memberset box manages its own bg/border via .pd-ms (no rect) */
 .pd-memberset.pd-culprit .pd-ms { box-shadow: 0 0 0 2px var(--fail-400, #f87171); }
 
+/* Interactive (editor) mode: pan/zoom canvas */
+.pdiagram.is-interactive {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.pdiagram.is-interactive:active { cursor: grabbing; }
+.pdiagram.is-interactive .pdiagram-svg { width: 100%; height: 100%; }
+.pd-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+}
+.pd-controls button {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  border: 1px solid var(--hairline, #d7dbe0);
+  border-radius: 7px;
+  background: var(--surface-raised, #fff);
+  color: var(--slate-700);
+  cursor: pointer;
+}
+.pd-controls button:hover { background: var(--fog-200, #eef1f5); }
+
 /* Editor click-sync: selection (blue) — distinct from diagnosis red. */
 .pd-node.pd-clickable { cursor: pointer; }
 .pd-node.pd-clickable:hover .pd-box { stroke: var(--slate-400, #9aa3ad); }
