@@ -229,10 +229,26 @@ function presenceGuards(leaves: FormLeaf[], trigger: FormTrigger): Expr[] {
   return pairs.map(({ of, attr }): Expr => ({ kind: "has", of: pathToExpr(of), attr }));
 }
 
+/** Side maps recorded while building the IR — what the editor's click-sync
+ *  (form row ↔ diagram node) needs. */
+export interface FormIrMaps {
+  ir: PolicyIR;
+  /** Form node → the Expr(s) it produced: `[outer]`, or `[outer, inner]` for a
+   *  negated node (the diagram folds `!(a<b)` to a leaf carrying the INNER
+   *  comparison's path, so both are valid selection targets). */
+  exprsByNode: Map<FormNode, Expr[]>;
+  /** A situation(run)의 머리 노드 → run 루트 Expr (카드 헤더 선택용 게이트). */
+  runRootByHead: Map<FormNode, Expr>;
+}
+
+type Recorder = Pick<FormIrMaps, "exprsByNode" | "runRootByHead">;
+
 /** A single condition's Cedar expr, wrapped in `!(…)` when negated. */
-function condExpr(c: FormCondition): Expr {
-  const e = leafToExpr(c);
-  return c.not ? { kind: "unary", op: "!", operand: e } : e;
+function condExpr(c: FormCondition, rec?: Recorder): Expr {
+  const inner = leafToExpr(c);
+  const e: Expr = c.not ? { kind: "unary", op: "!", operand: inner } : inner;
+  rec?.exprsByNode.set(c, c.not ? [e, inner] : [e]);
+  return e;
 }
 
 /** Split joiner-carrying items into AND-runs (cut before each `or`). */
@@ -251,17 +267,19 @@ export function splitRuns<T extends { joiner: GroupOp }>(items: T[]): T[][] {
 }
 
 /** Boolean expr for a flat list of conditions (OR of AND-runs); no guards. */
-function condsExpr(conds: FormCondition[]): Expr {
-  return fold("||", splitRuns(conds).map((run) => fold("&&", run.map(condExpr))));
+function condsExpr(conds: FormCondition[], rec?: Recorder): Expr {
+  return fold("||", splitRuns(conds).map((run) => fold("&&", run.map((c) => condExpr(c, rec)))));
 }
 
 /** A node's expr — a leaf condition, or a `(…)` group's inner expr (negated). */
-function nodeExpr(node: FormNode): Expr {
+function nodeExpr(node: FormNode, rec?: Recorder): Expr {
   if (isGroupNode(node)) {
-    const inner = condsExpr(node.conds);
-    return node.not ? { kind: "unary", op: "!", operand: inner } : inner;
+    const inner = condsExpr(node.conds, rec);
+    const e: Expr = node.not ? { kind: "unary", op: "!", operand: inner } : inner;
+    rec?.exprsByNode.set(node, node.not ? [e, inner] : [e]);
+    return e;
   }
-  return condExpr(node);
+  return condExpr(node, rec);
 }
 
 /** Every leaf condition across nodes (for has-guard collection). */
@@ -272,10 +290,12 @@ function allLeaves(nodes: FormNode[]): FormCondition[] {
 /** One AND-run's expr: per-run `has` guards (THIS run's leaves only) + the
  *  run's terms. Guards inside the run keep an OR-sibling run alive when this
  *  run's optional field is absent (fail-open fix). */
-function runExpr(run: FormNode[], trigger: FormTrigger): Expr {
-  const body = fold("&&", run.map(nodeExpr));
+function runExpr(run: FormNode[], trigger: FormTrigger, rec?: Recorder): Expr {
+  const body = fold("&&", run.map((n) => nodeExpr(n, rec)));
   const guards = presenceGuards(allLeaves(run), trigger);
-  return guards.length > 0 ? fold("&&", [...guards, body]) : body;
+  const root = guards.length > 0 ? fold("&&", [...guards, body]) : body;
+  rec?.runRootByHead.set(run[0], root);
+  return root;
 }
 
 /**
@@ -283,12 +303,12 @@ function runExpr(run: FormNode[], trigger: FormTrigger): Expr {
  * joiner; a group node contributes its parenthesized sub-expr. Each run carries
  * its own `has` guards. Null when empty.
  */
-function clauseBody(nodes: FormNode[], trigger: FormTrigger): Expr | null {
+function clauseBody(nodes: FormNode[], trigger: FormTrigger, rec?: Recorder): Expr | null {
   // Drop empty group boxes (a box the user emptied) so `fold` never sees an
   // empty list.
   const present = nodes.filter((n) => !isGroupNode(n) || n.conds.length > 0);
   if (present.length === 0) return null;
-  return fold("||", splitRuns(present).map((run) => runExpr(run, trigger)));
+  return fold("||", splitRuns(present).map((run) => runExpr(run, trigger, rec)));
 }
 
 /** Parse one term into a condition, peeling a `!(…)` negation. Null if not a leaf. */
@@ -372,8 +392,19 @@ function parseClause(body: Expr): FormNode[] | null {
 
 // ── public API ────────────────────────────────────────────────────────────
 
+/** Build a `forbid` PolicyIR plus the form-node↔Expr maps the editor's
+ *  click-sync uses. {@link formToIr} is the map-free wrapper. */
+export function formToIrWithMap(model: FormModel): FormIrMaps {
+  const rec: Recorder = { exprsByNode: new Map(), runRootByHead: new Map() };
+  return { ir: buildIr(model, rec), ...rec };
+}
+
 /** Build a `forbid` PolicyIR from the form model. */
 export function formToIr(model: FormModel): PolicyIR {
+  return buildIr(model);
+}
+
+function buildIr(model: FormModel, rec?: Recorder): PolicyIR {
   const annotations: { name: string; value: string }[] = [
     { name: "id", value: model.id || "untitled-policy" },
     { name: "severity", value: model.severity },
@@ -386,9 +417,9 @@ export function formToIr(model: FormModel): PolicyIR {
       : { kind: "scopeAll" };
 
   const conditions: Condition[] = [];
-  const whenBody = clauseBody(model.when, model.trigger);
+  const whenBody = clauseBody(model.when, model.trigger, rec);
   if (whenBody) conditions.push({ kind: "when", body: whenBody });
-  const unlessBody = clauseBody(model.unless, model.trigger);
+  const unlessBody = clauseBody(model.unless, model.trigger, rec);
   if (unlessBody) conditions.push({ kind: "unless", body: unlessBody });
 
   return {

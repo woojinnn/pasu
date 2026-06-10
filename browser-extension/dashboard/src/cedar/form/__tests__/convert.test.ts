@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { blocksToEst } from "../../blocks/blocksToEst";
 import type { Expr, PolicyIR } from "../../blocks/ir";
-import { formToIr, irToForm } from "../convert";
+import { pathByNode } from "../../diagnosis/path";
+import { policyDiagramPaths } from "../../diagram/PolicyDiagram";
+import { formToIr, formToIrWithMap, irToForm } from "../convert";
 import type { FormCondition, FormModel } from "../model";
 
 const cond = (
@@ -215,6 +217,47 @@ describe("formToIr / irToForm", () => {
     expect(irToForm(ir)?.when).toEqual([
       cond("context.target", "in", { kind: "set", values: ["0xaa", "0xbb"] }, { not: true }),
     ]);
+  });
+
+  it("formToIrWithMap: every form node maps to an Expr whose path the diagram renders", () => {
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        cond("context.a", "==", { kind: "long", value: 1 }),
+        cond("context.flagged", "==", { kind: "bool", value: true }, { not: true }),
+        cond("context.spender", "in", { kind: "set", values: ["0xaa", "0xbb"] }, { joiner: "or" }),
+        {
+          kind: "group",
+          joiner: "and",
+          conds: [
+            cond("context.b", "==", { kind: "long", value: 2 }),
+            cond("context.c", "==", { kind: "long", value: 3 }, { joiner: "or" }),
+          ],
+        },
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    const { ir, exprsByNode, runRootByHead } = formToIrWithMap(m);
+    const pathOf = pathByNode(ir);
+    const shown = new Set(policyDiagramPaths(ir));
+    // 모든 폼 노드(when의 leaf 3 + group 1 = 4, group 안 leaf 2 = 6)가 등록되고,
+    expect(exprsByNode.size).toBe(6);
+    for (const exprs of exprsByNode.values()) {
+      const paths = exprs.map((e) => pathOf.get(e));
+      // 각 Expr은 canonical path를 갖고, 그중 하나는 다이어그램이 실제로 그린다.
+      expect(paths.every(Boolean)).toBe(true);
+      expect(paths.some((p) => shown.has(p!))).toBe(true);
+    }
+    // run 머리(1번째/3번째 노드) → run 루트 게이트.
+    expect(runRootByHead.size).toBe(2);
+    expect(runRootByHead.has(m.when[0])).toBe(true);
+    expect(runRootByHead.has(m.when[2])).toBe(true);
+    for (const root of runRootByHead.values()) expect(pathOf.get(root)).toBeTruthy();
+    // 동일 모델의 formToIr와 같은 IR.
+    expect(ir).toEqual(formToIr(m));
   });
 
   it("produces an EST the local IR→EST converter accepts", () => {

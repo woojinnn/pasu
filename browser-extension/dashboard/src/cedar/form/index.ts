@@ -15,7 +15,7 @@ export type {
   GroupOp,
 } from "./model";
 export { emptyFormModel, isGroupNode } from "./model";
-export { formToIr, irToForm, leafToExpr } from "./convert";
+export { formToIr, formToIrWithMap, irToForm, leafToExpr, splitRuns, type FormIrMaps } from "./convert";
 export {
   fieldsForTrigger,
   operatorsFor,
