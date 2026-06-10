@@ -200,8 +200,7 @@ impl EsTokenRow {
         let decimals = self
             .divisor
             .as_deref()
-            .map(|s| divisor_to_decimals(s).unwrap_or(18))
-            .unwrap_or(18);
+            .map_or(18, |s| divisor_to_decimals(s).unwrap_or(18));
         Ok(DiscoveredToken {
             key: TokenKey::Erc20 {
                 chain: chain.clone(),

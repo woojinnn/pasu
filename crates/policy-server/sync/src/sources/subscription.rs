@@ -47,23 +47,20 @@ impl PollingBlockSubscription {
             let mut last: Option<u64> = None;
             loop {
                 tokio::time::sleep(interval).await;
-                match r.eth_block_number(&c).await {
-                    Ok(n) => {
-                        if last != Some(n) {
-                            last = Some(n);
-                            if tx
-                                .send(NewBlock {
-                                    chain: c.clone(),
-                                    number: n,
-                                })
-                                .await
-                                .is_err()
-                            {
-                                return;
-                            }
+                if let Ok(n) = r.eth_block_number(&c).await {
+                    if last != Some(n) {
+                        last = Some(n);
+                        if tx
+                            .send(NewBlock {
+                                chain: c.clone(),
+                                number: n,
+                            })
+                            .await
+                            .is_err()
+                        {
+                            return;
                         }
                     }
-                    Err(_) => continue,
                 }
             }
         });

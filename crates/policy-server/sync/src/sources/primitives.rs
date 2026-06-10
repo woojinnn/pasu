@@ -152,14 +152,11 @@ impl Orchestrator {
         request: &PrimitiveFetchRequest,
         owner: Address,
     ) -> Result<Vec<PrimitiveFetchUpdate>, SyncError> {
-        let router = match self.router_ref() {
-            Some(r) => r,
-            None => {
-                return Err(SyncError::FetchFailed {
-                    source_id: primitive_request_label(request),
-                    reason: "primitive fetch requires a configured RPC router".into(),
-                });
-            }
+        let Some(router) = self.router_ref() else {
+            return Err(SyncError::FetchFailed {
+                source_id: primitive_request_label(request),
+                reason: "primitive fetch requires a configured RPC router".into(),
+            });
         };
 
         match request {
