@@ -34,13 +34,6 @@ function autoName(methodName: string, existing: readonly string[]): string {
   }
 }
 
-/** 거래(tx) 레벨 셀렉터 — 액션 컨텍스트 밖의 몇 안 되는 값들. */
-const ROOT_OPTIONS: { sel: string; label: string }[] = [
-  { sel: "$.root.chain_id", label: "체인 (어느 네트워크인지)" },
-  { sel: "$.root.from", label: "보내는 주소 (내 지갑)" },
-  { sel: "$.root.to", label: "대상 컨트랙트 주소" },
-];
-
 /** 메서드 파라미터 키 → 한국어 라벨 (모르는 키는 키 그대로). */
 const PARAM_KEY_KO: Record<string, string> = {
   chain_id: "체인",
@@ -51,9 +44,84 @@ const PARAM_KEY_KO: Record<string, string> = {
   decimals: "소수 자릿수",
 };
 
+/** 파라미터 키가 기대하는 값의 종류 — 드롭다운을 이 종류로만 거른다. */
+type ParamKind = "chain" | "address" | "amount" | "any";
+const PARAM_KIND: Record<string, ParamKind> = {
+  chain_id: "chain",
+  asset: "address",
+  address: "address",
+  wallet: "address",
+  amount: "amount",
+};
+const kindOf = (key: string): ParamKind => PARAM_KIND[key] ?? "any";
+/** 파라미터 라벨 옆에 보여줄 기대-타입 칩. */
+const KIND_CHIP: Record<ParamKind, string | null> = {
+  chain: "체인",
+  address: "주소",
+  amount: "수량",
+  any: null,
+};
+
 interface SelectorOption {
   sel: string;
   label: string;
+  isChain: boolean;
+  isAddress: boolean;
+  isAmount: boolean;
+}
+
+/** 거래(tx) 레벨 + 액션 필드 → 종류 태그가 붙은 셀렉터 선택지. */
+function buildOptions(fields: readonly FieldOption[]): SelectorOption[] {
+  const root: SelectorOption[] = [
+    { sel: "$.root.chain_id", label: "체인 (어느 네트워크인지)", isChain: true, isAddress: false, isAmount: false },
+    { sel: "$.root.from", label: "보내는 주소 (내 지갑)", isChain: false, isAddress: true, isAmount: false },
+    { sel: "$.root.to", label: "대상 컨트랙트 주소", isChain: false, isAddress: true, isAmount: false },
+  ];
+  const action = fields
+    .filter((f) => f.source === "base" && f.path.startsWith("context.") && f.fieldKind.startsWith("primitive."))
+    .map((f) => {
+      const leaf = f.path.split(".").pop() ?? "";
+      return {
+        sel: `$.action.${f.path.slice("context.".length)}`,
+        label: f.label,
+        isChain: leaf === "chain",
+        isAddress: f.role === "address",
+        isAmount:
+          /amount|size|qty/i.test(leaf) ||
+          f.fieldKind === "primitive.Long" ||
+          f.fieldKind === "primitive.decimal",
+      };
+    });
+  return [...root, ...action];
+}
+
+/** `key` 파라미터에 들어갈 수 있는 선택지만 (종류 불명 키는 전부). */
+function optionsFor(key: string, all: SelectorOption[]): SelectorOption[] {
+  switch (kindOf(key)) {
+    case "chain":
+      return all.filter((o) => o.isChain);
+    case "address":
+      return all.filter((o) => o.isAddress);
+    case "amount":
+      return all.filter((o) => o.isAmount);
+    default:
+      return all;
+  }
+}
+
+/** 메서드 템플릿 → 파라미터 기본값. 템플릿 셀렉터가 이 액션에 없으면 같은
+ *  종류의 첫 선택지로 대체해, "셀렉터 직접 입력" 원문이 기본으로 노출되지
+ *  않게 한다. 종류에 맞는 선택지가 하나도 없으면 빈 고정값. */
+function defaultParams(m: MethodSpec, all: SelectorOption[]): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(m.params).map(([key, spec]) => {
+      const raw = typeof spec === "object" && spec !== null && "literal" in spec ? String(spec.literal) : String(spec);
+      if (!raw.startsWith("$.")) return [key, raw];
+      const opts = optionsFor(key, all);
+      if (opts.some((o) => o.sel === raw)) return [key, raw];
+      return [key, opts[0]?.sel ?? ""];
+    }),
+  );
 }
 
 export function CustomFieldModal({
@@ -72,30 +140,25 @@ export function CustomFieldModal({
   onCreate: (draft: CustomFieldDraft) => void;
   onClose: () => void;
 }) {
+  const allOptions = useMemo(() => buildOptions(fields), [fields]);
   const [method, setMethod] = useState<MethodSpec>(METHOD_CATALOG[0]);
   // 표시 이름은 메서드 라벨이 기본값 — 사용자가 고치기 전까지 메서드를 따라간다.
   const [label, setLabel] = useState(METHOD_CATALOG[0].label.replace(/\s*\(예시\)\s*$/, ""));
   const [labelTouched, setLabelTouched] = useState(false);
-  // 파라미터 값은 메서드 템플릿이 기본값 — 메서드를 바꾸면 그 템플릿으로 리셋.
-  const [params, setParams] = useState<Record<string, string>>(() => paramStrings(METHOD_CATALOG[0]));
+  // 파라미터 기본값: 메서드 템플릿을 이 액션의 선택지로 해석한 것.
+  const [params, setParams] = useState<Record<string, string>>(() =>
+    defaultParams(METHOD_CATALOG[0], buildOptions(fields)),
+  );
   const [projection, setProjection] = useState(METHOD_CATALOG[0].projection);
 
   // 내부 필드 이름(manifest의 id)은 메서드에서 자동 생성 — 사용자는 안 만진다.
   const name = useMemo(() => autoName(method.method, existingNames), [method.method, existingNames]);
 
-  // 드롭다운 항목: 거래 레벨 값 + (액션의 기본 필드들 → `$.action.*` 셀렉터).
-  const selectorOptions = useMemo<SelectorOption[]>(() => {
-    const action = fields
-      .filter((f) => f.source === "base" && f.path.startsWith("context.") && f.fieldKind.startsWith("primitive."))
-      .map((f) => ({ sel: `$.action.${f.path.slice("context.".length)}`, label: f.label }));
-    return [...ROOT_OPTIONS, ...action];
-  }, [fields]);
-
   const canCreate = label.trim().length > 0;
 
   const pickMethod = (m: MethodSpec) => {
     setMethod(m);
-    setParams(paramStrings(m));
+    setParams(defaultParams(m, allOptions));
     setProjection(m.projection);
     if (!labelTouched) setLabel(m.label.replace(/\s*\(예시\)\s*$/, ""));
   };
@@ -157,22 +220,22 @@ export function CustomFieldModal({
 
         <div className="cfm-params">
           <div className="cfm-step">② 서버에 무엇을 넘길까요?</div>
-          {Object.entries(params).map(([key, v]) => (
-            <div key={key} className="cfm-row">
-              <span className="cfm-label">{PARAM_KEY_KO[key] ?? key}</span>
-              <ParamPicker
-                value={v}
-                options={selectorOptions}
-                onChange={(next) => setParams((p) => ({ ...p, [key]: next }))}
-              />
-            </div>
-          ))}
-          <div className="cfm-row">
-            <span className="cfm-label">결과 타입</span>
-            <span className="cfm-type">
-              {method.type === "decimal" ? "소수" : method.type === "Long" ? "숫자" : method.type === "Bool" ? "참/거짓" : "문자"}
-            </span>
-          </div>
+          {Object.entries(params).map(([key, v]) => {
+            const chip = KIND_CHIP[kindOf(key)];
+            return (
+              <div key={key} className="cfm-row">
+                <span className="cfm-label">
+                  {PARAM_KEY_KO[key] ?? key}
+                  {chip && <span className="cfm-kind">{chip}</span>}
+                </span>
+                <ParamPicker
+                  value={v}
+                  options={optionsFor(key, allOptions)}
+                  onChange={(next) => setParams((p) => ({ ...p, [key]: next }))}
+                />
+              </div>
+            );
+          })}
           <details className="cfm-adv">
             <summary>고급 (셀렉터 원문·결과 위치)</summary>
             {Object.entries(params).map(([key, v]) => (
@@ -211,8 +274,9 @@ export function CustomFieldModal({
           />
         </label>
         <div className="cfm-autoname">
-          필드 선택기와 다이어그램에 이 이름으로 나와요 · 저장 이름은 자동:{" "}
-          <code>context.custom.{name}</code>
+          필드 선택기와 다이어그램에 이 이름으로 나와요 ·{" "}
+          {method.type === "decimal" ? "소수" : method.type === "Long" ? "숫자" : method.type === "Bool" ? "참/거짓" : "문자"}{" "}
+          타입 · 저장 이름은 자동: <code>context.custom.{name}</code>
         </div>
 
         <div className="cfm-actions">
@@ -272,16 +336,6 @@ function ParamPicker({
         />
       )}
     </span>
-  );
-}
-
-/** Param template → editable string form (`{literal: 6}` → `6`). */
-function paramStrings(m: MethodSpec): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(m.params).map(([k, v]) => [
-      k,
-      typeof v === "object" && v !== null && "literal" in v ? String(v.literal) : String(v),
-    ]),
   );
 }
 
