@@ -1,11 +1,12 @@
 /**
  * FormModel ⇄ PolicyIR conversion — the heart of the form editor.
  *
- * `formToIr` builds a `forbid` PolicyIR from the form's trigger + AND-of-OR
- * condition groups, auto-inserting `has` guards for any `context.custom.*` field
- * (the form's safety net — the block editor makes users add these by hand; an
- * unguarded custom field fails open). `irToForm` is the reverse and returns
- * `null` for anything outside the form-representable subset.
+ * `formToIr` builds a `forbid` PolicyIR from the form's trigger + OR-of-AND
+ * condition runs, auto-inserting `has` guards into each run for its
+ * `context.custom.*`/optional fields (the form's safety net — the block editor
+ * makes users add these by hand; an unguarded custom field fails open).
+ * `irToForm` is the reverse and returns `null` for anything outside the
+ * form-representable subset.
  *
  * The form is built on IR, not text, so `blocksToEst`/`blocksToText`,
  * `generateManifest`, address-casing normalization, and the diagram all apply
@@ -197,8 +198,9 @@ function fold(op: "&&" | "||", terms: Expr[]): Expr {
  *     catalog under the policy's action (`context has tokenOut`,
  *     `context.tokenOut.key has address`, …).
  *
- * Guards are de-duped preserving order (parent-before-child) and prepended at
- * the top-level AND (positive polarity) so Cedar short-circuits cleanly.
+ * Guards are de-duped preserving order (parent-before-child) and prepended
+ * inside each AND-run (positive polarity) so Cedar short-circuits cleanly —
+ * and so a missing optional field only disables ITS run, not an OR-sibling.
  */
 function presenceGuards(leaves: FormLeaf[], trigger: FormTrigger): Expr[] {
   const seen = new Set<string>();
@@ -234,7 +236,7 @@ function condExpr(c: FormCondition): Expr {
 }
 
 /** Split joiner-carrying items into AND-runs (cut before each `or`). */
-function splitRuns<T extends { joiner: GroupOp }>(items: T[]): T[][] {
+export function splitRuns<T extends { joiner: GroupOp }>(items: T[]): T[][] {
   const runs: T[][] = [];
   let cur: T[] = [];
   items.forEach((c, i) => {
@@ -267,20 +269,26 @@ function allLeaves(nodes: FormNode[]): FormCondition[] {
   return nodes.flatMap((n) => (isGroupNode(n) ? n.conds : [n]));
 }
 
+/** One AND-run's expr: per-run `has` guards (THIS run's leaves only) + the
+ *  run's terms. Guards inside the run keep an OR-sibling run alive when this
+ *  run's optional field is absent (fail-open fix). */
+function runExpr(run: FormNode[], trigger: FormTrigger): Expr {
+  const body = fold("&&", run.map(nodeExpr));
+  const guards = presenceGuards(allLeaves(run), trigger);
+  return guards.length > 0 ? fold("&&", [...guards, body]) : body;
+}
+
 /**
- * Build a clause body (with `has` guards) from a node list. Nodes split into
- * AND-runs at each `or` joiner; a group node contributes its parenthesized
- * sub-expr. `has` guards sit at a top-level AND (safe short-circuit). Null when
- * empty.
+ * Build a clause body from a node list. Nodes split into AND-runs at each `or`
+ * joiner; a group node contributes its parenthesized sub-expr. Each run carries
+ * its own `has` guards. Null when empty.
  */
 function clauseBody(nodes: FormNode[], trigger: FormTrigger): Expr | null {
   // Drop empty group boxes (a box the user emptied) so `fold` never sees an
   // empty list.
   const present = nodes.filter((n) => !isGroupNode(n) || n.conds.length > 0);
   if (present.length === 0) return null;
-  const body = fold("||", splitRuns(present).map((run) => fold("&&", run.map(nodeExpr))));
-  const guards = presenceGuards(allLeaves(present), trigger);
-  return guards.length > 0 ? fold("&&", [...guards, body]) : body;
+  return fold("||", splitRuns(present).map((run) => runExpr(run, trigger)));
 }
 
 /** Parse one term into a condition, peeling a `!(…)` negation. Null if not a leaf. */
@@ -296,17 +304,15 @@ function parseCond(expr: Expr, joiner: GroupOp): FormCondition | null {
   return { ...leaf, joiner, ...(not ? { not: true } : {}) };
 }
 
-/** Parse a sub-expr into a flat condition list (group internals; no nesting). */
+/** Parse a group body into OR-of-leaf conditions ("다음 중 하나라도"). The form
+ *  only authors OR-groups; an AND-run inside a group hands off to blocks. */
 function parseConds(body: Expr): FormCondition[] | null {
   const disj = body.kind === "binary" && body.op === "||" ? flattenBinary(body, "||") : [body];
   const out: FormCondition[] = [];
   for (let di = 0; di < disj.length; di++) {
-    const run = flattenBinary(disj[di], "&&");
-    for (let ri = 0; ri < run.length; ri++) {
-      const c = parseCond(run[ri], di > 0 && ri === 0 ? "or" : "and");
-      if (!c) return null;
-      out.push(c);
-    }
+    const c = parseCond(disj[di], di === 0 ? "and" : "or");
+    if (!c) return null;
+    out.push(c);
   }
   return out;
 }
@@ -329,34 +335,39 @@ function parseAtom(atom: Expr, joiner: GroupOp): FormNode | null {
   return null;
 }
 
-/** Parse a clause body into a node list; null if not representable. After
- *  stripping `has` guards: a lone `||` expands into OR-joined AND-runs of atoms;
- *  otherwise the top-level AND-terms become AND-joined atoms (leaf or group). */
-function parseClause(body: Expr): FormNode[] | null {
-  const terms = flattenBinary(body, "&&").filter((t) => t.kind !== "has");
-  if (terms.length === 0) return [];
-
-  if (terms.length === 1 && terms[0].kind === "binary" && terms[0].op === "||") {
-    const disj = flattenBinary(terms[0], "||");
-    const out: FormNode[] = [];
-    for (let di = 0; di < disj.length; di++) {
-      const run = flattenBinary(disj[di], "&&");
-      for (let ri = 0; ri < run.length; ri++) {
-        const n = parseAtom(run[ri], di > 0 && ri === 0 ? "or" : "and");
-        if (!n) return null;
-        out.push(n);
-      }
-    }
-    return out;
-  }
-
+/** Parse one AND-run's terms (its `has` guards stripped) into nodes. Null when
+ *  nothing but guards remains (a guards-only run isn't a form condition) or a
+ *  term isn't representable. */
+function parseRun(run: Expr[], joiner: GroupOp): FormNode[] | null {
+  const terms = run.filter((t) => t.kind !== "has");
+  if (terms.length === 0) return null;
   const out: FormNode[] = [];
-  for (const t of terms) {
-    const n = parseAtom(t, "and");
+  for (let i = 0; i < terms.length; i++) {
+    const n = parseAtom(terms[i], i === 0 ? joiner : "and");
     if (!n) return null;
     out.push(n);
   }
   return out;
+}
+
+/** Parse a clause body into a node list; null if not representable. `has`
+ *  guards are scaffolding and stripped per run: a lone `||` expands into
+ *  OR-joined AND-runs of atoms; otherwise the whole body is one run. */
+function parseClause(body: Expr): FormNode[] | null {
+  const top = flattenBinary(body, "&&").filter((t) => t.kind !== "has");
+  if (top.length === 0) return [];
+
+  if (top.length === 1 && top[0].kind === "binary" && top[0].op === "||") {
+    const out: FormNode[] = [];
+    const disj = flattenBinary(top[0], "||");
+    for (let di = 0; di < disj.length; di++) {
+      const run = parseRun(flattenBinary(disj[di], "&&"), di === 0 ? "and" : "or");
+      if (!run) return null;
+      out.push(...run);
+    }
+    return out;
+  }
+  return parseRun(top, "and");
 }
 
 // ── public API ────────────────────────────────────────────────────────────

@@ -90,7 +90,7 @@ describe("formToIr / irToForm", () => {
     ]);
   });
 
-  it("auto-inserts has-guards for a custom field at the top-level AND", () => {
+  it("auto-inserts has-guards for a custom field inside its run", () => {
     const ir = formToIr({
       ...richModel,
       when: [cond("context.custom.inputUsd", ">=", { kind: "decimal", value: "1" })],
@@ -112,6 +112,81 @@ describe("formToIr / irToForm", () => {
       of: { kind: "attr", of: { kind: "var", name: "context" }, attr: "custom" },
       attr: "inputUsd",
     });
+  });
+
+  it("places has-guards inside the run that uses the optional field (no fail-open)", () => {
+    // when { a == 1 || custom.x >= 1 } — 가드가 OR 전체가 아니라 두 번째 run 안에만.
+    const m: FormModel = {
+      trigger: { kind: "any" },
+      when: [
+        cond("context.a", "==", { kind: "long", value: 1 }),
+        cond("context.custom.x", ">=", { kind: "decimal", value: "1" }, { joiner: "or" }),
+      ],
+      unless: [],
+      id: "p",
+      severity: "warn",
+      reason: "",
+    };
+    const body = formToIr(m).conditions[0].body;
+    expect(body.kind).toBe("binary");
+    if (body.kind !== "binary") return;
+    expect(body.op).toBe("||");
+    // 왼쪽 run(a == 1)에는 has가 전혀 없어야 한다.
+    const hasCount = (e: Expr): number => {
+      if (e.kind === "has") return 1;
+      if (e.kind === "binary") return hasCount(e.left) + hasCount(e.right);
+      if (e.kind === "unary") return hasCount(e.operand);
+      return 0;
+    };
+    expect(hasCount(body.left)).toBe(0);
+    expect(hasCount(body.right)).toBe(2); // context has custom, context.custom has x
+    // round-trip 유지
+    expect(irToForm(formToIr(m))).toEqual(m);
+  });
+
+  it("rejects a clause where a run is only guards", () => {
+    // when { a == 1 || context has custom } — has만 남는 run은 폼 밖(블록 핸드오프).
+    const a: Expr = {
+      kind: "binary",
+      op: "==",
+      left: { kind: "attr", of: { kind: "var", name: "context" }, attr: "a" },
+      right: { kind: "lit", litType: "long", value: 1 },
+    };
+    const guardOnly: Expr = { kind: "has", of: { kind: "var", name: "context" }, attr: "custom" };
+    const ir: PolicyIR = {
+      ...formToIr(richModel),
+      conditions: [{ kind: "when", body: { kind: "binary", op: "||", left: a, right: guardOnly } }],
+    };
+    expect(irToForm(ir)).toBeNull();
+  });
+
+  it("rejects a group whose disjunct is an AND-run `X && (A && B || C)` (OR-only groups)", () => {
+    const cmp2 = (n: string, v: number): Expr => ({
+      kind: "binary",
+      op: "==",
+      left: { kind: "attr", of: { kind: "var", name: "context" }, attr: n },
+      right: { kind: "lit", litType: "long", value: v },
+    });
+    const ir: PolicyIR = {
+      ...formToIr(richModel),
+      conditions: [
+        {
+          kind: "when",
+          body: {
+            kind: "binary",
+            op: "&&",
+            left: cmp2("x", 0),
+            right: {
+              kind: "binary",
+              op: "||",
+              left: { kind: "binary", op: "&&", left: cmp2("a", 1), right: cmp2("b", 2) },
+              right: cmp2("c", 3),
+            },
+          },
+        },
+      ],
+    };
+    expect(irToForm(ir)).toBeNull();
   });
 
   it("normalizes `[set].contains(attr)` to an `in` condition (allowlist policies)", () => {
