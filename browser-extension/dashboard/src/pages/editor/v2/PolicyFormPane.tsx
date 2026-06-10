@@ -257,9 +257,10 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
       rhsFields,
       fieldByPath,
       lookupAddr: addrBook.lookup,
-      onCreateCustom: () => setFieldModalOpen(true),
+      onCreateCustom:
+        model.trigger.kind === "actionEq" ? () => setFieldModalOpen(true) : undefined,
     }),
-    [fields, rhsFields, fieldByPath, addrBook.lookup],
+    [fields, rhsFields, fieldByPath, addrBook.lookup, model.trigger.kind],
   );
   // Resolve 0x addresses in the structure diagram to friendly names.
   const humanizeAddrs = (text: string): string =>
@@ -697,8 +698,10 @@ interface EditorCtx {
   fieldByPath: Map<string, FieldOption>;
   /** Resolve an address to a friendly name (my wallet / token), or undefined. */
   lookupAddr: (address: string) => AddressEntry | undefined;
-  /** Open the "+ 새 보강 필드 만들기" modal (LHS field picker entry). */
-  onCreateCustom: () => void;
+  /** Open the "+ 새 보강 필드 만들기" modal (LHS field picker entry).
+   *  Undefined while the trigger is "모든 동작" — enrichment params are
+   *  action-shaped, so a concrete action must be chosen first. */
+  onCreateCustom?: () => void;
 }
 
 /** Re-derive a condition after the user picks a new field. */
