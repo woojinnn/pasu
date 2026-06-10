@@ -205,9 +205,22 @@ function buildTree(ir: PolicyIR): DNode {
     ) {
       return clause.children[0];
     }
+    // Sentence flow: a lone WHEN over a gate reads as the gate itself, with the
+    // top gate phrased as the sentence opener ("아래 중 하나라도 해당하면").
+    if (clause.kind === "when" && clause.children.length === 1) {
+      return sentenceGate(clause.children[0]);
+    }
     return clause;
   }
   return { path: "root", kind: "root", title: "규칙", children: clauses };
+}
+
+/** Rephrase the TOP gate as a sentence opener (lower gates keep the short
+ *  모두/하나라도 라벨). Non-gates pass through. */
+function sentenceGate(n: DNode): DNode {
+  if (n.kind === "or") return { ...n, title: "아래 중 하나라도 해당하면" };
+  if (n.kind === "and") return { ...n, title: "아래에 모두 해당하면" };
+  return n;
 }
 
 /**
