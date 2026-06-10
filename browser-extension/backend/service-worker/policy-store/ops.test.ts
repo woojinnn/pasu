@@ -1,0 +1,161 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => {
+  const localStore = new Map<string, unknown>();
+  return {
+    localStore,
+    browser: {
+      storage: {
+        local: {
+          get: vi.fn(async (key?: string | string[] | null) => {
+            if (key == null) return Object.fromEntries(localStore);
+            const keys = Array.isArray(key) ? key : [key];
+            return Object.fromEntries(keys.filter((k) => localStore.has(k)).map((k) => [k, localStore.get(k)]));
+          }),
+          set: vi.fn(async (obj: Record<string, unknown>) => {
+            for (const [k, v] of Object.entries(obj)) localStore.set(k, v);
+          }),
+          remove: vi.fn(async (key: string | string[]) => {
+            for (const k of Array.isArray(key) ? key : [key]) localStore.delete(k);
+          }),
+        },
+      },
+    },
+  };
+});
+vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
+
+import {
+  bind,
+  copyBindings,
+  deleteDef,
+  deletePackage,
+  duplicateDef,
+  provisionWallets,
+  putDef,
+  putPackage,
+  removeBinding,
+  setPackageEnabled,
+  updateBinding,
+} from "./ops";
+import { readStore } from "./store";
+import { isEffectiveOn, UNCATEGORIZED_PKG, type PolicyDef } from "./types";
+
+const def = (id: string): PolicyDef => ({
+  id,
+  displayName: id,
+  skeleton: { ir: { kind: "policy" } },
+  holes: [],
+  defaults: { enabled: true, params: {} },
+  source: "mine",
+  updatedAtMs: 1,
+});
+
+beforeEach(() => mocks.localStore.clear());
+
+describe("policy-store ops", () => {
+  it("deleteDef cascades bindings on every wallet", async () => {
+    await putDef("u", def("def::a"));
+    await bind("u", { defId: "def::a", packageId: UNCATEGORIZED_PKG, addresses: ["0xA1", "0xa2"] });
+    await deleteDef("u", "def::a");
+    const s = await readStore("u");
+    expect(Object.values(s.wallets.byAddress).flatMap((w) => Object.keys(w.bindings))).toEqual([]);
+    expect(s.library.defs["def::a"]).toBeUndefined();
+  });
+
+  it("deletePackage moves member bindings to 미분류 (policies survive)", async () => {
+    await putDef("u", def("def::a"));
+    await putPackage("u", { id: "pkg::x", displayName: "X", source: "mine", updatedAtMs: 1 });
+    await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1"] });
+    await deletePackage("u", "pkg::x");
+    const s = await readStore("u");
+    const b = Object.values(s.wallets.byAddress["0xa1"].bindings)[0];
+    expect(b.packageId).toBe(UNCATEGORIZED_PKG);
+    expect(s.library.packages["pkg::x"]).toBeUndefined();
+  });
+
+  it("deleting 미분류 package throws", async () => {
+    await expect(deletePackage("u", UNCATEGORIZED_PKG)).rejects.toThrow();
+  });
+
+  it("same def in different packages = independent instances", async () => {
+    await putDef("u", def("def::a"));
+    await putPackage("u", { id: "pkg::x", displayName: "X", source: "mine", updatedAtMs: 1 });
+    await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1"] });
+    await bind("u", { defId: "def::a", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
+    const s = await readStore("u");
+    expect(Object.keys(s.wallets.byAddress["0xa1"].bindings)).toHaveLength(2);
+  });
+
+  it("package toggle composes with binding toggle and restores partial state", async () => {
+    await putDef("u", def("def::a"));
+    await putDef("u", def("def::b"));
+    await putPackage("u", { id: "pkg::x", displayName: "X", source: "mine", updatedAtMs: 1 });
+    await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1"] });
+    await bind("u", { defId: "def::b", packageId: "pkg::x", addresses: ["0xa1"] });
+    const s1 = await readStore("u");
+    const all = Object.values(s1.wallets.byAddress["0xa1"].bindings);
+    const ba = all.find((b) => b.defId === "def::a")!;
+    const bb = all.find((b) => b.defId === "def::b")!;
+    await updateBinding("u", { address: "0xa1", bindingId: bb.id, patch: { enabled: false } });
+    await setPackageEnabled("u", { address: "0xa1", packageId: "pkg::x", enabled: false });
+    let s = await readStore("u");
+    let w = s.wallets.byAddress["0xa1"];
+    expect(Object.values(w.bindings).some((b) => isEffectiveOn(w, b))).toBe(false);
+    await setPackageEnabled("u", { address: "0xa1", packageId: "pkg::x", enabled: true });
+    s = await readStore("u");
+    w = s.wallets.byAddress["0xa1"];
+    expect(isEffectiveOn(w, w.bindings[ba.id])).toBe(true); // 복원
+    expect(isEffectiveOn(w, w.bindings[bb.id])).toBe(false); // 부분 끔 유지
+  });
+
+  it("provisionWallets auto-binds defaults.enabled defs once (idempotent, lowercases)", async () => {
+    await putDef("u", def("def::a"));
+    await putDef("u", { ...def("def::off"), defaults: { enabled: false, params: {} } });
+    await provisionWallets("u", ["0xAbC"]);
+    await provisionWallets("u", ["0xabc"]);
+    const s = await readStore("u");
+    expect(Object.keys(s.wallets.byAddress)).toEqual(["0xabc"]);
+    const w = s.wallets.byAddress["0xabc"];
+    expect(Object.values(w.bindings).map((b) => b.defId)).toEqual(["def::a"]);
+  });
+
+  it("provisioning respects defaults.packageId", async () => {
+    await putPackage("u", { id: "pkg::safe", displayName: "안전팩", source: "builtin", updatedAtMs: 1 });
+    await putDef("u", { ...def("def::a"), defaults: { enabled: true, params: {}, packageId: "pkg::safe" } });
+    await provisionWallets("u", ["0xa1"]);
+    const s = await readStore("u");
+    expect(Object.values(s.wallets.byAddress["0xa1"].bindings)[0].packageId).toBe("pkg::safe");
+  });
+
+  it("duplicateDef makes an independent definition", async () => {
+    await putDef("u", def("def::a"));
+    const newId = await duplicateDef("u", "def::a");
+    const s = await readStore("u");
+    expect(newId).not.toBe("def::a");
+    expect(s.library.defs[newId].displayName).toContain("복제");
+    expect(s.library.defs[newId].source).toBe("mine");
+  });
+
+  it("copyBindings copies instances to another wallet (params preserved)", async () => {
+    await putDef("u", def("def::a"));
+    await bind("u", { defId: "def::a", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"], params: { x: 1 } });
+    const src = await readStore("u");
+    const ids = Object.keys(src.wallets.byAddress["0xa1"].bindings);
+    await copyBindings("u", { fromAddress: "0xa1", toAddress: "0xA2", bindingIds: ids });
+    const s = await readStore("u");
+    const copied = Object.values(s.wallets.byAddress["0xa2"].bindings)[0];
+    expect(copied.params).toEqual({ x: 1 });
+    expect(copied.id).not.toBe(ids[0]); // 새 인스턴스
+  });
+
+  it("removeBinding deletes just that instance", async () => {
+    await putDef("u", def("def::a"));
+    await bind("u", { defId: "def::a", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
+    const s1 = await readStore("u");
+    const id = Object.keys(s1.wallets.byAddress["0xa1"].bindings)[0];
+    await removeBinding("u", { address: "0xa1", bindingId: id });
+    const s = await readStore("u");
+    expect(Object.keys(s.wallets.byAddress["0xa1"].bindings)).toEqual([]);
+  });
+});
