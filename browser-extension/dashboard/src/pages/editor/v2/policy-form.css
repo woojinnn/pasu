@@ -194,6 +194,31 @@
   cursor: default;
 }
 
+/* 클릭 동기화: 선택된 행/묶음/카드 (다이어그램의 파란 선택과 짝) */
+.pf-cond.is-selected,
+.pf-box.is-selected {
+  outline: 2px solid var(--info-400, #60a5fa);
+  outline-offset: 1px;
+  border-radius: 8px;
+  animation: pf-flash 0.5s ease-out;
+}
+.pf-sit.is-selected {
+  border-color: var(--info-400, #60a5fa);
+  box-shadow: 0 0 0 1px var(--info-400, #60a5fa);
+}
+.pf-sit-head,
+.pf-box-head {
+  cursor: pointer;
+}
+@keyframes pf-flash {
+  from {
+    background: var(--info-50, #eff6ff);
+  }
+  to {
+    background: transparent;
+  }
+}
+
 /* a single condition row: a control line + a muted cedar line */
 .pf-cond {
   padding: 4px 0;
