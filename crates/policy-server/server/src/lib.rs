@@ -19,11 +19,10 @@
 //! browser extension.
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(missing_docs)]
-#![allow(clippy::missing_docs_in_private_items)]
+// Error/panic doc sections add noise on internal handler fns; public docs live
+// on the DTO contract instead.
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 // Several long handler functions (dashboard summary, simulate_sequence,

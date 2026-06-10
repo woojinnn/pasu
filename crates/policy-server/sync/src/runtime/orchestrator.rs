@@ -114,6 +114,7 @@ impl Orchestrator {
         self.router.clone()
     }
 
+    #[must_use]
     pub fn with_price_fetcher(
         mut self,
         name: impl Into<String>,
@@ -661,7 +662,7 @@ impl Orchestrator {
                     return Ok((0, batch.items.len()));
                 };
                 let outcomes = self.onchain.fetch_batch(chain, &calls).await?;
-                for (item, outcome) in batch.items.into_iter().zip(outcomes.into_iter()) {
+                for (item, outcome) in batch.items.into_iter().zip(outcomes) {
                     if outcome.success {
                         if let Some(value) = outcome.value {
                             let value = if is_permit2_nonce_bitmap_source(&item.source) {
@@ -801,7 +802,7 @@ impl Orchestrator {
 
                 let mut ok = 0;
                 let mut fail = 0;
-                for (item, outcome) in batch.items.into_iter().zip(outcomes.into_iter()) {
+                for (item, outcome) in batch.items.into_iter().zip(outcomes) {
                     if outcome.success {
                         if let Some(value) = outcome.value {
                             apply_value(state, &item.location, value, now);
@@ -850,9 +851,8 @@ impl Orchestrator {
             }
 
             BatchKind::Registry { .. } => {
-                let registry = match self.registry.as_ref() {
-                    Some(r) => r,
-                    None => return Ok((0, batch.items.len())),
+                let Some(registry) = self.registry.as_ref() else {
+                    return Ok((0, batch.items.len()));
                 };
                 let mut ok = 0;
                 let mut fail = 0;
@@ -907,9 +907,8 @@ impl Orchestrator {
                 } else {
                     None
                 };
-                let hl = match hl {
-                    Some(h) => h,
-                    None => return Ok((0, batch.items.len())),
+                let Some(hl) = hl else {
+                    return Ok((0, batch.items.len()));
                 };
                 let mut ok = 0;
                 let mut fail = 0;

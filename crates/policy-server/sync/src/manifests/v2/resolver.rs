@@ -19,16 +19,19 @@ impl ResolveContext {
         Self::default()
     }
 
+    #[must_use]
     pub fn with_chain(mut self, chain: impl Into<String>) -> Self {
         self.chain = Some(chain.into());
         self
     }
 
+    #[must_use]
     pub fn insert_input(mut self, key: impl Into<String>, value: Value) -> Self {
         self.inputs.insert(key.into(), value);
         self
     }
 
+    #[must_use]
     pub fn insert_resolved(mut self, key: impl Into<String>, value: Value) -> Self {
         self.resolved.insert(key.into(), value);
         self

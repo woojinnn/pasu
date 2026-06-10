@@ -106,7 +106,6 @@ impl RpcRouter {
                 Err(e) => {
                     self.record(provider.name(), false).await;
                     last_err = Some(e);
-                    continue;
                 }
             }
         }
