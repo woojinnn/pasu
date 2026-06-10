@@ -725,6 +725,29 @@
 }
 .pf-addrchip .x:hover { background: var(--fail-100, #fee2e2); color: var(--fail-600, #dc2626); }
 
+/* 문장형 프레임: 다이어그램 위(무엇에서)/아래(어떻게) 고정 스트립 */
+.pf-sentence {
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: var(--fog-200, #eef1f5);
+  color: var(--slate-700, #334155);
+}
+.pf-sentence.top {
+  border-bottom: 1px solid var(--hairline, #d7dbe0);
+}
+.pf-sentence.bottom {
+  border-top: 1px solid var(--hairline, #d7dbe0);
+}
+.pf-sentence.bottom.deny {
+  background: var(--fail-50, #faeae6);
+  color: var(--fail-700, #7f4740);
+}
+.pf-sentence.bottom.warn {
+  background: var(--warn-50, #fffbeb);
+  color: var(--warn-800, #92400e);
+}
+
 /* structure diagram preview (replaces the live cedar pane) — fixed-height
    pan/zoom canvas (the diagram is interactive on this surface) */
 .pf-diagram-body {

@@ -117,6 +117,18 @@ function valueKindFor(field: FieldOption | undefined, op: FormOp): FormValue["ki
 const ENUM_SUGGESTIONS: Record<string, string[]> = {
   "context.direction.kind": ["exact_input", "exact_output"],
   "context.side": ["long", "short"],
+  // 프로토콜(venue) 제한 — manifest trigger의 `action.venue`와 같은 어휘.
+  "context.venue.name": [
+    "uniswap_v2",
+    "uniswap_v3",
+    "uniswap_v4",
+    "aave_v3",
+    "curve",
+    "balancer_v2",
+    "cowswap",
+    "1inch",
+    "hyperliquid",
+  ],
 };
 
 /** How a string-typed value should be entered, refined from the field's role. */
@@ -449,6 +461,10 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
           구조 미리보기
           <span className={`pf-sync${cedarError ? " err" : ""}`}>{cedarError ? "변환 오류" : "폼과 동기화됨"}</span>
         </div>
+        {/* 문장형 프레임: 위(무엇에서) → 트리(언제) → 아래(어떻게) 한 문장으로 읽힘 */}
+        <div className="pf-sentence top">
+          {trig.kind === "actionEq" ? <>「{triggerText}」 거래에서</> : <>모든 거래에서</>}
+        </div>
         <div className="pf-diagram-body">
           <PolicyDiagram
             ir={ir}
@@ -457,6 +473,11 @@ export function PolicyFormPane({ initialModel, onChange }: PolicyFormPaneProps) 
             onNodeClick={onDiagramNodeClick}
             humanizeLabel={humanizeAddrs}
           />
+        </div>
+        <div className={`pf-sentence bottom ${model.severity}`}>
+          {model.severity === "deny" ? "🚫 " : "⚠ "}
+          {model.reason ? `'${model.reason}' 이유로 ` : ""}
+          {model.severity === "deny" ? "차단해요" : "경고해요"}
         </div>
         <ManifestPreview
           open={manifestOpen}
@@ -1151,9 +1172,11 @@ function ValueInput({
           />
         );
       }
-      if (flavor === "enum") {
+      // A suggestion list applies whenever we know one for the path (e.g.
+      // venue names), not only for role-"enum" fields.
+      const sugg = field ? ENUM_SUGGESTIONS[field.path] : undefined;
+      if (flavor === "enum" || sugg) {
         const listId = `enum-${field?.path ?? ""}`;
-        const sugg = field ? ENUM_SUGGESTIONS[field.path] : undefined;
         return (
           <>
             <input
