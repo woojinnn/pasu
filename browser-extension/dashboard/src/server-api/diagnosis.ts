@@ -32,6 +32,9 @@ export interface DiagnosisRequestDto {
 export interface DiagnosisResultDto {
   true_ids: string[];
   error_ids: string[];
+  /** 진단이 실제로 평가한 materialize된 Cedar context — UI가 각 비교 필드의
+   *  실제 값을 보여주는 데 쓴다 (구버전 SW는 안 줄 수 있어 optional). */
+  context?: unknown;
 }
 
 /** Calls the SW `run-diagnosis-probes` op; returns the truth map id sets

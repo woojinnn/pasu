@@ -18,6 +18,7 @@ import {
 } from "../../server-api/diagnosis";
 import { SAMPLE_ACTIONS } from "../../editor-v9/sample-actions";
 import { buildProbes, diagnoseFromResult } from "../diagnosis";
+import { enumeratePaths } from "../diagnosis/path";
 import { useAddressBook, shortAddress } from "../../hooks/useAddressBook";
 import { PolicyDiagram } from "./PolicyDiagram";
 
@@ -43,9 +44,12 @@ export function PolicyDiagnosis({
   request,
   autoRun,
 }: PolicyDiagnosisProps) {
-  const [diag, setDiag] = useState<{ culprits: string[]; errored: string[] } | null>(
-    null,
-  );
+  const [diag, setDiag] = useState<{
+    culprits: string[];
+    errored: string[];
+    /** 진단이 평가한 materialize된 context — 다이어그램의 실제 값 표시용. */
+    context?: unknown;
+  } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -101,15 +105,24 @@ export function PolicyDiagnosis({
         probes.map((p) => p.id),
         result,
       );
-      setDiag({ culprits: d.culprits, errored: d.errored });
-      if (d.culprits.length > 0) {
-        setMsg(`차단 조건 ${d.culprits.length}개를 빨갛게 표시했어요`);
-      } else if (d.errored.length > 0) {
+      // has-가드(필드 존재 확인)는 다이어그램이 그리지 않는 스캐폴딩 —
+      // 표시 개수/하이라이트에서 빼야 메시지의 N과 빨간 박스 수가 일치한다.
+      const byPath = new Map(enumeratePaths(ir).map(({ path, node }) => [path, node]));
+      const visible = (p: string) => byPath.get(p)?.kind !== "has";
+      const culprits = d.culprits.filter(visible);
+      const errored = d.errored.filter(visible);
+      setDiag({ culprits, errored, context: result.context });
+      if (culprits.length > 0) {
+        setMsg(`차단 조건 ${culprits.length}개를 빨갛게 표시했어요`);
+      } else if (d.culprits.length > 0) {
+        // 가드만 발화한 비정형 케이스 — 박스 없이 N개라고 말하지 않는다.
+        setMsg("차단 조건이 필드 존재 확인(가드)에서 발생했어요");
+      } else if (errored.length > 0) {
         // Every probe touching an absent field errored — typical when an
         // enrichment (context.custom.*) policy is run on a SAMPLE without those
         // results. Not "passed"; just unevaluable here.
         setMsg(
-          `이 컨텍스트로는 평가할 수 없는 조건이 있어요 (enrichment 필드 미제공 — 노란 점선 ${d.errored.length}개)`,
+          `이 컨텍스트로는 평가할 수 없는 조건이 있어요 (enrichment 필드 미제공 — 노란 점선 ${errored.length}개)`,
         );
       } else {
         setMsg(
@@ -167,6 +180,7 @@ export function PolicyDiagnosis({
         erroredPaths={diag?.errored}
         compact={compact}
         humanizeLabel={humanizeLabel}
+        actualContext={diag?.context}
       />
     </div>
   );
