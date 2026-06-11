@@ -1,6 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import { lowercaseAddressLiterals } from "../annotations";
+import { lowercaseAddressLiterals, stampAnnotations } from "../annotations";
+
+describe("stampAnnotations", () => {
+  const body = `forbid(principal, action, resource);`;
+
+  it("preserves an existing head @reason across a re-save (사유 ≠ 정책 이름)", () => {
+    const text = `@id("old")\n@severity("warn")\n@reason("진짜 사유 메시지")\n${body}`;
+    const out = stampAnnotations(text, "my-policy", "deny");
+    expect(out).toContain(`@id("my-policy")`);
+    expect(out).toContain(`@severity("deny")`);
+    expect(out).toContain(`@reason("진짜 사유 메시지")`);
+  });
+
+  it("falls back to the policy name when no @reason exists", () => {
+    const out = stampAnnotations(body, "guard", "warn");
+    expect(out).toContain(`@reason("guard")`);
+  });
+
+  it("treats a blank @reason as missing (이름 폴백)", () => {
+    const text = `@reason("  ")\n${body}`;
+    const out = stampAnnotations(text, "guard", "warn");
+    expect(out).toContain(`@reason("guard")`);
+  });
+
+  it("re-embeds an escaped reason literal without double-escaping", () => {
+    const text = `@reason("a \\"b\\"")\n${body}`;
+    const out = stampAnnotations(text, "guard", "warn");
+    expect(out).toContain(`@reason("a \\"b\\"")`);
+  });
+});
 
 describe("lowercaseAddressLiterals", () => {
   it("lowercases a checksum-cased address literal (the WETH bug)", () => {

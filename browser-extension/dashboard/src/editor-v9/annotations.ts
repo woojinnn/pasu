@@ -56,17 +56,24 @@ export function lowercaseAddressLiterals(cedarText: string): string {
 }
 
 /** Re-stamp `@id` + `@severity` + `@reason` annotations onto the head of
- *  `cedarText`. The reason is the human-readable name so the extension
- *  popup can surface "this policy fired because of <name>" — without a
- *  `@reason`, the popup falls back to "(no reason annotation)". */
+ *  `cedarText`. An existing head `@reason("…")` is preserved verbatim — it is
+ *  the user-facing message and must survive a re-save; only when absent does
+ *  the policy name stand in, so the popup never falls back to
+ *  "(no reason annotation)". */
 export function stampAnnotations(
   cedarText: string,
   name: string,
   severity: string,
 ): string {
+  const head = ANNOTATION_HEAD.exec(cedarText)?.[0] ?? "";
   const body = cedarText.replace(ANNOTATION_HEAD, "");
   const id = policyIdFromName(name);
   const sev = severity.replace(/"/g, '\\"');
-  const reason = (name || "policy").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // 기존 사유는 이미 이스케이프된 리터럴 그대로 재삽입한다(이중 이스케이프 방지).
+  const existingReason = /@reason\s*\(\s*"([^)]*)"\s*\)/.exec(head)?.[1];
+  const reason =
+    existingReason && existingReason.trim()
+      ? existingReason
+      : (name || "policy").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   return `@id("${id}")\n@severity("${sev}")\n@reason("${reason}")\n${body}`;
 }
