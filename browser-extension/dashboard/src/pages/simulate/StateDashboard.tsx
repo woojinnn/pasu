@@ -32,6 +32,8 @@ const ALLOC_COLORS = ["#0ea5e9", "#22c55e", "#a855f7", "#f59e0b", "#ec4899", "#6
 /** Relevance predicates that drive the collapse/highlight in step 2. */
 export interface StateFilter {
   active: boolean;
+  /** Whole-widget relevance by category (tokens/positions/approvals). */
+  isWidgetRelevant: (key: string) => boolean;
   isTokenRelevant: (symbol: string) => boolean;
   isProtocolRelevant: (protocol: string) => boolean;
 }
@@ -120,6 +122,7 @@ export function StateDashboard({
            wallet has none) → every card is consistent. In step 2, framer-motion
            collapses filtered-out rows and reflows the survivors smoothly. */}
       <motion.div className="sd-grid" layout>
+        <AnimatePresence initial={false}>
         {((): WidgetDef[] => [
           {
             key: "tokens",
@@ -174,10 +177,20 @@ export function StateDashboard({
               el: <ApprovalRow a={a} rel={tokenRel(a.token)} open={open.has(a.id)} onToggle={() => toggle(a.id)} />,
             })),
           },
-        ])().map((w) => {
+        ])()
+          .filter((w) => !active || filter!.isWidgetRelevant(w.key))
+          .map((w) => {
           const vis = active ? w.rows.filter((r) => !r.gone) : w.rows;
           return (
-            <motion.section layout key={w.key} className="sd-widget">
+            <motion.section
+              layout
+              key={w.key}
+              className="sd-widget"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ duration: 0.22, ease: [0.22, 0.8, 0.26, 1] }}
+            >
               <div className="sd-section-head">
                 <span className="sd-section-title">{w.title}</span>
                 <span className="sd-section-count">
@@ -215,6 +228,7 @@ export function StateDashboard({
             </motion.section>
           );
         })}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

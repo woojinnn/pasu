@@ -26,6 +26,19 @@ function toSetMap(m: Record<string, string[]>): Record<string, Set<string>> {
   return out;
 }
 
+/** Which state widget(s) a policy concerns, inferred from its action + name.
+ *  Approval/permit → 승인; perp/leverage → 포지션; swap/transfer/token → 토큰.
+ *  Unclassifiable policies default to 토큰 (the broadest surface). */
+function widgetsOfPolicy(p: PolicyView): string[] {
+  const hay = `${p.action} ${p.name}`.toLowerCase();
+  const out = new Set<string>();
+  if (/approv|permit|allowance/.test(hay)) out.add("approvals");
+  if (/perp|leverage|margin|position|hyperliquid|order/.test(hay)) out.add("positions");
+  if (/swap|transfer|amm|erc20|send|token|bridge|burn|recipient/.test(hay)) out.add("tokens");
+  if (out.size === 0) out.add("tokens");
+  return [...out];
+}
+
 /** Tri-state for a package toggle (all on / some on / all off). */
 export type PkgState = "on" | "partial" | "off";
 
@@ -70,7 +83,11 @@ export interface SimController {
   /** Protocols any enabled policy references (∅ = no protocol filter). */
   relevantProtocols: Set<string>;
   isProtocolRelevant: (protocol: string) => boolean;
-  /** True when at least one enabled policy narrows the state (token or protocol). */
+  /** State categories (widgets) the enabled policies concern, by action/domain
+   *  (approval policy → approvals; swap/transfer → tokens; perp → positions). */
+  relevantWidgets: Set<string>;
+  isWidgetRelevant: (key: string) => boolean;
+  /** True when ≥1 policy is enabled — the state view then narrows to relevance. */
   hasRelevanceFilter: boolean;
 
   // ── step 3: tx queue ──
@@ -244,7 +261,18 @@ export function useSimController(provider: SimProvider): SimController {
     (protocol: string) => relevantProtocols.size === 0 || relevantProtocols.has(protocol),
     [relevantProtocols],
   );
-  const hasRelevanceFilter = relevantTokens.size > 0 || relevantProtocols.size > 0;
+  const relevantWidgets = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of data.policies) if (enabled.has(p.id)) for (const w of widgetsOfPolicy(p)) s.add(w);
+    return s;
+  }, [enabled, data.policies]);
+  const isWidgetRelevant = useCallback(
+    (key: string) => relevantWidgets.size === 0 || relevantWidgets.has(key),
+    [relevantWidgets],
+  );
+  // The state view narrows whenever ≥1 policy is enabled (widget-level), even if
+  // no specific token/protocol is named.
+  const hasRelevanceFilter = enabled.size > 0;
 
   // ── step 3 ──
   const setTxRows = useCallback((rows: TxRow[]) => setTxRowsState(rows), []);
@@ -310,7 +338,7 @@ export function useSimController(provider: SimProvider): SimController {
     activeWallet, setActiveWallet, activeState, enabled, enabledCount,
     togglePolicy, togglePackage, packageState,
     walletRelatedPolicies, relevantTokens, isTokenRelevant,
-    relevantProtocols, isProtocolRelevant, hasRelevanceFilter,
+    relevantProtocols, isProtocolRelevant, relevantWidgets, isWidgetRelevant, hasRelevanceFilter,
     txRows, setTxRows, addRow, removeRow, updateRow,
     run, running, result, cursorIdx, setCursorIdx, cumulativeDenies,
   };
