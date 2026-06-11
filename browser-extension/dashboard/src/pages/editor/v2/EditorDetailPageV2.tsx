@@ -742,6 +742,7 @@ function EditorBody({
               key={formKey}
               initialModel={formEntry.model}
               initialManifest={policy.manifest}
+              valuesOnly={!!bindingCtx}
               onChange={({ cedarText: c, ir: nextIr, model, manifest, manifestOverridden }) => {
                 setCedarText(c);
                 setIr(nextIr);

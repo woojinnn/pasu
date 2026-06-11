@@ -73,10 +73,17 @@ const LABEL_KO: Record<string, string> = {
   "Perp::ChangeLeverage": "레버리지 변경",
   "Perp::AdjustMargin": "마진 조정",
   "Perp::ChangeMarginMode": "마진 모드 변경",
-  "Perp::PlaceLimitOrder": "지정가 주문",
-  "Perp::PlaceStopOrder": "스탑 주문",
+  // Unified order placement (limit / stop / twap) — replaces the former
+  // Perp::PlaceLimitOrder + Perp::PlaceStopOrder. The order kind is a condition
+  // field (orderType.kind), not separate actions.
+  "Perp::PlaceOrder": "주문 넣기",
   "Perp::CancelOrder": "주문 취소",
   "Perp::ClaimFunding": "펀딩 수령",
+  // Hyperliquid-native actions that survived the perp/token migration (the rest
+  // route to Perp / Token::Erc20Transfer / Staking / Core::Unknown).
+  "HyperliquidCore::HlSendAsset": "HL 자산 전송",
+  "HyperliquidCore::HlTokenDelegate": "HL 토큰 위임",
+  "HyperliquidCore::HlWithdraw": "HL 출금",
   "Lending::Supply": "예치",
   "Lending::Withdraw": "출금",
   "Lending::Borrow": "차입",

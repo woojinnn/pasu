@@ -126,6 +126,8 @@
 .tbl-wrap .mono { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-500); }
 .tbl-wrap .strong { color: var(--slate-900); font-weight: 600; }
 .tbl-wrap .num { text-align: right; }
+/* token symbol suffix on a balance cell (e.g. "14,253.674494 USDC") */
+.bal-unit { margin-left: 4px; font-size: 0.85em; font-weight: 500; color: var(--slate-400); }
 
 /* risk tag pills */
 .risk-tag {

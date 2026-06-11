@@ -803,6 +803,26 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       account_leverage,
       matched: verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
     });
+    // DENY → capture the exact diagnosis context so the dashboard can re-run
+    // "which clause blocked this" against the real context (Option B). Mirrors
+    // the EVM path in `evaluateActionRpcV2`; without it an HL deny would only
+    // ever show the policy structure (no red culprit highlight). Best-effort,
+    // keyed by requestId (= the verdict log's delta_id).
+    if (verdict.kind === "fail") {
+      void appendDiagnosisContext({
+        id: message.requestId,
+        ts: Math.floor(Date.now() / 1000),
+        action,
+        meta,
+        tx,
+        results,
+      }).catch((err) =>
+        console.warn(
+          "[Pasu] diagnosis-context append failed (venue order)",
+          err instanceof Error ? err.message : err,
+        ),
+      );
+    }
     return {
       verdict,
       verdictSource: "declarative-v2",

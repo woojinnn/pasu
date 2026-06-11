@@ -19,6 +19,7 @@ import {
 } from "../../editor-v9/gloss/paths";
 import { ENRICHMENT_FIELDS } from "../../editor-v9/manifest-gen/registry";
 
+import { CURATED_FIELD_META } from "./curated-field-meta.generated";
 import { catalogFor } from "./schema-catalog";
 import type { FormOp, FormTrigger, FormValue } from "./model";
 
@@ -252,16 +253,21 @@ export function fieldsForTrigger(trigger: FormTrigger): FieldOption[] {
   // Schema-derived base fields — only those the chosen action actually exposes.
   for (const f of catalogFor(trigger)) {
     const g = glossFor(f.path);
+    const cur = CURATED_FIELD_META[f.path];
     const leaf = f.path.split(".").pop()!;
-    // nano mirror (Long named `*Nano`): present in plain token units, hide the
-    // engine word "nano" entirely — the widget scales by 10⁹ under the hood.
+    // nano mirror (Long named `*Nano`): the WIDGET still scales by 10⁹ under the
+    // hood (user enters/reads plain token units), but the label/desc now come
+    // from the curated catalog verbatim ("수량 (비교용)" etc.).
     const isNano = f.fieldKind === "primitive.Long" && /Nano$/.test(leaf);
     const glossed = Boolean(g);
-    const label = (g?.ko ?? composeLabel(f.path)).replace(/\s*\(\s*nano\s*\)/i, "").trim();
+    const composed = (g?.ko ?? composeLabel(f.path)).replace(/\s*\(\s*nano\s*\)/i, "").trim();
+    // Curated catalog (func_module/field-explorer) wins for label + desc; fall
+    // back to gloss / composed label for any path it doesn't cover.
+    const label = cur?.label ?? composed;
     // Safety net: never show a half-translated label (a leftover lowercase
     // English run like "gas estimate") in the visible list — demote it to the
-    // "고급 필드" tray so what users see is always plain Korean.
-    const hasEnglish = !glossed && /[a-z]{2,}/.test(label);
+    // "고급 필드" tray. A curated label is always plain Korean, so it's exempt.
+    const hasEnglish = !cur && !glossed && /[a-z]{2,}/.test(label);
     out.push({
       path: f.path,
       label,
@@ -269,7 +275,7 @@ export function fieldsForTrigger(trigger: FormTrigger): FieldOption[] {
       role: g?.role ?? inferRole(f.path, f.fieldKind),
       source: "base",
       unit: isNano ? "토큰" : g?.unit?.ko,
-      desc: g?.desc?.ko,
+      desc: cur?.desc ?? g?.desc?.ko,
       optional: f.optional,
       advanced: isAdvancedField(f.path, f.fieldKind, glossed) || hasEnglish,
       ...(isNano ? { scale: "nano" as const } : {}),
@@ -284,14 +290,15 @@ export function fieldsForTrigger(trigger: FormTrigger): FieldOption[] {
     const path = `${CUSTOM_PREFIX}${name}`;
     const g = getGloss(path);
     if (!g) continue;
+    const cur = CURATED_FIELD_META[path];
     out.push({
       path,
-      label: g.ko,
+      label: cur?.label ?? g.ko,
       fieldKind: g.fieldKind,
       role: g.role,
       source: "custom",
       unit: g.unit?.ko,
-      desc: g.desc?.ko,
+      desc: cur?.desc ?? g.desc?.ko,
       optional: true,
     });
   }

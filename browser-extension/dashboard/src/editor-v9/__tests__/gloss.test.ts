@@ -27,8 +27,8 @@ import { ENRICHMENT_FIELDS } from "../manifest-gen/registry";
 const ENRICHMENT_COUNT = Object.keys(ENRICHMENT_FIELDS).length;
 
 describe("gloss table integrity", () => {
-  it("has 51 base entries plus the registry enrichment fields", () => {
-    expect(allGloss().length).toBe(51 + ENRICHMENT_COUNT);
+  it("has 64 base entries plus the registry enrichment fields", () => {
+    expect(allGloss().length).toBe(64 + ENRICHMENT_COUNT);
   });
 
   it("surfaces every enrichment field as a context.custom.* palette path", () => {
