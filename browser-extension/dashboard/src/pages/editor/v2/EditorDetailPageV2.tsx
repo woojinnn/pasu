@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { stripDashboardId, type PolicyMethod } from "../../../server-api";
 import type { PolicySeverity } from "../../../server-api";
@@ -10,6 +10,9 @@ import {
   getOverview,
   putDef,
   putPackage,
+  removeBinding,
+  updateBinding,
+  type Binding,
   type PolicyDef,
   type StoreSnapshot,
 } from "../../../server-api/policy-store";
@@ -17,6 +20,7 @@ import { listWallets } from "../../../server-api/wallets";
 import { buildDefPayload } from "./save-def";
 import { SaveScopeModal, type SaveScopeChoice } from "./SaveScopeModal";
 import { defUsageCount } from "./wallet-policies-derive";
+import { applyBindingEdit, diffBindingEdit } from "./binding-edit";
 import { Topbar } from "../../../shell/Topbar";
 
 import { stampAnnotations } from "../../../editor-v9/annotations";
@@ -67,6 +71,9 @@ interface EditorPolicy {
   id: string;
   displayName: string;
   text: string;
+  /** 폼 초기 IR — 있으면 텍스트 재파싱 없이 바로 폼을 연다. 바인딩 모드에서는
+   *  바인딩 파라미터가 적용된 구체 IR(이 지갑의 실제 값). */
+  initialIr?: PolicyIR | undefined;
   method: PolicyMethod;
   cat?: string | undefined;
   source: PolicyDef["source"];
@@ -80,15 +87,39 @@ export function EditorDetailPageV2() {
   const params = useParams<{ id: string }>();
   const id = params.id ? decodeURIComponent(params.id) : "";
   const qc = useQueryClient();
+  const [sp] = useSearchParams();
 
   const overviewQ = useQuery({ queryKey: ["ps2-overview"], queryFn: getOverview });
   const storedDef = overviewQ.data?.library.defs[id] ?? null;
 
+  // 바인딩 편집 모드: ?wallet=<addr>&binding=<id> — 그 지갑 인스턴스의 값을 연다.
+  const walletAddr = sp.get("wallet")?.toLowerCase() ?? null;
+  const bindingId = sp.get("binding");
+  const binding: Binding | null =
+    (walletAddr && bindingId
+      ? overviewQ.data?.wallets.byAddress[walletAddr]?.bindings[bindingId]
+      : null) ?? null;
+  const bindingCtx = storedDef && walletAddr && binding ? { address: walletAddr, binding } : null;
+
+  // 폼/텍스트의 기준 IR: 바인딩 모드면 그 지갑의 파라미터를 적용한 구체 IR.
+  const baseIr = useMemo(() => {
+    if (!storedDef) return null;
+    const ir = storedDef.skeleton.ir as PolicyIR;
+    if (!bindingCtx) return ir;
+    const live = new Set(storedDef.holes.map((h) => h.name));
+    const merged = Object.fromEntries(
+      Object.entries({ ...storedDef.defaults.params, ...bindingCtx.binding.params }).filter(
+        ([k]) => live.has(k),
+      ),
+    );
+    return concretizeIr(ir, merged as never);
+  }, [storedDef, bindingCtx]);
+
   // def 뼈대(BlockIR)는 텍스트가 아니므로 Cedar 탭용 텍스트는 비동기로 렌더한다.
   const textQ = useQuery({
-    queryKey: ["ps2-def-text", id, storedDef?.updatedAtMs ?? 0],
-    enabled: !!storedDef,
-    queryFn: () => blocksToText(storedDef!.skeleton.ir as PolicyIR),
+    queryKey: ["ps2-def-text", id, storedDef?.updatedAtMs ?? 0, bindingCtx?.binding.id ?? "", bindingCtx?.binding.updatedAtMs ?? 0],
+    enabled: !!baseIr,
+    queryFn: () => blocksToText(baseIr!),
   });
 
   // A fresh policy carried in via navigation state — nothing is written to
@@ -101,8 +132,9 @@ export function EditorDetailPageV2() {
       if (textQ.data === undefined) return null; // IR→텍스트 변환 중
       return {
         id: storedDef.id,
-        displayName: storedDef.displayName,
+        displayName: bindingCtx ? (bindingCtx.binding.alias ?? storedDef.displayName) : storedDef.displayName,
         text: textQ.data,
+        initialIr: baseIr ?? undefined,
         // def에는 작성 방식이 저장되지 않는다 — 폼 우선으로 열고, 폼으로 표현
         // 불가하면 openForm이 Cedar 탭 안내로 떨어진다.
         method: "form",
@@ -122,7 +154,7 @@ export function EditorDetailPageV2() {
       };
     }
     return null;
-  }, [storedDef, textQ.data, seed, id]);
+  }, [storedDef, textQ.data, seed, id, bindingCtx, baseIr]);
 
   const loading = overviewQ.isLoading || (!!storedDef && textQ.isLoading);
 
@@ -151,13 +183,18 @@ export function EditorDetailPageV2() {
         )}
         {policy && (
           <EditorBody
-            key={policy.id}
+            key={`${policy.id}:${bindingCtx?.binding.id ?? ""}`}
             policy={policy}
             storedDef={storedDef}
             snap={overviewQ.data ?? null}
+            bindingCtx={bindingCtx}
             isNew={isNew}
             onSaved={(savedId) => {
               void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
+              if (bindingCtx) {
+                navigate("/editor"); // 지갑별 정책(기본 탭)으로 복귀
+                return;
+              }
               if (savedId !== id) {
                 navigate(`/editor/${encodeURIComponent(savedId)}`, {
                   replace: true,
@@ -182,6 +219,7 @@ function EditorBody({
   policy,
   storedDef,
   snap,
+  bindingCtx,
   isNew,
   onSaved,
   onDeleted,
@@ -189,6 +227,7 @@ function EditorBody({
   policy: EditorPolicy;
   storedDef: PolicyDef | null;
   snap: StoreSnapshot | null;
+  bindingCtx: { address: string; binding: Binding } | null;
   isNew: boolean;
   onSaved: (id: string) => void;
   onDeleted: () => void;
@@ -267,9 +306,74 @@ function EditorBody({
     return { ir: effectiveIr, manifest };
   };
 
+  /** 바인딩 모드 저장: 값만 바뀌면 숨은 홀 승격 + 이 바인딩의 params, 구조가
+   *  바뀌면 confirm 후 이 지갑 전용 def로 분기(복제+리바인드). 이름 입력은
+   *  바인딩 별칭이 된다. */
+  const saveBindingEdit = async (editedIr: PolicyIR): Promise<string> => {
+    const ctx = bindingCtx!;
+    const def = storedDef!;
+    const aliasInput = name.trim();
+    const alias = aliasInput && aliasInput !== def.displayName ? aliasInput : undefined;
+    const diff = diffBindingEdit(def.skeleton.ir as PolicyIR, editedIr);
+
+    if (diff.kind === "structural") {
+      if (
+        !window.confirm(
+          "조건의 구조가 바뀌었어요. 이 변경은 이 지갑 전용 정책(복제본)으로 분리됩니다 — 계속할까요?",
+        )
+      ) {
+        throw new Error("저장을 취소했어요");
+      }
+      const forked: PolicyDef = {
+        id: `def::${crypto.randomUUID()}`,
+        displayName: aliasInput || `${def.displayName} (지갑 전용)`,
+        cat: def.cat,
+        skeleton: { ir: editedIr, manifest: def.skeleton.manifest },
+        holes: [],
+        defaults: { enabled: false, params: {} },
+        source: "mine",
+        updatedAtMs: Date.now(),
+      };
+      await putDef(forked);
+      await bindDef({
+        defId: forked.id,
+        packageId: ctx.binding.packageId,
+        addresses: [ctx.address],
+        ...(alias ? { alias } : {}),
+      });
+      await removeBinding({ address: ctx.address, bindingId: ctx.binding.id });
+      return forked.id;
+    }
+
+    if (diff.kind === "params") {
+      const applied = applyBindingEdit(def, diff.updates);
+      if (applied.def !== def) await putDef(applied.def);
+      // 기존 오버라이드 중 여전히 유효한 키를 유지하고 새 값을 얹는다.
+      const live = new Set(applied.def.holes.map((h) => h.name));
+      const params = Object.fromEntries(
+        Object.entries({ ...ctx.binding.params, ...applied.params }).filter(([k]) => live.has(k)),
+      );
+      await updateBinding({
+        address: ctx.address,
+        bindingId: ctx.binding.id,
+        patch: { params, ...(alias !== (ctx.binding.alias ?? undefined) ? { alias } : {}) },
+      });
+      return def.id;
+    }
+
+    // 값 변화 없음 — 별칭만 갱신될 수 있다.
+    if (alias !== (ctx.binding.alias ?? undefined)) {
+      await updateBinding({ address: ctx.address, bindingId: ctx.binding.id, patch: { alias } });
+    }
+    return def.id;
+  };
+
   const saveMut = useMutation({
     mutationFn: async (): Promise<string | null> => {
       const prepared = await prepare();
+      if (bindingCtx && storedDef) {
+        return saveBindingEdit(prepared.ir);
+      }
       if (isNew) {
         // 첫 저장: 범위 모달이 finishMut로 마무리한다.
         setScopeAsk(prepared);
@@ -361,7 +465,7 @@ function EditorBody({
   const openForm = async () => {
     setFormEntry({ kind: "loading" });
     try {
-      let effectiveIr = ir;
+      let effectiveIr = ir ?? policy.initialIr ?? null;
       if (!effectiveIr && cedarText.trim()) {
         effectiveIr = (await textToBlocks(cedarText))[0] ?? null;
       }
@@ -435,6 +539,12 @@ function EditorBody({
               새 정책 · 저장해야 적용됩니다
             </span>
           )}
+          {bindingCtx && (
+            <span className="ev2-badge-draft">
+              {bindingCtx.address.slice(0, 6)}…{bindingCtx.address.slice(-4)} 지갑의 인스턴스 편집 —
+              값 변경은 이 지갑에만 적용돼요
+            </span>
+          )}
           {fromMarket && (
             <span className="ev2-detail-prov">
               <ShieldIcon />
@@ -448,7 +558,11 @@ function EditorBody({
           <TabBtn
             label="Cedar"
             active={tab === "cedar"}
-            onClick={() => handleTabChange("cedar")}
+            disabled={!!bindingCtx}
+            onClick={() => {
+              if (bindingCtx) return; // 지갑 인스턴스는 폼에서만 — 텍스트 편집은 라이브러리에서
+              handleTabChange("cedar");
+            }}
           />
           <TabBtn
             label="폼"
@@ -456,14 +570,17 @@ function EditorBody({
             onClick={() => handleTabChange("form")}
           />
           <span className="ev2-spc" />
-          <button
-            type="button"
-            className="ev2-pri ghost"
-            onClick={() => setPublishOpen(true)}
-            title="마켓에 올리기"
-          >
-            <ShieldIcon /> 마켓에 올리기
-          </button>
+          {!bindingCtx && (
+            <button
+              type="button"
+              className="ev2-pri ghost"
+              onClick={() => setPublishOpen(true)}
+              title="마켓에 올리기"
+            >
+              <ShieldIcon /> 마켓에 올리기
+            </button>
+          )}
+          {!bindingCtx && (
           <button
             type="button"
             className="ev2-pri danger"
@@ -476,6 +593,7 @@ function EditorBody({
           >
             삭제
           </button>
+          )}
           <button
             type="button"
             className="ev2-pri"
