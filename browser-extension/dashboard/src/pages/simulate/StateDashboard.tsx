@@ -11,8 +11,21 @@
  */
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import type { ApprovalView, PositionView, TokenHolding, WalletStateView } from "./types";
+
+/** One dashboard widget (a category card). Adding a category = one entry in the
+ *  widget list — the responsive grid + animations handle the rest. */
+interface WidgetDef {
+  key: string;
+  title: string;
+  total: number;
+  /** Per-row: stable id, whether the policy filter hides it, and its element. */
+  rows: { id: string; gone: boolean; el: ReactNode }[];
+  /** Shown (muted) when the wallet has none of this category. */
+  empty: string;
+}
 
 const ALLOC_COLORS = ["#0ea5e9", "#22c55e", "#a855f7", "#f59e0b", "#ec4899", "#64748b"];
 
@@ -65,9 +78,6 @@ export function StateDashboard({
   const protoRel = (proto: string): RelState =>
     active ? (filter!.isProtocolRelevant(proto) ? "keep" : "gone") : "";
 
-  const shown = <T,>(items: T[], rel: (it: T) => RelState) =>
-    active ? items.filter((it) => rel(it) !== "gone").length : items.length;
-
   return (
     <div className={`sd-card${active ? " sd-filterable" : ""}${entrance ? "" : " sd-static"}`}>
       {/* ── header: identity ── */}
@@ -94,7 +104,7 @@ export function StateDashboard({
             const gone = tokenRel(t.symbol) === "gone";
             return (
               <span
-                key={t.address}
+                key={`alloc-${i}`}
                 className={`sd-alloc-seg${gone ? " sd-seg-gone" : ""}`}
                 style={{ width: `${pct}%`, background: ALLOC_COLORS[i % ALLOC_COLORS.length] }}
                 title={`${t.symbol} ${pct.toFixed(1)}%`}
@@ -104,60 +114,108 @@ export function StateDashboard({
         </div>
       )}
 
-      {/* ── tokens │ positions, side by side, each boxed ── */}
-      <div className={`sd-cols2${s.positions.length > 0 ? "" : " one"}`}>
-        <Section box title="토큰" count={shown(s.tokens, (t) => tokenRel(t.symbol))} total={s.tokens.length} active={active}>
-          <div className="sd-tokens">
-            {s.tokens.map((t, i) => (
-              <TokenRow
-                key={t.address}
-                t={t}
-                total={total}
-                color={ALLOC_COLORS[i % ALLOC_COLORS.length]}
-                rel={tokenRel(t.symbol)}
-                open={open.has(t.address)}
-                onToggle={() => toggle(t.address)}
-              />
-            ))}
-          </div>
-        </Section>
-
-        {s.positions.length > 0 && (
-          <Section
-            box
-            title="포지션"
-            count={shown(s.positions, (p) => protoRel(p.protocol))}
-            total={s.positions.length}
-            active={active}
-          >
-            <div className="sd-perps">
-              {perps.map((p) => (
-                <PerpCard key={p.id} p={p} rel={protoRel(p.protocol)} open={open.has(p.id)} onToggle={() => toggle(p.id)} />
-              ))}
-            </div>
-            {others.map((p) => (
-              <LendingRow key={p.id} p={p} rel={protoRel(p.protocol)} open={open.has(p.id)} onToggle={() => toggle(p.id)} />
-            ))}
-          </Section>
-        )}
-      </div>
-
-      {/* ── approvals (full width, boxed) ── */}
-      {s.approvals.length > 0 && (
-        <Section
-          box
-          title="승인"
-          count={shown(s.approvals, (a) => tokenRel(a.token))}
-          total={s.approvals.length}
-          active={active}
-        >
-          <div className="sd-apprs">
-            {s.approvals.map((a) => (
-              <ApprovalRow key={a.id} a={a} rel={tokenRel(a.token)} open={open.has(a.id)} onToggle={() => toggle(a.id)} />
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* ── category widgets (tokens · positions · approvals · +future) ──
+           Declared as data and flowed into a responsive grid, so a new category
+           is one entry. Core widgets always render (muted empty state when the
+           wallet has none) → every card is consistent. In step 2, framer-motion
+           collapses filtered-out rows and reflows the survivors smoothly. */}
+      <motion.div className="sd-grid" layout>
+        {((): WidgetDef[] => [
+          {
+            key: "tokens",
+            title: "토큰",
+            total: s.tokens.length,
+            empty: "보유 토큰 없음",
+            rows: s.tokens.map((t, i) => {
+              // Row id unique even when addresses repeat/blank (native ETH).
+              const id = `tok-${i}-${t.address}`;
+              return {
+                id,
+                gone: tokenRel(t.symbol) === "gone",
+                el: (
+                  <TokenRow
+                    t={t}
+                    total={total}
+                    color={ALLOC_COLORS[i % ALLOC_COLORS.length]}
+                    rel={tokenRel(t.symbol)}
+                    open={open.has(id)}
+                    onToggle={() => toggle(id)}
+                  />
+                ),
+              };
+            }),
+          },
+          {
+            key: "positions",
+            title: "포지션",
+            total: s.positions.length,
+            empty: "열린 포지션 없음",
+            rows: [
+              ...perps.map((p) => ({
+                id: p.id,
+                gone: protoRel(p.protocol) === "gone",
+                el: <PerpCard p={p} rel={protoRel(p.protocol)} open={open.has(p.id)} onToggle={() => toggle(p.id)} />,
+              })),
+              ...others.map((p) => ({
+                id: p.id,
+                gone: protoRel(p.protocol) === "gone",
+                el: <LendingRow p={p} rel={protoRel(p.protocol)} open={open.has(p.id)} onToggle={() => toggle(p.id)} />,
+              })),
+            ],
+          },
+          {
+            key: "approvals",
+            title: "승인",
+            total: s.approvals.length,
+            empty: "승인 없음",
+            rows: s.approvals.map((a) => ({
+              id: a.id,
+              gone: tokenRel(a.token) === "gone",
+              el: <ApprovalRow a={a} rel={tokenRel(a.token)} open={open.has(a.id)} onToggle={() => toggle(a.id)} />,
+            })),
+          },
+        ])().map((w) => {
+          const vis = active ? w.rows.filter((r) => !r.gone) : w.rows;
+          return (
+            <motion.section layout key={w.key} className="sd-widget">
+              <div className="sd-section-head">
+                <span className="sd-section-title">{w.title}</span>
+                <span className="sd-section-count">
+                  {active && vis.length !== w.total ? (
+                    <>
+                      <span className="sd-count-now">{vis.length}</span>
+                      <span className="sd-count-of">/{w.total}</span>
+                    </>
+                  ) : (
+                    w.total
+                  )}
+                </span>
+              </div>
+              {w.total === 0 ? (
+                <div className="sd-empty-box">{w.empty}</div>
+              ) : (
+                <motion.div className="sd-widget-body" layout>
+                  <AnimatePresence initial={false}>
+                    {vis.map((r) => (
+                      <motion.div
+                        key={r.id}
+                        layout
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.22, ease: [0.22, 0.8, 0.26, 1] }}
+                        style={{ overflow: "hidden" }}
+                      >
+                        {r.el}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </motion.section>
+          );
+        })}
+      </motion.div>
     </div>
   );
 }
@@ -180,41 +238,6 @@ function Tile({
       <span className="sd-tile-label">{label}</span>
       <span className="sd-tile-value">{value}</span>
       <span className="sd-tile-sub">{sub}</span>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  count,
-  total,
-  active,
-  box,
-  children,
-}: {
-  title: string;
-  count: number;
-  total: number;
-  active: boolean;
-  box?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`sd-section${box ? " box" : ""}`}>
-      <div className="sd-section-head">
-        <span className="sd-section-title">{title}</span>
-        <span className="sd-section-count">
-          {active && count !== total ? (
-            <>
-              <span className="sd-count-now">{count}</span>
-              <span className="sd-count-of">/{total}</span>
-            </>
-          ) : (
-            total
-          )}
-        </span>
-      </div>
-      {children}
     </div>
   );
 }

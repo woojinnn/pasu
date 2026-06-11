@@ -190,8 +190,15 @@
 
 .sd-section { margin-top: 16px; }
 /* tokens │ positions side-by-side, each in its own box */
-.sd-cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; margin-top: 14px; }
-.sd-cols2.one { grid-template-columns: 1fr; }
+/* tokens (left) get a touch more room than the positions/approvals stack. */
+.sd-cols2 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 10px; align-items: start; margin-top: 14px; }
+/* right column: positions + approvals stacked next to the tokens box. */
+.sd-col-stack { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* placeholder when a wallet has neither positions nor approvals. */
+.sd-empty-box {
+  border: 1px dashed var(--hairline); border-radius: 12px; padding: 22px 14px;
+  text-align: center; font-size: 12px; color: var(--slate-400); background: var(--surface);
+}
 .sd-section.box { border: 1px solid var(--hairline); border-radius: 12px; padding: 11px 13px; background: var(--surface); margin-top: 14px; }
 .sd-cols2 .sd-section.box { margin-top: 0; }
 .sd-section.box .sd-perps { grid-template-columns: 1fr; } /* narrow box → stack perp cards */
@@ -203,7 +210,7 @@
 /* tokens with weight bars */
 .sd-tokens { display: flex; flex-direction: column; gap: 7px; }
 .sd-token { border-radius: 8px; }
-.sd-token-main { display: grid; grid-template-columns: 10px 56px 1fr 90px 78px 14px; align-items: center; gap: 8px;
+.sd-token-main { display: grid; grid-template-columns: 10px 52px 1fr 104px 80px 14px; align-items: center; gap: 7px;
   width: 100%; border: 0; background: none; cursor: pointer; padding: 5px 6px; border-radius: 8px;
   font-variant-numeric: tabular-nums; transition: background-color .15s ease; }
 .sd-token-main:hover { background: var(--fog-200); }
@@ -475,3 +482,42 @@
   }
   .sd-gone { transform: none; }
 }
+
+/* ── layout hardening: keep the state panel inside its grid column ───────── */
+/* grid `1fr` children overflow unless explicitly allowed to shrink. */
+.sw-cols > * { min-width: 0; }
+.sw-states { min-width: 0; }
+.sd-card { min-width: 0; overflow: hidden; }
+.sd-tiles, .sd-tile { min-width: 0; }
+.sd-tile-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* approval row: the spender takes the slack; a long/MAX amount is clamped and
+   never pushes the card wider than its column. */
+.sd-appr-main { min-width: 0; }
+.sd-appr-token { flex: none; }
+.sd-appr-spender { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.sd-appr-addr { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-appr-amt { min-width: 0; max-width: 42%; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* long numeric values never wrap or stretch the row */
+.sd-token-bal, .sd-token-usd, .sd-lend-size { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* footer: equal, balanced buttons */
+.sw-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 104px; box-sizing: border-box; }
+
+/* keep step content at a comfortable reading width (don't stretch edge-to-edge
+   on wide monitors — the token/state rows looked sparse otherwise). */
+.sw-step { max-width: 1180px; }
+
+/* ── widget-grid dashboard: each category is a card; grid flows responsively
+   and scales as categories are added. ── */
+.sd-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px; margin-top: 14px; align-items: start;
+}
+.sd-widget {
+  min-width: 0; border: 1px solid var(--hairline); border-radius: 12px;
+  padding: 11px 13px; background: var(--surface);
+}
+.sd-widget .sd-section-head { margin-bottom: 8px; }
+.sd-widget-body { display: flex; flex-direction: column; gap: 2px; }
