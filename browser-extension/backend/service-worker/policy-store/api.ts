@@ -46,6 +46,7 @@ export type Ps2Request =
     }
   | { type: "ps2:remove-binding"; address: string; bindingId: string }
   | { type: "ps2:remove-wallet-package"; address: string; packageId: string }
+  | { type: "ps2:put-wallet-package"; address: string; pkg: { id: string; displayName: string } }
   | { type: "ps2:copy-bindings"; fromAddress: string; toAddress: string; bindingIds: string[] }
   | { type: "ps2:set-package-enabled"; address: string; packageId: string; enabled: boolean }
   | { type: "ps2:provision-wallets"; addresses: string[] }
@@ -77,7 +78,7 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
     }
     case "ps2:get-wallet-state": {
       const s = await readStore(uid);
-      return s.wallets.byAddress[req.address.toLowerCase()] ?? { bindings: {}, packageEnabled: {} };
+      return s.wallets.byAddress[req.address.toLowerCase()] ?? { bindings: {}, packages: {}, packageEnabled: {} };
     }
     case "ps2:get-overview": {
       // 계정 전체 뷰(지갑×패키지 매트릭스)용 스냅샷.

@@ -7,8 +7,8 @@ import {
   getOverview,
   isEffectiveOn,
   provisionWallets,
-  putPackage,
   removeBinding,
+  putWalletPackage,
   removeWalletPackage,
   setPackageEnabled,
   updateBinding,
@@ -113,6 +113,7 @@ function WalletWorkspace(props: {
   const navigate = useNavigate();
   const wallet: WalletPolicyState = snap.wallets.byAddress[address] ?? {
     bindings: {},
+    packages: {},
     packageEnabled: {},
   };
 
@@ -155,8 +156,8 @@ function WalletWorkspace(props: {
     }
     for (const arr of m.values()) {
       arr.sort((a, b) =>
-        (snap.library.packages[a.packageId]?.displayName ?? "").localeCompare(
-          snap.library.packages[b.packageId]?.displayName ?? "",
+        walletPkgName(a.packageId).localeCompare(
+          walletPkgName(b.packageId),
           "ko",
         ),
       );
@@ -164,13 +165,19 @@ function WalletWorkspace(props: {
     return m;
   }, [wallet, snap]);
 
-  const packages = useMemo(
-    () =>
-      Object.values(snap.library.packages).sort((a, b) =>
-        a.id === UNCATEGORIZED_PKG ? -1 : b.id === UNCATEGORIZED_PKG ? 1 : a.id.localeCompare(b.id),
-      ),
-    [snap],
-  );
+  // 좌측 레일 = 이 지갑의 패키지(지갑 소속 객체) + 미분류(가상). 라이브러리의
+  // 폴더와는 별개 — 지갑에서 무엇을 해도 라이브러리에 비치지 않는다.
+  const packages = useMemo(() => {
+    const list = [
+      { id: UNCATEGORIZED_PKG, displayName: "미분류", updatedAtMs: 0 },
+      ...Object.values(wallet.packages ?? {}),
+    ];
+    return list.sort((a, b) =>
+      a.id === UNCATEGORIZED_PKG ? -1 : b.id === UNCATEGORIZED_PKG ? 1 : a.id.localeCompare(b.id),
+    );
+  }, [wallet]);
+  const walletPkgName = (pid: string) =>
+    pid === UNCATEGORIZED_PKG ? "미분류" : (wallet.packages?.[pid]?.displayName ?? pid);
 
   // 우측 트리: 라이브러리 디렉토리 구조(폴더 멤버십 = defaults.packageId).
   const defsByFolder = useMemo(() => {
@@ -221,32 +228,31 @@ function WalletWorkspace(props: {
       }),
     ).then(
       (ok) =>
-        ok && onToast(`${def.displayName} → ${snap.library.packages[pkgId]?.displayName ?? pkgId}`),
+        ok && onToast(`${def.displayName} → ${walletPkgName(pkgId)}`),
     );
   };
 
-  // 지갑 화면에서의 패키지 추가/이름변경/삭제 — 패키지는 계정 라이브러리 객체지만
-  // "이 지갑에 존재"는 바인딩이 만든다(추가 직후엔 빈 폴더로 흐리게 보임).
+  // 지갑 패키지 CRUD — 전부 이 지갑 안에서만 일어난다.
   const createPackage = () =>
     void run("패키지 생성", () =>
-      putPackage({
-        id: `pkg::${crypto.randomUUID()}`,
-        displayName: "새 패키지",
-        source: "mine",
-        updatedAtMs: Date.now(),
+      putWalletPackage({
+        address,
+        pkg: { id: `pkg::${crypto.randomUUID()}`, displayName: "새 패키지" },
       }),
     ).then((ok) => ok && onToast("패키지를 만들었어요 — 이름을 바꿔보세요"));
 
   const renamePackage = (pkgId: string) => {
-    const pkg = snap.library.packages[pkgId];
+    const pkg = wallet.packages?.[pkgId];
     const name = draftName.trim();
     setRenaming(null);
     if (!pkg || !name || name === pkg.displayName) return;
-    void run("이름 변경", () => putPackage({ ...pkg, displayName: name, updatedAtMs: Date.now() }));
+    void run("이름 변경", () =>
+      putWalletPackage({ address, pkg: { id: pkgId, displayName: name } }),
+    );
   };
 
   const removePackage = (pkgId: string) => {
-    const pkg = snap.library.packages[pkgId];
+    const pkg = wallet.packages?.[pkgId];
     if (!pkg) return;
     const n = Object.values(wallet.bindings).filter((b) => b.packageId === pkgId).length;
     if (
@@ -388,7 +394,7 @@ function WalletWorkspace(props: {
       <section className="ev2-right">
         <div className="ev2-ctrl">
           <span className="wd-scopelabel">
-            {scope === "all" ? "전체 정책" : (snap.library.packages[scope]?.displayName ?? scope)}
+            {scope === "all" ? "전체 정책" : walletPkgName(scope)}
           </span>
         </div>
 
@@ -448,7 +454,7 @@ function WalletWorkspace(props: {
                                   <button
                                     type="button"
                                     className="ev2-iconbtn"
-                                    title={`${snap.library.packages[scopePkgId]?.displayName ?? "미분류"}에 추가`}
+                                    title={`${walletPkgName(scopePkgId)}에 추가`}
                                     onClick={() => addDefToPackage(d.id, scopePkgId)}
                                   >
                                     <PlusIcon />
@@ -461,7 +467,7 @@ function WalletWorkspace(props: {
                                   binding={b}
                                   def={d}
                                   wallet={wallet}
-                                  pkgName={snap.library.packages[b.packageId]?.displayName ?? b.packageId}
+                                  pkgName={walletPkgName(b.packageId)}
                                   onOpen={() =>
                                     navigate(
                                       `/editor/${encodeURIComponent(d.id)}?wallet=${address}&binding=${encodeURIComponent(b.id)}`,

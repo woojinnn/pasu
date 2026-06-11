@@ -59,6 +59,12 @@ export const removeBinding = (opts: { address: string; bindingId: string }) =>
 export const removeWalletPackage = (opts: { address: string; packageId: string }) =>
   sendToExtension<null>({ type: "ps2:remove-wallet-package", ...opts });
 
+/** 지갑 패키지 생성/이름변경 — 지갑 안에서만 존재, 라이브러리 불변. */
+export const putWalletPackage = (opts: {
+  address: string;
+  pkg: { id: string; displayName: string };
+}) => sendToExtension<null>({ type: "ps2:put-wallet-package", ...opts });
+
 export const copyBindings = (opts: { fromAddress: string; toAddress: string; bindingIds: string[] }) =>
   sendToExtension<null>({ type: "ps2:copy-bindings", ...opts });
 

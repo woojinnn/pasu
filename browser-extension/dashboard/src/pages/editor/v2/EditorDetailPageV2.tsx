@@ -10,7 +10,6 @@ import {
   getOverview,
   putDef,
   putPackage,
-  removeBinding,
   updateBinding,
   type Binding,
   type PolicyDef,
@@ -317,32 +316,13 @@ function EditorBody({
     const diff = diffBindingEdit(def.skeleton.ir as PolicyIR, editedIr);
 
     if (diff.kind === "structural") {
-      if (
-        !window.confirm(
-          "조건의 구조가 바뀌었어요. 이 변경은 이 지갑 전용 정책(복제본)으로 분리됩니다 — 계속할까요?",
-        )
-      ) {
-        throw new Error("저장을 취소했어요");
-      }
-      const forked: PolicyDef = {
-        id: `def::${crypto.randomUUID()}`,
-        displayName: aliasInput || `${def.displayName} (지갑 전용)`,
-        cat: def.cat,
-        skeleton: { ir: editedIr, manifest: def.skeleton.manifest },
-        holes: [],
-        defaults: { enabled: false, params: {} },
-        source: "mine",
-        updatedAtMs: Date.now(),
-      };
-      await putDef(forked);
-      await bindDef({
-        defId: forked.id,
-        packageId: ctx.binding.packageId,
-        addresses: [ctx.address],
-        ...(alias ? { alias } : {}),
-      });
-      await removeBinding({ address: ctx.address, bindingId: ctx.binding.id });
-      return forked.id;
+      // 지갑 인스턴스는 값만 다르게 가질 수 있다 — 구조가 다르면 그건 새 정책
+      // 원본이고, 원본은 라이브러리에서 만든다(지갑 조작은 라이브러리에 흔적을
+      // 남기지 않는다).
+      window.alert(
+        "조건의 구조가 바뀌어서 이 화면에서는 저장할 수 없어요.\n구조가 다른 정책이 필요하면 라이브러리에서 이 정책을 복제한 뒤 수정하고, 지갑에 추가해 주세요.",
+      );
+      throw new Error("저장을 취소했어요");
     }
 
     if (diff.kind === "params") {

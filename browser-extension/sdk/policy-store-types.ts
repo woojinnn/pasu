@@ -43,8 +43,18 @@ export interface Binding {
   updatedAtMs: number;
 }
 
+/** 지갑 소속 패키지 — 라이브러리 폴더와 별개의 객체. 지갑 화면의 생성/이름변경/
+ *  제거는 이것만 만지고, 라이브러리에는 비치지 않는다. */
+export interface WalletPackage {
+  id: string;
+  displayName: string;
+  updatedAtMs: number;
+}
+
 export interface WalletPolicyState {
   bindings: Record<string, Binding>;
+  /** 이 지갑의 패키지들. binding.packageId는 여기(또는 미분류)를 가리킨다. */
+  packages: Record<string, WalletPackage>;
   /** 패키지 토글. 키가 없으면 true(켜짐) 취급. */
   packageEnabled: Record<string, boolean>;
 }

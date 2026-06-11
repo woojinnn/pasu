@@ -19,6 +19,8 @@ interface WalletState {
     string,
     { id: string; defId: string; packageId: string; enabled: boolean; alias?: string }
   >;
+  /** 지갑 소속 패키지 — 이름의 1차 출처(라이브러리 폴더와 별개). */
+  packages?: Record<string, { id: string; displayName: string }>;
   packageEnabled: Record<string, boolean>;
 }
 
@@ -61,16 +63,19 @@ export function derivePopupPackages(lib: LibDoc, wallet: WalletState | null): Po
     });
     byPkg.set(b.packageId, arr);
   }
-  return Object.values(lib.packages)
-    .filter((p) => (byPkg.get(p.id) ?? []).length > 0)
+  const nameOf = (pid: string) =>
+    pid === "pkg::uncategorized"
+      ? "미분류"
+      : (w.packages?.[pid]?.displayName ?? lib.packages[pid]?.displayName ?? pid);
+  return [...byPkg.keys()]
     .sort((a, b) =>
-      a.id.startsWith("pkg::builtin") ? -1 : b.id.startsWith("pkg::builtin") ? 1 : a.id.localeCompare(b.id),
+      a.startsWith("pkg::builtin") ? -1 : b.startsWith("pkg::builtin") ? 1 : a.localeCompare(b),
     )
-    .map((p) => ({
-      id: p.id,
-      name: p.displayName,
-      on: w.packageEnabled[p.id] ?? true,
-      members: (byPkg.get(p.id) ?? []).sort((a, b) => a.name.localeCompare(b.name, "ko")),
+    .map((pid) => ({
+      id: pid,
+      name: nameOf(pid),
+      on: w.packageEnabled[pid] ?? true,
+      members: (byPkg.get(pid) ?? []).sort((a, b) => a.name.localeCompare(b.name, "ko")),
     }));
 }
 

@@ -35,6 +35,7 @@ import {
   putDef,
   putPackage,
   removeBinding,
+  putWalletPackage,
   removePackageFromWallet,
   setPackageEnabled,
   updateBinding,
@@ -64,14 +65,17 @@ describe("policy-store ops", () => {
     expect(s.library.defs["def::a"]).toBeUndefined();
   });
 
-  it("deletePackage moves member bindings to 미분류 (policies survive)", async () => {
+  it("deletePackage(라이브러리 폴더 삭제)는 지갑 패키지/바인딩을 건드리지 않는다", async () => {
     await putDef("u", def("def::a"));
     await putPackage("u", { id: "pkg::x", displayName: "X", source: "mine", updatedAtMs: 1 });
+    // bind가 같은 id의 지갑 패키지를 실체화한다 — 이후 폴더가 사라져도 지갑은 그대로.
     await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1"] });
     await deletePackage("u", "pkg::x");
     const s = await readStore("u");
-    const b = Object.values(s.wallets.byAddress["0xa1"].bindings)[0];
-    expect(b.packageId).toBe(UNCATEGORIZED_PKG);
+    const w = s.wallets.byAddress["0xa1"];
+    const b = Object.values(w.bindings)[0];
+    expect(b.packageId).toBe("pkg::x");
+    expect(w.packages["pkg::x"]).toEqual(expect.objectContaining({ displayName: "X" }));
     expect(s.library.packages["pkg::x"]).toBeUndefined();
   });
 
@@ -185,5 +189,22 @@ describe("패키지 삭제/지갑 차원 제거의 분리", () => {
     expect(Object.keys(snap.wallets.byAddress["0xb2"].bindings)).toHaveLength(1);
     expect(snap.library.packages["pkg::x"]).toBeDefined();
     expect(snap.library.defs["def::a"]).toBeDefined();
+  });
+});
+
+describe("지갑 패키지 분리", () => {
+  it("putWalletPackage는 지갑 안에서만 — 라이브러리 packages 불변", async () => {
+    await putWalletPackage("u", { address: "0xA1", pkg: { id: "pkg::w1", displayName: "콜드 전용" } });
+    const s = await readStore("u");
+    expect(s.wallets.byAddress["0xa1"].packages["pkg::w1"].displayName).toBe("콜드 전용");
+    expect(s.library.packages["pkg::w1"]).toBeUndefined();
+  });
+
+  it("bind는 라이브러리 폴더 id를 받으면 같은 이름의 지갑 패키지를 실체화한다", async () => {
+    await putDef("u", def("def::a"));
+    await putPackage("u", { id: "pkg::x", displayName: "안전팩", source: "mine", updatedAtMs: 1 });
+    await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1"] });
+    const s = await readStore("u");
+    expect(s.wallets.byAddress["0xa1"].packages["pkg::x"].displayName).toBe("안전팩");
   });
 });

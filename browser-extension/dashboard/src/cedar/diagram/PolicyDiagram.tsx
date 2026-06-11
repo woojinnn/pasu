@@ -454,8 +454,9 @@ export function exprToText(e: Expr): string {
     case "record":
       return `{${e.pairs.map((p) => `${p.key}: ${exprToText(p.value)}`).join(", ")}}`;
     case "hole":
-      // 지갑별 설정 자리 — 사람용 라벨로 (내부 이름은 난수 suffix가 붙는다).
-      return `〔${e.label ?? e.name}〕`;
+      // 홀은 비노출 내부 메커니즘 — 라이브러리 화면에서는 기본값이 곧 그 정책의
+      // 값이다. 플레이스홀더를 보여주면 지갑 편집 흔적이 새어 보인다.
+      return exprToText(e.default);
     case "raw":
       return "‹raw›";
     default:

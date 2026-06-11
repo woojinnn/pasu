@@ -53,7 +53,7 @@ describe("ps2 message API", () => {
 
   it("get-wallet-state returns an empty state for unknown wallets", async () => {
     const out = await handlePs2Request({ type: "ps2:get-wallet-state", address: "0xNOPE" });
-    expect(out).toEqual({ bindings: {}, packageEnabled: {} });
+    expect(out).toEqual({ bindings: {}, packages: {}, packageEnabled: {} });
   });
 
   it("put-def → bind → get-overview round-trip", async () => {

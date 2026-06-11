@@ -82,6 +82,7 @@ describe("policy-store core", () => {
           bindings: {
             "bind::x": { id: "bind::x", defId: "def::ghost", packageId: UNCATEGORIZED_PKG, enabled: true, updatedAtMs: 1 },
           },
+          packages: {},
           packageEnabled: {},
         };
       }),

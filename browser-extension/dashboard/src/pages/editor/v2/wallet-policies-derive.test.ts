@@ -29,6 +29,7 @@ const W = (
   bindings: Record<string, { defId: string; packageId: string; enabled: boolean }>,
   pkgEnabled: Record<string, boolean> = {},
 ): WalletPolicyState => ({
+  packages: {},
   bindings: Object.fromEntries(Object.entries(bindings).map(([id, b]) => [id, { id, updatedAtMs: 1, ...b }])),
   packageEnabled: pkgEnabled,
 });
