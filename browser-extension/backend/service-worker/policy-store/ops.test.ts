@@ -163,7 +163,7 @@ describe("policy-store ops", () => {
 
 describe("패키지 삭제/지갑 차원 제거의 분리", () => {
   it("deletePackage: def의 라이브러리 폴더 소속도 미분류로 돌린다", async () => {
-    await putPackage("u", { id: "pkg::x", displayName: "X", updatedAtMs: 1 });
+    await putPackage("u", { id: "pkg::x", displayName: "X", source: "mine", updatedAtMs: 1 });
     await putDef("u", {
       ...def("def::a"),
       defaults: { enabled: true, params: {}, packageId: "pkg::x" },
@@ -174,7 +174,7 @@ describe("패키지 삭제/지갑 차원 제거의 분리", () => {
   });
 
   it("removePackageFromWallet: 이 지갑의 바인딩+게이트만 제거, 계정 패키지/def 불변", async () => {
-    await putPackage("u", { id: "pkg::x", displayName: "X", updatedAtMs: 1 });
+    await putPackage("u", { id: "pkg::x", displayName: "X", source: "mine", updatedAtMs: 1 });
     await putDef("u", def("def::a"));
     await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1", "0xb2"] });
     await removePackageFromWallet("u", { address: "0xA1", packageId: "pkg::x" });
