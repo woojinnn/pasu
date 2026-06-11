@@ -1,0 +1,71 @@
+// Bridge::Send — outbound cross-chain bridge of a token (the source-chain leg
+// the user signs). ScopeBall never sees the destination fill, so every
+// protectable signal is decoded from the source calldata:
+//   - dstRecipient : who receives on the destination chain (#1 phishing field)
+//   - dstChainId   : where funds go (CAIP-2)
+//   - srcToken/dstToken, inputAmount/outputAmount : what + how much (bridge fee
+//                    = inputAmount - outputAmount)
+//   - hasMessage   : a destination-execution (compose / arbitrary call) payload
+//                    is attached
+//
+// Amounts use the 3-layer projection (raw hex / token-native nano / fiat USD);
+// the *Nano / *Usd siblings are host-populated and omitted at lowering time.
+
+namespace Bridge {
+  // Which bridge the user is calling.
+  type BridgeVenue = {
+    name: String,
+  };
+
+  // Destination recipient. Cedar 4.10 lacks enums, so the Rust
+  // BridgeRecipient enum is projected as a discriminated record:
+  //   - kind = "evm"  → address present (20-byte EVM recipient)
+  //   - kind = "raw"  → bytes32 present (cross-VM / non-EVM destination)
+  type BridgeRecipient = {
+    kind: String,
+    address?: String,
+    bytes32?: String,
+  };
+
+  type SendContext = {
+    // Common envelope (submitter, submittedAt, nature).
+    meta: Core::ActionMeta,
+    // Bridge entry the user calls.
+    venue: BridgeVenue,
+    // Token escrowed/burned on the source chain.
+    srcToken: Core::TokenRef,
+    // Amount of srcToken sent (U256 hex).
+    inputAmount: String,
+    // Token-native nano sibling of inputAmount (host-populated).
+    inputAmountNano?: Long,
+    // USD estimate of the input (host-populated).
+    inputAmountUsd?: decimal,
+    // Destination chain (CAIP-2, e.g. "eip155:10").
+    dstChainId: String,
+    // Recipient on the destination chain.
+    dstRecipient: BridgeRecipient,
+    // Token delivered on the destination chain. Absent when not statically known.
+    dstToken?: Core::TokenRef,
+    // Amount delivered on the destination (U256 hex), input minus relayer/LP fee.
+    outputAmount?: String,
+    // Token-native nano sibling of outputAmount (host-populated).
+    outputAmountNano?: Long,
+    // USD estimate of the output (host-populated).
+    outputAmountUsd?: decimal,
+    // Relayer with temporary exclusive fill rights (Address); absent when open.
+    exclusiveRelayer?: String,
+    // Whether a destination-execution message (compose / arbitrary call) is attached.
+    hasMessage: Bool,
+    // Manifest-extensible slot.
+    custom?: SendCustomContext,
+  };
+
+  // Manifest-extensible slot. Placeholder (no fields).
+  type SendCustomContext = {};
+
+  action "Send" appliesTo {
+    principal: Wallet,
+    resource: Protocol,
+    context: SendContext,
+  };
+}

@@ -13,6 +13,7 @@
 
 pub mod airdrop;
 pub mod amm;
+pub mod bridge;
 pub mod governance;
 pub mod hyperliquid_core;
 pub mod launchpad;

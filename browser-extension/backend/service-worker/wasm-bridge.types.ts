@@ -47,6 +47,34 @@ export interface ActionTxInputDto {
  * `meta` is the `ActionMeta`; both are kept opaque here (the bridge does not
  * model the variant schema — downstream decode produces them).
  */
+/** Per-market order enrichment (→ Rust `MarketEnrichment`). */
+export interface MarketEnrichmentInputDto {
+  readonly max_leverage?: number;
+  readonly leverage_type?: string;
+  readonly notional_usd?: number;
+  readonly position_roe_bps?: number;
+  readonly liquidation_distance_bps?: number;
+  readonly has_open_position?: boolean;
+}
+
+/** Account-wide order enrichment (→ Rust `AccountEnrichment`). */
+export interface AccountEnrichmentInputDto {
+  readonly account_value_usd?: number;
+  readonly margin_used_ratio_bps?: number;
+}
+
+/**
+ * Host-resolved order-time enrichment beyond bare leverage (→ Rust
+ * `OrderEnrichment`). Filled by the SW from HL `meta` + `activeAssetData` +
+ * `clearinghouseState`; every field optional — omitted ⇒ the WASM lowering
+ * omits the corresponding `Perp::PlaceOrderContext` sibling and a
+ * `context has <field>` policy stays dormant.
+ */
+export interface OrderEnrichmentInputDto {
+  readonly markets?: Readonly<Record<string, MarketEnrichmentInputDto>>;
+  readonly account?: AccountEnrichmentInputDto;
+}
+
 export interface PlanActionRpcV2InputDto {
   readonly manifests: readonly unknown[];
   readonly action: unknown;
@@ -65,6 +93,11 @@ export interface PlanActionRpcV2InputDto {
    * the field is not emitted (a `context has leverage` policy stays dormant).
    */
   readonly account_leverage?: Readonly<Record<string, number>>;
+  /**
+   * Host-resolved order-time enrichment beyond bare leverage (maxLeverage /
+   * notional / margin health / position state). See {@link OrderEnrichmentInputDto}.
+   */
+  readonly order_enrichment?: OrderEnrichmentInputDto;
 }
 
 /**
@@ -115,6 +148,11 @@ export interface EvaluateActionV2InputDto {
    * {@link PlanActionRpcV2InputDto.account_leverage}).
    */
   readonly account_leverage?: Readonly<Record<string, number>>;
+  /**
+   * Host-resolved order-time enrichment (see
+   * {@link PlanActionRpcV2InputDto.order_enrichment}).
+   */
+  readonly order_enrichment?: OrderEnrichmentInputDto;
 }
 
 export interface PassVerdictDto {

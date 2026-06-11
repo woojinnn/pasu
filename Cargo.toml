@@ -9,7 +9,8 @@ resolver = "2"
 members = [
     "crates/policy-engine",
     "crates/policy-engine-wasm",
-    "crates/integration-tests",
+    # crates/integration-tests is LOCAL-ONLY (gitignored, no production logic) —
+    # intentionally NOT a member so a fresh clone builds without the dir present.
     "crates/adapters/abi-resolver",
     "crates/adapters/mappers",
     "crates/policy-server/asset-model/state",

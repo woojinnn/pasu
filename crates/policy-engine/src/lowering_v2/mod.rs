@@ -35,6 +35,7 @@
 
 pub use common::account::AccountLeverage;
 pub use common::amount::TokenDecimals;
+pub use common::enrichment::{AccountEnrichment, MarketEnrichment, OrderEnrichment};
 pub use dispatch::{
     lower_action, lower_action_enriched, lower_action_with_decimals, LowerError, LoweredAction,
     TxMeta,
@@ -42,6 +43,7 @@ pub use dispatch::{
 
 mod airdrop;
 mod amm;
+mod bridge;
 mod common;
 mod dispatch;
 mod governance;

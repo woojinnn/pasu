@@ -54,8 +54,18 @@ function copyDefaultPoliciesV2() {
 
   // Ship the "day1-safety" bundle as the baked default v2 set. The bundle lives
   // under `default-bundles/day1-safety/` (package.json + policies/<id>/{policy.cedar,
-  // manifest.json}); we project each policy onto the `{id, policy}` shape that
-  // `loadDefaults()` in policy-selection.ts consumes for the popup catalog.
+  // manifest.json}); we project each policy onto the `{id, policy, manifest}` shape
+  // that `loadBakedSetV2()` / `evaluate_action_v2_json` consume.
+  //
+  // The `manifest` MUST be included: WASM `PlanActionInput.manifests` and
+  // `BundleInput.manifest` are `Vec<ManifestV2>` / `ManifestV2` (NON-Option). The
+  // SW builds the plan's `manifests = bundles.map(b => b.manifest)`, so a bundle
+  // with no `manifest` serializes a `null` element and `plan_action_rpc_v2_json`
+  // throws `invalid type: null, expected struct ManifestV2`. That throw makes
+  // `tryV2VerdictPath` return undefined → EVERY decoded tx fails closed to a
+  // `__engine::no_decoder` warn, so the baked deny/warn policies never fire.
+  // Dropping the manifest here (the old `{id, policy}` projection) was that bug.
+  // Mirrors the v1 path below + the dashboard's `managedToV2Bundle` synthesis.
   // Enumerate via package.json's `policies[]` so order + id match the bundle's
   // canonical manifest; fall back to dir-scan if package.json is absent.
   const bundleDir = path.join(EXT_ROOT, "default-bundles", "day1-safety");
@@ -79,8 +89,17 @@ function copyDefaultPoliciesV2() {
   }
 
   const policySet = ids.map((id) => {
-    const cedarPath = path.join(bundleDir, "policies", id, "policy.cedar");
-    return { id, policy: fs.readFileSync(cedarPath, "utf8") };
+    const policyDir = path.join(bundleDir, "policies", id);
+    const policy = fs.readFileSync(path.join(policyDir, "policy.cedar"), "utf8");
+    // Include the policy's manifest so the shipped bundle is `{id, policy, manifest}`.
+    // Fall back to a minimal empty-trigger manifest (`{id, schema_version: 2}`,
+    // matches every action — the Cedar head self-filters) when a policy has no
+    // manifest.json, so the set can NEVER contain a manifest-less (null) bundle.
+    const manifestPath = path.join(policyDir, "manifest.json");
+    const manifest = fs.existsSync(manifestPath)
+      ? JSON.parse(fs.readFileSync(manifestPath, "utf8"))
+      : { id, schema_version: 2 };
+    return { id, policy, manifest };
   });
 
   fs.writeFileSync(destPath, JSON.stringify(policySet, null, 2));

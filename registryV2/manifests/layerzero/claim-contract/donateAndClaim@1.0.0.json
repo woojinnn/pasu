@@ -6,11 +6,11 @@
   "match": {
     "selector": "0xac6ae3ee",
     "chain_to_addresses": {
-      "42161": ["0xd6b6a6701303B5Ea36fa0eDf7389b562d8F894DB"]
+      "42161": ["0xb09F16F625B363875e39ADa56C03682088471523"]
     }
   },
-  "_note_addresses": "ClaimContract hub on Arbitrum (chain 42161) — 1차-verified. Per-satellite ClaimRemote addresses NOT 1차-verified → limited-cover, hub only.",
-  "_note_mapping": "donateAndClaim performs a real Merkle claim (carries `proof` + `to`) bundled with a donation. Mapped to Airdrop(Claim) capturing the claim intent; the donation side-effect (`amountToDonate`) is NOT surfaced (Claim has no donation field). zroAmount is the requested claim amount — Claim's actual_amount is a live field, so it is not bound from calldata either.",
+  "_note_addresses": "CORRECTED 2026-06-11: donateAndClaim does NOT exist on the ClaimLocal hub 0xd6b6…94DB (hub bytecode lacks the 0xac6ae3ee dispatch; Dune carries no hub donateAndClaim call table because the verified hub ABI has no such function) — the original hub binding could never match a real tx. The function lives on the separate DonateAndClaim wrapper 0xb09F…1523, designated on-chain by the (1차-verified) hub via its DonateAndClaimSet event (tx 0x31d30834fbe7d6d0bd39d7d07339445d8d14c50c90f817719925164e0842f06e, block 223776739, 2024-06-20). This wrapper is the dominant real user flow: 846,659 top-level txs (selector 0xac6ae3ee), producing 99.95% of all hub claim() executions as internal calls (831,474/831,849, Dune layerzero_arbitrum.claimlocal_call_claim). Wrapper donateAndClaim(uint8,uint256,uint256,bytes32[],address,bytes) is byte-identical in selector/param shape to this manifest's ABI fragment; recipient stays $args.to. Per-satellite ClaimRemote addresses NOT 1차-verified → limited-cover, hub chain only.",
+  "_note_mapping": "donateAndClaim performs a real Merkle claim (carries `proof` + `to`) bundled with a donation. Mapped to Airdrop(Claim). The donation leg IS now surfaced (2026-06-11) via the `donation` field — see `_note_donation`. zroAmount is the requested claim amount, bound into `donation.claim_amount` (proof-bound); Claim's `actual_amount` remains a live field (not bound from calldata).",
   "abi_fragment": {
     "function_name": "donateAndClaim",
     "abi": {
@@ -47,7 +47,22 @@
             "leaf_index": 0,
             "siblings":   "$args.proof"
           },
-          "sig": null
+          "sig": null,
+          "_note_donation": "Pay-to-claim leg (Proof-of-Donation). amount = $args.amountToDonate (for currency=native this equals msg.value); claim_amount = $args.zroAmount (proof-bound, not malleable); token resolved from the $args.currency uint8 selector. Enum→token 1차-verified on-chain (Arbitrum erc20 transfers in real donateAndClaim txs): 0 → USDC 0xaf88d065e77c8cc2239327c5edb3a432268e5831 (65,384 txs), 1 → USDT 0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9 (29,873), 2 → native ARB-ETH. assertDonation is a `>=` threshold (over-payment kept, NOT refunded) → an inflated amountToDonate drains the signer — this is the second value-out direction beyond recipient.",
+          "donation": {
+            "amount":       "$args.amountToDonate",
+            "claim_amount": "$args.zroAmount",
+            "token": {
+              "key": {
+                "$match": "$args.currency",
+                "$cases": {
+                  "0": { "standard": "erc20",  "chain": "$chain", "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831" },
+                  "1": { "standard": "erc20",  "chain": "$chain", "address": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9" },
+                  "2": { "standard": "native", "chain": "$chain" }
+                }
+              }
+            }
+          }
         }
       }
     },

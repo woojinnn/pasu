@@ -63,6 +63,9 @@ pub const WHITELIST: &[&str] = &[
     "tuple_array_field",
     "array_len",
     "u64_saturating",
+    "bytes_nonempty",
+    "token_key_or_native_zero",
+    "bridge_recipient",
 ];
 
 /// Dispatch a `$fn` call by name against its already-substituted JSON args.
@@ -94,6 +97,9 @@ pub fn dispatch(name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
         "tuple_array_field" => tuple_array_field(args),
         "array_len" => array_len(args),
         "u64_saturating" => u64_saturating(args),
+        "bytes_nonempty" => bytes_nonempty(args),
+        "token_key_or_native_zero" => token_key_or_native_zero(args),
+        "bridge_recipient" => bridge_recipient(args),
         _ => Err(format!(
             "unknown $fn '{name}' (whitelist: {})",
             WHITELIST.join(", ")
@@ -226,6 +232,22 @@ fn address_from_uint256(args: &[JsonValue]) -> Result<JsonValue, String> {
     Ok(JsonValue::String(format!("{addr:#x}")))
 }
 
+/// `bytes_nonempty(data: bytes) -> bool` — whether a `bytes` argument carries any
+/// payload. Used to flag a bridge destination-execution message (Across `message`,
+/// LayerZero `composeMsg`) as a compose / arbitrary-call risk without surfacing the
+/// raw payload. The arg is the `args_json` encoding of a `bytes` field (`"0x.."`);
+/// empty / `"0x"` → `false`. Venue-agnostic byte utility.
+fn bytes_nonempty(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 1 {
+        return Err(format!(
+            "bytes_nonempty expects 1 arg (bytes), got {}",
+            args.len()
+        ));
+    }
+    let bytes = json_hex_bytes(&args[0], "bytes_nonempty: data")?;
+    Ok(JsonValue::Bool(!bytes.is_empty()))
+}
+
 /// `maker_traits_expiry(maker_traits: uint256) -> uint` — extract the 1inch LOP v4
 /// `MakerTraits` order expiration: bits `[80, 120)`, a `uint40` ABSOLUTE
 /// UNIX-seconds timestamp (`(makerTraits >> 80) & ((1<<40)-1)`). On-chain `0`
@@ -307,6 +329,79 @@ fn token_key_or_native(args: &[JsonValue]) -> Result<JsonValue, String> {
         );
     }
     Ok(JsonValue::Object(key))
+}
+
+/// `token_key_or_native_zero(address, chain) -> TokenKey` — like
+/// [`token_key_or_native`], but treats **both** the 1inch sentinel
+/// (`0xEeee…`) **and** the zero address (`0x0`) as the native gas asset.
+/// Li.Fi's `LibAsset.isNativeAsset` uses `address(0)` for native, so a
+/// Li.Fi `sendingAssetId` / `SwapData.sendingAssetId` of `0x0` means native
+/// ETH, not an `erc20` at the zero address (which is never a real token).
+fn token_key_or_native_zero(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 2 {
+        return Err(format!(
+            "token_key_or_native_zero expects 2 args (address, chain), got {}",
+            args.len()
+        ));
+    }
+    let address = json_address(&args[0], "token_key_or_native_zero: address")?;
+    let chain = args[1]
+        .as_str()
+        .ok_or("token_key_or_native_zero: chain arg is not a string")?;
+    const NATIVE_SENTINEL: &str = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    let mut key = serde_json::Map::new();
+    if address.is_zero() || format!("{address:#x}") == NATIVE_SENTINEL {
+        key.insert(
+            "standard".to_owned(),
+            JsonValue::String("native".to_owned()),
+        );
+        key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
+    } else {
+        key.insert("standard".to_owned(), JsonValue::String("erc20".to_owned()));
+        key.insert("chain".to_owned(), JsonValue::String(chain.to_owned()));
+        key.insert(
+            "address".to_owned(),
+            JsonValue::String(format!("{address:#x}")),
+        );
+    }
+    Ok(JsonValue::Object(key))
+}
+
+/// `bridge_recipient(evm_receiver, raw_bytes32_receiver) -> BridgeRecipient`.
+///
+/// Builds the discriminated `BridgeRecipient` for a Li.Fi bridge leg, handling
+/// non-EVM (Solana/Bitcoin/…) destinations correctly. Li.Fi sets
+/// `BridgeData.receiver` to its `LibAsset.NON_EVM_ADDRESS` sentinel
+/// (`0x11f111f111f111F111f111f111F111f111f111F1`) when the destination is
+/// non-EVM, and carries the REAL recipient as a 32-byte word in the
+/// facet-specific data (e.g. `AcrossV4Data.receiverAddress`,
+/// `MayanData.nonEVMReceiver`). So `evm_receiver == sentinel` yields
+/// `{kind:"raw", bytes32: raw_bytes32_receiver}`, otherwise (a real EVM
+/// address) `{kind:"evm", address: evm_receiver}`. The caller passes the
+/// facet-specific bytes32 field as arg 1; the sentinel check is uniform across
+/// facets.
+fn bridge_recipient(args: &[JsonValue]) -> Result<JsonValue, String> {
+    if args.len() != 2 {
+        return Err(format!(
+            "bridge_recipient expects 2 args (evm_receiver, bytes32_receiver), got {}",
+            args.len()
+        ));
+    }
+    let evm = json_address(&args[0], "bridge_recipient: evm_receiver")?;
+    // Li.Fi LibAsset.NON_EVM_ADDRESS sentinel.
+    const NON_EVM_SENTINEL: &str = "0x11f111f111f111f111f111f111f111f111f111f1";
+    let mut m = serde_json::Map::new();
+    if format!("{evm:#x}") == NON_EVM_SENTINEL {
+        let bytes32 = args[1]
+            .as_str()
+            .ok_or("bridge_recipient: bytes32_receiver arg is not a string")?;
+        m.insert("kind".to_owned(), JsonValue::String("raw".to_owned()));
+        m.insert("bytes32".to_owned(), JsonValue::String(bytes32.to_owned()));
+    } else {
+        m.insert("kind".to_owned(), JsonValue::String("evm".to_owned()));
+        m.insert("address".to_owned(), JsonValue::String(format!("{evm:#x}")));
+    }
+    Ok(JsonValue::Object(m))
 }
 
 /// `uniswap_v3_pool_swap_field(amountSpecified, zeroForOne, token0, token1, field)`.
@@ -1847,6 +1942,61 @@ mod tests {
         );
         // arity + bad address error out.
         assert!(token_key_or_native(&[json!("0x0")]).is_err());
+    }
+
+    #[test]
+    fn token_key_or_native_zero_maps_zero_and_sentinel_to_native() {
+        let chain = "eip155:1";
+        // Li.Fi native convention: the ZERO address -> native (unlike the plain
+        // token_key_or_native, which would map 0x0 to erc20{0x0}).
+        for native_addr in [
+            "0x0000000000000000000000000000000000000000",
+            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        ] {
+            let k = token_key_or_native_zero(&[json!(native_addr), json!(chain)]).unwrap();
+            assert_eq!(k["standard"], json!("native"), "addr={native_addr}");
+            assert_eq!(k["chain"], json!(chain));
+            assert!(k.get("address").is_none());
+        }
+        // A real ERC-20 stays erc20 with its lowercase address.
+        let erc20 = token_key_or_native_zero(&[
+            json!("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+            json!(chain),
+        ])
+        .unwrap();
+        assert_eq!(erc20["standard"], json!("erc20"));
+        assert_eq!(
+            erc20["address"],
+            json!("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        );
+        assert!(token_key_or_native_zero(&[json!("0x0")]).is_err());
+    }
+
+    #[test]
+    fn bridge_recipient_sentinel_to_raw_else_evm() {
+        let b32 = "0x0f64e4226322cd6908be7fe613f7f82ae2db8fc0ffaf0757e5e4839019170d7f";
+        // Li.Fi non-EVM sentinel -> Raw{bytes32} from the facet field.
+        let raw = bridge_recipient(&[
+            json!("0x11f111f111f111F111f111f111F111f111f111F1"),
+            json!(b32),
+        ])
+        .unwrap();
+        assert_eq!(raw["kind"], json!("raw"));
+        assert_eq!(raw["bytes32"], json!(b32));
+        assert!(raw.get("address").is_none());
+        // A real EVM receiver -> Evm{address} (lowercased), bytes32 arg ignored.
+        let evm = bridge_recipient(&[
+            json!("0x5529e0608cFC0caB5Bb86B59CBa7E88F0F66dFeF"),
+            json!(b32),
+        ])
+        .unwrap();
+        assert_eq!(evm["kind"], json!("evm"));
+        assert_eq!(
+            evm["address"],
+            json!("0x5529e0608cfc0cab5bb86b59cba7e88f0f66dfef")
+        );
+        assert!(evm.get("bytes32").is_none());
+        assert!(bridge_recipient(&[json!("0x0")]).is_err());
     }
 
     #[test]

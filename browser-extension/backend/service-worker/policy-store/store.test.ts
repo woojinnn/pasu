@@ -113,4 +113,93 @@ describe("policy-store core", () => {
     });
     expect(Object.keys((await readStore("u2")).library.defs)).toEqual([]);
   });
+
+  it("logs a binding enable/disable toggle to the console", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    await mutate("u1", (d) => {
+      d.library.defs["def::a"] = def("def::a");
+      d.wallets.byAddress["0xabc"] = {
+        bindings: {
+          "bind::x": { id: "bind::x", defId: "def::a", packageId: UNCATEGORIZED_PKG, enabled: true, updatedAtMs: 1 },
+        },
+        packages: {},
+        packageEnabled: {},
+      };
+    });
+    infoSpy.mockClear();
+    await mutate("u1", (d) => {
+      d.wallets.byAddress["0xabc"].bindings["bind::x"].enabled = false;
+    });
+    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policy-store bindings toggled", {
+      uid: "u1",
+      toggles: [{ address: "0xabc", defId: "def::a", enabled: false }],
+    });
+    infoSpy.mockRestore();
+  });
+
+  it("logs a package master toggle to the console", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    await mutate("u1", (d) => {
+      d.library.defs["def::a"] = def("def::a");
+      d.wallets.byAddress["0xabc"] = {
+        bindings: {
+          "bind::x": { id: "bind::x", defId: "def::a", packageId: "pkg::p", enabled: true, updatedAtMs: 1 },
+        },
+        packages: { "pkg::p": { id: "pkg::p", displayName: "P", updatedAtMs: 1 } },
+        packageEnabled: {},
+      };
+    });
+    infoSpy.mockClear();
+    await mutate("u1", (d) => {
+      d.wallets.byAddress["0xabc"].packageEnabled["pkg::p"] = false;
+    });
+    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policy-store package toggled", {
+      uid: "u1",
+      pkgToggles: [{ address: "0xabc", packageId: "pkg::p", enabled: false }],
+    });
+    infoSpy.mockRestore();
+  });
+
+  it("logs a binding removal as an effective off (enabled:false)", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    await mutate("u1", (d) => {
+      d.library.defs["def::a"] = def("def::a");
+      d.wallets.byAddress["0xabc"] = {
+        bindings: {
+          "bind::x": { id: "bind::x", defId: "def::a", packageId: UNCATEGORIZED_PKG, enabled: true, updatedAtMs: 1 },
+        },
+        packages: {},
+        packageEnabled: {},
+      };
+    });
+    infoSpy.mockClear();
+    await mutate("u1", (d) => {
+      delete d.wallets.byAddress["0xabc"].bindings["bind::x"];
+    });
+    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policy-store bindings toggled", {
+      uid: "u1",
+      toggles: [{ address: "0xabc", defId: "def::a", enabled: false }],
+    });
+    infoSpy.mockRestore();
+  });
+
+  it("does not emit a toggle log when only params change (not an enable flip)", async () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    await mutate("u1", (d) => {
+      d.library.defs["def::a"] = def("def::a");
+      d.wallets.byAddress["0xabc"] = {
+        bindings: {
+          "bind::x": { id: "bind::x", defId: "def::a", packageId: UNCATEGORIZED_PKG, enabled: true, updatedAtMs: 1 },
+        },
+        packages: {},
+        packageEnabled: {},
+      };
+    });
+    infoSpy.mockClear();
+    await mutate("u1", (d) => {
+      d.wallets.byAddress["0xabc"].bindings["bind::x"].params = { x: 1 };
+    });
+    expect(infoSpy).not.toHaveBeenCalledWith("[Pasu] policy-store bindings toggled", expect.anything());
+    infoSpy.mockRestore();
+  });
 });

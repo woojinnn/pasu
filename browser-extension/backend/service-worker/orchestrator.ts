@@ -30,7 +30,13 @@ import {
   ServerError as PasuServerError,
 } from "./pasu-auth";
 import { getCurrentUserId } from "./dashboard/current-user";
-import { collectActionMetas, defRefForPolicyId, filterForAction, resolveBundlesForWallet } from "./policy-store/resolve";
+import {
+  collectActionMetas,
+  defRefForPolicyId,
+  filterForAction,
+  isWalletRegistered,
+  resolveBundlesForWallet,
+} from "./policy-store/resolve";
 import type {
   ActionBundleInputDto,
   ActionTxInputDto,
@@ -51,6 +57,9 @@ import {
   collectHlLeverage,
   noteHlLeverageUpdate,
 } from "./venue/collect-hl-leverage";
+import { collectOrderEnrichment } from "./venue/collect-order-enrichment";
+import { resolveOrderSymbol } from "./venue/resolve-order-symbol";
+import { resolveHlMaster } from "./venue/resolve-hl-master";
 import {
   normalizeTypedDataPayload,
   routeTypedSignaturePayload,
@@ -766,9 +775,29 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     to: HL_TO_SENTINEL,
   } as const;
 
-  // 주문 제출자 지갑의 effective 바인딩을 가져온다.
+  // 주문 제출자 지갑의 effective 바인딩을 가져온다. HL 주문은 sentinel
+  // submitter(`meta.submitter`)로 들어오므로 그대로 쓰면 미등록 지갑 →
+  // defaults.enabled 전역 폴백이 걸려 per-wallet 토글이 무시된다. fetch-hook이
+  // `eth_accounts`에서 읽어 payload에 stamp한 연결 master(또는 vaultAddress /
+  // per-origin store)를 해석해 그 지갑의 effective 바인딩으로 평가한다 →
+  // 대시보드의 per-policy 토글이 HL 주문에도 적용된다. 해석 실패 시 sentinel로
+  // degrade(= 기존 defaults.enabled 폴백, best-effort, never throws).
   const venueUid = (await getCurrentUserId()) ?? "anonymous";
-  const resolved = await resolveBundlesForWallet(venueUid, tx.from);
+  const master = await resolveHlMaster(message.data);
+  const evalAddress = master ?? tx.from;
+  const resolved = await resolveBundlesForWallet(venueUid, evalAddress);
+  // 진단: registered=false 면 evalAddress가 미등록 → per-wallet 토글이 아니라
+  // defaults.enabled 전역 폴백으로 평가된 것(= 토글이 이 주문에 안 먹은 경우).
+  // master=null(주소 미해석)이나 venueUid="anonymous"(미로그인)면 대개 여기로 샌다.
+  const registered = await isWalletRegistered(venueUid, evalAddress);
+  console.info("[Pasu] HL venue policy-set resolved", {
+    requestId: message.requestId,
+    venueUid,
+    master,
+    evalAddress,
+    registered,
+    bundleCount: resolved.length,
+  });
   // 액션-단위 사전 필터(최적화) — 정밀 게이트는 엔진의 trigger 매칭.
   const bundles = filterForAction(resolved, collectActionMetas(action)).map(
     ({ policy, manifest }) => ({ policy, manifest }),
@@ -785,11 +814,37 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   // Best-effort venue account-state enrichment: resolve this order's effective
-  // leverage so a leverage-based policy can fire — the order wire carries none.
-  // `collectHlLeverage` never throws and a miss just omits the leverage field
-  // (a `context has leverage` policy stays dormant). Not part of the deny-closed
-  // fault surface.
-  const account_leverage = await collectHlLeverage(action, message.data);
+  // leverage (HL `activeAssetData`) so an order-leverage policy can fire — the
+  // order wire carries none. `collectHlLeverage` NEVER throws and is NOT part of
+  // the deny-closed fault surface below: a miss / timeout / unknown master just
+  // omits the leverage (a `context has leverage` policy stays dormant) rather
+  // than blocking the order. When this IS an `updateLeverage`, refresh the cache
+  // (fire-and-forget) so the next order on that asset sees the just-set value.
+  // Two best-effort collectors, fired CONCURRENTLY (they share the HL info-client
+  // caches, so `activeAssetData` is fetched once): `account_leverage` (the bare
+  // leverage field) and `order_enrichment` (maxLeverage / notional / margin
+  // health / position state — the order-risk policy surface). Both NEVER throw
+  // and are NOT part of the deny-closed fault surface below: any miss / timeout /
+  // unknown master just omits the affected field (a `context has <field>` policy
+  // stays dormant) rather than blocking the order. When this IS an
+  // `updateLeverage`, refresh the leverage cache (fire-and-forget) so the next
+  // order on that asset sees the just-set value.
+  // Resolve the human asset symbol (HL meta universe) and patch it into the
+  // built body BEFORE the enrichment collectors run. The order wire carries only
+  // a numeric asset index, so the body is built with an `ASSET-<index>`
+  // placeholder; this overwrites it with the real name (e.g. "BTC") so (a) a
+  // symbol-matching policy (e.g. an order-symbol allowlist) sees the real symbol
+  // and (b) the collectors — which key their per-market enrichment by
+  // `market.symbol` — key by the SAME resolved symbol the lowering looks up by.
+  // Best-effort + NEVER throws: a miss leaves the placeholder (the body stays
+  // internally consistent; only symbol-specific policies stay dormant) and is
+  // NOT part of the deny-closed fault surface.
+  await resolveOrderSymbol(action, message.data);
+
+  const [account_leverage, order_enrichment] = await Promise.all([
+    collectHlLeverage(action, message.data),
+    collectOrderEnrichment(action, message.data),
+  ]);
   void noteHlLeverageUpdate(action, message.data);
 
   try {
@@ -800,6 +855,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       meta,
       tx,
       account_leverage,
+      order_enrichment,
     });
     const results =
       planned.length > 0
@@ -812,6 +868,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       bundles,
       results,
       account_leverage,
+      order_enrichment,
     });
     console.info("[Pasu] venue-order-verdict", {
       requestId: message.requestId,

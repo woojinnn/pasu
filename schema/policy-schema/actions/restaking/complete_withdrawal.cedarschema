@@ -15,8 +15,10 @@ namespace Restaking {
     // Strategies whose shares are being withdrawn.
     strategies: Set<String>,
     // true = receive underlying tokens; false = re-deposit as shares.
-    // Omitted for the batch completeQueuedWithdrawals (parallel bool[] not
-    // reachable per-element from array_emit).
+    // Present for both the single AND the batch completeQueuedWithdrawals (the
+    // batch decodes the index-aligned receiveAsTokens bool[] per-element via the
+    // array_emit parallel_sources mechanism); absent only when unresolvable, so
+    // policies must `has`-guard before comparing.
     receiveAsTokens?: Bool,
     custom?: CompleteWithdrawalCustomContext,
   };

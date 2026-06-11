@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
   "snapshot": "steth.abi.json",
-  "note": "Surface-completeness triage for the Lido stETH implementation (called via the AppProxyUpgradeable proxy 0xae7ab9..fe84). EVERY external-mutating selector in the snapshot has an explicit cover|exclude (gate I1). ERC20+EIP-2612 standard funcs are exclude — covered by the erc20 standard adapter via tokens:erc20 auto-enumerate (Curve precedent). Lido-specific user surface = submit (stake), transferShares/transferSharesFrom (shares-denominated transfer), and the selector-less bare-ETH stake via the payable fallback (0x00000000 native-transfer sentinel, grounded by the snapshot's fallback entry).",
+  "note": "Surface-completeness triage for the Lido stETH implementation (called via the AppProxyUpgradeable proxy 0xae7ab9..fe84). EVERY external-mutating selector in the snapshot has an explicit cover|exclude (gate I1). Plain ERC20 funcs (transfer/approve/allowance helpers) are exclude — covered by the erc20 standard adapter via tokens:erc20 auto-enumerate (Curve precedent). EIP-2612 permit is a Lido-SPECIFIC cover (lido/steth/permit) because the standard/erc20/permit adapter pins only USDC; it backs the P3 approval-drain-shield. Lido-specific user surface = submit (stake), transferShares/transferSharesFrom (shares-denominated transfer), and the selector-less bare-ETH stake via the payable fallback (0x00000000 native-transfer sentinel, grounded by the snapshot's fallback entry).",
   "functions": {
     "0xa1903eab": { "name": "submit",                            "decision": "cover",   "reason": "LIQUID-STAKING deposit — user sends ETH (msg.value) and receives stETH; the core Lido user action. New liquid_staking domain (Tier 3)." },
     "0x8fcb4e5b": { "name": "transferShares",                    "decision": "cover",   "reason": "shares-denominated stETH transfer (rebasing-token internal unit); a user fund-move whose amount is shares, not stETH — not faithfully expressible as plain erc20_transfer." },
@@ -13,7 +13,7 @@
     "0x095ea7b3": { "name": "approve",                          "decision": "exclude", "reason": "standard ERC20 approve on stETH — analyzed by the erc20 standard adapter (tokens:erc20 auto-enumerate); not a Lido-specific primitive." },
     "0xa9059cbb": { "name": "transfer",                         "decision": "exclude", "reason": "standard ERC20 transfer — erc20 standard adapter." },
     "0x23b872dd": { "name": "transferFrom",                     "decision": "exclude", "reason": "standard ERC20 transferFrom — erc20 standard adapter." },
-    "0xd505accf": { "name": "permit",                           "decision": "exclude", "reason": "EIP-2612 permit — standard off-chain allowance grant, handled by the erc20 standard (ERC-2612) path; not Lido-specific." },
+    "0xd505accf": { "name": "permit",                           "decision": "cover",   "reason": "EIP-2612 permit (value-based; DOMAIN_SEPARATOR()/nonces(address)/permit(owner,spender,value,deadline,v,r,s) verified on-chain). The standard/erc20/permit adapter pins ONLY USDC, so stETH permit needs a Lido-specific manifest — covers the P3 approval-drain-shield (typed-data sign route + on-chain permit() by-callkey). Manifest: lido/steth/permit." },
     "0x39509351": { "name": "increaseAllowance",               "decision": "exclude", "reason": "OZ ERC20 allowance helper — erc20 standard adapter." },
     "0xa457c2d7": { "name": "decreaseAllowance",               "decision": "exclude", "reason": "OZ ERC20 allowance helper — erc20 standard adapter." },
 
@@ -40,5 +40,8 @@
     "0x9d4941d8": { "name": "transferToVault",                  "decision": "exclude", "reason": "deprecated/admin — recovers tokens to the treasury." },
     "0x878a209c": { "name": "finalizeUpgrade_v3",              "decision": "exclude", "reason": "infra — one-time upgrade finalizer." },
     "0x485cc955": { "name": "initialize",                       "decision": "exclude", "reason": "infra — proxy initializer (payable)." }
+  },
+  "signed_structs": {
+    "Permit": { "decision": "cover", "reason": "EIP-2612 off-chain Permit typed-data (Permit(owner,spender,value,nonce,deadline)) signed against the stETH EIP-712 domain (verifyingContract 0xae7ab9..fe84). The pre-sign drain shield (P3) intercepts this signature. Manifest: lido/steth/permit (typed_data primary_type Permit)." }
   }
 }

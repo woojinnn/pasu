@@ -1,5 +1,5 @@
-// Restaking::Redelegate — atomically undelegate and delegate to a new operator
-// (EigenLayer DelegationManager `redelegate`, ELIP-003).
+// Restaking::Redelegate — undelegate the current operator and delegate to a new one in one call
+// (EigenLayer DelegationManager `redelegate`).
 //
 // Rust source: `crates/simulation/reducer/src/action/restaking/redelegate.rs`
 // (`RedelegateAction`). No LiveInputs.

@@ -20,5 +20,8 @@
   "seaport_basic_order",
   "tuple_array_field",
   "array_len",
-  "u64_saturating"
+  "u64_saturating",
+  "bytes_nonempty",
+  "token_key_or_native_zero",
+  "bridge_recipient"
 ]

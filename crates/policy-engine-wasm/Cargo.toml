@@ -10,11 +10,17 @@ publish = false
 # 7 + Phase 8 + Phase 12 (Curve) the artifact grew to 6.02 MiB even with
 # -Oz alone — --strip-debug recovers the ~30 KB budget. No effect on
 # Cargo profile.release — only the wasm-pack post-processing step.
+# (The bigger lever — rustc opt-level=z — lives in scripts/wasm-build.sh.)
 [package.metadata.wasm-pack.profile.release]
 # Plan §M10 (2026-05-28) — policy-transition 의 sqrt / log math 가
 # i64.trunc_sat_f64_s (non-trapping saturating float→int) 명령 사용 →
 # wasm-opt 의 --enable-nontrapping-float-to-int 필요.
-wasm-opt = ["-Oz", "--strip-debug", "--enable-bulk-memory", "--enable-mutable-globals", "--enable-nontrapping-float-to-int"]
+# 2026-06-11 size pass: --const-hoisting + --vacuum appended AFTER -Oz
+# (const-hoisting is NOT in any default -O pipeline; flag order = pass order
+# and -Oz run after it would undo it). Measured on the opt-level=z artifact:
+# 7,935,550 -> 7,819,417 B (-1.46%). --strip-producers/--strip-target-features
+# are metadata-section hygiene (~107 B + removes toolchain fingerprinting).
+wasm-opt = ["-Oz", "--const-hoisting", "--vacuum", "--strip-debug", "--strip-producers", "--strip-target-features", "--enable-bulk-memory", "--enable-mutable-globals", "--enable-nontrapping-float-to-int"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

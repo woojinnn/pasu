@@ -16,7 +16,13 @@ fi
 if [ "${SKIP_WASM_BUILD:-}" = "1" ] && [ -f crates/policy-engine-wasm/pkg/policy_engine_wasm_bg.wasm ]; then
   echo "==> SKIP_WASM_BUILD=1 and prebuilt pkg/ found — reusing wasm-pack output"
 else
-  echo "==> wasm-pack build (target=web, release)"
+  echo "==> wasm-pack build (target=web, release, opt-level=z)"
+  # opt-level=z (size-optimal codegen) ONLY for this wasm build — scoped via env
+  # var so native [profile.release] (server) keeps opt-level 3. Measured on the
+  # 2026-06-11 tree: 13.06 MiB -> 7.57 MiB (-42%). wasm-opt -Oz alone cannot
+  # recover this; the win is at rustc codegen. panic=abort measured ~0 on
+  # wasm32-unknown-unknown (already abort-style) — deliberately not set.
+  CARGO_PROFILE_RELEASE_OPT_LEVEL=z \
   wasm-pack build crates/policy-engine-wasm \
     --target web \
     --release \

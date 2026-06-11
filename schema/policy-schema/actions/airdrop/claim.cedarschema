@@ -30,6 +30,23 @@ namespace Airdrop {
     index?: Long,
   };
 
+  // Mandatory payment leg of a pay-to-claim distributor (LayerZero
+  // Proof-of-Donation). All fields are statically decoded from calldata; the
+  // optional `amountNano` is the host-enriched token-native projection of
+  // `amount` (raw × 10^(9 − decimals)) used by quantity-cap policies — absent
+  // when the donation token's decimals could not be resolved.
+  type ClaimDonation = {
+    // Amount paid to claim (raw U256 hex). For native currency = msg.value.
+    amount: String,
+    // Host-enriched token-native nano projection of `amount`, or ABSENT when
+    // decimals were not resolved. Use `donation has amountNano` before compare.
+    amountNano?: Long,
+    // Token the donation is paid in (USDC / USDT / native).
+    token: Core::TokenRef,
+    // Claimed-asset amount the donation is charged against (raw U256 hex).
+    claimAmount: String,
+  };
+
   type ClaimContext = {
     // Common envelope (submitter, submittedAt, nature).
     meta: Core::ActionMeta,
@@ -39,6 +56,10 @@ namespace Airdrop {
     claimTarget: ClaimTarget,
     // Address that will receive the claimed tokens.
     recipient: String,
+    // Mandatory payment required to claim, when the distributor charges one
+    // (e.g. LayerZero donateAndClaim). ABSENT for claims with no payment leg.
+    // Use `context has donation` before accessing.
+    donation?: ClaimDonation,
     // Merkle inclusion proof; set of 0x-hex sibling hashes.
     // Required for kind = "merkle_distributor".
     proof?: Set<String>,

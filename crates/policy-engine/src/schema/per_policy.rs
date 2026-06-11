@@ -29,8 +29,8 @@ use super::{
     AIRDROP_CLAIM_SCHEMA, AIRDROP_DELEGATE_SCHEMA, AMM_ADD_LIQUIDITY_SCHEMA,
     AMM_CANCEL_INTENT_ORDER_SCHEMA, AMM_COLLECT_FEES_SCHEMA, AMM_GSM_SWAP_SCHEMA,
     AMM_PRE_SIGN_INTENT_ORDER_SCHEMA, AMM_REMOVE_LIQUIDITY_SCHEMA, AMM_SETTLE_INTENT_ORDER_SCHEMA,
-    AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, CORE_MULTICALL_SCHEMA, CORE_SCHEMA,
-    CORE_UNKNOWN_SCHEMA, GOVERNANCE_ACTIVATE_VOTING_SCHEMA, GOVERNANCE_CANCEL_SCHEMA,
+    AMM_SIGN_INTENT_ORDER_SCHEMA, AMM_SWAP_SCHEMA, BRIDGE_SEND_SCHEMA, CORE_MULTICALL_SCHEMA,
+    CORE_SCHEMA, CORE_UNKNOWN_SCHEMA, GOVERNANCE_ACTIVATE_VOTING_SCHEMA, GOVERNANCE_CANCEL_SCHEMA,
     GOVERNANCE_CLOSE_VOTE_SCHEMA, GOVERNANCE_DELEGATE_SCHEMA, GOVERNANCE_EXECUTE_SCHEMA,
     GOVERNANCE_PROPOSE_SCHEMA, GOVERNANCE_QUEUE_SCHEMA, GOVERNANCE_REDEEM_CANCELLATION_FEE_SCHEMA,
     GOVERNANCE_START_VOTE_SCHEMA, GOVERNANCE_UPDATE_REPRESENTATIVE_SCHEMA, GOVERNANCE_VOTE_SCHEMA,
@@ -105,6 +105,13 @@ const RESOLVER_TABLE: &[ActionEntry] = &[
         action_tag: None,
         schema_text: CORE_UNKNOWN_SCHEMA,
         pascal_stub: "Unknown",
+    },
+    // bridge
+    ActionEntry {
+        domain: "bridge",
+        action_tag: Some("send"),
+        schema_text: BRIDGE_SEND_SCHEMA,
+        pascal_stub: "Send",
     },
     // airdrop
     ActionEntry {
@@ -1280,11 +1287,12 @@ mod tests {
         // `pre_sign_intent_order` on-chain SC-wallet pre-signature row = 104.
         // Guards against a row being dropped or duplicated. (+3 Marketplace
         // rows — sign_order / fulfill_order / cancel_order — keyed by
-        // (domain, action_tag), so cancel_order is a distinct row from perp's.)
+        // (domain, action_tag), so cancel_order is a distinct row from perp's;
+        // +1 bridge `send` row.)
         assert_eq!(
             RESOLVER_TABLE.len(),
-            116,
-            "resolver table must have 116 rows"
+            117,
+            "resolver table must have 117 rows"
         );
     }
 

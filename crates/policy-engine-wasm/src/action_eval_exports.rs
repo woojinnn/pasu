@@ -44,7 +44,7 @@ use serde_json::Value;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use policy_engine::lowering_v2::{
-    lower_action_enriched, AccountLeverage, LoweredAction, TokenDecimals, TxMeta,
+    lower_action_enriched, AccountLeverage, LoweredAction, OrderEnrichment, TokenDecimals, TxMeta,
 };
 use policy_engine::policy::{MatchedPolicy, PolicyEngine, Severity, Verdict};
 use policy_engine::policy_rpc::{
@@ -60,22 +60,34 @@ use crate::exports::check_input_size;
 
 /// Transaction-level routing fields. Mirrors the trigger export's `TxInput`,
 /// reused for both phases. `chain_id` is the CAIP-2 string (e.g. `"eip155:1"`).
+///
+/// `from` / `to` are **lowercased at deserialization** (`de_lower_addr`): EVM
+/// addresses are case-insensitive (EIP-55 checksum is display-only), but they
+/// feed `principal.address` (`Wallet`) and `resource` (`Protocol::"<to>"`),
+/// which Cedar compares byte-for-byte against `addr()`-lowercased context
+/// addresses (e.g. `context.recipient`). A wallet that submits a checksummed
+/// `from` would otherwise false-positive a `context.recipient != principal.address`
+/// recipient-self deny on a *legitimate* self-action. Normalizing here is the
+/// single boundary chokepoint shared by plan / evaluate / debug.
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct TxInput {
     pub(crate) chain_id: String,
+    #[serde(deserialize_with = "de_lower_addr")]
     pub(crate) from: String,
+    #[serde(deserialize_with = "de_lower_addr")]
     pub(crate) to: String,
 }
 
-impl TxInput {
-    /// 엔진 내부의 주소 표기는 전부 소문자(`lowering_v2::common::cedar::addr`)다.
-    /// dapp이 checksum 케이스 `from`/`to`를 주면 `principal.address`(= `tx.from`
-    /// 원문)와 lowering된 context 주소의 String 비교가 오탐하므로(예:
-    /// `context.recipient != principal.address`) 입구에서 정규화한다.
-    fn normalize(&mut self) {
-        self.from = self.from.to_lowercase();
-        self.to = self.to.to_lowercase();
-    }
+/// Deserialize a hex address, normalizing to ASCII lowercase so it compares
+/// byte-equal against `addr()`-lowercased addresses elsewhere in the context.
+/// (Deser-time normalization replaces the post-parse `TxInput::normalize()` from
+/// origin/main — same effect, one chokepoint, can't be forgotten at a call site.)
+fn de_lower_addr<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(s.to_ascii_lowercase())
 }
 
 /// Input to [`plan_action_rpc_v2_json`].
@@ -100,6 +112,12 @@ struct PlanActionInput {
     /// SW's `activeAssetData` lookup. Absent ⇒ the field is omitted.
     #[serde(default)]
     account_leverage: BTreeMap<String, i64>,
+    /// Host-injected order-time enrichment BEYOND bare leverage (maxLeverage /
+    /// leverageType / notionalUsd / account margin health / position state),
+    /// from the SW's HL `meta` + `activeAssetData` + `clearinghouseState`
+    /// lookups. Absent ⇒ every enriched field is omitted. See [`OrderEnrichment`].
+    #[serde(default)]
+    order_enrichment: OrderEnrichment,
 }
 
 /// One installed bundle: the user's Cedar policy text paired with the manifest
@@ -139,6 +157,10 @@ struct EvaluateActionInput {
     /// [`PlanActionInput::account_leverage`]).
     #[serde(default)]
     account_leverage: BTreeMap<String, i64>,
+    /// Host-injected order-time enrichment (see
+    /// [`PlanActionInput::order_enrichment`]).
+    #[serde(default)]
+    order_enrichment: OrderEnrichment,
 }
 
 // ── output DTOs ──────────────────────────────────────────────────────────
@@ -189,12 +211,18 @@ struct EvaluateActionOutput {
 pub fn plan_action_rpc_v2_json(input_json: String) -> String {
     let result = (|| -> Result<PlanActionOutput, EngineErrorDto> {
         check_input_size(&input_json, "plan_action_rpc_v2_json")?;
-        let mut input: PlanActionInput =
+        let input: PlanActionInput =
             serde_json::from_str(&input_json).map_err(|error| invalid_input(&error.to_string()))?;
-        input.tx.normalize();
         let decimals = TokenDecimals::new(input.token_decimals.clone());
         let leverage = AccountLeverage::new(input.account_leverage.clone());
-        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals, &leverage)?;
+        let lowered = lower(
+            &input.action,
+            &input.meta,
+            &input.tx,
+            &decimals,
+            &leverage,
+            &input.order_enrichment,
+        )?;
         let planned = plan(&input.manifests, &input.action, &lowered, &input.tx)?;
         Ok(PlanActionOutput {
             planned: planned.iter().map(planned_to_dto).collect(),
@@ -229,13 +257,19 @@ pub fn plan_action_rpc_v2_json(input_json: String) -> String {
 pub fn evaluate_action_v2_json(input_json: String) -> String {
     let verdict = (|| -> Result<Verdict, EngineErrorDto> {
         check_input_size(&input_json, "evaluate_action_v2_json")?;
-        let mut input: EvaluateActionInput =
+        let input: EvaluateActionInput =
             serde_json::from_str(&input_json).map_err(|error| invalid_input(&error.to_string()))?;
-        input.tx.normalize();
 
         let decimals = TokenDecimals::new(input.token_decimals.clone());
         let leverage = AccountLeverage::new(input.account_leverage.clone());
-        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals, &leverage)?;
+        let lowered = lower(
+            &input.action,
+            &input.meta,
+            &input.tx,
+            &decimals,
+            &leverage,
+            &input.order_enrichment,
+        )?;
 
         // Boundary invariant: PLAN over the bundles' own manifests, never a
         // host-supplied side list. This ties the `SystemFail` gate (driven by
@@ -289,7 +323,14 @@ pub fn debug_lowered_context_v2_json(input_json: String) -> String {
             serde_json::from_str(&input_json).map_err(|error| invalid_input(&error.to_string()))?;
         let decimals = TokenDecimals::new(input.token_decimals.clone());
         let leverage = AccountLeverage::new(input.account_leverage.clone());
-        let lowered = lower(&input.action, &input.meta, &input.tx, &decimals, &leverage)?;
+        let lowered = lower(
+            &input.action,
+            &input.meta,
+            &input.tx,
+            &decimals,
+            &leverage,
+            &input.order_enrichment,
+        )?;
         let manifests: Vec<ManifestV2> = input.bundles.iter().map(|b| b.manifest.clone()).collect();
         let mut context = lowered.context.clone();
         // Best-effort replay so `context.custom.*` shows when enrichment is wired;
@@ -315,20 +356,22 @@ pub fn debug_lowered_context_v2_json(input_json: String) -> String {
 // ── shared helpers ───────────────────────────────────────────────────────
 
 /// Lower an [`ActionBody`] + [`ActionMeta`] + tx into a [`LoweredAction`], with
-/// the host-injected `decimals` (for `amountNano` siblings) and `leverage` (for
-/// the HL order `leverage` field).
+/// all host-injected venue state: `decimals` (for `amountNano` siblings),
+/// `leverage` (the HL order `leverage` field), and `enrichment` (the remaining
+/// order-time enrichment — see [`OrderEnrichment`]).
 fn lower(
     action: &ActionBody,
     meta: &ActionMeta,
     tx: &TxInput,
     decimals: &TokenDecimals,
     leverage: &AccountLeverage,
+    enrichment: &OrderEnrichment,
 ) -> Result<LoweredAction, EngineErrorDto> {
     let tx_meta = TxMeta {
         from: &tx.from,
         to: &tx.to,
     };
-    lower_action_enriched(action, meta, &tx_meta, decimals, leverage)
+    lower_action_enriched(action, meta, &tx_meta, decimals, leverage, enrichment)
         .map_err(|error| EngineErrorDto::new("unsupported_action", error.to_string()))
 }
 
@@ -359,18 +402,20 @@ pub(crate) fn materialized_context(
     results: &BTreeMap<String, Value>,
 ) -> Result<(LoweredAction, Value), EngineErrorDto> {
     // The diagnosis input (`DiagnosisInput`) does not carry the host-injected
-    // enrichment maps (`token_decimals` / `account_leverage`), so the probe
-    // lowers with empty maps: the `amountNano` siblings and the HL order
-    // `leverage` field are omitted from the probe context. A clause that denied
-    // purely on those enrichment-only fields is therefore diagnosed best-effort
-    // — the verdict itself is unaffected (this rebuilds context only for the
-    // dashboard's post-hoc "which clause blocked this" explainer).
+    // enrichment maps (`token_decimals` / `account_leverage` / `order_enrichment`),
+    // so the probe lowers with empty maps: the `amountNano` siblings, the HL
+    // order `leverage` field, and the order-enrichment siblings are omitted from
+    // the probe context. A clause that denied purely on those enrichment-only
+    // fields is therefore diagnosed best-effort — the verdict itself is unaffected
+    // (this rebuilds context only for the dashboard's post-hoc "which clause
+    // blocked this" explainer).
     let lowered = lower(
         action,
         meta,
         tx,
         &TokenDecimals::default(),
         &AccountLeverage::default(),
+        &OrderEnrichment::default(),
     )?;
     let manifests: Vec<ManifestV2> = bundles.iter().map(|b| b.manifest.clone()).collect();
     let planned = plan(&manifests, action, &lowered, tx)?;

@@ -44,6 +44,26 @@ pub(crate) fn lower(
         m.insert("sig".into(), Value::String(sig.clone()));
     }
 
+    // `donation` (pay-to-claim leg, e.g. LayerZero Proof-of-Donation) → the
+    // `ClaimDonation` shape; omitted entirely when the claim charges no payment.
+    // `amountNano` is the optional host-enriched sibling (token decimals via the
+    // shared `TokenDecimals` map — native resolves to 18 automatically), mirror-
+    // ing the `actualAmountNano` / `amountNano` pattern; omitted on a decimals
+    // miss so a quantity-cap policy stays dormant rather than mis-comparing.
+    if let Some(donation) = &action.donation {
+        let mut d = Map::new();
+        d.insert("amount".into(), Value::String(u256_hex(donation.amount)));
+        if let Some(nano) = ctx.amount_nano(&donation.token, donation.amount) {
+            d.insert("amountNano".into(), Value::from(nano));
+        }
+        d.insert("token".into(), lower_token_ref(&donation.token));
+        d.insert(
+            "claimAmount".into(),
+            Value::String(u256_hex(donation.claim_amount)),
+        );
+        m.insert("donation".into(), Value::Object(d));
+    }
+
     // ----- Live inputs (LiveField<T> inlined to T) -----
     m.insert(
         "isStillClaimable".into(),
@@ -136,7 +156,7 @@ mod tests {
     use policy_state::token::{TokenKey, TokenRef};
     use policy_state::LiveField;
     use policy_transition::action::airdrop::{
-        AirdropAction, ClaimAirdropAction, ClaimAirdropLiveInputs, ClaimTarget,
+        AirdropAction, ClaimAirdropAction, ClaimAirdropLiveInputs, ClaimDonation, ClaimTarget,
     };
     use policy_transition::action::ActionBody;
 
@@ -161,6 +181,7 @@ mod tests {
                 ],
             }),
             sig: None,
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: LiveField::new(true, onchain_source(), now()),
                 actual_amount: LiveField::new(U256::from(5_000_000u64), onchain_source(), now()),
@@ -202,6 +223,7 @@ mod tests {
             recipient: Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
             proof: None,
             sig: Some("0xdeadbeef".into()),
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: LiveField::new(false, onchain_source(), now()),
                 actual_amount: LiveField::new(U256::ZERO, onchain_source(), now()),
@@ -243,6 +265,7 @@ mod tests {
             recipient: Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
             proof: None,
             sig: None,
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: LiveField::new(true, onchain_source(), now()),
                 actual_amount: LiveField::new(U256::from(42u64), onchain_source(), now()),
@@ -284,9 +307,99 @@ mod tests {
                 siblings: vec![],
             }),
             sig: None,
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: LiveField::new(true, onchain_source(), now()),
                 actual_amount: LiveField::new(U256::from(1u64), onchain_source(), now()),
+                claim_token: LiveField::new(sample_token_ref(&chain), onchain_source(), now()),
+                claim_window: LiveField::new(None, onchain_source(), now()),
+            },
+        });
+
+        let body = ActionBody::Airdrop(claim);
+        assert_conforms("claim", &body, &super::super::test_support::onchain_meta());
+    }
+
+    /// A pay-to-claim Merkle claim carrying a `donation` leg (LayerZero
+    /// `donateAndClaim` shape). Exercises the `Some(donation)` branch: the
+    /// `ClaimDonation` sub-object must conform (amount/token/claimAmount). The
+    /// optional `amountNano` is omitted here (no decimals injected via the
+    /// bare-`lower_action` path) — the schema marks it optional, so absence
+    /// conforms; the WASM e2e covers the enriched-nano branch.
+    #[test]
+    fn claim_with_donation_leg_conforms_to_schema() {
+        let chain = ChainId::arbitrum();
+        let claim = AirdropAction::Claim(ClaimAirdropAction {
+            source: ProtocolRef::new("layerzero"),
+            claim_target: ClaimTarget::MerkleDistributor {
+                chain: chain.clone(),
+                contract: Address::from_str("0xb09f16f625b363875e39ada56c03682088471523").unwrap(),
+                index: 0,
+            },
+            recipient: Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+            proof: Some(MerkleProof {
+                leaf_index: 0,
+                siblings: vec![
+                    "0xaaa0000000000000000000000000000000000000000000000000000000000000".into(),
+                ],
+            }),
+            sig: None,
+            donation: Some(ClaimDonation {
+                // amountToDonate (e.g. USDC, 6-dec): ~$0.10 per ZRO.
+                amount: U256::from(276_495_288_480_235u64),
+                token: TokenRef {
+                    key: TokenKey::Erc20 {
+                        chain: chain.clone(),
+                        address: Address::from_str("0xaf88d065e77c8cc2239327c5edb3a432268e5831")
+                            .unwrap(),
+                    },
+                },
+                // zroAmount (18-dec).
+                claim_amount: U256::from(9_949_000_000_000_000_000u64),
+            }),
+            live_inputs: ClaimAirdropLiveInputs {
+                is_still_claimable: LiveField::new(true, onchain_source(), now()),
+                actual_amount: LiveField::new(U256::ZERO, onchain_source(), now()),
+                claim_token: LiveField::new(sample_token_ref(&chain), onchain_source(), now()),
+                claim_window: LiveField::new(None, onchain_source(), now()),
+            },
+        });
+
+        let body = ActionBody::Airdrop(claim);
+        assert_conforms("claim", &body, &super::super::test_support::onchain_meta());
+    }
+
+    /// A native-currency donation leg (LayerZero `currency == 2`): the donation
+    /// token is the chain's native asset, the amount equals msg.value. Confirms
+    /// the native `TokenKey` branch lowers + conforms.
+    #[test]
+    fn claim_with_native_donation_conforms_to_schema() {
+        let chain = ChainId::arbitrum();
+        let claim = AirdropAction::Claim(ClaimAirdropAction {
+            source: ProtocolRef::new("layerzero"),
+            claim_target: ClaimTarget::MerkleDistributor {
+                chain: chain.clone(),
+                contract: Address::from_str("0xb09f16f625b363875e39ada56c03682088471523").unwrap(),
+                index: 0,
+            },
+            recipient: Address::from_str("0x000000000000000000000000000000000000a01c").unwrap(),
+            proof: Some(MerkleProof {
+                leaf_index: 0,
+                siblings: vec![],
+            }),
+            sig: None,
+            donation: Some(ClaimDonation {
+                amount: U256::from(276_495_288_480_235u64),
+                token: TokenRef {
+                    key: TokenKey::Native {
+                        chain: chain.clone(),
+                    },
+                },
+                claim_amount: U256::from(9_949_000_000_000_000_000u64),
+            }),
+            live_inputs: ClaimAirdropLiveInputs {
+                is_still_claimable: LiveField::new(true, onchain_source(), now()),
+                actual_amount: LiveField::new(U256::ZERO, onchain_source(), now()),
                 claim_token: LiveField::new(sample_token_ref(&chain), onchain_source(), now()),
                 claim_window: LiveField::new(None, onchain_source(), now()),
             },

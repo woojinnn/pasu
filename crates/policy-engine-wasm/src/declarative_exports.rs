@@ -842,6 +842,90 @@ pub fn declarative_route_request_v3_json(input_json: String) -> String {
                 &args_json,
                 emit,
             )?,
+            // composite_emit (Li.Fi `swapAndStartBridgeTokensViaX`): an ordered list
+            // of sub-emits, each a `single_emit` or `array_emit`, flattened into ONE
+            // heterogeneous `Multicall`. Models a function whose calldata carries BOTH
+            // an array of swap legs (`SwapData[]` → amm::Swap × N) AND a singular
+            // bridge leg (`BridgeData` → bridge::send), decoded IN-PLACE from this one
+            // call's own params — NO per-child re-routing to other callkeys (unlike
+            // `multicall_recurse` / `multicall_call_array`). Each part reuses the exact
+            // `build_action_body` / `build_array_emit` builders; an `array_emit` part's
+            // inner Multicall is flattened into the parent so children stay a flat
+            // heterogeneous list the orchestrator evaluates per-child.
+            "composite_emit" => {
+                let parts = emit
+                    .get("parts")
+                    .and_then(serde_json::Value::as_array)
+                    .ok_or_else(|| {
+                        EngineErrorDto::new("invalid_bundle", "missing emit.parts".to_string())
+                    })?;
+                let mut actions = Vec::new();
+                for part in parts {
+                    let part_strategy = part
+                        .get("strategy")
+                        .and_then(serde_json::Value::as_str)
+                        .ok_or_else(|| {
+                            EngineErrorDto::new(
+                                "invalid_bundle",
+                                "composite_emit part missing strategy".to_string(),
+                            )
+                        })?;
+                    let body_template = part.get("body").ok_or_else(|| {
+                        EngineErrorDto::new(
+                            "invalid_bundle",
+                            "composite_emit part missing body".to_string(),
+                        )
+                    })?;
+                    let live_inputs_template = part.get("live_inputs");
+                    match part_strategy {
+                        "single_emit" => {
+                            let b = build_action_body(&ctx, body_template, live_inputs_template)
+                                .map_err(|error| {
+                                    EngineErrorDto::new(
+                                        "build_action_body_failed",
+                                        error.to_string(),
+                                    )
+                                })?;
+                            actions.push(b);
+                        }
+                        "array_emit" => {
+                            let array_source = part
+                                .get("array_source")
+                                .and_then(serde_json::Value::as_str)
+                                .ok_or_else(|| {
+                                    EngineErrorDto::new(
+                                        "invalid_bundle",
+                                        "composite_emit array_emit part missing array_source"
+                                            .to_string(),
+                                    )
+                                })?;
+                            let parallel_sources = part.get("parallel_sources");
+                            let m = build_array_emit(
+                                &ctx,
+                                array_source,
+                                parallel_sources,
+                                body_template,
+                                live_inputs_template,
+                            )
+                            .map_err(|error| {
+                                EngineErrorDto::new("build_array_emit_failed", error.to_string())
+                            })?;
+                            if let v3_action::ActionBody::Multicall { actions: inner } = m {
+                                actions.extend(inner);
+                            } else {
+                                actions.push(m);
+                            }
+                        }
+                        other => {
+                            return Err(EngineErrorDto::new(
+                                "unsupported_strategy",
+                                format!("composite_emit part strategy unsupported: {other}"),
+                            ));
+                        }
+                    }
+                }
+                v3_action::ActionBody::Multicall { actions }
+            }
             other => {
                 return Err(EngineErrorDto::new(
                     "unsupported_strategy",

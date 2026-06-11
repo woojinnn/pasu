@@ -2478,25 +2478,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "policy-engine-integration-tests"
-version = "0.1.0"
-dependencies = [
- "abi-resolver",
- "alloy-dyn-abi",
- "alloy-json-abi",
- "alloy-primitives",
- "anyhow",
- "hex",
- "mappers",
- "policy-engine",
- "policy-engine-wasm",
- "policy-transition",
- "serde",
- "serde_json",
- "walkdir",
-]
-
-[[package]]
 name = "policy-engine-wasm"
 version = "0.1.0"
 dependencies = [

@@ -13,6 +13,7 @@ use policy_state::{LiveField, NonceKey};
 
 pub mod airdrop;
 pub mod amm;
+pub mod bridge;
 pub mod governance;
 pub mod hyperliquid_core;
 pub mod launchpad;
@@ -29,6 +30,7 @@ pub mod yield_;
 
 pub use airdrop::AirdropAction;
 pub use amm::AmmAction;
+pub use bridge::BridgeAction;
 pub use governance::GovernanceAction;
 pub use hyperliquid_core::HyperliquidCoreAction;
 pub use launchpad::LaunchpadAction;
@@ -178,6 +180,9 @@ pub enum ActionBody {
     HyperliquidCore(HyperliquidCoreAction),
     /// NFT-marketplace action (Seaport order sign / fulfill / cancel).
     Marketplace(MarketplaceAction),
+
+    /// Cross-chain bridge action (the source-chain deposit/send leg the user signs).
+    Bridge(BridgeAction),
 
     /// Batched multi-call (e.g. `Uniswap Universal Router`, `Aave`).
     Multicall {

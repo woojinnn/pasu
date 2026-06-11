@@ -29,8 +29,10 @@ pub struct CompleteWithdrawalAction {
     #[tsify(type = "string[]")]
     pub strategies: Vec<Address>,
     /// `true` = receive underlying tokens; `false` = re-deposit as shares.
-    /// `None` for the batch `completeQueuedWithdrawals`, where the per-withdrawal
-    /// flag is a parallel `bool[]` not reachable per-element from `array_emit`.
+    /// `None` only when the flag could not be resolved (malformed/unresolved
+    /// input). The batch `completeQueuedWithdrawals` decodes the per-withdrawal
+    /// flag from the index-aligned `receiveAsTokens bool[]` via the `array_emit`
+    /// `parallel_sources` mechanism, so it is normally `Some(_)` like the single.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional)]
     pub receive_as_tokens: Option<bool>,

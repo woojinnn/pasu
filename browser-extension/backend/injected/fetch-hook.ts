@@ -163,7 +163,15 @@ function install(): void {
     // lookup. Best-effort — never blocks or fails the verdict.
     await ensureConnectedAccount();
     for (const payload of payloads) {
-      if (connectedAccount && !payload.wallet_id) {
+      // Always stamp `wallet_id` from OUR `eth_accounts` read — never preserve a
+      // value already on the payload. The /exchange parser does not copy
+      // `wallet_id` from the page body today, but the SW now selects the policy
+      // SET by this address (per-wallet binding resolution), so OVERWRITE rather
+      // than skip-if-present: a page-supplied `wallet_id` must never survive and
+      // pick which wallet's policies guard the order. (Defense-in-depth — closes
+      // the only field HL ignores, hence the only one that could decouple the
+      // evaluated principal from the executing account.)
+      if (connectedAccount) {
         payload.wallet_id = { address: connectedAccount, chains: [] };
       }
       const ok = await sendToStreamAndAwaitResponse(
@@ -248,6 +256,10 @@ function install(): void {
   window.fetch = new Proxy(originalFetch, {
     apply: async (target, thisArg, args: Parameters<typeof fetch>) => {
       let allowedPayloads: VenueOrderPayload[] | null = null;
+      // HL 오더 게이트 타이밍: 캐치(venue POST 인지 확인) → 실제 엔드포인트
+      // 재전송(Reflect.apply) 직전까지의 총 처리 시간을 측정한다.
+      let venueT0: number | null = null;
+      let venueLabel: string | null = null;
       try {
         const [input, init] = args;
         const url =
@@ -264,6 +276,8 @@ function install(): void {
         ).toUpperCase();
         const venue = matchVenue(url);
         if (venue && method === "POST") {
+          venueT0 = performance.now();
+          venueLabel = venue;
           // The body can ride on `init.body` OR on a `Request` first arg
           // (`fetch(new Request(url, { body }))`). Read both so a Request-shaped
           // call cannot smuggle an order past the guard.
@@ -324,6 +338,14 @@ function install(): void {
           throw new Error("Pasu: venue order blocked (fail-closed)");
         }
         console.warn("[Pasu] fetch-hook non-fatal error", err);
+      }
+      // HL 오더: 캐치 → 실제 엔드포인트 재전송 직전까지의 총 처리 시간.
+      // (deny 는 위에서 throw 되어 여기 도달하지 않는다 — forward 되는 건만 측정.)
+      if (venueT0 !== null) {
+        console.info(
+          `[Pasu] HL order gate ${(performance.now() - venueT0).toFixed(1)}ms (catch→forward)`,
+          { venue: venueLabel, order: allowedPayloads != null },
+        );
       }
       try {
         const response = (await Reflect.apply(

@@ -35,22 +35,24 @@ function asAssetIndex(value: unknown): number | null {
 }
 
 /**
- * The numeric HL asset index for an order / twap payload — read from the raw
- * wire (`payload.hlAction`), since the built `Perp::PlaceOrder` body no longer
- * carries it (it carries `market.symbol` instead).
+ * The numeric HL asset index for any market-bearing perp wire — `order`,
+ * `twap_order`, `update_leverage`, `update_isolated_margin` — read from the raw
+ * wire (`payload.hlAction`), since the built perp body no longer carries it (it
+ * carries `market.symbol` instead). `null` for non-market actions.
  */
-function assetIndexFromPayload(payload: VenueOrderPayload): number | null {
+export function assetIndexFromPayload(payload: VenueOrderPayload): number | null {
   const wire = payload.hlAction;
   if (!wire) return null;
   if (wire.kind === "order") return asAssetIndex(wire.order.a);
   if (wire.kind === "twap_order") return asAssetIndex(wire.assetIndex);
   if (wire.kind === "update_leverage") return asAssetIndex(wire.assetIndex);
+  if (wire.kind === "update_isolated_margin") return asAssetIndex(wire.assetIndex);
   return null;
 }
 
 /** The market symbol the built `Perp::PlaceOrder` body carries (the key the
  * lowering looks `account_leverage` up by). */
-function bodyMarketSymbol(action: Record<string, unknown>): string | null {
+export function bodyMarketSymbol(action: Record<string, unknown>): string | null {
   const market = action.market;
   if (market && typeof market === "object") {
     const symbol = (market as { symbol?: unknown }).symbol;

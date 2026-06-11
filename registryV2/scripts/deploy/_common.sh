@@ -62,11 +62,13 @@ EXPECTED_ACCOUNT="${EXPECTED_ACCOUNT:-sujini000522@gmail.com}"
 RV2_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # registryV2/
 REPO_ROOT="$(cd "${RV2_DIR}/.." && pwd)"                        # repo root
 
-# Activate the pasu gcloud config + project, then assert the active account
-# matches EXPECTED_ACCOUNT (misfire guard). Fatal on mismatch.
+# Activate the gcloud config (GCLOUD_CONFIG, default `pasu`) + project, then
+# assert the active account matches EXPECTED_ACCOUNT (misfire guard). Fatal on
+# mismatch. Override GCLOUD_CONFIG when the local config name differs (e.g. the
+# live infra still uses `scopeball`).
 rv3_activate_and_guard() {
   echo "=== gcloud config 활성 + 계정 가드 ==="
-  gcloud config configurations activate pasu >/dev/null
+  gcloud config configurations activate "${GCLOUD_CONFIG:-pasu}" >/dev/null
   gcloud config set project "${PROJECT_ID}" >/dev/null
   local active
   active="$(gcloud config get-value account 2>/dev/null || true)"

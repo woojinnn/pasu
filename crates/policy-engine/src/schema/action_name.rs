@@ -78,6 +78,8 @@ pub const REGISTERED_ACTIONS: &[&str] = &[
     // Core structural (ActionBody::Multicall / ActionBody::Unknown)
     "multicall",
     "unknown",
+    // Bridge (1)
+    "send",
     // Airdrop (2)
     "claim",
     "delegate",
@@ -272,9 +274,11 @@ mod tests {
         // Union of feat/registry-v2 (incl. weth-wrap `wrap_native`/`unwrap_native`
         // + CoW Swap `pre_sign_intent_order`) and feat/morpho-onboarding (Compound
         // + Aave `gsm_swap` + governance + lending periphery + staking
-        // redeem/stake/cooldown) = 118, plus Marketplace (Seaport) sign_order +
-        // fulfill_order (cancel_order dedups against Perp) = 120.
-        assert_eq!(REGISTERED_ACTIONS.len(), 104);
+        // redeem/stake/cooldown), plus Marketplace (Seaport) sign_order +
+        // fulfill_order (cancel_order dedups against Perp), plus bridge `send`,
+        // MINUS the origin/main HL→Perp/Token/Staking migration (HL core 18→3).
+        // Build-determined merged count: origin/main 104 + bridge `send` = 105.
+        assert_eq!(REGISTERED_ACTIONS.len(), 105);
     }
 
     #[test]

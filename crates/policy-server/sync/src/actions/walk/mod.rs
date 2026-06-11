@@ -56,6 +56,8 @@ fn walk_body(
         // Hyperliquid CORE actions carry NO live inputs (they are self-describing
         // order/transfer intents), so there is nothing to refresh — like Unknown.
         ActionBody::HyperliquidCore(_) => {}
+        // bridge actions carry no live inputs — nothing to walk.
+        ActionBody::Bridge(_) => {}
         // Marketplace (Seaport) actions carry no live inputs — nothing to walk.
         ActionBody::Marketplace(_) => {}
         ActionBody::Multicall { actions } => {
@@ -98,6 +100,7 @@ pub fn apply_value_to_action(
         | ActionBody::Staking(_)
         | ActionBody::Governance(_)
         | ActionBody::HyperliquidCore(_)
+        | ActionBody::Bridge(_)
         | ActionBody::Marketplace(_)
         | ActionBody::Multicall { .. }
         | ActionBody::Unknown { .. } => {}

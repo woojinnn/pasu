@@ -81,6 +81,51 @@ export function mutate<T>(uid: string, fn: (draft: StoreSnapshot) => T | Promise
     const draft = structuredClone(current);
     const out = await fn(draft);
     validate(draft);
+    // 정책(def) 추가/삭제를 콘솔에 로그 — 마켓 설치 / 에디터 저장 / 삭제 등
+    // 모든 라이브러리 변경이 이 mutate 게이트를 지난다.
+    const beforeIds = Object.keys(current.library.defs);
+    const afterIds = Object.keys(draft.library.defs);
+    const added = afterIds.filter((id) => !beforeIds.includes(id));
+    const removed = beforeIds.filter((id) => !afterIds.includes(id));
+    if (added.length > 0 || removed.length > 0) {
+      console.info("[Pasu] policy-store defs changed", { uid, added, removed });
+    }
+    // 정책 토글(켜기/끄기)을 콘솔에 로그 — 대시보드의 per-policy 초록 스위치
+    // (binding.enabled)와 패키지 마스터 토글(packageEnabled)이 모두 이 게이트를
+    // 지난다. before·after를 합집합으로 비교해 enable flip 뿐 아니라 제거(=off)와
+    // 추가(=on)까지 잡는다. 지갑 통째 추가/삭제(프로비저닝)는 토글이 아니므로
+    // 양쪽 지갑이 모두 있을 때만 본다. packageEnabled는 키 부재 = 켜짐.
+    const toggles: { address: string; defId: string; enabled: boolean }[] = [];
+    const pkgToggles: { address: string; packageId: string; enabled: boolean }[] = [];
+    const addrs = new Set([
+      ...Object.keys(current.wallets.byAddress),
+      ...Object.keys(draft.wallets.byAddress),
+    ]);
+    for (const addr of addrs) {
+      const w0 = current.wallets.byAddress[addr];
+      const w1 = draft.wallets.byAddress[addr];
+      if (!w0 || !w1) continue; // 지갑 단위 추가/삭제는 토글이 아님
+      const bids = new Set([...Object.keys(w0.bindings), ...Object.keys(w1.bindings)]);
+      for (const bid of bids) {
+        const b0 = w0.bindings[bid];
+        const b1 = w1.bindings[bid];
+        const e0 = b0?.enabled; // undefined = 추가 전
+        const e1 = b1?.enabled; // undefined = 제거됨(=off)
+        if (e0 !== e1) {
+          toggles.push({ address: addr, defId: (b1 ?? b0)!.defId, enabled: e1 ?? false });
+        }
+      }
+      const pids = new Set([...Object.keys(w0.packageEnabled), ...Object.keys(w1.packageEnabled)]);
+      for (const pid of pids) {
+        const en0 = w0.packageEnabled[pid] ?? true; // 부재 = 켜짐
+        const en1 = w1.packageEnabled[pid] ?? true;
+        if (en0 !== en1) {
+          pkgToggles.push({ address: addr, packageId: pid, enabled: en1 });
+        }
+      }
+    }
+    if (toggles.length > 0) console.info("[Pasu] policy-store bindings toggled", { uid, toggles });
+    if (pkgToggles.length > 0) console.info("[Pasu] policy-store package toggled", { uid, pkgToggles });
     draft.rev = current.rev + 1;
     await Browser.storage.local.set({
       [libKey(uid)]: draft.library,

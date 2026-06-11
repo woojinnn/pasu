@@ -14,6 +14,11 @@ export interface RenderedPolicy {
 const MAX_CACHE = 256;
 const cache = new Map<string, RenderedPolicy>();
 
+/** Wire schema version of an empty fallback manifest. Mirrors the Rust
+ *  `MANIFEST_V2_SCHEMA_VERSION` (policy_rpc/manifest_v2.rs); ManifestV2 requires
+ *  only `{id, schema_version}` — the rest default. */
+const MANIFEST_V2_SCHEMA_VERSION = 2;
+
 export function clearRenderCache(): void {
   cache.clear();
 }
@@ -49,7 +54,16 @@ export async function renderDef(def: PolicyDef, params: Record<string, HoleValue
     error?: string;
   };
   if (!raw.ok || !raw.text) throw new Error(`EST→Cedar 실패 (${def.id}): ${raw.error ?? "?"}`);
-  const manifest = def.skeleton.manifest === undefined ? undefined : substituteHoles(def.skeleton.manifest, params);
+  // A def may legitimately carry NO manifest (an HL/perp policy whose enrichment
+  // is SW-direct, or a marketplace listing published without one). The rendered
+  // manifest must still be a VALID ManifestV2 — never `undefined`/`null` — because
+  // the evaluator serializes `bundles.map(b => b.manifest)` and the WASM
+  // `ManifestV2` deserialize rejects a null element, which would kill the whole
+  // evaluation. An empty manifest has no trigger/policy_rpc, so the policy is
+  // still cedar-evaluated (any enrichment arrives SW-direct).
+  const rawManifest =
+    def.skeleton.manifest === undefined ? undefined : substituteHoles(def.skeleton.manifest, params);
+  const manifest = rawManifest ?? { id: def.id, schema_version: MANIFEST_V2_SCHEMA_VERSION };
 
   const out: RenderedPolicy = { text: raw.text, manifest };
   if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);

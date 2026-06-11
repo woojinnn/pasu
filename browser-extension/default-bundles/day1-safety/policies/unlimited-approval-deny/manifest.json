@@ -1,39 +1,5 @@
 {
   "id": "unlimited-approval-deny",
   "schema_version": 2,
-  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } },
-  "policy_rpc": [
-    {
-      "id": "approval-shape",
-      "method": "approval.unlimited_over_balance",
-      "params": {
-        "chain_id": "$.root.chain_id",
-        "owner": "$.root.from",
-        "token": "$.action.token",
-        "spender": "$.action.spender",
-        "amount": "$.action.amount"
-      },
-      "outputs": [
-        {
-          "kind": "context",
-          "field": "approvalIsUnlimited",
-          "type": "Bool",
-          "from": "$.result.isUnlimited",
-          "required": true
-        },
-        {
-          "kind": "context",
-          "field": "approvalAmountOverBalance",
-          "type": "Decimal",
-          "from": "$.result.amountOverBalance"
-        }
-      ]
-    }
-  ],
-  "custom_context": {
-    "fields": {
-      "approvalIsUnlimited": "Bool",
-      "approvalAmountOverBalance": "decimal"
-    }
-  }
+  "trigger": { "where": { "action.tag": { "eq": "erc20_approve" } } }
 }

@@ -1,0 +1,308 @@
+{
+  "type": "adapter_action",
+  "id": "lifi/mega-e-t-h-bridge/swap-and-start-bridge-tokens-via-mega-e-t-h-bridge@1.0.0",
+  "publisher": "lifi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x22256e89",
+    "chain_to_addresses": {
+      "1": [
+        "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapAndStartBridgeTokensViaMegaETHBridge",
+    "abi": {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "transactionId",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "string",
+              "name": "bridge",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "integrator",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "referrer",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "sendingAssetId",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "receiver",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "destinationChainId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "hasSourceSwaps",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "hasDestinationCall",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct ILiFi.BridgeData",
+          "name": "_bridgeData",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "callTo",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "approveTo",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "sendingAssetId",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "receivingAssetId",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "fromAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "callData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bool",
+              "name": "requiresDeposit",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct LibSwap.SwapData[]",
+          "name": "_swapData",
+          "type": "tuple[]"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "assetIdOnL2",
+              "type": "address"
+            },
+            {
+              "internalType": "uint32",
+              "name": "l2Gas",
+              "type": "uint32"
+            },
+            {
+              "internalType": "bool",
+              "name": "requiresDepositTo",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct MegaETHBridgeFacet.MegaETHData",
+          "name": "_megaETHData",
+          "type": "tuple"
+        }
+      ],
+      "name": "swapAndStartBridgeTokensViaMegaETHBridge",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "note": "Li.Fi swapAndStartBridgeTokensViaMegaETHBridge (LiFiDiamond) \u2014 swapAndStartBridge -> composite_emit Multicall[ amm::Swap per source SwapData[] leg, bridge::send from BridgeData ]. Swap legs = user's real pre-bridge input; bridge leg = bridged asset + destination.",
+  "emit": {
+    "strategy": "composite_emit",
+    "parts": [
+      {
+        "strategy": "array_emit",
+        "array_source": "$args._swapData",
+        "max_elements": 16,
+        "body": {
+          "domain": "amm",
+          "amm": {
+            "action": "swap",
+            "swap": {
+              "venue": {
+                "name": "aggregator_route",
+                "chain": "$chain",
+                "router": "$to",
+                "executor": "$inputs[0]",
+                "route_hash": {
+                  "$fn": "keccak256",
+                  "$args": [
+                    "$inputs[5]"
+                  ]
+                }
+              },
+              "params": {
+                "token_in": {
+                  "key": {
+                    "$fn": "token_key_or_native_zero",
+                    "$args": [
+                      "$inputs[2]",
+                      "$chain"
+                    ]
+                  }
+                },
+                "token_out": {
+                  "key": {
+                    "$fn": "token_key_or_native_zero",
+                    "$args": [
+                      "$inputs[3]",
+                      "$chain"
+                    ]
+                  }
+                },
+                "direction": {
+                  "kind": "exact_input",
+                  "amount_in": "$inputs[4]",
+                  "min_amount_out": "0x0"
+                },
+                "recipient": "$to",
+                "slippage_bp": 0
+              },
+              "live_inputs": {
+                "route": {
+                  "source": {
+                    "kind": "user_supplied"
+                  }
+                },
+                "expected_amount_out": {
+                  "source": {
+                    "kind": "user_supplied"
+                  }
+                },
+                "price_impact_bp": {
+                  "source": {
+                    "kind": "user_supplied"
+                  }
+                },
+                "gas_estimate": {
+                  "source": {
+                    "kind": "user_supplied"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "strategy": "single_emit",
+        "body": {
+          "domain": "bridge",
+          "bridge": {
+            "action": "send",
+            "send": {
+              "venue": {
+                "name": "lifi_diamond"
+              },
+              "src_token": {
+                "key": {
+                  "$fn": "token_key_or_native_zero",
+                  "$args": [
+                    "$args._bridgeData[4]",
+                    "$chain"
+                  ]
+                }
+              },
+              "input_amount": "$args._bridgeData[6]",
+              "dst_chain_id": {
+                "$match": "$args._bridgeData[7]",
+                "$cases": {
+                  "1": "eip155:1",
+                  "10": "eip155:10",
+                  "56": "eip155:56",
+                  "100": "eip155:100",
+                  "130": "eip155:130",
+                  "137": "eip155:137",
+                  "146": "eip155:146",
+                  "169": "eip155:169",
+                  "232": "eip155:232",
+                  "250": "eip155:250",
+                  "252": "eip155:252",
+                  "288": "eip155:288",
+                  "324": "eip155:324",
+                  "480": "eip155:480",
+                  "1101": "eip155:1101",
+                  "1135": "eip155:1135",
+                  "1868": "eip155:1868",
+                  "2741": "eip155:2741",
+                  "5000": "eip155:5000",
+                  "8453": "eip155:8453",
+                  "34443": "eip155:34443",
+                  "42161": "eip155:42161",
+                  "42170": "eip155:42170",
+                  "43114": "eip155:43114",
+                  "57073": "eip155:57073",
+                  "59144": "eip155:59144",
+                  "60808": "eip155:60808",
+                  "80094": "eip155:80094",
+                  "81457": "eip155:81457",
+                  "167000": "eip155:167000",
+                  "534352": "eip155:534352",
+                  "7777777": "eip155:7777777",
+                  "999": "eip155:999",
+                  "1329": "eip155:1329",
+                  "13371": "eip155:13371",
+                  "25": "eip155:25",
+                  "30": "eip155:30",
+                  "143": "eip155:143",
+                  "2020": "eip155:2020",
+                  "98866": "eip155:98866"
+                }
+              },
+              "dst_recipient": {
+                "kind": "evm",
+                "address": "$args._bridgeData[5]"
+              },
+              "has_message": "$args._bridgeData[9]"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -7,5 +7,6 @@
 pub(crate) mod account;
 pub(crate) mod amount;
 pub(crate) mod cedar;
+pub(crate) mod enrichment;
 pub(crate) mod meta;
 pub(crate) mod token;

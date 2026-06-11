@@ -1,0 +1,167 @@
+{
+  "type": "adapter_action",
+  "id": "across/spoke-pool/deposit-v3@1.0.0",
+  "publisher": "across",
+  "schema_version": "3",
+  "note": "Across SpokePool depositV3 (address-typed) — outbound cross-chain bridge. Decodes to bridge::send. destinationChainId is a real EVM chainId → mapped to CAIP-2 via value-map. has_message flags an attached destination-execution `message` (compose risk). recipient is address-typed here (the bytes32 `deposit` selector is a separate manifest).",
+  "match": {
+    "selector": "0x7b939232",
+    "chain_to_addresses": {
+      "1": [
+        "0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "depositV3",
+    "abi": {
+      "name": "depositV3",
+      "type": "function",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "depositor",
+          "type": "address"
+        },
+        {
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "name": "inputToken",
+          "type": "address"
+        },
+        {
+          "name": "outputToken",
+          "type": "address"
+        },
+        {
+          "name": "inputAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "outputAmount",
+          "type": "uint256"
+        },
+        {
+          "name": "destinationChainId",
+          "type": "uint256"
+        },
+        {
+          "name": "exclusiveRelayer",
+          "type": "address"
+        },
+        {
+          "name": "quoteTimestamp",
+          "type": "uint32"
+        },
+        {
+          "name": "fillDeadline",
+          "type": "uint32"
+        },
+        {
+          "name": "exclusivityDeadline",
+          "type": "uint32"
+        },
+        {
+          "name": "message",
+          "type": "bytes"
+        }
+      ],
+      "outputs": []
+    }
+  },
+  "emit": {
+    "strategy": "single_emit",
+    "body": {
+      "domain": "bridge",
+      "bridge": {
+        "action": "send",
+        "send": {
+          "venue": {
+            "name": "across_spoke_pool"
+          },
+          "src_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": "$chain",
+              "address": "$args.inputToken"
+            }
+          },
+          "input_amount": "$args.inputAmount",
+          "dst_chain_id": {
+            "$match": "$args.destinationChainId",
+            "$cases": {
+              "1": "eip155:1",
+              "10": "eip155:10",
+              "137": "eip155:137",
+              "8453": "eip155:8453",
+              "42161": "eip155:42161",
+              "59144": "eip155:59144",
+              "534352": "eip155:534352",
+              "81457": "eip155:81457",
+              "324": "eip155:324",
+              "56": "eip155:56",
+              "130": "eip155:130",
+              "480": "eip155:480",
+              "999": "eip155:999",
+              "1135": "eip155:1135",
+              "34443": "eip155:34443",
+              "57073": "eip155:57073",
+              "7777777": "eip155:7777777"
+            }
+          },
+          "dst_recipient": {
+            "kind": "evm",
+            "address": "$args.recipient"
+          },
+          "dst_token": {
+            "key": {
+              "standard": "erc20",
+              "chain": {
+                "$match": "$args.destinationChainId",
+                "$cases": {
+                  "1": "eip155:1",
+                  "10": "eip155:10",
+                  "137": "eip155:137",
+                  "8453": "eip155:8453",
+                  "42161": "eip155:42161",
+                  "59144": "eip155:59144",
+                  "534352": "eip155:534352",
+                  "81457": "eip155:81457",
+                  "324": "eip155:324",
+                  "56": "eip155:56",
+                  "130": "eip155:130",
+                  "480": "eip155:480",
+                  "999": "eip155:999",
+                  "1135": "eip155:1135",
+                  "34443": "eip155:34443",
+                  "57073": "eip155:57073",
+                  "7777777": "eip155:7777777"
+                }
+              },
+              "address": "$args.outputToken"
+            }
+          },
+          "output_amount": "$args.outputAmount",
+          "exclusive_relayer": "$args.exclusiveRelayer",
+          "has_message": {
+            "$fn": "bytes_nonempty",
+            "$args": [
+              "$args.message"
+            ]
+          }
+        }
+      }
+    },
+    "live_inputs": {}
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  }
+}

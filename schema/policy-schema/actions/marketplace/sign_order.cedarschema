@@ -31,6 +31,18 @@ namespace Marketplace {
     conduitKey: String,
     // Derived: conduitKey != 0 (transfers routed through a separate operator).
     usesConduit: Bool,
+    // Derived (flattened from `offer`, which is a Set Cedar cannot inspect):
+    // any OFFER leg is a criteria item (any Merkle root) ⇒ the maker signs away
+    // ANY token the fulfiller picks from the committed set. THE load-bearing
+    // NFT-drain signal (a human listing offers concrete tokenIds, never criteria).
+    offerHasCriteria: Bool,
+    // Derived: any OFFER leg is a ZERO-root criteria item ⇒ ANY token in the
+    // whole collection (the strict sub-case of `offerHasCriteria`).
+    offerHasAnyToken: Bool,
+    // Derived (flattened from `consideration`): at least one consideration leg
+    // is paid to the offerer (the signer receives some proceeds). false ⇒ every
+    // payout is routed away from the signer (proceeds-redirect drain).
+    proceedsToOfferer: Bool,
     // Offerer's on-chain order nonce (Seaport counter), U256 hex.
     counter: String,
     custom?: SignOrderCustomContext,

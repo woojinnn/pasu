@@ -1,0 +1,649 @@
+{
+ "contract": "LiFiDiamond",
+ "chainId": 1,
+ "address": "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+ "snapshot": "lifi-diamond.abi.json",
+ "note": "128 external-mutating selectors across 49 facets (DiamondLoupe). COVER=51 (every selector with >=1 tx in 30d, Dune q7665132 = 100% of 30d top-level fn-tx): 7 GenericSwap swap-only -> amm::Swap{aggregator_route}; 21 startBridge -> bridge::send; 23 swapAndStartBridge -> composite_emit Multicall. DEFER=48 user-facing bridge/swap with 0 tx/30d (old-version facets / L1-L2 native / *Packed bespoke). EXCLUDE=29 infra/admin (diamondCut/ownership/dex-whitelist/withdraw/register*/pause/init). setApprovalForBridges* = OWNER-only diamond->bridge token approvals (config), not user grants.",
+ "functions": {
+  "0x736eac0b": {
+   "name": "swapTokensMultipleV3NativeToERC20",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (18298 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0x5fd9ae2e": {
+   "name": "swapTokensMultipleV3ERC20ToERC20",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (10475 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0x30c48952": {
+   "name": "swapAndStartBridgeTokensViaMayan",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (9955 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x1794958f": {
+   "name": "swapAndStartBridgeTokensViaAcrossV4",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (9735 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0xa3443faa": {
+   "name": "swapAndStartBridgeTokensViaRelayDepository",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (9212 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x2c57e884": {
+   "name": "swapTokensMultipleV3ERC20ToNative",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (8232 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0x4630a0d8": {
+   "name": "swapTokensGeneric",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (6580 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0x092e8fa4": {
+   "name": "startBridgeTokensViaRelayDepository",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (5001 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xaf7060fd": {
+   "name": "swapTokensSingleV3NativeToERC20",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (3782 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0x3110c7b9": {
+   "name": "swapAndStartBridgeTokensViaNEARIntents",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (3363 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x4666fc80": {
+   "name": "swapTokensSingleV3ERC20ToERC20",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (2917 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0x606326ff": {
+   "name": "swapAndStartBridgeTokensViaGasZip",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (2846 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0xa1f1ce43": {
+   "name": "startBridgeTokensViaAcrossV4",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (2652 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xfc5f1003": {
+   "name": "startBridgeTokensViaGasZip",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (2146 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x5cf8113b": {
+   "name": "startBridgeTokensViaNEARIntents",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (1497 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x733214a3": {
+   "name": "swapTokensSingleV3ERC20ToNative",
+   "decision": "cover",
+   "reason": "user swap via GenericSwapFacet (1204 tx/30d, Dune q7665132); amm::Swap{aggregator_route}"
+  },
+  "0xa8f66666": {
+   "name": "swapAndStartBridgeTokensViaSquid",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (869 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x6e067161": {
+   "name": "swapAndStartBridgeTokensViaSymbiosis",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (863 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x482c6a85": {
+   "name": "swapAndStartBridgeTokensViaCBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (578 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x4f3b0759": {
+   "name": "swapAndStartBridgeTokensViaCelerCircleBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (566 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x14d53077": {
+   "name": "startBridgeTokensViaStargate",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (539 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xc9851d0b": {
+   "name": "startBridgeTokensViaArbitrumBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (519 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xee3314a1": {
+   "name": "swapAndStartBridgeTokensViaChainflip",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (418 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0xa6010a66": {
+   "name": "swapAndStartBridgeTokensViaStargate",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (390 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x7e56b7b0": {
+   "name": "startBridgeTokensViaEco",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (278 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x780c82ab": {
+   "name": "swapAndStartBridgeTokensViaPolymerCCTP",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (277 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0xb621b032": {
+   "name": "startBridgeTokensViaMayan",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (254 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xb70fb9a5": {
+   "name": "startBridgeTokensViaSymbiosis",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (222 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x9c4b6dd9": {
+   "name": "swapAndStartBridgeTokensViaGlacis",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (198 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x9e75aa95": {
+   "name": "swapAndStartBridgeTokensViaEco",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (169 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x76ad76fe": {
+   "name": "swapAndStartBridgeTokensViaGarden",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (141 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x3cc9517b": {
+   "name": "swapAndStartBridgeTokensViaArbitrumBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (116 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x173457ef": {
+   "name": "startBridgeTokensViaPolymerCCTP",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (116 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xae0b91e5": {
+   "name": "startBridgeTokensViaCBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (110 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x4213dfff": {
+   "name": "startBridgeTokensViaMegaETHBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (103 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xb4f37581": {
+   "name": "swapAndStartBridgeTokensViaPolygonBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (97 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x63267469": {
+   "name": "swapAndStartBridgeTokensViaAllBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (97 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x6f9206ba": {
+   "name": "startBridgeTokensViaGlacis",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (42 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x73e72e5a": {
+   "name": "swapAndStartBridgeTokensViaLiFiIntentEscrow",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (25 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0xe0a4201c": {
+   "name": "startBridgeTokensViaCelerCircleBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (23 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x7bf96e0a": {
+   "name": "swapAndStartBridgeTokensViaGnosisBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (21 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x3f313808": {
+   "name": "startBridgeTokensViaSquid",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (16 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x22256e89": {
+   "name": "swapAndStartBridgeTokensViaMegaETHBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (14 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0x95726782": {
+   "name": "swapAndStartBridgeTokensViaOmniBridge",
+   "decision": "cover",
+   "reason": "user swap-and-bridge (13 tx/30d, Dune q7665132); composite_emit Multicall[amm::Swap x N, bridge::send]"
+  },
+  "0xaf62c7d6": {
+   "name": "startBridgeTokensViaPolygonBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (11 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0xcd3c02ae": {
+   "name": "startBridgeTokensViaLiFiIntentEscrow",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (9 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x782621d8": {
+   "name": "startBridgeTokensViaOmniBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (7 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x6a51e9a9": {
+   "name": "startBridgeTokensViaAllBridge",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (7 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x64261d58": {
+   "name": "startBridgeTokensViaUnit",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (4 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x5f9af35d": {
+   "name": "startBridgeTokensViaGarden",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (3 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x0ad553b3": {
+   "name": "startBridgeTokensViaChainflip",
+   "decision": "cover",
+   "reason": "user cross-chain bridge startBridge (2 tx/30d, Dune q7665132); bridge::send"
+  },
+  "0x1f931c1c": {
+   "name": "diamondCut",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): diamondCut"
+  },
+  "0x23452b9c": {
+   "name": "cancelOwnershipTransfer",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): cancelOwnershipTransfer"
+  },
+  "0x7200b829": {
+   "name": "confirmOwnershipTransfer",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): confirmOwnershipTransfer"
+  },
+  "0xf2fde38b": {
+   "name": "transferOwnership",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): transferOwnership"
+  },
+  "0x753cbab6": {
+   "name": "startBridgeTokensViaGlacis",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xe10c04c1": {
+   "name": "swapAndStartBridgeTokensViaGlacis",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x536db266": {
+   "name": "addDex",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): addDex"
+  },
+  "0xfcd8e49e": {
+   "name": "batchAddDex",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): batchAddDex"
+  },
+  "0x9afc19c7": {
+   "name": "batchRemoveDex",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): batchRemoveDex"
+  },
+  "0x44e2b18c": {
+   "name": "batchSetFunctionApprovalBySignature",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): batchSetFunctionApprovalBySignature"
+  },
+  "0x124f1ead": {
+   "name": "removeDex",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): removeDex"
+  },
+  "0xc3a6a96b": {
+   "name": "setFunctionApprovalBySignature",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setFunctionApprovalBySignature"
+  },
+  "0xa4c3366e": {
+   "name": "setCanExecute",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setCanExecute"
+  },
+  "0x9f5e58f5": {
+   "name": "initDeBridgeDln",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): initDeBridgeDln"
+  },
+  "0xf2455b71": {
+   "name": "setDeBridgeChainId",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setDeBridgeChainId"
+  },
+  "0x4004633e": {
+   "name": "startBridgeTokensViaDeBridgeDln",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x2c7d2db0": {
+   "name": "swapAndStartBridgeTokensViaDeBridgeDln",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x0d19e519": {
+   "name": "triggerRefund",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): triggerRefund"
+  },
+  "0xf66fe519": {
+   "name": "startBridgeTokensViaGnosisBridge",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xf86368ae": {
+   "name": "pauseDiamond",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): pauseDiamond"
+  },
+  "0x0340e905": {
+   "name": "removeFacet",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): removeFacet"
+  },
+  "0x2fc487ae": {
+   "name": "unpauseDiamond",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): unpauseDiamond"
+  },
+  "0xd24c2325": {
+   "name": "startBridgeTokensViaAcrossV3ERC20Min",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xcd48728d": {
+   "name": "startBridgeTokensViaAcrossV3ERC20Packed",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x1dc3017e": {
+   "name": "startBridgeTokensViaAcrossV3NativeMin",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xdf834e15": {
+   "name": "startBridgeTokensViaAcrossV3NativePacked",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xdecb09d7": {
+   "name": "registerOptimismBridge",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): registerOptimismBridge"
+  },
+  "0xce8a97a5": {
+   "name": "startBridgeTokensViaOptimismBridge",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x5bb5d448": {
+   "name": "swapAndStartBridgeTokensViaOptimismBridge",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x5c2ed36a": {
+   "name": "registerPeripheryContract",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): registerPeripheryContract"
+  },
+  "0x3961d1ed": {
+   "name": "registerBridge",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): registerBridge"
+  },
+  "0xb3b63587": {
+   "name": "startBridgeTokensViaHop",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xa01fe784": {
+   "name": "swapAndStartBridgeTokensViaHop",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x0680ded4": {
+   "name": "setApprovalForBridges",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setApprovalForBridges"
+  },
+  "0x082bc047": {
+   "name": "startBridgeTokensViaHopL1ERC20",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x03add8c3": {
+   "name": "startBridgeTokensViaHopL1Native",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x0b4cb5d8": {
+   "name": "startBridgeTokensViaHopL2ERC20",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x55c99cd8": {
+   "name": "startBridgeTokensViaHopL2Native",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x42afe79a": {
+   "name": "swapAndStartBridgeTokensViaHopL1ERC20",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x8d03f456": {
+   "name": "swapAndStartBridgeTokensViaHopL1Native",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xd40e64cc": {
+   "name": "swapAndStartBridgeTokensViaHopL2ERC20",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xca360ae0": {
+   "name": "swapAndStartBridgeTokensViaHopL2Native",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x28cc4316": {
+   "name": "startBridgeTokensViaAcrossV3",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x28832cbd": {
+   "name": "swapAndStartBridgeTokensViaAcrossV3",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xdee4be1b": {
+   "name": "startBridgeTokensViaCBridgeERC20Min",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xf6848697": {
+   "name": "startBridgeTokensViaCBridgeERC20Packed",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x0193979f": {
+   "name": "startBridgeTokensViaCBridgeNativeMin",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x0078afb6": {
+   "name": "startBridgeTokensViaCBridgeNativePacked",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x3c580fed": {
+   "name": "setApprovalForHopBridges",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setApprovalForHopBridges"
+  },
+  "0x4b06e05f": {
+   "name": "startBridgeTokensViaHopL1ERC20Min",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x33619a2d": {
+   "name": "startBridgeTokensViaHopL1ERC20Packed",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xc5e04e30": {
+   "name": "startBridgeTokensViaHopL1NativeMin",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x1223354c": {
+   "name": "startBridgeTokensViaHopL1NativePacked",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x76e04bbc": {
+   "name": "startBridgeTokensViaHopL2ERC20Min",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xc5ae0fe6": {
+   "name": "startBridgeTokensViaHopL2ERC20Packed",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x04c5aa34": {
+   "name": "startBridgeTokensViaHopL2NativeMin",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x161be542": {
+   "name": "startBridgeTokensViaHopL2NativePacked",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xbab657d8": {
+   "name": "startBridgeTokensViaCelerCircleBridge",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x8fab0663": {
+   "name": "swapAndStartBridgeTokensViaCelerCircleBridge",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xae328590": {
+   "name": "startBridgeTokensViaRelay",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x25d374e8": {
+   "name": "swapAndStartBridgeTokensViaRelay",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x2541ec57": {
+   "name": "startBridgeTokensViaThorSwap",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0xad673d88": {
+   "name": "swapAndStartBridgeTokensViaThorSwap",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x1458d7ad": {
+   "name": "executeCallAndWithdraw",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): executeCallAndWithdraw"
+  },
+  "0xd9caed12": {
+   "name": "withdraw",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): withdraw"
+  },
+  "0x7260352d": {
+   "name": "startBridgeTokensViaAcrossV4ERC20Min",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x36b92404": {
+   "name": "startBridgeTokensViaAcrossV4ERC20Packed",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x72dd147e": {
+   "name": "startBridgeTokensViaAcrossV4NativeMin",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0xc5d60e97": {
+   "name": "startBridgeTokensViaAcrossV4NativePacked",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): calldata-PACKED bespoke encoding (not the BridgeData ABI) -> separate decoder, follow-up"
+  },
+  "0x1171c007": {
+   "name": "batchSetContractSelectorWhitelist",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): batchSetContractSelectorWhitelist"
+  },
+  "0x51fed648": {
+   "name": "setContractSelectorWhitelist",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setContractSelectorWhitelist"
+  },
+  "0x21a3af52": {
+   "name": "swapAndStartBridgeTokensViaUnit",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x3f44d05f": {
+   "name": "registerMegaETHBridge",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): registerMegaETHBridge"
+  },
+  "0xb4ecdca6": {
+   "name": "setChainIdToDomainId",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): setChainIdToDomainId"
+  },
+  "0x373abe8e": {
+   "name": "unsetChainIdToDomainId",
+   "decision": "exclude",
+   "reason": "infra/admin/keeper (owner or keeper only): unsetChainIdToDomainId"
+  },
+  "0x6a90d66e": {
+   "name": "startBridgeTokensViaAcrossV4Swap",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  },
+  "0x9b054bc4": {
+   "name": "swapAndStartBridgeTokensViaAcrossV4Swap",
+   "decision": "exclude",
+   "reason": "DEFERRED (user-facing, 0 tx/30d Dune q7665132): inactive facet / old version in window; same BridgeData/SwapData template -> trivially addable follow-up"
+  }
+ }
+}

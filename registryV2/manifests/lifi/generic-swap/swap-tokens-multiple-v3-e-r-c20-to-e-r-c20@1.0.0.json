@@ -1,0 +1,175 @@
+{
+  "type": "adapter_action",
+  "id": "lifi/generic-swap/swap-tokens-multiple-v3-e-r-c20-to-e-r-c20@1.0.0",
+  "publisher": "lifi",
+  "schema_version": "3",
+  "match": {
+    "selector": "0x5fd9ae2e",
+    "chain_to_addresses": {
+      "1": [
+        "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae"
+      ]
+    }
+  },
+  "abi_fragment": {
+    "function_name": "swapTokensMultipleV3ERC20ToERC20",
+    "abi": {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_transactionId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "_integrator",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_referrer",
+          "type": "string"
+        },
+        {
+          "internalType": "address payable",
+          "name": "_receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_minAmountOut",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "callTo",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "approveTo",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "sendingAssetId",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "receivingAssetId",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "fromAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "callData",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bool",
+              "name": "requiresDeposit",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct LibSwap.SwapData[]",
+          "name": "_swapData",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "swapTokensMultipleV3ERC20ToERC20",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  },
+  "requires": {
+    "imperative": [],
+    "adapter_capabilities": [
+      "token_metadata"
+    ],
+    "host_capabilities": [],
+    "extension": ">=0.1.0"
+  },
+  "note": "Li.Fi swapTokensMultipleV3ERC20ToERC20 (GenericSwapFacet) \u2014 swap-only -> array_emit Multicall[ amm::Swap per SwapData[] leg ]; venue=aggregator_route, recipient=_receiver.",
+  "emit": {
+    "strategy": "array_emit",
+    "array_source": "$args._swapData",
+    "max_elements": 16,
+    "body": {
+      "domain": "amm",
+      "amm": {
+        "action": "swap",
+        "swap": {
+          "venue": {
+            "name": "aggregator_route",
+            "chain": "$chain",
+            "router": "$to",
+            "executor": "$inputs[0]",
+            "route_hash": {
+              "$fn": "keccak256",
+              "$args": [
+                "$inputs[5]"
+              ]
+            }
+          },
+          "params": {
+            "token_in": {
+              "key": {
+                "$fn": "token_key_or_native_zero",
+                "$args": [
+                  "$inputs[2]",
+                  "$chain"
+                ]
+              }
+            },
+            "token_out": {
+              "key": {
+                "$fn": "token_key_or_native_zero",
+                "$args": [
+                  "$inputs[3]",
+                  "$chain"
+                ]
+              }
+            },
+            "direction": {
+              "kind": "exact_input",
+              "amount_in": "$inputs[4]",
+              "min_amount_out": "0x0"
+            },
+            "recipient": "$args._receiver",
+            "slippage_bp": 0
+          },
+          "live_inputs": {
+            "route": {
+              "source": {
+                "kind": "user_supplied"
+              }
+            },
+            "expected_amount_out": {
+              "source": {
+                "kind": "user_supplied"
+              }
+            },
+            "price_impact_bp": {
+              "source": {
+                "kind": "user_supplied"
+              }
+            },
+            "gas_estimate": {
+              "source": {
+                "kind": "user_supplied"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

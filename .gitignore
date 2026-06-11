@@ -21,6 +21,12 @@ sourcify_dump/
 
 # Frontend build artifacts and dependencies
 **/node_modules/
+# On macOS+iCloud the real dep dirs live under `node_modules.nosync/` (the
+# `.nosync` suffix excludes them from iCloud sync) and the plain `node_modules`
+# is a symlink to it — neither is caught by the dir pattern above, so ignore
+# both forms explicitly.
+**/node_modules.nosync/
+**/node_modules
 **/dist/
 .vite/
 
@@ -81,26 +87,52 @@ AGENTS.md
 # The rest of /docs/ stays ignored (scratch research/audit notes).
 /docs/*
 
-# Methodology deliverables — these SHIP with the repo (not scratch notes). A
-# teammate/agent needs them to onboard a new protocol end-to-end. ALL instruction
-# docs live in crates/integration-tests/ now (README + PROTOCOL_ONBOARDING +
-# ACTIONBODY_EXTENSION_GUIDE); this one rule un-ignores every top-level .md there
-# (current + future). Subdir .md (logs/) stay ignored except their own README.md.
-!crates/integration-tests/*.md
-!crates/integration-tests/onboarding/
-!crates/integration-tests/onboarding/**
-!crates/integration-tests/onboarding/**/*.md
-
-# integration-tests per-run harness logs — keep the dir via its README (format
-# guide + curated index), but the actual per-run dumps are local scratch.
-/crates/integration-tests/logs/*
-!/crates/integration-tests/logs/README.md
+# integration-tests is a LOCAL-ONLY crate (v3 decode harness + onboarding docs +
+# golden corpus + per-protocol e2e). No production logic — kept out of git by the
+# user's decision. Also removed from the workspace `members` list so a fresh
+# clone (CI) builds without it; cargo simply ignores the on-disk dir locally.
+crates/integration-tests/
 
 # Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
 .pasu-runtime/
 
 # Extension signing key — never commit
 *.pem
+
+# ── Local-only preset lab work (NOT shipped) ───────────────────────────────
+# Cedar/manifest preset SETs under presets/ are kept local (user's decision:
+# presets stay out of git). The compile/verify gates below READ that tree, so
+# they'd error on a fresh clone without it — keep them local too.
+presets/
+crates/policy-engine/tests/lido_preset_compile_gate.rs
+crates/policy-engine/tests/bridge_preset_compile_gate.rs
+crates/policy-engine/tests/hl_preset_compile_gate.rs
+crates/policy-engine/tests/codex_lido_compare_gate.rs
+crates/policy-engine/tests/eigenlayer_preset_verify_gate.rs
+crates/policy-engine/tests/preset_restaking_eigenlayer_gate.rs
+crates/policy-engine/tests/preset_staking_verify_gate.rs
+crates/policy-engine/tests/seaport_preset_compile_gate.rs
+crates/policy-engine/tests/airdrop_preset_compile_gate.rs
+# Per-preset e2e tests + their on-chain corpus (read the local presets/ tree).
+crates/policy-engine-wasm/tests/eigenlayer_*.rs
+crates/policy-engine-wasm/tests/hl_preset_e2e.rs
+crates/policy-engine-wasm/tests/airdrop_claim_preset_e2e.rs
+crates/policy-engine-wasm/tests/data/
+# (integration-tests/** preset e2e + corpus are covered by the whole-crate
+#  `crates/integration-tests/` ignore above.)
+# Built extension dist for aave/curve/ethena live e2e (regenerable build output).
+.live-e2e-aave-curve/
+e2e-browser/
+# Local dApp playground — assemble tx/typed-sig/HL orders and fire them through
+# the extension to test policies. Local test tooling (same as e2e-browser/).
+playground/
+
+# Policy Lab (playwright) scratch — snapshots/screenshots from manual Lab adds.
+.playwright-mcp/
+/after-add-stake.yml
+/filled-form.yml
+/new-policy-page.png
+/stake-deny-filled.png
 
 # Operational hygiene: env-specific Terraform inputs stay local
 # (terraform.tfvars.example is the tracked template).

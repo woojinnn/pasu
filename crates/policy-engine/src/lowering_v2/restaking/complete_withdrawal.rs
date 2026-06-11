@@ -73,8 +73,11 @@ mod tests {
     }
 
     #[test]
-    fn complete_withdrawal_batch_conforms() {
-        // Batch (`completeQueuedWithdrawals`): per-element receiveAsTokens omitted.
+    fn complete_withdrawal_absent_flag_conforms() {
+        // Absent/unresolved `receive_as_tokens` (e.g. malformed input) — the
+        // optional flag is simply not emitted to the Cedar context. (The normal
+        // batch `completeQueuedWithdrawals` now decodes it per-element via
+        // `parallel_sources`, so `Some(_)` — covered by `..._single_conforms`.)
         super::super::test_support::assert_conforms(
             "complete_withdrawal",
             &body(None),

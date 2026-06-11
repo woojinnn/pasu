@@ -11,7 +11,7 @@
       ]
     }
   },
-  "note": "Batch variant: array_emit over withdrawals[]. Same as completeQueuedWithdrawal, each Withdrawal's scaledShares (idx 6) — the amount completed — is in protocol-internal scaled-share units (§4d illegible) and intentionally NOT decoded (raw scaled-share is user-illegible; underlying conversion needs a per-strategy rate + slashing scaling factor, array-shaped, not manifest-only). Additionally the parallel receiveAsTokens bool[] is unreachable from array_emit $inputs (cross-array), so receive_as_tokens is omitted here (Option<bool> = None for batch). Per §4d a justified defer, documented so the omission is a decision not a silent drop (§8.6-5); enrichment tracked for the follow-up restaking-enrichment round (see plan).",
+  "note": "Batch variant: array_emit over withdrawals[]. The parallel receiveAsTokens bool[] is index-aligned with withdrawals[] and IS decoded per-element via emit.parallel_sources: the synthetic `receiveAsTokens` parallel binds receiveAsTokens[i] to $inputs.receiveAsTokens, while the Withdrawal tuple binds via $inputs.element[..]. So receive_as_tokens is populated for every batch leg, identical to the single completeQueuedWithdrawal — the receive-as-shares trap is caught on batch too. (parallel_sources is the same mechanism Permit2 permitTransferFromBatch uses for its index-aligned TokenPermissions[]/SignatureTransferDetails[].) Separately, each Withdrawal's scaledShares (idx 6) — the amount completed — remains in protocol-internal scaled-share units (§4d illegible) and is intentionally NOT decoded (raw scaled-share is user-illegible; underlying conversion needs a per-strategy rate + slashing scaling factor, array-shaped, not manifest-only); per §4d a justified defer (documented so the omission is a decision, not a silent drop, §8.6-5).",
   "abi_fragment": {
     "function_name": "completeQueuedWithdrawals",
     "abi": {
@@ -78,6 +78,9 @@
   "emit": {
     "strategy": "array_emit",
     "array_source": "$args.withdrawals",
+    "parallel_sources": {
+      "receiveAsTokens": "$args.receiveAsTokens"
+    },
     "body": {
       "domain": "restaking",
       "restaking": {
@@ -87,9 +90,10 @@
             "name": "eigenlayer",
             "chain": "$chain"
           },
-          "staker": "$inputs[0]",
-          "withdrawer": "$inputs[2]",
-          "strategies": "$inputs[5]"
+          "staker": "$inputs.element[0]",
+          "withdrawer": "$inputs.element[2]",
+          "strategies": "$inputs.element[5]",
+          "receive_as_tokens": "$inputs.receiveAsTokens"
         }
       }
     },
