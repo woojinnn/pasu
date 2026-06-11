@@ -6,6 +6,11 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     coverage: { provider: "v8" },
+    // On macOS+iCloud the dep dirs are `node_modules.nosync/` (with a plain
+    // `node_modules` symlink) — vitest's default exclude only matches
+    // `**/node_modules/**`, so without this the runner sweeps dependency
+    // test files out of the .nosync tree.
+    exclude: ["**/node_modules/**", "**/node_modules.nosync/**", "**/dist/**"],
   },
   resolve: {
     alias: {
