@@ -4,12 +4,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   bindDef,
-  deletePackage as deletePackageApi,
   getOverview,
   isEffectiveOn,
   provisionWallets,
   putPackage,
   removeBinding,
+  removeWalletPackage,
   setPackageEnabled,
   updateBinding,
   UNCATEGORIZED_PKG,
@@ -176,7 +176,10 @@ function WalletWorkspace(props: {
   const defsByFolder = useMemo(() => {
     const m = new Map<string, PolicyDef[]>();
     for (const d of Object.values(snap.library.defs)) {
-      const key = d.defaults.packageId ?? UNCATEGORIZED_PKG;
+      // 죽은 패키지를 가리키면 미분류로 — 안 그러면 폴더가 안 그려져 정책이
+      // 사라져 보인다.
+      const raw = d.defaults.packageId;
+      const key = raw && snap.library.packages[raw] ? raw : UNCATEGORIZED_PKG;
       const arr = m.get(key) ?? [];
       arr.push(d);
       m.set(key, arr);
@@ -245,14 +248,15 @@ function WalletWorkspace(props: {
   const removePackage = (pkgId: string) => {
     const pkg = snap.library.packages[pkgId];
     if (!pkg) return;
+    const n = Object.values(wallet.bindings).filter((b) => b.packageId === pkgId).length;
     if (
       !window.confirm(
-        `패키지 "${pkg.displayName}"를 삭제할까요?\n(계정 전체에서 삭제되고, 안의 정책 인스턴스는 '미분류'로 이동해요)`,
+        `"${pkg.displayName}" 패키지를 이 지갑에서 제거할까요?\n안의 정책 인스턴스 ${n}개도 함께 제거돼요. (라이브러리의 패키지·정책은 그대로예요)`,
       )
     )
       return;
-    void run("패키지 삭제", () => deletePackageApi(pkgId)).then(
-      (ok) => ok && onToast("패키지를 삭제했어요"),
+    void run("패키지 제거", () => removeWalletPackage({ address, packageId: pkgId })).then(
+      (ok) => ok && onToast("이 지갑에서 패키지를 제거했어요"),
     );
   };
 

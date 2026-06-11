@@ -65,12 +65,33 @@ export function deletePackage(uid: string, pkgId: string): Promise<void> {
   return mutate(uid, (d) => {
     if (pkgId === UNCATEGORIZED_PKG) throw new Error("미분류 패키지는 삭제할 수 없습니다");
     delete d.library.packages[pkgId];
+    // 라이브러리 폴더 소속도 미분류로 — 죽은 패키지를 가리키는 def는 디렉토리
+    // 뷰에서 통째로 사라져 보인다.
+    for (const def of Object.values(d.library.defs)) {
+      if (def.defaults.packageId === pkgId) delete def.defaults.packageId;
+    }
     for (const w of Object.values(d.wallets.byAddress)) {
       for (const b of Object.values(w.bindings)) {
         if (b.packageId === pkgId) b.packageId = UNCATEGORIZED_PKG;
       }
       delete w.packageEnabled[pkgId];
     }
+  });
+}
+
+/** 지갑 차원 제거: 이 지갑에서 패키지의 바인딩들과 게이트만 걷어낸다 —
+ *  계정 패키지 객체와 라이브러리는 건드리지 않는다(지갑 페이지의 휴지통 의미). */
+export function removePackageFromWallet(
+  uid: string,
+  opts: { address: string; packageId: string },
+): Promise<void> {
+  return mutate(uid, (d) => {
+    const w = d.wallets.byAddress[opts.address.toLowerCase()];
+    if (!w) return;
+    for (const b of Object.values(w.bindings)) {
+      if (b.packageId === opts.packageId) delete w.bindings[b.id];
+    }
+    delete w.packageEnabled[opts.packageId];
   });
 }
 
