@@ -27,6 +27,8 @@ export function parseHoleInput(type: HoleSpec["type"], raw: string): HoleParse {
       };
     case "string":
       return { ok: true, value: t };
+    case "field":
+      return t ? { ok: true, value: { field: t } } : { ok: false, error: "필드 경로를 입력하세요" };
   }
 }
 

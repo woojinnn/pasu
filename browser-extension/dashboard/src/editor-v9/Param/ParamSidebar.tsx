@@ -93,6 +93,8 @@ function describeExpected(e: ParamSpec["expected"]): string {
       return "엔티티";
     case "set":
       return "집합";
+    case "attr":
+      return "필드 참조";
   }
 }
 

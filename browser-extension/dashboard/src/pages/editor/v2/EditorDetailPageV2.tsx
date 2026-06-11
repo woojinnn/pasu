@@ -19,7 +19,13 @@ import { listWallets } from "../../../server-api/wallets";
 import { buildDefPayload } from "./save-def";
 import { SaveScopeModal, type SaveScopeChoice } from "./SaveScopeModal";
 import { defUsageCount } from "./wallet-policies-derive";
-import { applyBindingEdit, diffBindingEdit } from "./binding-edit";
+import {
+  canonicalizeModel,
+  diffParamValues,
+  parameterizeModel,
+  structureKey,
+} from "../../../cedar/form/parameterize";
+import { holesFromIr } from "./save-def";
 import { Topbar } from "../../../shell/Topbar";
 
 import { stampAnnotations } from "../../../editor-v9/annotations";
@@ -38,7 +44,7 @@ import { CatIcon, ShieldIcon, WarnIcon } from "./icons";
 import { blocksToText, textToBlocks } from "../../../cedar";
 import { concretizeIr } from "../../../cedar/blocks";
 import { PolicyFormPane } from "./PolicyFormPane";
-import { emptyFormModel, irToForm, type FormModel } from "../../../cedar/form";
+import { emptyFormModel, formToIr, irToForm, type FormModel } from "../../../cedar/form";
 
 type Tab = "cedar" | "form";
 
@@ -237,6 +243,7 @@ function EditorBody({
   );
   const [cedarText, setCedarText] = useState(policy.text);
   const [ir, setIr] = useState<PolicyIR | null>(null);
+  const [lastModel, setLastModel] = useState<FormModel | null>(null);
   // A hand-edited manifest from the form, wrapped so `null` = no override
   // (auto-generate) is distinct from an override whose value is `undefined`.
   const [manifestOverride, setManifestOverride] = useState<{ value: unknown } | null>(null);
@@ -266,14 +273,7 @@ function EditorBody({
 
   /** 저장 페이로드 준비. v2 저장 형식은 BlockIR이므로 IR이 필수 — Cedar 탭에서
    *  변환 불가한 구문이면 사유와 함께 저장을 거부한다. */
-  const prepare = async (): Promise<{ ir: PolicyIR; manifest: unknown }> => {
-    // Cedar 탭 저장은 구체 텍스트 기반이라 기존 파라미터(홀)가 해제된다 — 확인.
-    if (tab === "cedar" && (storedDef?.holes.length ?? 0) > 0 && !ir) {
-      const n = storedDef!.holes.length;
-      if (!window.confirm(`Cedar 텍스트로 저장하면 지갑별 설정 ${n}개가 해제됩니다. 계속할까요?`)) {
-        throw new Error("저장을 취소했어요");
-      }
-    }
+  const prepare = async (): Promise<{ ir: PolicyIR; manifest: unknown; model: FormModel | null }> => {
     const stamped = stampAnnotations(cedarText, name.trim() || "untitled", severity);
     let effectiveIr = ir;
     if (!effectiveIr) {
@@ -289,6 +289,23 @@ function EditorBody({
         throw new Error("이 Cedar 구문은 저장 형식(블록)으로 변환할 수 없어요");
       }
     }
+    // 템플릿 저장 형식: 폼 호환이면 모든 값 자리를 파라미터로(form-canonical).
+    // 폼이 못 여는 복잡한 정책은 구체 IR 그대로(파라미터 없는 템플릿).
+    let finalIr: PolicyIR = effectiveIr;
+    const editedModel =
+      tab === "form" && lastModel ? lastModel : irToForm(effectiveIr);
+    if (editedModel) {
+      const stampedModel = {
+        ...editedModel,
+        id: stripDashboardId(policy.id),
+        severity: severity as FormModel["severity"],
+      };
+      finalIr = formToIr(parameterizeModel(stampedModel));
+    } else if ((storedDef?.holes.length ?? 0) > 0) {
+      if (!window.confirm("이 Cedar 구문은 폼 호환이 아니라 지갑별 설정이 해제됩니다. 계속할까요?")) {
+        throw new Error("저장을 취소했어요");
+      }
+    }
     let manifest: unknown;
     if (tab === "form" && manifestOverride) {
       // The form supplied a hand-edited manifest — persist it as-is.
@@ -296,55 +313,55 @@ function EditorBody({
     } else {
       // manifest 생성은 홀을 기본값으로 굳힌 구체 IR로 — 평가 시 렌더는 바인딩
       // 파라미터를 채운 IR을 따로 쓴다.
-      const gen = generateManifest(concretizeIr(effectiveIr), undefined, { id: policy.id, severity });
+      const gen = generateManifest(concretizeIr(finalIr), undefined, { id: policy.id, severity });
       if (gen.errors.length > 0) {
         throw new Error(gen.errors.map((e) => e.message).join("\n"));
       }
       manifest = gen.manifest;
     }
-    return { ir: effectiveIr, manifest };
+    return { ir: finalIr, manifest, model: editedModel };
   };
 
-  /** 바인딩 모드 저장: 값만 바뀌면 숨은 홀 승격 + 이 바인딩의 params, 구조가
-   *  바뀌면 confirm 후 이 지갑 전용 def로 분기(복제+리바인드). 이름 입력은
-   *  바인딩 별칭이 된다. */
-  const saveBindingEdit = async (editedIr: PolicyIR): Promise<string> => {
+  /** 바인딩(인스턴스) 저장: 구조가 같으면 "달라진 값"만 이 바인딩의 params로.
+   *  def는 아직 파라미터화 전이면 한 번 canonical 형태로 승격(의미 불변)하고,
+   *  이후로는 절대 건드리지 않는다. 구조가 다르면 복제 안내. */
+  const saveBindingEdit = async (editedModel: FormModel | null): Promise<string> => {
     const ctx = bindingCtx!;
     const def = storedDef!;
     const aliasInput = name.trim();
     const alias = aliasInput && aliasInput !== def.displayName ? aliasInput : undefined;
-    const diff = diffBindingEdit(def.skeleton.ir as PolicyIR, editedIr);
-
-    if (diff.kind === "structural") {
-      // 지갑 인스턴스는 값만 다르게 가질 수 있다 — 구조가 다르면 그건 새 정책
-      // 원본이고, 원본은 라이브러리에서 만든다(지갑 조작은 라이브러리에 흔적을
-      // 남기지 않는다).
+    const defModel = irToForm(def.skeleton.ir as PolicyIR);
+    if (!defModel || !editedModel) {
+      window.alert("이 정책은 폼으로 분석할 수 없어서 지갑별 값 편집을 지원하지 않아요.");
+      throw new Error("저장을 취소했어요");
+    }
+    if (structureKey(canonicalizeModel(defModel)) !== structureKey(canonicalizeModel(editedModel))) {
       window.alert(
-        "지갑 인스턴스에서는 값(숫자·주소 목록 등)만 다르게 저장할 수 있어요.\n조건의 구성이나 비교 대상 필드가 바뀌면 새 정책이 필요해요 — 라이브러리에서 이 정책을 복제해 수정한 뒤 지갑에 추가해 주세요.",
+        "지갑 인스턴스에서는 값(숫자·주소 목록·비교 필드)만 다르게 저장할 수 있어요.\n조건의 구성이 바뀌면 새 정책이 필요해요 — 라이브러리에서 이 정책을 복제해 수정한 뒤 지갑에 추가해 주세요.",
       );
       throw new Error("저장을 취소했어요");
     }
 
-    if (diff.kind === "params") {
-      const applied = applyBindingEdit(def, diff.updates);
-      if (applied.def !== def) await putDef(applied.def);
-      // 기존 오버라이드 중 여전히 유효한 키를 유지하고 새 값을 얹는다.
-      const live = new Set(applied.def.holes.map((h) => h.name));
-      const params = Object.fromEntries(
-        Object.entries({ ...ctx.binding.params, ...applied.params }).filter(([k]) => live.has(k)),
-      );
-      await updateBinding({
-        address: ctx.address,
-        bindingId: ctx.binding.id,
-        patch: { params, ...(alias !== (ctx.binding.alias ?? undefined) ? { alias } : {}) },
+    // def가 아직 파라미터화 전이면 canonical 파라미터 형태로 1회 승격(의미 불변).
+    const pIr = formToIr(parameterizeModel(canonicalizeModel(defModel)));
+    if (def.holes.length === 0 || JSON.stringify(def.skeleton.ir) !== JSON.stringify(pIr)) {
+      const { holes, paramDefaults } = holesFromIr(pIr);
+      await putDef({
+        ...def,
+        skeleton: { ...def.skeleton, ir: pIr },
+        holes,
+        defaults: { ...def.defaults, params: paramDefaults },
+        updatedAtMs: Date.now(),
       });
-      return def.id;
     }
 
-    // 값 변화 없음 — 별칭만 갱신될 수 있다.
-    if (alias !== (ctx.binding.alias ?? undefined)) {
-      await updateBinding({ address: ctx.address, bindingId: ctx.binding.id, patch: { alias } });
-    }
+    // 값 오버라이드: 템플릿 기본값과 같아진 항목은 자연히 빠진다(기본값 상속).
+    const params = diffParamValues(defModel, editedModel);
+    await updateBinding({
+      address: ctx.address,
+      bindingId: ctx.binding.id,
+      patch: { params, ...(alias !== (ctx.binding.alias ?? undefined) ? { alias } : {}) },
+    });
     return def.id;
   };
 
@@ -352,7 +369,28 @@ function EditorBody({
     mutationFn: async (): Promise<string | null> => {
       const prepared = await prepare();
       if (bindingCtx && storedDef) {
-        return saveBindingEdit(prepared.ir);
+        return saveBindingEdit(prepared.model);
+      }
+      // 템플릿 구조 잠금: 지갑에 적용된 def는 구조를 바꿀 수 없다(값·이름·심각도는
+      // 가능). 구조가 다른 정책이 필요하면 복제.
+      if (!isNew && storedDef && snap) {
+        const usage = Object.values(snap.wallets.byAddress).reduce(
+          (n, w) => n + Object.values(w.bindings).filter((b) => b.defId === storedDef.id).length,
+          0,
+        );
+        if (usage > 0) {
+          const oldModel = irToForm(storedDef.skeleton.ir as PolicyIR);
+          const changed =
+            !oldModel || !prepared.model
+              ? JSON.stringify(storedDef.skeleton.ir) !== JSON.stringify(prepared.ir)
+              : structureKey(canonicalizeModel(oldModel)) !== structureKey(canonicalizeModel(prepared.model));
+          if (changed) {
+            window.alert(
+              `이 정책은 지갑 ${usage}곳에 적용돼 있어 구조를 바꿀 수 없어요.\n값(기본 파라미터)·이름·심각도는 바꿀 수 있어요. 구조가 다른 정책이 필요하면 복제하세요.`,
+            );
+            throw new Error("저장을 취소했어요");
+          }
+        }
       }
       if (isNew) {
         // 첫 저장: 범위 모달이 finishMut로 마무리한다.
@@ -614,6 +652,7 @@ function EditorBody({
               onChange={({ cedarText: c, ir: nextIr, model, manifest, manifestOverridden }) => {
                 setCedarText(c);
                 setIr(nextIr);
+                setLastModel(model);
                 // Keep the header severity in sync so save stamps it correctly.
                 setSeverity(model.severity as PolicySeverity);
                 // Carry the form's manifest override (if any) so save persists it

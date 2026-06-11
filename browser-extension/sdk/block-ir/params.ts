@@ -125,13 +125,41 @@ function expectedOf(value: Expr): Expected {
       return "litEntity";
     case "set":
       return "set";
+    case "attr":
+    case "var":
+      // 필드 참조 RHS (`recipient != principal.address`) — 지갑별로 비교 대상
+      // 필드 자체를 바꿀 수 있다.
+      return "attr";
     default:
-      throw new Error(`makeHole: only lit/litEntity/set can be parameterized, got "${value.kind}"`);
+      throw new Error(`makeHole: only lit/litEntity/set/attr can be parameterized, got "${value.kind}"`);
   }
 }
 
+/** 점 경로("principal.address")를 attr 체인으로. 루트는 요청 변수여야 한다. */
+export function pathToAttrExpr(path: string): Expr | null {
+  const segs = path.split(".").filter(Boolean);
+  const root = segs.shift();
+  if (!root || !["principal", "context", "resource", "action"].includes(root)) return null;
+  let e: Expr = { kind: "var", name: root as "principal" | "context" | "resource" | "action" };
+  for (const seg of segs) e = { kind: "attr", of: e, attr: seg };
+  return e;
+}
+
+/** attr 체인을 점 경로로 (pathToAttrExpr의 역). 루트가 변수면 경로, 아니면 null. */
+export function attrExprToPath(e: Expr): string | null {
+  const segs: string[] = [];
+  let cur: Expr = e;
+  while (cur.kind === "attr") {
+    segs.unshift(cur.attr);
+    cur = cur.of;
+  }
+  if (cur.kind !== "var") return null;
+  segs.unshift(cur.name);
+  return segs.join(".");
+}
+
 /** Turn a value node into a parameter hole, capturing it as the default. Throws
- *  if `value` is not a lit/litEntity/set node. */
+ *  if `value` is not a lit/litEntity/set/attr node. */
 export function makeHole(
   value: Expr,
   meta: { name: string; optional?: boolean; label?: string; type?: string; constraints?: ParamConstraints },
@@ -229,6 +257,12 @@ function buildValue(s: ParamSpec, v: ParamFillValue, errors: ParamError[]): Expr
     errors.push({ name: s.name, reason: "type", message: `"${s.name}" ${msg}` });
     return null;
   };
+  // 필드 참조 값은 어느 자리에서든 허용 — "값 ↔ 다른 필드" 전환도 지갑별 설정이다.
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && "field" in v) {
+    const built = pathToAttrExpr(v.field);
+    if (!built) return typeErr("expects a field path rooted at principal/context/resource/action");
+    return built;
+  }
   switch (s.expected) {
     case "lit:long":
       if (typeof v !== "number" || !Number.isInteger(v)) return typeErr("expects an integer");
@@ -257,6 +291,13 @@ function buildValue(s: ParamSpec, v: ParamFillValue, errors: ParamError[]): Expr
       }
       return { kind: "set", elements };
     }
+    case "attr":
+      // 기본값이 필드 참조였던 자리에 lit 값을 넣는 경우 — 문자열/숫자/불리언을
+      // 그대로 lit으로. (역방향 전환)
+      if (typeof v === "string") return { kind: "lit", litType: "string", value: v };
+      if (typeof v === "number" && Number.isInteger(v)) return { kind: "lit", litType: "long", value: v };
+      if (typeof v === "boolean") return { kind: "lit", litType: "bool", value: v };
+      return typeErr("expects a field path or a literal");
   }
 }
 
