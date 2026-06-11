@@ -9,6 +9,8 @@
 export {
   SERVER_BASE_URL,
   ServerError,
+  setOnSessionExpired,
+  resetSessionExpiredGuard,
   request,
   fetchMe,
   listWallets,

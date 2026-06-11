@@ -34,7 +34,7 @@ interface ToastMessage {
   type: "PASU_TOAST";
   scenario?: string;
   /** SW 가 채워 보내는 실제 데이터(예: 주간요약 fail/warn 카운트). */
-  data?: { fail?: number; warn?: number; total?: number; risky?: number };
+  data?: { fail?: number; warn?: number };
 }
 type AdvisoryMessage =
   | AnnotMessage
@@ -169,15 +169,6 @@ function toastSpec(scenario: string, data?: ToastMessage["data"]): ToastSpec {
           '<div class="mn-text">방금 한 토큰 <b>무제한 승인</b>이 위험 컨트랙트로 표시됐어요.</div>' +
           '<div class="mn-ctx">백그라운드 모니터링</div>',
         actions: [{ label: "나중에" }, { label: "권한 취소", kind: "danger" }],
-      };
-    case "scan":
-      return {
-        sev: "warn",
-        time: "지금",
-        title: "지갑 점검을 마쳤어요",
-        bodyHtml:
-          `<div class="mn-text">승인 ${data?.total ?? 0}개를 점검해 위험한 권한 <b>${data?.risky ?? 0}개</b>를 찾았어요.</div>`,
-        actions: [{ label: "무시" }, { label: "위험 보기", kind: "primary" }],
       };
     case "tx":
     default:

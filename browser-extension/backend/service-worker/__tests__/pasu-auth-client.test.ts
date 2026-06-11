@@ -8,12 +8,19 @@ const tokenStore = vi.hoisted(() => ({
 
 vi.mock("../pasu-auth/tokenStore", () => tokenStore);
 
-import { request, ServerError } from "../pasu-auth/client";
+import {
+  request,
+  ServerError,
+  setOnSessionExpired,
+  resetSessionExpiredGuard,
+} from "../pasu-auth/client";
 
 describe("pasu-auth client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    setOnSessionExpired(null);
+    resetSessionExpiredGuard();
   });
 
   it("refreshes the access token once and retries after a 401", async () => {
@@ -64,5 +71,49 @@ describe("pasu-auth client", () => {
       status: 400,
       body: "no chains configured on the server",
     } satisfies Partial<InstanceType<typeof ServerError>>);
+  });
+
+  it("fires onSessionExpired once when the refresh fails (logged-in → out)", async () => {
+    tokenStore.getAccessToken.mockResolvedValue("old-access");
+    tokenStore.getRefreshToken.mockResolvedValue("refresh-token");
+    tokenStore.setTokens.mockResolvedValue(undefined);
+
+    const onExpired = vi.fn();
+    setOnSessionExpired(onExpired);
+
+    // 401 → refresh attempt fails (401) → setTokens(null,null), no retry.
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("unauthorized", { status: 401 }))
+      .mockResolvedValueOnce(new Response("refresh denied", { status: 401 }))
+      // The original 401 response is parsed → ServerError.
+      .mockResolvedValue(new Response("unauthorized", { status: 401 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(request("/wallets")).rejects.toMatchObject({ status: 401 });
+    expect(tokenStore.setTokens).toHaveBeenCalledWith(null, null);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-fire onSessionExpired on a second failed refresh (guard)", async () => {
+    tokenStore.getAccessToken.mockResolvedValue("old-access");
+    tokenStore.getRefreshToken.mockResolvedValue("refresh-token");
+    tokenStore.setTokens.mockResolvedValue(undefined);
+
+    const onExpired = vi.fn();
+    setOnSessionExpired(onExpired);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response("unauthorized", { status: 401 }),
+      ),
+    );
+
+    // Two separate requests both hit a 401 → failed refresh. The guard means
+    // only the first logged-in→out transition notifies.
+    await expect(request("/wallets")).rejects.toMatchObject({ status: 401 });
+    await expect(request("/wallets")).rejects.toMatchObject({ status: 401 });
+    expect(onExpired).toHaveBeenCalledTimes(1);
   });
 });
