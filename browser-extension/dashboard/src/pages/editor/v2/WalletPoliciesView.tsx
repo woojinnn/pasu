@@ -232,7 +232,7 @@ function WalletWorkspace(props: {
       }
     });
 
-  /** def를 지갑 패키지에 추가(드롭/+) = 바인딩 한 줄 추가. */
+  /** def를 지갑 패키지에 추가(드래그&드롭) = 바인딩 한 줄 추가. */
   const addDefToPackage = (defId: string, pkgId: string) => {
     const def = snap.library.defs[defId];
     if (!def) return;
@@ -278,7 +278,7 @@ function WalletWorkspace(props: {
     const n = Object.values(wallet.bindings).filter((b) => b.packageId === pkgId).length;
     if (
       !window.confirm(
-        `"${pkg.displayName}" 패키지를 이 지갑에서 제거할까요?\n안의 정책 인스턴스 ${n}개도 함께 제거돼요. (라이브러리의 패키지·정책은 그대로예요)`,
+        `"${pkg.displayName}" 패키지를 이 지갑에서 제거할까요?\n안의 정책 인스턴스 ${n}개도 함께 제거돼요. (라이브러리의 폴더·정책은 그대로예요)`,
       )
     )
       return;
@@ -296,7 +296,6 @@ function WalletWorkspace(props: {
     });
 
   const totalActive = Object.values(wallet.bindings).filter((b) => isEffectiveOn(wallet, b)).length;
-  const scopePkgId = scope === "all" ? UNCATEGORIZED_PKG : scope;
 
   /** 폴더 박스 한 개 — 전용 섹션(지갑 패키지 그룹)과 공유 섹션(라이브러리 폴더)이
    *  같은 모양을 공유한다. bindingFilter가 있으면 그 그룹의 바인딩 줄만. */
@@ -342,16 +341,6 @@ function WalletWorkspace(props: {
                       title={catLabel(cat)}
                     />
                     <span className={`nm${rows.length === 0 ? " dim" : ""}`}>{d.displayName}</span>
-                    <span className="acts">
-                      <button
-                        type="button"
-                        className="ev2-iconbtn"
-                        title={`${walletPkgName(scopePkgId)}에 추가`}
-                        onClick={() => addDefToPackage(d.id, scopePkgId)}
-                      >
-                        <PlusIcon />
-                      </button>
-                    </span>
                   </div>
                   {rows.map((b) => (
                     <BindingRow

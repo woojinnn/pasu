@@ -2316,6 +2316,30 @@
   font-size: 12px;
   color: var(--slate-400);
 }
+/* 선택한 지갑 아래 들여쓴 지갑별 패키지 선택 줄. */
+.ssm-pkgrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 6px 26px;
+}
+.ssm-pkgrow select,
+.ssm-pkgrow input {
+  font-size: 12.5px;
+  padding: 4px 8px;
+}
+.ssm-pkglabel {
+  font-size: 11.5px;
+  color: var(--slate-500);
+  flex: none;
+}
+/* 일괄 새 패키지의 이름 충돌(재사용) 안내. */
+.ssm-info {
+  font-size: 11.5px;
+  color: var(--slate-500);
+  margin-left: 24px;
+  line-height: 1.5;
+}
 
 /* ─────────────── P3+: 지갑별 워크스페이스 ─────────────── */
 
@@ -2499,6 +2523,26 @@
 }
 .ld-meta.time {
   margin-left: auto;
+}
+/* 새 지갑 기본 적용 토글 칩 — 끔은 흐리게, 켬은 pass 톤. */
+.ld-defaultchip {
+  flex: none;
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--slate-400);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ld-defaultchip:hover {
+  border-color: var(--slate-400);
+  color: var(--slate-600);
+}
+.ld-defaultchip.on {
+  border-color: var(--pass-500, #22c55e);
+  color: var(--pass-700, #15803d);
 }
 .ld-def .acts {
   display: none;

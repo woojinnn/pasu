@@ -81,7 +81,7 @@ export function EditorListPageV2() {
     <>
       <Topbar
         here="Policy Editor"
-        subtitle={defCount === null ? "…" : `정책 ${defCount}개 · 패키지 ${pkgCount}개`}
+        subtitle={defCount === null ? "…" : `정책 ${defCount}개 · 폴더 ${pkgCount}개`}
         right={
           <button type="button" className="ev2-pri" onClick={() => setChooserOpen(true)}>
             <PlusIcon />새 정책
@@ -174,14 +174,14 @@ function LibraryTab(props: {
   };
 
   const createPackage = () =>
-    void run("패키지 생성", () =>
+    void run("폴더 생성", () =>
       putPackage({
         id: `pkg::${crypto.randomUUID()}`,
-        displayName: "새 패키지",
+        displayName: "새 폴더",
         source: "mine",
         updatedAtMs: Date.now(),
       }),
-    ).then((ok) => ok && onToast("패키지를 만들었어요 — 이름을 바꿔보세요"));
+    ).then((ok) => ok && onToast("폴더를 만들었어요 — 이름을 바꿔보세요"));
 
   const renamePackage = (pkg: PackageDef, name: string) => {
     const trimmed = name.trim();
@@ -194,12 +194,12 @@ function LibraryTab(props: {
   const removePackage = (pkg: PackageDef) => {
     if (
       !window.confirm(
-        `패키지 "${pkg.displayName}"를 삭제할까요?\n안의 정책은 '미분류'로 이동해요.`,
+        `폴더 "${pkg.displayName}"를 삭제할까요?\n안의 정책은 '미분류'로 이동해요.`,
       )
     )
       return;
-    void run("패키지 삭제", () => deletePackageApi(pkg.id)).then(
-      (ok) => ok && onToast("패키지를 삭제했어요"),
+    void run("폴더 삭제", () => deletePackageApi(pkg.id)).then(
+      (ok) => ok && onToast("폴더를 삭제했어요"),
     );
   };
 
@@ -261,7 +261,7 @@ function LibraryTab(props: {
         </div>
         <span className="ev2-spc" />
         <button type="button" className="ev2-sec" onClick={createPackage}>
-          <PlusIcon /> 새 패키지
+          <PlusIcon /> 새 폴더
         </button>
       </div>
 
@@ -308,6 +308,23 @@ function LibraryTab(props: {
             }
             onDelete={onDelete}
             onDefaults={setDefaultsFor}
+            onToggleDefault={(d, enabled) =>
+              void run("기본 적용 변경", () =>
+                putDef({
+                  ...d,
+                  defaults: { ...d.defaults, enabled },
+                  updatedAtMs: Date.now(),
+                }),
+              ).then(
+                (ok) =>
+                  ok &&
+                  onToast(
+                    enabled
+                      ? `${d.displayName} — 새 지갑에 기본 적용돼요`
+                      : `${d.displayName} — 새 지갑 기본 적용을 껐어요`,
+                  ),
+              )
+            }
             onRenamePackage={renamePackage}
             onDeletePackage={removePackage}
             onPublishPackage={(pkg) => void publishPackage(pkg)}
@@ -315,8 +332,8 @@ function LibraryTab(props: {
           />
         )}
         <div className="ev2-lefthint">
-          정책을 끌어다 폴더(패키지)에 놓으면 소속이 바뀌어요 — 지갑별 켜기/끄기는{" "}
-          <b>적용 현황</b> 탭에서.
+          정책을 끌어다 폴더에 놓으면 소속이 바뀌어요 — 지갑 적용은 <b>지갑별 정책</b>{" "}
+          탭에서.
         </div>
       </div>
 
@@ -369,7 +386,7 @@ function DefDefaultsModal(props: {
             새 지갑에 기본으로 적용
           </label>
           <label className="ptm-field">
-            소속 패키지
+            소속 폴더
             <select value={packageId} onChange={(e) => setPackageId(e.target.value)}>
               {packages.map((p) => (
                 <option key={p.id} value={p.id}>

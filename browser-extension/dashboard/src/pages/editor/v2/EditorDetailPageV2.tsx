@@ -12,6 +12,7 @@ import {
   putPackage,
   putWalletPackage,
   updateBinding,
+  UNCATEGORIZED_PKG,
   type Binding,
   type PolicyDef,
   type StoreSnapshot,
@@ -279,11 +280,13 @@ function EditorBody({
     let effectiveIr = ir;
     if (!effectiveIr) {
       if (!stamped.trim()) throw new Error("정책 본문이 비어 있어요");
+      // Cedar 컴파일 체크: text→EST가 wasm의 Cedar 파서를 통과해야 한다 —
+      // 컴파일 안 되는 텍스트는 여기서 저장이 거부된다.
       try {
         effectiveIr = (await textToBlocks(stamped))[0] ?? null;
       } catch (err) {
         throw new Error(
-          `이 Cedar 구문은 저장 형식(블록)으로 변환할 수 없어요: ${err instanceof Error ? err.message : String(err)}`,
+          `Cedar가 컴파일되지 않거나 저장 형식(블록) 밖의 구문이에요: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
       if (!effectiveIr) {
@@ -306,6 +309,21 @@ function EditorBody({
       if (!window.confirm("이 Cedar 구문은 폼 호환이 아니라 지갑별 설정이 해제됩니다. 계속할까요?")) {
         throw new Error("저장을 취소했어요");
       }
+    }
+    // 메타 검증: 심각도·사유가 채워졌는지. (Cedar 컴파일은 위 textToBlocks가,
+    // 폼 경로는 IR 생성이 보장한다.)
+    if (!["deny", "warn", "info"].includes(severity)) {
+      throw new Error("심각도를 선택해 주세요 (차단/경고/정보)");
+    }
+    const reasonText = (
+      editedModel?.reason ??
+      finalIr.annotations.find((a) => a.name === "reason")?.value ??
+      ""
+    ).trim();
+    if (!reasonText) {
+      throw new Error(
+        "사유가 비어 있어요 — 정책이 발동했을 때 사용자에게 보여줄 메시지예요. ③ '어떻게 알릴까요?'의 사유를 채워주세요.",
+      );
     }
     let manifest: unknown;
     if (tab === "form" && manifestOverride) {
@@ -441,23 +459,64 @@ function EditorBody({
     },
   });
 
-  // 범위 모달 confirm → (필요시 패키지 생성) → put-def + bind.
+  // 범위 모달 confirm → (필요시 패키지/폴더 생성) → put-def + bind.
   const finishMut = useMutation({
     mutationFn: async (choice: SaveScopeChoice): Promise<string> => {
       if (!scopeAsk) throw new Error("내부 오류: 저장 준비가 비어 있어요");
-      const walletOnly = choice.scope.kind === "wallets";
+
+      // 지갑 전용 경로: 패키지는 지갑 소속이라 주소마다 따로 결정한다 —
+      // {newName}은 find-or-create(같은 이름이 이미 있으면 그 패키지 재사용).
+      if (choice.scope.kind === "wallets") {
+        const pkgByAddr: Record<string, string> = {};
+        for (const address of choice.scope.addresses) {
+          const pick = choice.walletPackages?.[address] ?? { id: UNCATEGORIZED_PKG };
+          if ("id" in pick) {
+            pkgByAddr[address] = pick.id;
+            continue;
+          }
+          const existing = Object.values(
+            snap?.wallets.byAddress[address]?.packages ?? {},
+          ).find((p) => p.displayName === pick.newName);
+          if (existing) {
+            pkgByAddr[address] = existing.id;
+            continue;
+          }
+          const pkgId = `pkg::${crypto.randomUUID()}`;
+          await putWalletPackage({ address, pkg: { id: pkgId, displayName: pick.newName } });
+          pkgByAddr[address] = pkgId;
+        }
+        const { def } = buildDefPayload({
+          existing: null,
+          displayName: name.trim() || "untitled",
+          cat: policy.cat,
+          ir: scopeAsk.ir,
+          manifest: scopeAsk.manifest,
+          scope: choice.scope,
+          packageId: null, // 주소별로 다르므로 bindPlan 대신 직접 바인딩
+          applyToNewWallets: false,
+          walletOnly: true,
+        });
+        await putDef(def);
+        for (const address of choice.scope.addresses) {
+          await bindDef({
+            defId: def.id,
+            packageId: pkgByAddr[address] ?? UNCATEGORIZED_PKG,
+            addresses: [address],
+          });
+        }
+        return def.id;
+      }
+
+      // 라이브러리 경로.
       let pkgId = choice.packageId;
       if (pkgId === "__new__") {
         pkgId = `pkg::${crypto.randomUUID()}`;
-        const displayName = choice.newPackageName ?? "새 패키지";
-        if (walletOnly) {
-          // 지갑 전용 정책의 패키지는 각 지갑 소속 — 라이브러리에 안 생긴다.
-          for (const address of choice.scope.kind === "wallets" ? choice.scope.addresses : []) {
-            await putWalletPackage({ address, pkg: { id: pkgId, displayName } });
-          }
-        } else {
-          await putPackage({ id: pkgId, displayName, source: "mine", updatedAtMs: Date.now() });
-        }
+        await putPackage({
+          id: pkgId,
+          displayName: choice.newPackageName ?? "새 폴더",
+          source: "mine",
+          updatedAtMs: Date.now(),
+        });
       }
       const { def, bindPlan } = buildDefPayload({
         existing: null,
@@ -468,7 +527,6 @@ function EditorBody({
         scope: choice.scope,
         packageId: pkgId,
         applyToNewWallets: choice.applyToNewWallets,
-        walletOnly,
       });
       await putDef(def);
       if (bindPlan) await bindDef(bindPlan);
@@ -486,14 +544,19 @@ function EditorBody({
     onSuccess: () => onDeleted(),
   });
 
-  // 범위 모달의 지갑 목록: 서버 지갑 ∪ ps2 지갑(소문자).
+  // 범위 모달의 지갑 목록: 서버 지갑 ∪ ps2 지갑(소문자) + 각 지갑의 패키지.
   const walletsQ = useQuery({ queryKey: ["wallets"], queryFn: listWallets, enabled: isNew });
   const modalWallets = useMemo(() => {
     const addrs = new Set([
       ...(walletsQ.data ?? []).map((w) => w.address.toLowerCase()),
       ...Object.keys(snap?.wallets.byAddress ?? {}),
     ]);
-    return [...addrs].sort().map((address) => ({ address }));
+    return [...addrs].sort().map((address) => ({
+      address,
+      packages: Object.values(snap?.wallets.byAddress[address]?.packages ?? {})
+        .map((p) => ({ id: p.id, displayName: p.displayName }))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko")),
+    }));
   }, [walletsQ.data, snap]);
   const modalPackages = useMemo(
     () => Object.values(snap?.library.packages ?? {}),
@@ -563,8 +626,9 @@ function EditorBody({
           />
           <span className="ev2-detail-slug">{stripDashboardId(policy.id)}</span>
           {/* 폼 탭은 ③ 심각도가 이 값을 소유(onChange로 동기화)하므로 헤더
-              셀렉트는 Cedar 탭에서만 — 같은 값이 두 군데면 헷갈린다. */}
-          {tab !== "form" && (
+              셀렉트는 Cedar 탭에서만 — 같은 값이 두 군데면 헷갈린다. 바인딩
+              모드의 Cedar 탭은 읽기 전용이라 여기서도 숨긴다. */}
+          {tab !== "form" && !bindingCtx && (
             <select
               value={severity}
               onChange={(e) => setSeverity(e.target.value as PolicySeverity)}
@@ -607,11 +671,8 @@ function EditorBody({
           <TabBtn
             label="Cedar"
             active={tab === "cedar"}
-            disabled={!!bindingCtx}
-            onClick={() => {
-              if (bindingCtx) return; // 지갑 인스턴스는 폼에서만 — 텍스트 편집은 라이브러리에서
-              handleTabChange("cedar");
-            }}
+            badge={bindingCtx ? "읽기 전용" : undefined}
+            onClick={() => handleTabChange("cedar")}
           />
           <TabBtn
             label="폼"
@@ -665,6 +726,7 @@ function EditorBody({
         {tab === "cedar" && (
           <CedarPane
             value={cedarText}
+            readOnly={!!bindingCtx}
             onChange={(next) => {
               setCedarText(next);
               // Drop the cached IR. Otherwise the form tab (openForm) and
@@ -734,6 +796,7 @@ function TabBtn(props: {
   label: string;
   active: boolean;
   disabled?: boolean;
+  badge?: string | undefined;
   tooltip?: string;
   onClick: () => void;
 }) {
@@ -751,29 +814,44 @@ function TabBtn(props: {
     >
       {props.label}
       {props.disabled && <span className="ev2-tab-soon">준비 중</span>}
+      {!props.disabled && props.badge && <span className="ev2-tab-soon">{props.badge}</span>}
     </button>
   );
 }
 
 function CedarPane({
   value,
+  readOnly = false,
   onChange,
 }: {
   value: string;
+  readOnly?: boolean;
   onChange: (next: string) => void;
 }) {
   return (
     <div className="ev2-cedar-pane">
       <div className="ev2-cedar-toolbar">
         <span className="ev2-cedar-hint">
-          Cedar 코드를 직접 편집합니다. 저장 시 자동으로 <code>@id</code> /{" "}
-          <code>@severity</code> 주석이 갱신됩니다.
+          {readOnly ? (
+            <>
+              이 지갑 인스턴스의 값이 적용된 Cedar예요 — 읽기 전용. 값 수정은 폼 탭에서
+              해주세요.
+            </>
+          ) : (
+            <>
+              Cedar 코드를 직접 편집합니다. 저장 시 자동으로 <code>@id</code> /{" "}
+              <code>@severity</code> 주석이 갱신됩니다.
+            </>
+          )}
         </span>
       </div>
       <textarea
         className="ev2-cedar-textarea"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        readOnly={readOnly}
+        onChange={(e) => {
+          if (!readOnly) onChange(e.target.value);
+        }}
         spellCheck={false}
         autoCorrect="off"
         autoCapitalize="off"

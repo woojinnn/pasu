@@ -28,8 +28,8 @@ const SOURCE_LABEL: Record<PolicyDef["source"], string> = {
   market: "마켓",
 };
 
-/** 라이브러리의 디렉토리 뷰 — 패키지 = 폴더, 정의 = 파일. 폴더 멤버십은
- *  `defaults.packageId`(발행·프로비저닝과 같은 "라이브러리 차원 소속" 축).
+/** 라이브러리의 디렉토리 뷰 — 폴더(라이브러리 패키지) 안에 정의 = 파일. 폴더
+ *  멤버십은 `defaults.packageId`(발행·프로비저닝과 같은 "라이브러리 차원 소속" 축).
  *  manage = 라이브러리 탭(전체 액션 + 폴더 간 이동), pick = 지갑 워크스페이스의
  *  드래그 소스(읽기 전용). */
 export function LibraryDirectory(props: {
@@ -41,6 +41,8 @@ export function LibraryDirectory(props: {
   onDuplicate?: (d: PolicyDef) => void;
   onDelete?: (d: PolicyDef) => void;
   onDefaults?: (d: PolicyDef) => void;
+  /** 새 지갑 기본 적용(defaults.enabled) 토글. */
+  onToggleDefault?: (d: PolicyDef, enabled: boolean) => void;
   onRenamePackage?: (pkg: PackageDef, name: string) => void;
   onDeletePackage?: (pkg: PackageDef) => void;
   onPublishPackage?: (pkg: PackageDef) => void;
@@ -49,7 +51,7 @@ export function LibraryDirectory(props: {
 }) {
   const {
     snap, mode, query, catFilter,
-    onOpenDef, onDuplicate, onDelete, onDefaults,
+    onOpenDef, onDuplicate, onDelete, onDefaults, onToggleDefault,
     onRenamePackage, onDeletePackage, onPublishPackage, onMoveDef,
   } = props;
 
@@ -147,7 +149,7 @@ export function LibraryDirectory(props: {
               {mode === "manage" && (
                 <span className="acts" onClick={(e) => e.stopPropagation()}>
                   {onPublishPackage && !locked && (
-                    <button type="button" className="ev2-iconbtn" title="마켓에 올리기" onClick={() => onPublishPackage(pkg)}>
+                    <button type="button" className="ev2-iconbtn" title="이 폴더를 마켓에 패키지로 올리기" onClick={() => onPublishPackage(pkg)}>
                       <ShieldIcon />
                     </button>
                   )}
@@ -196,7 +198,21 @@ export function LibraryDirectory(props: {
                       {mode === "manage" && (
                         <>
                           <span className="ld-meta">{usage > 0 ? `지갑 ${usage}` : ""}</span>
-                          <span className="ld-meta">{d.defaults.enabled ? "기본 적용" : ""}</span>
+                          {onToggleDefault ? (
+                            <button
+                              type="button"
+                              className={`ld-defaultchip${d.defaults.enabled ? " on" : ""}`}
+                              title="앞으로 추가되는 지갑에 이 정책을 기본으로 적용할지 — 클릭해서 전환"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleDefault(d, !d.defaults.enabled);
+                              }}
+                            >
+                              {d.defaults.enabled ? "새 지갑 기본 적용" : "새 지갑 적용 안 함"}
+                            </button>
+                          ) : (
+                            <span className="ld-meta">{d.defaults.enabled ? "기본 적용" : ""}</span>
+                          )}
                           <span className="ld-meta time">{mtimeLabel(d.updatedAtMs, false)}</span>
                           <span className="acts" onClick={(e) => e.stopPropagation()}>
                             {onDefaults && (
