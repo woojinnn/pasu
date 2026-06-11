@@ -61,6 +61,10 @@ export interface PolicyFormPaneProps {
   /** The policy's saved manifest — user-defined enrichment fields (policy_rpc
    *  entries outside the built-in registry) are restored from it. */
   initialManifest?: unknown;
+  /** 지갑 인스턴스 편집 모드 — 구조 컨트롤(조건/상황 추가·삭제, 또는/그리고,
+   *  필드·연산자·트리거 변경)을 숨기고 값(RHS 입력·Set 멤버·필드 비교 대상)만
+   *  편집할 수 있다. 어차피 저장이 구조 변경을 거부하므로 버튼도 안 보여준다. */
+  valuesOnly?: boolean;
   /** `manifest` is the effective manifest to persist — the user's hand-edited
    *  override when `manifestOverridden`, otherwise the auto-generated one
    *  (`undefined` = none). */
@@ -237,7 +241,7 @@ interface EditorSelection {
   registerRow: (n: FormNode, el: HTMLElement | null) => void;
 }
 
-export function PolicyFormPane({ initialModel, initialManifest, onChange }: PolicyFormPaneProps) {
+export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = false, onChange }: PolicyFormPaneProps) {
   const [model, setModel] = useState<FormModel>(() =>
     initialModel
       ? {
@@ -288,8 +292,9 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
       lookupAddr: addrBook.lookup,
       onCreateCustom: () => setFieldModalOpen(true),
       customFieldEnabled: model.trigger.kind === "actionEq",
+      valuesOnly,
     }),
-    [fields, rhsFields, fieldByPath, addrBook.lookup, model.trigger.kind],
+    [fields, rhsFields, fieldByPath, addrBook.lookup, model.trigger.kind, valuesOnly],
   );
   // Resolve 0x addresses in the structure diagram to friendly names.
   const humanizeAddrs = (text: string): string =>
@@ -466,6 +471,8 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
             <select
               className="pf-select"
               value={currentGroup}
+              disabled={valuesOnly}
+              title={valuesOnly ? "검사 대상 변경은 라이브러리 정책에서 해주세요" : undefined}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "*") return setTrigger({ kind: "any" });
@@ -488,7 +495,8 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
             <label className="pf-label">동작</label>
             <select
               className="pf-select"
-              disabled={currentGroup === "*"}
+              disabled={valuesOnly || currentGroup === "*"}
+              title={valuesOnly ? "검사 대상 변경은 라이브러리 정책에서 해주세요" : undefined}
               value={currentAction ? `${currentAction.entityType}::${currentAction.id}` : ""}
               onChange={(e) => {
                 const a = groupActions.find((k) => `${k.entityType}::${k.id}` === e.target.value);
@@ -530,10 +538,14 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
           </h3>
           <div className="pf-row">
             <label className="pf-label">심각도</label>
-            <div className="pf-sev">
+            <div
+              className="pf-sev"
+              title={valuesOnly ? "심각도·사유는 라이브러리 정책에서 관리돼요" : undefined}
+            >
               <button
                 type="button"
                 className={`pf-sev-btn warn${model.severity === "warn" ? " on" : ""}`}
+                disabled={valuesOnly}
                 onClick={() => patch({ severity: "warn" })}
               >
                 ● 경고
@@ -541,6 +553,7 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
               <button
                 type="button"
                 className={`pf-sev-btn deny${model.severity === "deny" ? " on" : ""}`}
+                disabled={valuesOnly}
                 onClick={() => patch({ severity: "deny" })}
               >
                 ● 차단
@@ -549,7 +562,16 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
           </div>
           <div className="pf-row">
             <label className="pf-label">사유</label>
-            <input className="pf-input" value={model.reason} onChange={(e) => patch({ reason: e.target.value })} placeholder="예: 고위험 동작 차단" />
+            <input
+              className="pf-input"
+              value={model.reason}
+              readOnly={valuesOnly}
+              title={valuesOnly ? "심각도·사유는 라이브러리 정책에서 관리돼요" : undefined}
+              onChange={(e) => {
+                if (!valuesOnly) patch({ reason: e.target.value });
+              }}
+              placeholder="예: 고위험 동작 차단"
+            />
           </div>
         </section>
 
@@ -594,6 +616,7 @@ export function PolicyFormPane({ initialModel, initialManifest, onChange }: Poli
           errors={manifestErrors}
           overrideText={manifestText}
           parseErr={manifestParseErr}
+          canEdit={!valuesOnly}
           onEdit={() =>
             setManifestText(JSON.stringify(gen.manifest ?? {}, null, 2))
           }
@@ -626,6 +649,7 @@ function ManifestPreview({
   errors,
   overrideText,
   parseErr,
+  canEdit,
   onEdit,
   onChangeText,
   onReset,
@@ -636,6 +660,8 @@ function ManifestPreview({
   errors: { message: string }[];
   overrideText: string | null;
   parseErr: string | null;
+  /** 인스턴스 편집에서는 manifest가 저장되지 않으므로 직접 편집을 숨긴다. */
+  canEdit: boolean;
   onEdit: () => void;
   onChangeText: (v: string) => void;
   onReset: () => void;
@@ -673,9 +699,11 @@ function ManifestPreview({
                 <span className="pf-manifest-status">
                   정책에서 자동 생성됨 · 저장 시 이 값 사용
                 </span>
-                <button type="button" className="pf-manifest-btn" onClick={onEdit}>
-                  ✎ 직접 편집
-                </button>
+                {canEdit && (
+                  <button type="button" className="pf-manifest-btn" onClick={onEdit}>
+                    ✎ 직접 편집
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -723,6 +751,8 @@ interface EditorCtx {
    *  action-shaped, so a concrete action must be chosen first. The button
    *  stays visible but disabled with the reason, instead of vanishing. */
   customFieldEnabled: boolean;
+  /** 지갑 인스턴스 편집 — 구조 컨트롤 숨김, 값만 편집. */
+  valuesOnly: boolean;
 }
 
 /** Re-derive a condition after the user picks a new field. */
@@ -822,15 +852,17 @@ function ConditionEditor({
               <span className="pf-sit-title">상황 {si + 1}</span>
               {run.length > 1 && <span className="pf-sit-mode">다음에 모두 해당</span>}
               <span className="pf-spc" />
-              <button
-                type="button"
-                className="pf-iconbtn danger"
-                onClick={() => removeSituation(si)}
-                aria-label="상황 삭제"
-                title="상황 삭제"
-              >
-                ✕
-              </button>
+              {!ctx.valuesOnly && (
+                <button
+                  type="button"
+                  className="pf-iconbtn danger"
+                  onClick={() => removeSituation(si)}
+                  aria-label="상황 삭제"
+                  title="상황 삭제"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             {run.map((n, ni) =>
               isGroupNode(n) ? (
@@ -863,9 +895,11 @@ function ConditionEditor({
                 />
               ),
             )}
-            <button type="button" className="pf-add-cond sm" onClick={() => addCond(si)}>
-              + 그리고
-            </button>
+            {!ctx.valuesOnly && (
+              <button type="button" className="pf-add-cond sm" onClick={() => addCond(si)}>
+                + 그리고
+              </button>
+            )}
           </div>
         </div>
       ))}
@@ -881,24 +915,26 @@ function ConditionEditor({
           여기에 놓아 새 상황으로 만들기
         </div>
       )}
-      <div className="pf-add-row">
-        <button type="button" className="pf-add-cond" onClick={addSituation}>
-          {runs.length === 0 ? "+ 위험 상황 추가" : "+ 또는"}
-        </button>
-        <button
-          type="button"
-          className="pf-add-cond accent"
-          onClick={ctx.onCreateCustom}
-          disabled={!ctx.customFieldEnabled}
-          title={
-            ctx.customFieldEnabled
-              ? "서버에서 조회한 값(위험 점수, USD 가치 등)으로 조건을 걸 수 있는 필드를 만들어요"
-              : "먼저 ①에서 동작을 골라주세요 — 어떤 값을 넘길 수 있는지가 동작마다 달라요"
-          }
-        >
-          ＋ 새 보강 필드 만들기
-        </button>
-      </div>
+      {!ctx.valuesOnly && (
+        <div className="pf-add-row">
+          <button type="button" className="pf-add-cond" onClick={addSituation}>
+            {runs.length === 0 ? "+ 위험 상황 추가" : "+ 또는"}
+          </button>
+          <button
+            type="button"
+            className="pf-add-cond accent"
+            onClick={ctx.onCreateCustom}
+            disabled={!ctx.customFieldEnabled}
+            title={
+              ctx.customFieldEnabled
+                ? "서버에서 조회한 값(위험 점수, USD 가치 등)으로 조건을 걸 수 있는 필드를 만들어요"
+                : "먼저 ①에서 동작을 골라주세요 — 어떤 값을 넘길 수 있는지가 동작마다 달라요"
+            }
+          >
+            ＋ 새 보강 필드 만들기
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -979,9 +1015,11 @@ function GroupBox({
       >
         <span className="pf-box-label">{orCtx ? "다음 중 하나라도" : "다음에 모두 해당"}</span>
         <span className="pf-spc" />
-        <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="삭제" title="이 묶음 전체 삭제">
-          ✕
-        </button>
+        {!ctx.valuesOnly && (
+          <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="삭제" title="이 묶음 전체 삭제">
+            ✕
+          </button>
+        )}
       </div>
       {conds.map((c, i) =>
         isGroupNode(c) ? (
@@ -1015,9 +1053,11 @@ function GroupBox({
           />
         ),
       )}
-      <button type="button" className="pf-or-btn" onClick={() => onConds(norm([...conds, newCond(ctx.fields)]))}>
-        {orCtx ? "+ 또는" : "+ 그리고"}
-      </button>
+      {!ctx.valuesOnly && (
+        <button type="button" className="pf-or-btn" onClick={() => onConds(norm([...conds, newCond(ctx.fields)]))}>
+          {orCtx ? "+ 또는" : "+ 그리고"}
+        </button>
+      )}
     </div>
   );
 }
@@ -1074,7 +1114,7 @@ function ConditionRow({
       }
     >
       <div className="pf-cond-main">
-        {onDragStart && (
+        {onDragStart && !ctx.valuesOnly && (
           <span
             className="pf-drag"
             draggable
@@ -1089,14 +1129,26 @@ function ConditionRow({
           </span>
         )}
         <span className={`pf-bullet${alt ? " alt" : ""}`}>{alt ? "◦" : "•"}</span>
-        <FieldCombobox value={cond.fieldPath} fields={ctx.fields} onChange={onField} />
-        <select className="pf-ctl pf-leaf-op" value={cond.op} onChange={(e) => onOp(e.target.value as FormOp)}>
-          {ops.map((op) => (
-            <option key={op} value={op}>
-              {OP_LABEL[op]}
-            </option>
-          ))}
-        </select>
+        {ctx.valuesOnly ? (
+          // 인스턴스 편집: 비교 필드(LHS)·연산자는 구조 — 읽기 전용 칩으로.
+          <>
+            <span className="pf-ctl pf-ro" title="조건 구성 변경은 라이브러리 정책에서 해주세요">
+              {field?.label ?? cond.fieldPath ?? "…"}
+            </span>
+            <span className="pf-ctl pf-leaf-op pf-ro">{OP_LABEL[cond.op]}</span>
+          </>
+        ) : (
+          <>
+            <FieldCombobox value={cond.fieldPath} fields={ctx.fields} onChange={onField} />
+            <select className="pf-ctl pf-leaf-op" value={cond.op} onChange={(e) => onOp(e.target.value as FormOp)}>
+              {ops.map((op) => (
+                <option key={op} value={op}>
+                  {OP_LABEL[op]}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         {canField && (
           <button
             type="button"
@@ -1123,7 +1175,7 @@ function ConditionRow({
           <ValueInput value={cond.value} field={field} onChange={onValue} />
         )}
         <span className="pf-grow" />
-        {onGroup && (
+        {onGroup && !ctx.valuesOnly && (
           <button
             type="button"
             className="pf-iconbtn"
@@ -1137,9 +1189,11 @@ function ConditionRow({
             {alt ? "+그리고" : "+또는"}
           </button>
         )}
-        <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="조건 삭제" title="삭제">
-          ✕
-        </button>
+        {!ctx.valuesOnly && (
+          <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="조건 삭제" title="삭제">
+            ✕
+          </button>
+        )}
       </div>
       {cond.fieldPath && <div className="pf-cond-chip">{chip}</div>}
     </div>

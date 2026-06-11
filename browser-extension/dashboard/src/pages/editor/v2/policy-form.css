@@ -281,6 +281,15 @@
   padding: 0 9px;
   cursor: pointer;
 }
+/* 인스턴스(값만) 편집의 읽기 전용 구조 칩 — 필드·연산자 자리. */
+.pf-ctl.pf-ro {
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+  background: var(--fog-200, #f1f5f9);
+  color: var(--slate-600, #475569);
+  white-space: nowrap;
+}
 
 .pf-drag {
   flex: none;
