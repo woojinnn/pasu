@@ -105,9 +105,12 @@ describe("editor-v9 parameterisation (template → adopter)", () => {
     expect(good.ok).toBe(true);
   });
 
-  it("makeHole rejects non-value blocks (e.g. var)", () => {
+  it("makeHole rejects non-value blocks (e.g. unary)", () => {
     expect(() =>
-      makeHole({ kind: "var", name: "principal" }, { name: "p" }),
+      makeHole(
+        { kind: "unary", op: "!", operand: { kind: "var", name: "principal" } },
+        { name: "p" },
+      ),
     ).toThrow();
   });
 

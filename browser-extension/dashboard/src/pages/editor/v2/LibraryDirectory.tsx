@@ -71,9 +71,11 @@ export function LibraryDirectory(props: {
     const m = new Map<string, PolicyDef[]>();
     const q = query.trim().toLowerCase();
     for (const d of Object.values(snap.library.defs)) {
+      if (d.hidden) continue; // 지갑 전용 정책 — 카탈로그 비노출
       if (q && !d.displayName.toLowerCase().includes(q) && !d.id.toLowerCase().includes(q)) continue;
       if (catFilter !== "all" && catKey(d.cat) !== catFilter) continue;
-      const key = d.defaults.packageId ?? UNCATEGORIZED_PKG;
+      const raw = d.defaults.packageId;
+      const key = raw && snap.library.packages[raw] ? raw : UNCATEGORIZED_PKG;
       const arr = m.get(key) ?? [];
       arr.push(d);
       m.set(key, arr);

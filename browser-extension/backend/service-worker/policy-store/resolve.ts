@@ -99,17 +99,25 @@ export async function resolveBundlesForWallet(uid: string, fromAddress: string):
   const w = s.wallets.byAddress[addr];
 
   const wanted: { defId: string; params: Record<string, HoleValue> }[] = [];
+  // 정의 수정으로 사라진 홀의 잔존 파라미터 키는 렌더 실패(unknown param)를
+  // 일으키므로 현재 holes 목록으로 거른다.
+  const knownParams = (def: { holes: { name: string }[] }, merged: Record<string, HoleValue>) => {
+    const live = new Set(def.holes.map((h) => h.name));
+    return Object.fromEntries(Object.entries(merged).filter(([k]) => live.has(k)));
+  };
   if (w) {
     for (const b of Object.values(w.bindings)) {
       if (!isEffectiveOn(w, b)) continue;
       const def = s.library.defs[b.defId];
       if (!def) continue; // validate가 막지만 방어적으로
-      wanted.push({ defId: b.defId, params: { ...def.defaults.params, ...b.params } });
+      wanted.push({ defId: b.defId, params: knownParams(def, { ...def.defaults.params, ...b.params }) });
     }
   } else {
     // 미등록 지갑: defaults.enabled 정의를 기본 파라미터로 (안전 우선)
     for (const def of Object.values(s.library.defs)) {
-      if (def.defaults.enabled) wanted.push({ defId: def.id, params: def.defaults.params });
+      if (def.defaults.enabled) {
+        wanted.push({ defId: def.id, params: knownParams(def, def.defaults.params) });
+      }
     }
   }
 

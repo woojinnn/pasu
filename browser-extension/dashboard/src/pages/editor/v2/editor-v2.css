@@ -2542,8 +2542,9 @@
 }
 .wt-binding {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   padding: 6px 14px 6px 58px;
   font-size: 12.5px;
 }
@@ -2569,4 +2570,83 @@
   border-radius: 999px;
   border: 1px solid var(--hairline);
   color: var(--slate-400);
+}
+
+/* 지갑별 바인딩 줄: 별칭 + 설정(파라미터) */
+.wt-binding-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.wt-alias {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--slate-700);
+  padding: 1px 4px;
+  border-radius: 6px;
+}
+.wt-alias svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0;
+}
+.wt-binding:hover .wt-alias svg {
+  opacity: 0.6;
+}
+.wt-alias.empty {
+  color: var(--slate-300);
+}
+.wt-alias-input {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 7px;
+  border: 1px solid var(--sage-300);
+  border-radius: 6px;
+  width: 160px;
+}
+.pm-count.on {
+  border-color: var(--sage-500, #4c7a5e);
+  color: var(--sage-600, #3c6a4e);
+}
+.wt-params {
+  padding: 6px 14px 10px 72px;
+}
+
+.wt-binding-main.clickable {
+  cursor: pointer;
+  border-radius: 7px;
+}
+.wt-binding-main.clickable:hover {
+  background: var(--fog-100);
+}
+
+/* 지갑별 정책 우측: 전용/공유 대섹션 */
+.wt-section {
+  margin-bottom: 22px;
+}
+.wt-section-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--slate-400);
+  margin: 2px 2px 8px;
+}
+.wt-section-h::before,
+.wt-section-h::after {
+  content: "";
+  height: 1px;
+  background: var(--fog-300, #e3e7e3);
+  flex: 0 0 28px;
+}
+.wt-section-h::after {
+  flex: 1;
 }

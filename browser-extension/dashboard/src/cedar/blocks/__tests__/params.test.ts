@@ -31,7 +31,20 @@ describe("makeHole", () => {
     expect(makeHole({ kind: "set", elements: [] }, { name: "s" }).expected).toBe("set");
   });
   it("throws on a non-value node", () => {
-    expect(() => makeHole({ kind: "var", name: "context" }, { name: "x" })).toThrow(/lit\/litEntity\/set/);
+    expect(() =>
+      makeHole(
+        { kind: "unary", op: "!", operand: { kind: "var", name: "context" } },
+        { name: "x" },
+      ),
+    ).toThrow(/lit\/litEntity\/set/);
+  });
+
+  it("accepts a field-reference (attr/var) node — 비교 필드도 파라미터", () => {
+    const h = makeHole(
+      { kind: "attr", of: { kind: "var", name: "principal" }, attr: "address" },
+      { name: "x" },
+    );
+    expect(h.expected).toBe("attr");
   });
 });
 

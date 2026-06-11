@@ -14,7 +14,18 @@ const newBindingId = () => `bind::${crypto.randomUUID()}`;
 
 function walletAt(draft: StoreSnapshot, address: string): WalletPolicyState {
   const addr = address.toLowerCase();
-  return (draft.wallets.byAddress[addr] ??= { bindings: {}, packageEnabled: {} });
+  return (draft.wallets.byAddress[addr] ??= { bindings: {}, packages: {}, packageEnabled: {} });
+}
+
+/** 지갑 패키지 실체화: 라이브러리 폴더 id로 바인딩이 들어오면(마켓/시드/범위
+ *  프로비저닝) 같은 id·이름의 지갑 패키지를 만들어 소속시킨다. */
+function ensureWalletPackage(d: StoreSnapshot, w: WalletPolicyState, packageId: string): void {
+  if (packageId === UNCATEGORIZED_PKG || w.packages[packageId]) return;
+  w.packages[packageId] = {
+    id: packageId,
+    displayName: d.library.packages[packageId]?.displayName ?? packageId,
+    updatedAtMs: Date.now(),
+  };
 }
 
 export function putDef(uid: string, def: PolicyDef): Promise<void> {
@@ -65,12 +76,41 @@ export function deletePackage(uid: string, pkgId: string): Promise<void> {
   return mutate(uid, (d) => {
     if (pkgId === UNCATEGORIZED_PKG) throw new Error("미분류 패키지는 삭제할 수 없습니다");
     delete d.library.packages[pkgId];
-    for (const w of Object.values(d.wallets.byAddress)) {
-      for (const b of Object.values(w.bindings)) {
-        if (b.packageId === pkgId) b.packageId = UNCATEGORIZED_PKG;
-      }
-      delete w.packageEnabled[pkgId];
+    // 라이브러리 폴더 소속도 미분류로 — 죽은 패키지를 가리키는 def는 디렉토리
+    // 뷰에서 통째로 사라져 보인다. 지갑 패키지는 별개 객체라 건드리지 않는다.
+    for (const def of Object.values(d.library.defs)) {
+      if (def.defaults.packageId === pkgId) delete def.defaults.packageId;
     }
+  });
+}
+
+/** 지갑 패키지 생성/이름변경 — 지갑 안에서만 존재, 라이브러리 불변. */
+export function putWalletPackage(
+  uid: string,
+  opts: { address: string; pkg: { id: string; displayName: string } },
+): Promise<void> {
+  return mutate(uid, (d) => {
+    if (opts.pkg.id === UNCATEGORIZED_PKG) throw new Error("미분류는 이름을 바꿀 수 없습니다");
+    const w = walletAt(d, opts.address);
+    w.packages[opts.pkg.id] = { ...opts.pkg, updatedAtMs: Date.now() };
+  });
+}
+
+/** 지갑 차원 제거: 이 지갑에서 패키지의 바인딩들과 게이트만 걷어낸다 —
+ *  계정 패키지 객체와 라이브러리는 건드리지 않는다(지갑 페이지의 휴지통 의미). */
+export function removePackageFromWallet(
+  uid: string,
+  opts: { address: string; packageId: string },
+): Promise<void> {
+  return mutate(uid, (d) => {
+    const w = d.wallets.byAddress[opts.address.toLowerCase()];
+    if (!w) return;
+    for (const b of Object.values(w.bindings)) {
+      if (b.packageId === opts.packageId) delete w.bindings[b.id];
+    }
+    delete w.packages[opts.packageId];
+    delete w.packageEnabled[opts.packageId];
+    pruneHiddenDefs(d);
   });
 }
 
@@ -82,16 +122,19 @@ export function bind(
     addresses: string[];
     params?: Record<string, HoleValue>;
     enabled?: boolean;
+    alias?: string;
   },
 ): Promise<void> {
   return mutate(uid, (d) => {
     for (const address of opts.addresses) {
       const w = walletAt(d, address);
+      ensureWalletPackage(d, w, opts.packageId);
       const b: Binding = {
         id: newBindingId(),
         defId: opts.defId,
         packageId: opts.packageId,
         enabled: opts.enabled ?? true,
+        alias: opts.alias,
         params: opts.params,
         updatedAtMs: Date.now(),
       };
@@ -102,7 +145,7 @@ export function bind(
 
 export function updateBinding(
   uid: string,
-  opts: { address: string; bindingId: string; patch: Partial<Pick<Binding, "enabled" | "params" | "packageId">> },
+  opts: { address: string; bindingId: string; patch: Partial<Pick<Binding, "enabled" | "params" | "packageId" | "alias">> },
 ): Promise<void> {
   return mutate(uid, (d) => {
     const w = d.wallets.byAddress[opts.address.toLowerCase()];
@@ -112,10 +155,23 @@ export function updateBinding(
   });
 }
 
+/** 지갑 전용(hidden) def는 마지막 바인딩이 사라지면 함께 정리한다 — 라이브러리
+ *  카탈로그에 안 보이는 def가 유령으로 남지 않도록. */
+function pruneHiddenDefs(d: StoreSnapshot): void {
+  const bound = new Set<string>();
+  for (const w of Object.values(d.wallets.byAddress)) {
+    for (const b of Object.values(w.bindings)) bound.add(b.defId);
+  }
+  for (const def of Object.values(d.library.defs)) {
+    if (def.hidden && !bound.has(def.id)) delete d.library.defs[def.id];
+  }
+}
+
 export function removeBinding(uid: string, opts: { address: string; bindingId: string }): Promise<void> {
   return mutate(uid, (d) => {
     const w = d.wallets.byAddress[opts.address.toLowerCase()];
     if (w) delete w.bindings[opts.bindingId];
+    pruneHiddenDefs(d);
   });
 }
 
@@ -131,6 +187,15 @@ export function copyBindings(
     for (const bid of opts.bindingIds) {
       const src = from.bindings[bid];
       if (!src) continue;
+      if (src.packageId !== UNCATEGORIZED_PKG && !to.packages[src.packageId]) {
+        to.packages[src.packageId] = {
+          ...(from.packages[src.packageId] ?? {
+            id: src.packageId,
+            displayName: src.packageId,
+          }),
+          updatedAtMs: Date.now(),
+        };
+      }
       const copy: Binding = { ...structuredClone(src), id: newBindingId(), updatedAtMs: Date.now() };
       to.bindings[copy.id] = copy;
     }
@@ -200,6 +265,7 @@ export function installMarket(
           params: params && Object.keys(params).length ? { ...params } : undefined,
           updatedAtMs: Date.now(),
         };
+        ensureWalletPackage(d, w, b.packageId);
         w.bindings[b.id] = b;
       }
     }
@@ -224,6 +290,7 @@ export function provisionWallets(uid: string, addresses: string[]): Promise<void
           params: Object.keys(def.defaults.params).length ? { ...def.defaults.params } : undefined,
           updatedAtMs: Date.now(),
         };
+        ensureWalletPackage(d, w, b.packageId);
         w.bindings[b.id] = b;
       }
     }

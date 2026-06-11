@@ -13,6 +13,7 @@
  * unchanged.
  */
 
+import { makeHole } from "../blocks";
 import type {
   ActionScope,
   Condition,
@@ -142,7 +143,17 @@ export const COMPLEMENT: Record<FormOp, FormOp> = {
  *  inline preview chip via `exprToText`. */
 export function leafToExpr(leaf: FormLeaf): Expr {
   const attr = pathToExpr(leaf.fieldPath);
-  const rhs = valueToExpr(leaf.value);
+  let rhs = valueToExpr(leaf.value);
+  // 파라미터 승격: 값 노드를 optional 홀로 (기본값 = 현재 값). decimal은
+  // ext("decimal", [lit]) 형태라 내부 lit을 홀로. 필드 참조 RHS도 홀이 된다.
+  if (leaf.param) {
+    const opts = { name: leaf.param.name, label: leaf.param.label, optional: true };
+    if (rhs.kind === "ext" && rhs.fn === "decimal" && rhs.args.length === 1) {
+      rhs = { ...rhs, args: [makeHole(rhs.args[0], opts)] };
+    } else {
+      rhs = makeHole(rhs, opts);
+    }
+  }
   // Decimal comparisons (< <= > >=) use the extension-method form.
   const extFn = leaf.value.kind === "decimal" ? OP_TO_EXT[leaf.op] : undefined;
   if (extFn) return { kind: "ext", fn: extFn, args: [attr, rhs] };
@@ -171,21 +182,39 @@ export function leafToExpr(leaf: FormLeaf): Expr {
   return { kind: "binary", op: leaf.op, left: attr, right: rhs };
 }
 
+/** RHS가 홀이면 (기본값 Expr, param 마커)로 풀어서 돌려준다. */
+function unwrapHole(e: Expr): { inner: Expr; param?: { name: string; label: string } } {
+  if (e.kind === "hole") {
+    return { inner: e.default, param: { name: e.name, label: e.label ?? e.name } };
+  }
+  if (e.kind === "ext" && e.fn === "decimal" && e.args.length === 1 && e.args[0].kind === "hole") {
+    const h = e.args[0];
+    return {
+      inner: { ...e, args: [h.default] },
+      param: { name: h.name, label: h.label ?? h.name },
+    };
+  }
+  return { inner: e };
+}
+
 function exprToLeaf(e: Expr): FormLeaf | null {
   // Decimal comparison via an extension method.
   if (e.kind === "ext" && EXT_TO_OP[e.fn] && e.args.length === 2) {
     const path = exprToPath(e.args[0]);
-    const value = exprToValue(e.args[1]);
+    const { inner, param } = unwrapHole(e.args[1]);
+    const value = exprToValue(inner);
     if (!path || !value || value.kind !== "decimal") return null;
-    return { fieldPath: path, op: EXT_TO_OP[e.fn], value };
+    return { fieldPath: path, op: EXT_TO_OP[e.fn], value, ...(param ? { param } : {}) };
   }
   // `[set].contains(attr)` is membership over a literal set — open it as the
   // form's single `in` leaf (and the form re-emits it as the same
   // `[set].contains(attr)`, the Cedar-valid form of set membership).
-  if (e.kind === "binary" && e.op === "contains" && e.left.kind === "set") {
+  if (e.kind === "binary" && e.op === "contains" && (e.left.kind === "set" || e.left.kind === "hole")) {
     const path = exprToPath(e.right);
-    const value = exprToValue(e.left);
-    if (path && value && value.kind === "set") return { fieldPath: path, op: "in", value };
+    const { inner, param } = unwrapHole(e.left);
+    const value = exprToValue(inner);
+    if (path && value && value.kind === "set")
+      return { fieldPath: path, op: "in", value, ...(param ? { param } : {}) };
     return null;
   }
   if (e.kind === "binary") {
@@ -195,12 +224,13 @@ function exprToLeaf(e: Expr): FormLeaf | null {
       op === ">" || op === ">=" || op === "contains" || op === "in"
     ) {
       const path = exprToPath(e.left);
-      const value = exprToValue(e.right);
+      const { inner, param } = unwrapHole(e.right);
+      const value = exprToValue(inner);
       if (!path || !value) return null;
       // `in` takes a literal set; the scalar ops must not.
       if (op === "in" && value.kind !== "set") return null;
       if (op !== "in" && value.kind === "set") return null;
-      return { fieldPath: path, op, value };
+      return { fieldPath: path, op, value, ...(param ? { param } : {}) };
     }
   }
   // Bare Bool attribute (`context.custom.flag` standalone — Cedar requires a

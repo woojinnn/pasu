@@ -22,9 +22,15 @@ export function SaveScopeModal(props: {
   onConfirm: (choice: SaveScopeChoice) => void;
 }) {
   const { open, policyName, wallets, packages, busy, onCancel, onConfirm } = props;
-  const [mode, setMode] = useState<"wallets" | "all-wallets" | "library-only">(
+  // 지갑 범위 = 지갑 전용 정책 — 패키지도 지갑 소속이라 라이브러리 폴더 목록을
+  // 보여주지 않는다(미분류 또는 새 지갑 패키지).
+  const [mode, setModeRaw] = useState<"wallets" | "all-wallets" | "library-only">(
     wallets.length > 0 ? "wallets" : "library-only",
   );
+  const setMode = (m: "wallets" | "all-wallets" | "library-only") => {
+    setModeRaw(m);
+    setPackageId(UNCATEGORIZED_PKG);
+  };
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [packageId, setPackageId] = useState<string | "__new__">(UNCATEGORIZED_PKG);
   const [newPackageName, setNewPackageName] = useState("");
@@ -122,11 +128,16 @@ export function SaveScopeModal(props: {
               value={packageId}
               onChange={(e) => setPackageId(e.target.value as string | "__new__")}
             >
-              {packages.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.displayName}
-                </option>
-              ))}
+              {mode === "wallets" ? (
+                // 지갑 전용 정책의 패키지는 지갑 소속 — 라이브러리 폴더와 무관.
+                <option value={UNCATEGORIZED_PKG}>미분류</option>
+              ) : (
+                packages.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.displayName}
+                  </option>
+                ))
+              )}
               <option value="__new__">+ 새 패키지…</option>
             </select>
           </label>

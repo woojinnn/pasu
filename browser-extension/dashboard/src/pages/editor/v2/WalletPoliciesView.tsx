@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   bindDef,
-  deletePackage as deletePackageApi,
   getOverview,
   isEffectiveOn,
   provisionWallets,
-  putPackage,
   removeBinding,
+  putWalletPackage,
+  removeWalletPackage,
   setPackageEnabled,
   updateBinding,
   UNCATEGORIZED_PKG,
@@ -21,7 +23,7 @@ import { listWallets } from "../../../server-api/wallets";
 import { deriveWalletRows, packageDisplayOn } from "./wallet-policies-derive";
 import { DRAG_DEF_MIME } from "./LibraryDirectory";
 import { catKey, catLabel, catStyle } from "./categories";
-import { CaretRightIcon, FolderIcon, PencilIcon, PlusIcon, TrashIcon } from "./icons";
+import { CaretRightIcon, CopyIcon, FolderIcon, PencilIcon, PlusIcon, TrashIcon } from "./icons";
 
 /** 지갑별 정책 — 좌: 이 지갑의 패키지(추가/이름변경/토글/드롭), 우: 라이브러리
  *  디렉토리 모양의 정책 트리. 각 정책 아래에 "이 지갑에서 들어가 있는 패키지"가
@@ -49,6 +51,7 @@ export function WalletPoliciesView(props: { onToast: (text: string) => void }) {
   }, [walletsQ.data, overviewQ.data]);
 
   const snap = overviewQ.data ?? null;
+
   const rows = useMemo(
     () =>
       snap
@@ -109,10 +112,14 @@ function WalletWorkspace(props: {
   invalidate: () => void;
 }) {
   const { snap, address, onToast, invalidate } = props;
+  const navigate = useNavigate();
   const wallet: WalletPolicyState = snap.wallets.byAddress[address] ?? {
     bindings: {},
+    packages: {},
     packageEnabled: {},
   };
+  const walletPkgName = (pid: string) =>
+    pid === UNCATEGORIZED_PKG ? "미분류" : (wallet.packages?.[pid]?.displayName ?? pid);
 
   const [scope, setScope] = useState<string | "all">("all");
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -153,8 +160,8 @@ function WalletWorkspace(props: {
     }
     for (const arr of m.values()) {
       arr.sort((a, b) =>
-        (snap.library.packages[a.packageId]?.displayName ?? "").localeCompare(
-          snap.library.packages[b.packageId]?.displayName ?? "",
+        walletPkgName(a.packageId).localeCompare(
+          walletPkgName(b.packageId),
           "ko",
         ),
       );
@@ -162,19 +169,31 @@ function WalletWorkspace(props: {
     return m;
   }, [wallet, snap]);
 
-  const packages = useMemo(
-    () =>
-      Object.values(snap.library.packages).sort((a, b) =>
-        a.id === UNCATEGORIZED_PKG ? -1 : b.id === UNCATEGORIZED_PKG ? 1 : a.id.localeCompare(b.id),
-      ),
-    [snap],
-  );
+  // 좌측 레일 = 이 지갑의 패키지(지갑 소속 객체) + 미분류(가상). 라이브러리의
+  // 폴더와는 별개 — 지갑에서 무엇을 해도 라이브러리에 비치지 않는다.
+  const packages = useMemo(() => {
+    // 미분류는 가상 그룹 — 실제로 미분류 바인딩이 있을 때만 보인다.
+    const hasUncat = Object.values(wallet.bindings).some(
+      (b) => b.packageId === UNCATEGORIZED_PKG,
+    );
+    const list = [
+      ...(hasUncat ? [{ id: UNCATEGORIZED_PKG, displayName: "미분류", updatedAtMs: 0 }] : []),
+      ...Object.values(wallet.packages ?? {}),
+    ];
+    return list.sort((a, b) =>
+      a.id === UNCATEGORIZED_PKG ? -1 : b.id === UNCATEGORIZED_PKG ? 1 : a.id.localeCompare(b.id),
+    );
+  }, [wallet]);
 
   // 우측 트리: 라이브러리 디렉토리 구조(폴더 멤버십 = defaults.packageId).
   const defsByFolder = useMemo(() => {
     const m = new Map<string, PolicyDef[]>();
     for (const d of Object.values(snap.library.defs)) {
-      const key = d.defaults.packageId ?? UNCATEGORIZED_PKG;
+      if (d.hidden) continue; // 지갑 전용 정책은 별도 섹션에서
+      // 죽은 패키지를 가리키면 미분류로 — 안 그러면 폴더가 안 그려져 정책이
+      // 사라져 보인다.
+      const raw = d.defaults.packageId;
+      const key = raw && snap.library.packages[raw] ? raw : UNCATEGORIZED_PKG;
       const arr = m.get(key) ?? [];
       arr.push(d);
       m.set(key, arr);
@@ -182,6 +201,20 @@ function WalletWorkspace(props: {
     for (const arr of m.values()) arr.sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
     return m;
   }, [snap]);
+
+  // 이 지갑 전용 정책: 바인딩의 지갑 패키지 기준으로 그룹 (라이브러리 폴더 무관).
+  const walletOnlyByPkg = useMemo(() => {
+    const m = new Map<string, PolicyDef[]>();
+    for (const b of Object.values(wallet.bindings)) {
+      const d = snap.library.defs[b.defId];
+      if (!d?.hidden) continue;
+      const arr = m.get(b.packageId) ?? [];
+      if (!arr.some((x) => x.id === d.id)) arr.push(d);
+      m.set(b.packageId, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+    return m;
+  }, [snap, wallet]);
 
   /** 하이브리드 토글: 켜기 = 게이트 on + (전부 꺼져 있으면) 멤버 일괄 on;
    *  끄기 = 게이트 off(부분 상태 보존). */
@@ -216,41 +249,41 @@ function WalletWorkspace(props: {
       }),
     ).then(
       (ok) =>
-        ok && onToast(`${def.displayName} → ${snap.library.packages[pkgId]?.displayName ?? pkgId}`),
+        ok && onToast(`${def.displayName} → ${walletPkgName(pkgId)}`),
     );
   };
 
-  // 지갑 화면에서의 패키지 추가/이름변경/삭제 — 패키지는 계정 라이브러리 객체지만
-  // "이 지갑에 존재"는 바인딩이 만든다(추가 직후엔 빈 폴더로 흐리게 보임).
+  // 지갑 패키지 CRUD — 전부 이 지갑 안에서만 일어난다.
   const createPackage = () =>
     void run("패키지 생성", () =>
-      putPackage({
-        id: `pkg::${crypto.randomUUID()}`,
-        displayName: "새 패키지",
-        source: "mine",
-        updatedAtMs: Date.now(),
+      putWalletPackage({
+        address,
+        pkg: { id: `pkg::${crypto.randomUUID()}`, displayName: "새 패키지" },
       }),
     ).then((ok) => ok && onToast("패키지를 만들었어요 — 이름을 바꿔보세요"));
 
   const renamePackage = (pkgId: string) => {
-    const pkg = snap.library.packages[pkgId];
+    const pkg = wallet.packages?.[pkgId];
     const name = draftName.trim();
     setRenaming(null);
     if (!pkg || !name || name === pkg.displayName) return;
-    void run("이름 변경", () => putPackage({ ...pkg, displayName: name, updatedAtMs: Date.now() }));
+    void run("이름 변경", () =>
+      putWalletPackage({ address, pkg: { id: pkgId, displayName: name } }),
+    );
   };
 
   const removePackage = (pkgId: string) => {
-    const pkg = snap.library.packages[pkgId];
+    const pkg = wallet.packages?.[pkgId];
     if (!pkg) return;
+    const n = Object.values(wallet.bindings).filter((b) => b.packageId === pkgId).length;
     if (
       !window.confirm(
-        `패키지 "${pkg.displayName}"를 삭제할까요?\n(계정 전체에서 삭제되고, 안의 정책 인스턴스는 '미분류'로 이동해요)`,
+        `"${pkg.displayName}" 패키지를 이 지갑에서 제거할까요?\n안의 정책 인스턴스 ${n}개도 함께 제거돼요. (라이브러리의 패키지·정책은 그대로예요)`,
       )
     )
       return;
-    void run("패키지 삭제", () => deletePackageApi(pkgId)).then(
-      (ok) => ok && onToast("패키지를 삭제했어요"),
+    void run("패키지 제거", () => removeWalletPackage({ address, packageId: pkgId })).then(
+      (ok) => ok && onToast("이 지갑에서 패키지를 제거했어요"),
     );
   };
 
@@ -264,6 +297,86 @@ function WalletWorkspace(props: {
 
   const totalActive = Object.values(wallet.bindings).filter((b) => isEffectiveOn(wallet, b)).length;
   const scopePkgId = scope === "all" ? UNCATEGORIZED_PKG : scope;
+
+  /** 폴더 박스 한 개 — 전용 섹션(지갑 패키지 그룹)과 공유 섹션(라이브러리 폴더)이
+   *  같은 모양을 공유한다. bindingFilter가 있으면 그 그룹의 바인딩 줄만. */
+  const renderFolder = (
+    folder: { id: string; displayName: string },
+    defs: PolicyDef[],
+    bindingFilter: ((b: Binding) => boolean) | null,
+  ) => {
+    if (defs.length === 0) return null;
+    const open = !collapsed.has(folder.id);
+    return (
+      <div key={folder.id} className="ld-folder">
+        <div className="ld-folderhead" onClick={() => toggleFolder(folder.id)}>
+          <span className={`ld-caret${open ? " open" : ""}`}>
+            <CaretRightIcon />
+          </span>
+          <FolderIcon />
+          <span className="nm">{folder.displayName}</span>
+          <span className="cnt">{defs.length}</span>
+        </div>
+        {open && (
+          <div className="ld-defs">
+            {defs.map((d) => {
+              const cat = catKey(d.cat);
+              const rows = (bindingsByDef.get(d.id) ?? []).filter(
+                (b) =>
+                  (scope === "all" || b.packageId === scope) &&
+                  (bindingFilter === null || bindingFilter(b)),
+              );
+              return (
+                <div key={d.id} className="wt-def">
+                  <div
+                    className="ld-def"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(DRAG_DEF_MIME, d.id);
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
+                  >
+                    <span
+                      className="ld-cat"
+                      style={{ background: catStyle(cat).hex }}
+                      title={catLabel(cat)}
+                    />
+                    <span className={`nm${rows.length === 0 ? " dim" : ""}`}>{d.displayName}</span>
+                    <span className="acts">
+                      <button
+                        type="button"
+                        className="ev2-iconbtn"
+                        title={`${walletPkgName(scopePkgId)}에 추가`}
+                        onClick={() => addDefToPackage(d.id, scopePkgId)}
+                      >
+                        <PlusIcon />
+                      </button>
+                    </span>
+                  </div>
+                  {rows.map((b) => (
+                    <BindingRow
+                      key={b.id}
+                      binding={b}
+                      def={d}
+                      wallet={wallet}
+                      pkgName={walletPkgName(b.packageId)}
+                      onOpen={() =>
+                        navigate(
+                          `/editor/${encodeURIComponent(d.id)}?wallet=${address}&binding=${encodeURIComponent(b.id)}`,
+                        )
+                      }
+                      onRun={run}
+                      address={address}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="ev2-2col">
@@ -382,124 +495,153 @@ function WalletWorkspace(props: {
       <section className="ev2-right">
         <div className="ev2-ctrl">
           <span className="wd-scopelabel">
-            {scope === "all" ? "전체 정책" : (snap.library.packages[scope]?.displayName ?? scope)}
+            {scope === "all" ? "전체 정책" : walletPkgName(scope)}
           </span>
         </div>
 
         <div className="ev2-scroll">
           <div className="ld">
-            {packages
-              .slice()
-              .sort((a, b) =>
-                a.id === UNCATEGORIZED_PKG ? 1 : b.id === UNCATEGORIZED_PKG ? -1 : a.id.localeCompare(b.id),
-              )
-              .map((folder) => {
-                let defs = defsByFolder.get(folder.id) ?? [];
-                // 스코프(지갑 패키지) 선택 시: 그 패키지에 바인딩된 정책만.
-                if (scope !== "all") {
-                  defs = defs.filter((d) =>
-                    (bindingsByDef.get(d.id) ?? []).some((b) => b.packageId === scope),
-                  );
-                }
-                if (defs.length === 0) return null;
-                const open = !collapsed.has(folder.id);
-                return (
-                  <div key={folder.id} className="ld-folder">
-                    <div className="ld-folderhead" onClick={() => toggleFolder(folder.id)}>
-                      <span className={`ld-caret${open ? " open" : ""}`}>
-                        <CaretRightIcon />
-                      </span>
-                      <FolderIcon />
-                      <span className="nm">{folder.displayName}</span>
-                      <span className="cnt">{defs.length}</span>
-                    </div>
-                    {open && (
-                      <div className="ld-defs">
-                        {defs.map((d) => {
-                          const cat = catKey(d.cat);
-                          const rows = (bindingsByDef.get(d.id) ?? []).filter(
-                            (b) => scope === "all" || b.packageId === scope,
-                          );
-                          return (
-                            <div key={d.id} className="wt-def">
-                              <div
-                                className="ld-def"
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData(DRAG_DEF_MIME, d.id);
-                                  e.dataTransfer.effectAllowed = "copy";
-                                }}
-                              >
-                                <span
-                                  className="ld-cat"
-                                  style={{ background: catStyle(cat).hex }}
-                                  title={catLabel(cat)}
-                                />
-                                <span className={`nm${rows.length === 0 ? " dim" : ""}`}>
-                                  {d.displayName}
-                                </span>
-                                <span className="acts">
-                                  <button
-                                    type="button"
-                                    className="ev2-iconbtn"
-                                    title={`${snap.library.packages[scopePkgId]?.displayName ?? "미분류"}에 추가`}
-                                    onClick={() => addDefToPackage(d.id, scopePkgId)}
-                                  >
-                                    <PlusIcon />
-                                  </button>
-                                </span>
-                              </div>
-                              {rows.map((b) => {
-                                const pkgOn = wallet.packageEnabled[b.packageId] ?? true;
-                                const effective = isEffectiveOn(wallet, b);
-                                return (
-                                  <div key={b.id} className={`wt-binding${effective ? "" : " off"}`}>
-                                    <span className="wt-pkg">
-                                      {snap.library.packages[b.packageId]?.displayName ?? b.packageId}
-                                      {!pkgOn && <span className="wt-pkgoff">패키지 꺼짐</span>}
-                                    </span>
-                                    <label className="pm-switch sm" title="이 정책만 켜기/끄기">
-                                      <input
-                                        type="checkbox"
-                                        checked={b.enabled}
-                                        onChange={(e) =>
-                                          void run("토글", () =>
-                                            updateBinding({
-                                              address,
-                                              bindingId: b.id,
-                                              patch: { enabled: e.target.checked },
-                                            }),
-                                          )
-                                        }
-                                      />
-                                      <span className="trk" />
-                                    </label>
-                                    <button
-                                      type="button"
-                                      className="ev2-iconbtn danger"
-                                      title="이 패키지에서 제거"
-                                      onClick={() =>
-                                        void run("제거", () =>
-                                          removeBinding({ address, bindingId: b.id }),
-                                        )
-                                      }
-                                    >
-                                      <TrashIcon />
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {walletOnlyByPkg.size > 0 && (
+              <div className="wt-section">
+                <div className="wt-section-h">이 지갑 전용 정책</div>
+                {[...walletOnlyByPkg.entries()]
+                  .sort(([a], [b]) =>
+                    a === UNCATEGORIZED_PKG ? 1 : b === UNCATEGORIZED_PKG ? -1 : a.localeCompare(b),
+                  )
+                  .map(([pkgId, defs]) =>
+                    renderFolder(
+                      { id: `own:${pkgId}`, displayName: walletPkgName(pkgId) },
+                      scope === "all" ? defs : pkgId === scope ? defs : [],
+                      (b) => b.packageId === pkgId,
+                    ),
+                  )}
+              </div>
+            )}
+            <div className="wt-section">
+              <div className="wt-section-h">라이브러리 공유 정책</div>
+              {Object.values(snap.library.packages)
+                .sort((a, b) =>
+                  a.id === UNCATEGORIZED_PKG ? 1 : b.id === UNCATEGORIZED_PKG ? -1 : a.id.localeCompare(b.id),
+                )
+                .map((folder) => {
+                  let defs = defsByFolder.get(folder.id) ?? [];
+                  if (scope !== "all") {
+                    defs = defs.filter((d) =>
+                      (bindingsByDef.get(d.id) ?? []).some((b) => b.packageId === scope),
+                    );
+                  }
+                  return renderFolder(folder, defs, null);
+                })}
+            </div>
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** 한 바인딩 줄: 소속 패키지 · 별칭(인라인 편집) · 파라미터(있으면 확장) ·
+ *  복제 · 토글 · 제거. 별칭/파라미터가 "지갑별로 서로 다른 정책"을 만든다. */
+function BindingRow(props: {
+  binding: Binding;
+  def: PolicyDef;
+  wallet: WalletPolicyState;
+  pkgName: string;
+  address: string;
+  onOpen: () => void;
+  onRun: (label: string, fn: () => Promise<unknown>) => Promise<boolean>;
+}) {
+  const { binding: b, def, wallet, pkgName, address, onOpen, onRun } = props;
+  const pkgOn = wallet.packageEnabled[b.packageId] ?? true;
+  const effective = isEffectiveOn(wallet, b);
+  const [editingAlias, setEditingAlias] = useState(false);
+  const [aliasDraft, setAliasDraft] = useState(b.alias ?? "");
+
+  const saveAlias = () => {
+    setEditingAlias(false);
+    const alias = aliasDraft.trim();
+    if ((b.alias ?? "") === alias) return;
+    void onRun("별칭 저장", () =>
+      updateBinding({ address, bindingId: b.id, patch: { alias: alias || undefined } }),
+    );
+  };
+
+  const duplicate = () =>
+    void onRun("복제", () =>
+      bindDef({
+        defId: b.defId,
+        packageId: b.packageId,
+        addresses: [address],
+        ...(b.params ? { params: b.params } : {}),
+        alias: `${b.alias ?? def.displayName} (복사)`,
+      }),
+    );
+
+  return (
+    <div className={`wt-binding${effective ? "" : " off"}`}>
+      <div
+        className="wt-binding-main clickable"
+        title="이 지갑 인스턴스 편집 — 값을 바꾸면 이 지갑에만 적용돼요"
+        onClick={(ev) => {
+          if ((ev.target as HTMLElement).closest("button, input, label, select")) return;
+          onOpen();
+        }}
+      >
+        <span className="wt-pkg">
+          {pkgName}
+          {!pkgOn && <span className="wt-pkgoff">패키지 꺼짐</span>}
+        </span>
+        {editingAlias ? (
+          <input
+            className="wt-alias-input"
+            autoFocus
+            value={aliasDraft}
+            placeholder={def.displayName}
+            onChange={(e) => setAliasDraft(e.target.value)}
+            onBlur={saveAlias}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") setEditingAlias(false);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className={`wt-alias${b.alias ? "" : " empty"}`}
+            title="이 지갑에서 부를 이름(별칭) 바꾸기"
+            onClick={() => {
+              setAliasDraft(b.alias ?? "");
+              setEditingAlias(true);
+            }}
+          >
+            {b.alias ?? "별칭 없음"}
+            <PencilIcon />
+          </button>
+        )}
+        <button type="button" className="ev2-iconbtn" title="이 지갑에 복제" onClick={duplicate}>
+          <CopyIcon />
+        </button>
+        <label className="pm-switch sm" title="이 정책만 켜기/끄기">
+          <input
+            type="checkbox"
+            checked={b.enabled}
+            onChange={(e) =>
+              void onRun("토글", () =>
+                updateBinding({ address, bindingId: b.id, patch: { enabled: e.target.checked } }),
+              )
+            }
+          />
+          <span className="trk" />
+        </label>
+        <button
+          type="button"
+          className="ev2-iconbtn danger"
+          title="이 패키지에서 제거"
+          onClick={() => void onRun("제거", () => removeBinding({ address, bindingId: b.id }))}
+        >
+          <TrashIcon />
+        </button>
+      </div>
     </div>
   );
 }

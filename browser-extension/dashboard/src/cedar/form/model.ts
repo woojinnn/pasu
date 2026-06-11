@@ -51,6 +51,9 @@ export interface FormLeaf {
   fieldPath: string;
   op: FormOp;
   value: FormValue;
+  /** "지갑별 설정" 승격 — 켜지면 이 값이 정의의 파라미터(홀)가 되고, `value`는
+   *  기본값이 된다. 지갑 트리에서 바인딩별로 다른 값을 줄 수 있다. */
+  param?: { name: string; label: string } | undefined;
 }
 
 /** AND/OR connector between conditions. */

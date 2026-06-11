@@ -17,7 +17,7 @@ import {
   sendToExtension,
 } from "../server-api/extension-bridge";
 import type { PolicySeverity, Verdict } from "../server-api";
-import { blocksToEst, estToBlocks } from "./blocks";
+import { blocksToEst, concretizeIr, estToBlocks } from "./blocks";
 import type { PolicyIR, SchemaDescriptor } from "./blocks";
 
 // ── public types (match the old api-client shapes) ──────────────────────
@@ -198,7 +198,8 @@ export async function textToBlocks(
 /** Block IR → Cedar text. Converts IR→EST locally (throws on unfilled
  *  holes — call fillParams first), then routes EST→text through the bridge. */
 export async function blocksToText(ir: PolicyIR): Promise<string> {
-  const est = blocksToEst(ir);
+  // 파라미터 홀이 있으면 기본값으로 굳혀서 직렬화한다(blocksToEst는 홀을 거부).
+  const est = blocksToEst(concretizeIr(ir));
   const raw = await sendToExtension<string>(
     { type: "cedar-est-to-text", est_json: JSON.stringify(est) },
     BRIDGE_TIMEOUT_MS,

@@ -50,7 +50,7 @@ const def = (id: string, manifest?: unknown, enabled = true): PolicyDef => ({
   id,
   displayName: id,
   skeleton: { ir: { kind: "policy" }, manifest },
-  holes: [],
+  holes: [{ name: "cap", type: "long", label: "한도" }],
   defaults: { enabled, params: { cap: 1 } },
   source: "mine",
   updatedAtMs: 1,
@@ -163,5 +163,20 @@ describe("defRefForPolicyId", () => {
     expect(await defRefForPolicyId("u", "swap-cap")).toEqual({ defId: "def::1", displayName: "한도" });
     expect(await defRefForPolicyId("u", "def::2")).toEqual({ defId: "def::2", displayName: "def::2" });
     expect(await defRefForPolicyId("u", "nope")).toBeNull();
+  });
+});
+
+describe("stale param guard", () => {
+  it("binding params for holes that no longer exist are dropped before render", async () => {
+    await putDef("u", { ...def("def::a"), holes: [{ name: "cap", type: "long", label: "한도" }] });
+    await bind("u", {
+      defId: "def::a",
+      packageId: UNCATEGORIZED_PKG,
+      addresses: ["0xa1"],
+      params: { cap: 9, ghost: 1 },
+    });
+    const out = await resolveBundlesForWallet("u", "0xa1");
+    expect(out[0].policy).toContain('"cap":9');
+    expect(out[0].policy).not.toContain("ghost");
   });
 });

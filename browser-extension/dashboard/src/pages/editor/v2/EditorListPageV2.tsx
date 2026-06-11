@@ -74,7 +74,7 @@ export function EditorListPageV2() {
   const [chooserOpen, setChooserOpen] = useState(false);
 
   const snap = overviewQ.data ?? null;
-  const defCount = snap ? Object.keys(snap.library.defs).length : null;
+  const defCount = snap ? Object.values(snap.library.defs).filter((d) => !d.hidden).length : null;
   const pkgCount = snap ? Object.keys(snap.library.packages).length : null;
 
   return (

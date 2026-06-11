@@ -43,16 +43,27 @@ export const bindDef = (opts: {
   addresses: string[];
   params?: Record<string, HoleValue>;
   enabled?: boolean;
+  alias?: string;
 }) => sendToExtension<null>({ type: "ps2:bind", ...opts });
 
 export const updateBinding = (opts: {
   address: string;
   bindingId: string;
-  patch: Partial<Pick<Binding, "enabled" | "params" | "packageId">>;
+  patch: Partial<Pick<Binding, "enabled" | "params" | "packageId" | "alias">>;
 }) => sendToExtension<null>({ type: "ps2:update-binding", ...opts });
 
 export const removeBinding = (opts: { address: string; bindingId: string }) =>
   sendToExtension<null>({ type: "ps2:remove-binding", ...opts });
+
+/** 이 지갑에서만 패키지 제거(바인딩+게이트) — 계정 패키지/라이브러리는 불변. */
+export const removeWalletPackage = (opts: { address: string; packageId: string }) =>
+  sendToExtension<null>({ type: "ps2:remove-wallet-package", ...opts });
+
+/** 지갑 패키지 생성/이름변경 — 지갑 안에서만 존재, 라이브러리 불변. */
+export const putWalletPackage = (opts: {
+  address: string;
+  pkg: { id: string; displayName: string };
+}) => sendToExtension<null>({ type: "ps2:put-wallet-package", ...opts });
 
 export const copyBindings = (opts: { fromAddress: string; toAddress: string; bindingIds: string[] }) =>
   sendToExtension<null>({ type: "ps2:copy-bindings", ...opts });

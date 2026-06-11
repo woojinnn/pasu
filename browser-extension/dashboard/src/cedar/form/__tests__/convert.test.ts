@@ -5,6 +5,7 @@ import type { Expr, PolicyIR } from "../../blocks/ir";
 import { pathByNode } from "../../diagnosis/path";
 import { policyDiagramPaths } from "../../diagram/PolicyDiagram";
 import { formToIr, formToIrWithMap, irToForm } from "../convert";
+import { concretizeIr, extractParams } from "../../blocks/params";
 import type { FormCondition, FormModel } from "../model";
 
 const cond = (
@@ -617,5 +618,56 @@ describe("baked day1 shapes (builtin defs must open in the form)", () => {
     const reopened = irToForm(formToIr(model!));
     expect(reopened).not.toBeNull();
     expect(reopened!.when.length).toBe(2);
+  });
+});
+
+describe("지갑별 설정(param) 승격 라운드트립", () => {
+  const model: FormModel = {
+    trigger: { kind: "actionEq", entityType: "Amm::Action", id: "Swap" },
+    when: [
+      cond("context.custom.inputUsd", ">=", { kind: "decimal", value: "100" }, {
+        param: { name: "maxUsd", label: "최대 금액(USD)" },
+      }),
+      cond("context.spender", "in", { kind: "set", values: ["0xab"] }, {
+        joiner: "and",
+        param: { name: "allowedSpenders", label: "허용 spender" },
+      }),
+      cond("context.amount", ">", { kind: "long", value: 5 }, {
+        joiner: "and",
+        param: { name: "cap", label: "한도" },
+      }),
+    ],
+    unless: [],
+    id: "param-policy",
+    severity: "deny",
+    reason: "",
+  };
+
+  it("formToIr emits optional holes with the current value as default", () => {
+    const ir = formToIr(model);
+    const specs = extractParams(ir);
+    expect(specs.map((s) => s.name).sort()).toEqual(["allowedSpenders", "cap", "maxUsd"]);
+    expect(specs.every((s) => s.optional)).toBe(true);
+  });
+
+  it("irToForm restores values (= hole defaults) and param markers", () => {
+    const reopened = irToForm(formToIr(model));
+    expect(reopened).not.toBeNull();
+    const byField = new Map(reopened!.when.map((c) => ["fieldPath" in c ? c.fieldPath : "", c]));
+    const usd = byField.get("context.custom.inputUsd") as FormCondition;
+    expect(usd.param).toEqual({ name: "maxUsd", label: "최대 금액(USD)" });
+    expect(usd.value).toEqual({ kind: "decimal", value: "100" });
+    const spd = byField.get("context.spender") as FormCondition;
+    expect(spd.param?.name).toBe("allowedSpenders");
+    expect(spd.value).toEqual({ kind: "set", values: ["0xab"] });
+    const cap = byField.get("context.amount") as FormCondition;
+    expect(cap.param?.name).toBe("cap");
+    expect(cap.value).toEqual({ kind: "long", value: 5 });
+  });
+
+  it("concretizeIr makes the holed IR serializable (blocksToEst no longer throws)", () => {
+    const ir = formToIr(model);
+    expect(() => blocksToEst(ir)).toThrow();
+    expect(() => blocksToEst(concretizeIr(ir))).not.toThrow();
   });
 });

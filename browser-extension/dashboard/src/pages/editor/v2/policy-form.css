@@ -1023,3 +1023,22 @@
 }
 .pf-manifest-edit:focus { outline: none; border-color: var(--sage-400, var(--sage-300)); }
 .pf-manifest-edit.invalid { border-color: var(--fail-400, #f87171); background: var(--fail-50, #fef2f2); }
+
+/* 지갑별 설정(파라미터) 승격 토글 */
+.pf-param {
+  flex: none;
+  font-size: 11px;
+  color: var(--slate-400);
+  border-style: dashed;
+}
+.pf-param.on {
+  border-style: solid;
+  border-color: var(--sage-500, #4c7a5e);
+  color: var(--sage-600, #3c6a4e);
+  background: var(--sage-100, #eaf3ee);
+}
+.pf-param-label {
+  flex: none;
+  width: 130px;
+  font-size: 12px;
+}
