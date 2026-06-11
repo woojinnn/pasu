@@ -73,6 +73,12 @@
       "js": ["js/content-scripts/dashboard-bridge.js"],
       "all_frames": false,
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["js/content-scripts/pasu-advisory.js"],
+      "all_frames": false,
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
@@ -87,7 +93,9 @@
         "default-policies/schema.cedarschema",
         "default-policies/policy-set.json",
         "default-policies/policy-set-v2.json",
-        "seed-bundles/*.json"
+        "seed-bundles/*.json",
+        "advisory.css",
+        "picture/*"
       ]
     }
   ],
@@ -100,13 +108,15 @@
     "default-policies/schema.cedarschema",
     "default-policies/policy-set.json",
     "default-policies/policy-set-v2.json",
-    "seed-bundles/*.json"
+    "seed-bundles/*.json",
+    "advisory.css",
+    "picture/*"
   ],
   "background": {
     "__chrome__service_worker": "js/background.js",
     "__firefox__scripts": ["js/background.js"]
   },
-  "__chrome__permissions": ["storage", "alarms", "identity"],
+  "__chrome__permissions": ["storage", "alarms", "identity", "notifications"],
   "__firefox__permissions": [
     "<all_urls>",
     "http://localhost:8000/*",
@@ -114,7 +124,8 @@
     "http://127.0.0.1:8788/*",
     "storage",
     "alarms",
-    "identity"
+    "identity",
+    "notifications"
   ],
   "__chrome__host_permissions": [
     "<all_urls>",

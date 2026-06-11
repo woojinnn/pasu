@@ -134,6 +134,11 @@ const pageConfig = {
       "content-scripts",
       "fetch-bridge.ts",
     ),
+    "content-scripts/pasu-advisory": path.join(
+      backendDir,
+      "content-scripts",
+      "pasu-advisory.ts",
+    ),
     "confirm/index": path.join(frontendDir, "confirm", "index.ts"),
     "popup/index": path.join(frontendDir, "popup", "index.ts"),
     "onboarding/index": path.join(frontendDir, "onboarding", "index.ts"),

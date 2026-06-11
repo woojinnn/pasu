@@ -55,6 +55,26 @@ if (typeof chrome !== "undefined" && chrome.storage?.local) {
   });
 }
 
+/**
+ * 세션 만료(로그인 상태였는데 refresh 실패로 로그아웃 전환) 시 한 번 호출되는
+ * 표시 전용 콜백. 실제 알림은 index.ts 가 소유 — 저수준 auth 가 index 를 직접
+ * import 하면 순환이 되므로 콜백 주입으로 푼다(위험 verdict 알림과 동일 패턴).
+ * 동시 401 다발로 refreshAccessToken 이 여러 번 불려도 `notifiedExpired` 가드로
+ * 로그인→로그아웃 전환당 1회만 발사한다. 재로그인(setTokens 로 토큰 복원) 시
+ * 가드가 풀려 다음 만료에서 다시 발사된다.
+ */
+let onSessionExpired: (() => void) | null = null;
+let notifiedExpired = false;
+
+export function setOnSessionExpired(cb: (() => void) | null): void {
+  onSessionExpired = cb;
+}
+
+/** 토큰이 다시 세팅되면(재로그인/리프레시 성공) 만료 가드를 푼다. */
+export function resetSessionExpiredGuard(): void {
+  notifiedExpired = false;
+}
+
 export class ServerError extends Error {
   public readonly status: number;
   public readonly body: unknown;
@@ -92,10 +112,22 @@ async function refreshAccessToken(): Promise<string | null> {
   });
   if (!res.ok) {
     await setTokens(null, null);
+    // 로그인 상태였는데(refresh 토큰이 있었으므로 여기까지 옴) 갱신 실패 →
+    // 세션 만료. 전환당 1회만 표시 전용 알림 발사. fire-and-forget.
+    if (!notifiedExpired) {
+      notifiedExpired = true;
+      try {
+        onSessionExpired?.();
+      } catch {
+        /* advisory 전용 — 알림 실패가 auth 흐름에 영향 주지 않게 */
+      }
+    }
     return null;
   }
   const body = (await res.json()) as RefreshResponse;
   await setTokens(body.access_token, body.refresh_token ?? refresh);
+  // 갱신 성공 → 다음 만료에서 다시 알릴 수 있게 가드 해제.
+  notifiedExpired = false;
   return body.access_token;
 }
 

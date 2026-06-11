@@ -14,6 +14,7 @@ import {
   type Ps2Request,
 } from "./policy-store/api";
 import { decideMessage } from "./orchestrator";
+import { refreshBadge } from "./mascot-badge";
 import { reportExecutionOutcome } from "./execution-report";
 import {
   ensureDefaultV3BundlesInstalled,
@@ -35,6 +36,8 @@ import {
   updateWallet,
   deleteWallet,
   setTokens,
+  setOnSessionExpired,
+  resetSessionExpiredGuard,
   startGoogleLogin,
   type Me,
   type WalletId,
@@ -166,6 +169,13 @@ async function bootSequence(): Promise<void> {
     console.warn("[Pasu] v3 default bundle install failed:", err);
   }
 
+  // 부팅 시 마스코트 배지를 최근 24h verdict 카운트로 1회 동기화한다. SW 가
+  // 재시작되면 chrome.action 상태가 기본(safe)으로 돌아가므로 복원이 필요.
+  try {
+    await refreshBadge();
+  } catch (err) {
+    console.warn("[Pasu] mascot badge initial refresh failed:", err);
+  }
 }
 
 Browser.runtime.onConnect.addListener((port) => {
@@ -212,6 +222,11 @@ async function handleMessage(
       } catch {
         /* dApp tab gone */
       }
+    },
+    // 라이브 위험 verdict → OS 데스크톱 알림(표시 전용). 이 콜백은 라이브
+    // 호출부인 여기서만 주입되므로 시뮬레이션 경로에선 발사되지 않는다.
+    onRiskyVerdict: ({ scenario, title, message }) => {
+      void pushDesktopNotification(scenario, undefined, { title, message });
     },
   });
   if (!message.data.bypassed) {
@@ -269,6 +284,10 @@ interface PasuUpdateWalletRequest {
 interface PasuDeleteWalletRequest {
   type: "pasu-delete-wallet";
   address: string;
+}
+/** ⑤ 주간 요약 토스트 수동 트리거 (advisory 표시 전용 — 결정 채널 아님). */
+interface WeeklySummaryRequest {
+  type: "PASU_WEEKLY_SUMMARY";
 }
 /** apps/web Editor + Simulation pages route Cedar through the
  *  service worker rather than bundling wasm themselves. Three
@@ -396,6 +415,7 @@ type PopupRequest =
   | PasuAddWalletRequest
   | PasuUpdateWalletRequest
   | PasuDeleteWalletRequest
+  | WeeklySummaryRequest
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
@@ -422,6 +442,135 @@ type PopupRequest =
 // webextension-polyfill's listener type accepts `true | void | Promise<any>`,
 // not `boolean`. Returning `undefined` (bare `return;`) closes the channel
 // just like a literal `false` would — do not "fix" it back to `return false`.
+/**
+ * ⑤ advisory 토스트를 현재 활성 탭의 content-script 로 push.
+ * "현재 보고 있는 탭 하나"에만 — tabs.query({active,lastFocusedWindow}).
+ * content-script 가 없는 페이지(chrome:// 등)면 sendMessage 가 reject 되므로
+ * 조용히 무시(best-effort). 결정 채널 아님 — 표시 전용.
+ */
+async function pushToastToActiveTab(
+  scenario: string,
+  data?: { fail?: number; warn?: number },
+): Promise<void> {
+  try {
+    const tabs = await Browser.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    const tabId = tabs[0]?.id;
+    if (tabId === undefined) return;
+    await Browser.tabs.sendMessage(tabId, {
+      type: "PASU_TOAST",
+      scenario,
+      ...(data ? { data } : {}),
+    });
+  } catch {
+    /* content-script 부재/제한 페이지 — 조용히 스킵 */
+  }
+}
+
+/**
+ * ⑤ advisory OS 데스크톱 알림 — 인페이지 토스트(pushToastToActiveTab)와 **함께** 발사.
+ * 표시 전용(결정 채널 아님): 버튼은 "무시"(그냥 닫기) / "확인하기"(대시보드 열기)
+ * 두 개뿐이고, 권한취소 같은 결정·실행 액션은 절대 넣지 않는다(핸드오프 §보안).
+ * 시나리오별 카피는 advisory content-script 의 toastSpec(pasu-advisory.ts)과 1-1.
+ * notifications 권한/지원이 없으면 조용히 무시(best-effort) — 토스트는 그대로 뜬다.
+ */
+async function pushDesktopNotification(
+  scenario: string,
+  data?: { fail?: number; warn?: number },
+  override?: { title?: string | undefined; message?: string | undefined },
+): Promise<void> {
+  const fail = data?.fail ?? 0;
+  const warn = data?.warn ?? 0;
+
+  let title: string;
+  let message: string;
+  let iconFile: string;
+
+  switch (scenario) {
+    case "summary":
+      title = "이번 주 Pasu 요약";
+      message = `이번 주 위험 ${fail}건을 차단하고 ${warn}건은 검토를 권했어요.`;
+      iconFile = fail > 0 ? "picture/state-fail-128.png" : "picture/state-warn-128.png";
+      break;
+    case "approval":
+      title = "승인 권한이 위험해졌어요";
+      message = "방금 한 토큰 무제한 승인이 위험 컨트랙트로 표시됐어요.";
+      iconFile = "picture/state-fail-128.png";
+      break;
+    case "session-expired":
+      title = "Pasu 로그인이 만료됐어요";
+      message = "보호를 계속 받으려면 다시 로그인하세요. 확인하기를 눌러 대시보드를 여세요.";
+      iconFile = "picture/state-warn-128.png";
+      break;
+    case "tx":
+    default:
+      title = "의심 거래가 감지됐어요";
+      message = "상호작용한 주소가 위험 목록과 일치해요.";
+      iconFile = "picture/state-warn-128.png";
+      break;
+  }
+
+  // 실시간 위험 verdict 등 시나리오 기본 카피 대신 실제 내용(위반 주소·사유)을
+  // 넣고 싶을 때 override. 아이콘은 시나리오 기준 유지. summary 호출은 override
+  // 미전달 → 기존 동작 그대로.
+  if (override?.title) title = override.title;
+  if (override?.message) message = override.message;
+
+  // `buttons` 는 Chrome 전용 확장 필드라 webextension-polyfill 의 공통
+  // CreateNotificationOptions 타입엔 없다(Firefox 미지원). Chrome 런타임은
+  // 지원하므로 spread 로 얹고 타입만 우회한다. Firefox 에선 무시되어 본체
+  // 클릭(onClicked)만 동작 — advisory 표시 전용이라 기능 저하 없음.
+  // 버튼 0 = 무시(닫기만), 1 = 확인하기(대시보드 열기). onButtonClicked 에서 분기.
+  const options = {
+    type: "basic",
+    iconUrl: Browser.runtime.getURL(iconFile),
+    title,
+    message,
+    buttons: [{ title: "무시" }, { title: "확인하기" }],
+  } as Browser.Notifications.CreateNotificationOptions;
+
+  try {
+    await Browser.notifications.create(options);
+  } catch {
+    /* notifications 미지원/권한 없음 — 조용히 스킵 */
+  }
+}
+
+/** ⑤ 알림 본체/버튼 클릭 시 대시보드(확장 옵션 페이지)를 새 탭으로 연다.
+ *  popup 의 openDashboard()와 동일 경로 — options.html 은 SW 토큰을 mirror 해
+ *  자동 로그인된다. 표시 전용 — 결정 메시지를 발신하지 않는다. */
+function openDashboardFromNotification(): void {
+  void Browser.tabs
+    .create({ url: Browser.runtime.getURL("options.html") })
+    .catch(() => {
+      /* best-effort */
+    });
+}
+
+// 알림 본체 클릭 → "확인하기"와 동일하게 대시보드 열기.
+Browser.notifications.onClicked.addListener((notificationId: string) => {
+  openDashboardFromNotification();
+  void Browser.notifications.clear(notificationId);
+});
+
+// 버튼 클릭 → 0:무시(닫기만), 1:확인하기(대시보드 열기).
+Browser.notifications.onButtonClicked.addListener(
+  (notificationId: string, buttonIndex: number) => {
+    if (buttonIndex === 1) openDashboardFromNotification();
+    void Browser.notifications.clear(notificationId);
+  },
+);
+
+// 세션 만료(refresh 실패로 로그아웃 전환) → 표시 전용 데스크톱 알림.
+// auth client(저수준)가 index 를 직접 import 하면 순환이라 콜백 주입으로 연결.
+// "확인하기"/본체 클릭 → 대시보드 열기(= 재로그인 도착지). 전환당 1회만(가드는
+// client 쪽). 모듈 로드 시 1회 등록.
+setOnSessionExpired(() => {
+  void pushDesktopNotification("session-expired");
+});
+
 Browser.runtime.onMessage.addListener(
   (message: unknown, _sender, sendResponse: (r: unknown) => void) => {
     const req = message as Partial<PopupRequest> | null;
@@ -442,6 +591,34 @@ Browser.runtime.onMessage.addListener(
       return true;
     }
 
+    // ⑤ 주간 요약 토스트 (수동 트리거). 최근 7일 verdict 카운트를 모아
+    // 현재 활성 탭의 advisory content-script 에 PASU_TOAST 로 push 한다.
+    // advisory 전용 — 서명 결정과 무관(표시만).
+    if (req.type === "PASU_WEEKLY_SUMMARY") {
+      void countVerdicts({ range: "7d" })
+        .then(async (counts) => {
+          await pushToastToActiveTab("summary", {
+            fail: counts.fail,
+            warn: counts.warn,
+          });
+          await pushDesktopNotification("summary", {
+            fail: counts.fail,
+            warn: counts.warn,
+          });
+          sendResponse({ ok: true, data: counts });
+        })
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "weekly_summary_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    // apps/web Cedar editor / simulation. Three message types, all
+    // forwarded to policy-engine-wasm cedar_exports. Return value is
+    // the raw JSON string the wasm produces — the FE parses.
     if (req.type === "cedar-validate") {
       void validatePolicyText((req as CedarValidateRequest).text)
         .then((json) => sendResponse({ ok: true, data: json }))
@@ -603,6 +780,8 @@ Browser.runtime.onMessage.addListener(
         .then(() => clearTokens())
         .then(() => startGoogleLogin())
         .then(async () => {
+          // 재로그인 성공 → 다음 만료에서 다시 알림 발사 가능하게 가드 해제.
+          resetSessionExpiredGuard();
           const me = await fetchMe();
           sendResponse({ ok: true, data: me });
         })
@@ -632,7 +811,11 @@ Browser.runtime.onMessage.addListener(
       const r = req as PasuAuthSyncTokensRequest;
       void bootReady
         .then(() => setTokens(r.access, r.refresh))
-        .then(() => sendResponse({ ok: true, data: null }))
+        .then(() => {
+          // 유효 토큰 미러링(= 재로그인/세션 복원) 시 만료 가드 해제.
+          if (r.access) resetSessionExpiredGuard();
+          sendResponse({ ok: true, data: null });
+        })
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
