@@ -70,6 +70,23 @@ describe("render pipeline", () => {
     await expect(renderDef(defWithHole(), {})).rejects.toThrow(/limit/);
   });
 
+  it("returns an empty ManifestV2 ({id, schema_version}) when the def has no manifest", async () => {
+    // A policy that needs no manifest (e.g. an HL/perp policy whose enrichment is
+    // SW-direct, or a marketplace listing uploaded without one) must still render
+    // a VALID ManifestV2 — never `undefined`. Otherwise `manifests.map(b=>b.manifest)`
+    // serializes to `[null]` and the WASM `ManifestV2` deserialize rejects null,
+    // killing the whole evaluation. An empty manifest carries no trigger/policy_rpc,
+    // so the policy is still cedar-evaluated (enrichment, if any, arrives SW-direct).
+    const base = defWithHole();
+    const d: PolicyDef = {
+      ...base,
+      id: "def::market.no-manifest",
+      skeleton: { ir: base.skeleton.ir }, // manifest omitted → undefined
+    };
+    const r = await renderDef(d, { limit: 5 });
+    expect(r.manifest).toEqual({ id: "def::market.no-manifest", schema_version: 2 });
+  });
+
   it("substituteHoles deep-replaces {$hole:name} only when it is the sole key", () => {
     const m = { a: [{ $hole: "x" }], b: { $hole: "x", extra: 1 } };
     expect(substituteHoles(m, { x: 7 })).toEqual({ a: [7], b: { $hole: "x", extra: 1 } });
