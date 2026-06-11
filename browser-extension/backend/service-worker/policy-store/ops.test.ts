@@ -35,6 +35,7 @@ import {
   putDef,
   putPackage,
   removeBinding,
+  removePackageFromWallet,
   setPackageEnabled,
   updateBinding,
 } from "./ops";
@@ -157,5 +158,32 @@ describe("policy-store ops", () => {
     await removeBinding("u", { address: "0xa1", bindingId: id });
     const s = await readStore("u");
     expect(Object.keys(s.wallets.byAddress["0xa1"].bindings)).toEqual([]);
+  });
+});
+
+describe("패키지 삭제/지갑 차원 제거의 분리", () => {
+  it("deletePackage: def의 라이브러리 폴더 소속도 미분류로 돌린다", async () => {
+    await putPackage("u", { id: "pkg::x", displayName: "X", updatedAtMs: 1 });
+    await putDef("u", {
+      ...def("def::a"),
+      defaults: { enabled: true, params: {}, packageId: "pkg::x" },
+    });
+    await deletePackage("u", "pkg::x");
+    const snap = await readStore("u");
+    expect(snap.library.defs["def::a"].defaults.packageId).toBeUndefined();
+  });
+
+  it("removePackageFromWallet: 이 지갑의 바인딩+게이트만 제거, 계정 패키지/def 불변", async () => {
+    await putPackage("u", { id: "pkg::x", displayName: "X", updatedAtMs: 1 });
+    await putDef("u", def("def::a"));
+    await bind("u", { defId: "def::a", packageId: "pkg::x", addresses: ["0xa1", "0xb2"] });
+    await removePackageFromWallet("u", { address: "0xA1", packageId: "pkg::x" });
+    const snap = await readStore("u");
+    expect(Object.keys(snap.wallets.byAddress["0xa1"].bindings)).toHaveLength(0);
+    expect(snap.wallets.byAddress["0xa1"].packageEnabled["pkg::x"]).toBeUndefined();
+    // 다른 지갑과 계정 차원 객체는 그대로
+    expect(Object.keys(snap.wallets.byAddress["0xb2"].bindings)).toHaveLength(1);
+    expect(snap.library.packages["pkg::x"]).toBeDefined();
+    expect(snap.library.defs["def::a"]).toBeDefined();
   });
 });

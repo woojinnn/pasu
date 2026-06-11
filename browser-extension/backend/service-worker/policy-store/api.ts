@@ -45,6 +45,7 @@ export type Ps2Request =
       patch: Partial<Pick<Binding, "enabled" | "params" | "packageId" | "alias">>;
     }
   | { type: "ps2:remove-binding"; address: string; bindingId: string }
+  | { type: "ps2:remove-wallet-package"; address: string; packageId: string }
   | { type: "ps2:copy-bindings"; fromAddress: string; toAddress: string; bindingIds: string[] }
   | { type: "ps2:set-package-enabled"; address: string; packageId: string; enabled: boolean }
   | { type: "ps2:provision-wallets"; addresses: string[] }

@@ -73,7 +73,8 @@ export function LibraryDirectory(props: {
     for (const d of Object.values(snap.library.defs)) {
       if (q && !d.displayName.toLowerCase().includes(q) && !d.id.toLowerCase().includes(q)) continue;
       if (catFilter !== "all" && catKey(d.cat) !== catFilter) continue;
-      const key = d.defaults.packageId ?? UNCATEGORIZED_PKG;
+      const raw = d.defaults.packageId;
+      const key = raw && snap.library.packages[raw] ? raw : UNCATEGORIZED_PKG;
       const arr = m.get(key) ?? [];
       arr.push(d);
       m.set(key, arr);
