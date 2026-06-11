@@ -251,6 +251,12 @@ function EditorBody({
   const [manifestOverride, setManifestOverride] = useState<{ value: unknown } | null>(null);
   const [tab, setTab] = useState<Tab>(() => defaultTab(policy.method));
   const [publishOpen, setPublishOpen] = useState(false);
+  // Manifest computed at publish time so an UNSAVED policy still ships its
+  // auto-generated manifest to the market (otherwise the listing carries
+  // `policy.manifest` = undefined, and an installed manifest-less def crashes
+  // evaluation — the marketplace anti-liquidation-guard bug). Wrapped so
+  // `null` = "use the saved manifest" is distinct from a computed `undefined`.
+  const [publishManifest, setPublishManifest] = useState<{ value: unknown } | null>(null);
   // Form tab: computed on entry from the live cedar/IR (not on every form edit,
   // so editing doesn't remount the form). `formKey` bumps to remount the pane
   // with a fresh `initialModel`.
@@ -566,10 +572,25 @@ function EditorBody({
   const publishSource: PublishSource = {
     kind: "policy",
     cedarText,
-    manifest: policy.manifest,
+    // Prefer the manifest computed when "마켓에 올리기" was clicked (covers an
+    // unsaved policy); fall back to the persisted def manifest otherwise.
+    manifest: publishManifest ? publishManifest.value : policy.manifest,
     policyTree: null,
     suggestedDisplayName: policy.displayName,
     suggestedSlug: stripDashboardId(policy.id),
+  };
+
+  /** "마켓에 올리기": generate the manifest from the CURRENT editor state
+   *  (same path as save's `prepare()`), so an unsaved policy still publishes a
+   *  valid manifest. Validation errors block the publish with a message. */
+  const openPublish = async () => {
+    try {
+      const { manifest } = await prepare();
+      setPublishManifest({ value: manifest });
+      setPublishOpen(true);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : String(err));
+    }
   };
 
   /** Compute the form view from the live IR (or by parsing cedar). Sets
@@ -684,7 +705,7 @@ function EditorBody({
             <button
               type="button"
               className="ev2-pri ghost"
-              onClick={() => setPublishOpen(true)}
+              onClick={openPublish}
               title="마켓에 올리기"
             >
               <ShieldIcon /> 마켓에 올리기
@@ -777,7 +798,10 @@ function EditorBody({
       <PublishModal
         open={publishOpen}
         source={publishSource}
-        onClose={() => setPublishOpen(false)}
+        onClose={() => {
+          setPublishOpen(false);
+          setPublishManifest(null); // next publish recomputes from current state
+        }}
       />
 
       <SaveScopeModal
