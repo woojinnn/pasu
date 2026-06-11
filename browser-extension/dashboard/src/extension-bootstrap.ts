@@ -19,7 +19,10 @@ const TOKEN_KEYS = ["pasu_jwt", "pasu_jwt_refresh"] as const;
 
 type StorageChange = { newValue?: unknown };
 type ChromeStorage = {
-  local?: { get(keys: string[]): Promise<Record<string, unknown>> };
+  local?: {
+    get(keys: string[]): Promise<Record<string, unknown>>;
+    remove(keys: string[]): Promise<void>;
+  };
   onChanged?: {
     addListener(
       cb: (changes: Record<string, StorageChange>, area: string) => void,
@@ -51,6 +54,24 @@ export async function syncTokensFromExtensionStorage(): Promise<void> {
     }
   } catch {
     // Degrade to "no token synced → /login"; never block the render.
+  }
+}
+
+/** Drop the SW-owned tokens (chrome.storage.local) AND this page's localStorage
+ * mirror — directly, page-side, so sign-out doesn't depend on the SW message
+ * round-trip succeeding. The SW's own clearTokens still runs (for its in-memory
+ * cache + to notify the popup); this is the belt-and-suspenders. No-op off-extension. */
+export async function clearExtensionTokens(): Promise<void> {
+  if (!isExtensionContext()) return;
+  try {
+    await extStorage()?.local?.remove([...TOKEN_KEYS]);
+  } catch {
+    // best-effort
+  }
+  try {
+    for (const k of TOKEN_KEYS) localStorage.removeItem(k);
+  } catch {
+    // best-effort
   }
 }
 

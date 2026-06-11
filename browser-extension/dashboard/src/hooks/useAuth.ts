@@ -32,7 +32,7 @@ import {
 } from "../server-api";
 import { isExtensionContext } from "../env";
 import { sendToSw } from "../server-api/sw-bridge";
-import { syncTokensFromExtensionStorage } from "../extension-bootstrap";
+import { clearExtensionTokens, syncTokensFromExtensionStorage } from "../extension-bootstrap";
 
 export interface AuthContextValue {
   /** The logged-in user, or `null` when logged out / not yet resolved. */
@@ -147,9 +147,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const logoutCb = useCallback(() => {
-    serverLogout();
-    void clearCurrentUser().catch(logCurrentUserSyncFailure);
-    setUser(null);
+    // Clear the SW-owned token store (chrome.storage.local) FIRST and await it.
+    // The SW is the shared source of truth the popup and every page sync from;
+    // if we cleared the page tokens first, a concurrent storage-event refresh
+    // would re-hydrate this page from the still-populated SW store (and re-set
+    // `user`, so the page never redirects to /login). Only after the SW is
+    // empty do we drop the page tokens + reset state.
+    const finish = () => {
+      serverLogout(); // clear THIS page's localStorage tokens
+      void clearCurrentUser().catch(logCurrentUserSyncFailure);
+      setUser(null);
+    };
+    if (isExtensionContext()) {
+      // Clear BOTH stores page-side first (doesn't depend on the SW message
+      // succeeding), then message the SW so it drops its in-memory cache and
+      // the popup re-renders as signed-out.
+      void clearExtensionTokens()
+        .catch(() => {})
+        .then(() =>
+          sendToSw("pasu-auth-sign-out").catch((err) =>
+            console.warn("[Pasu] SW sign-out failed:", err instanceof Error ? err.message : err),
+          ),
+        )
+        .finally(finish);
+    } else {
+      finish();
+    }
   }, []);
 
   return createElement(
