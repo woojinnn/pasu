@@ -79,6 +79,9 @@ struct DiagnosisOutput {
     true_ids: Vec<String>,
     /// Probe ids whose body ERRORED (Cedar `errors()`); every other id is false.
     error_ids: Vec<String>,
+    /// The materialized Cedar context the probes ran against — the UI uses it
+    /// to show each compared field's ACTUAL value next to the policy threshold.
+    context: Value,
 }
 
 /// Run all probes once against the denying request's materialized context using a
@@ -128,7 +131,7 @@ fn run_probes(
         .map_err(|e: cedar_policy::ParseErrors| EngineErrorDto::new("resource", e.to_string()))?;
 
     // Schema-less, empty entities — mirrors the per-policy eval path (engine.rs:227-236, :318).
-    let cedar_ctx = Context::from_json_value(context, None)
+    let cedar_ctx = Context::from_json_value(context.clone(), None)
         .map_err(|e| EngineErrorDto::new("context", e.to_string()))?;
     let request = Request::new(principal, action, resource, cedar_ctx, None)
         .map_err(|e| EngineErrorDto::new("request", e.to_string()))?;
@@ -163,6 +166,7 @@ fn run_probes(
     Ok(DiagnosisOutput {
         true_ids,
         error_ids,
+        context,
     })
 }
 
