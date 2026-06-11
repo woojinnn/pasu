@@ -10,6 +10,8 @@ import {
   type SetMember,
 } from "../../server-api";
 import { severityFromCedar } from "./policy-meta";
+import { textToBlocks } from "../../cedar";
+import { computeShippedHoles, manifestWithHoles } from "./publish-holes";
 import {
   addressFieldRefs,
   extractHoles,
@@ -149,9 +151,16 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
         ? { en: description.trim(), ko: description.trim() }
         : undefined;
 
+      // 블랭킹이 적용된 hole(주소 전부 + 남기지 않은 숫자)의 위치 기반 param
+      // 이름을 계산해 manifest에 동봉 — 설치자가 어느 칸을 채워야 하는지의
+      // 유일한 출처다 (redacted 텍스트엔 hole 흔적이 없다).
+      const blankedOf = (r: PublishRule) =>
+        r.holes.filter((h) => h.kind === "address" || !keptNumbers.has(h.key));
+
       if (source.kind === "policy") {
         const r = rules[0];
         const cedar = r ? redactCedar(r.cedarText, r.holes, keptNumbers) : source.cedarText;
+        const shipped = r ? await computeShippedHoles(cedar, blankedOf(r), textToBlocks) : null;
         const body: CreateListingBody = {
           slug,
           kind: "policy",
@@ -163,19 +172,24 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
             : "warn") as MarketSeverity,
           version: SEMVER,
           cedar_text: cedar,
-          manifest: source.manifest,
+          manifest: manifestWithHoles(source.manifest, shipped, r?.ruleId ?? slug),
           policy_tree: source.policyTree ?? undefined,
         };
         await createListing(body);
         return { slug, kind: "policy" };
       }
 
-      const members: SetMember[] = rules.map((r) => ({
-        slug: r.ruleId,
-        display_name: r.title,
-        cedar_text: redactCedar(r.cedarText, r.holes, keptNumbers),
-        manifest: r.manifest,
-      }));
+      const members: SetMember[] = [];
+      for (const r of rules) {
+        const cedar = redactCedar(r.cedarText, r.holes, keptNumbers);
+        const shipped = await computeShippedHoles(cedar, blankedOf(r), textToBlocks);
+        members.push({
+          slug: r.ruleId,
+          display_name: r.title,
+          cedar_text: cedar,
+          manifest: manifestWithHoles(r.manifest, shipped, r.ruleId),
+        });
+      }
       if (members.length === 0) throw new Error("발행할 멤버 정책이 없습니다.");
       const body: CreateListingBody = {
         slug,

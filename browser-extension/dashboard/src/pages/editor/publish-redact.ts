@@ -250,7 +250,7 @@ export function addressFieldRefs(
 }
 
 /** Address placeholder the installer overwrites. Zero address = "fill me". */
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+export const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 /**
  * Apply de-identification to one policy's Cedar text.
