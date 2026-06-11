@@ -50,6 +50,7 @@ export function WalletPoliciesView(props: { onToast: (text: string) => void }) {
   }, [walletsQ.data, overviewQ.data]);
 
   const snap = overviewQ.data ?? null;
+
   const rows = useMemo(
     () =>
       snap
@@ -116,6 +117,8 @@ function WalletWorkspace(props: {
     packages: {},
     packageEnabled: {},
   };
+  const walletPkgName = (pid: string) =>
+    pid === UNCATEGORIZED_PKG ? "미분류" : (wallet.packages?.[pid]?.displayName ?? pid);
 
   const [scope, setScope] = useState<string | "all">("all");
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -176,8 +179,6 @@ function WalletWorkspace(props: {
       a.id === UNCATEGORIZED_PKG ? -1 : b.id === UNCATEGORIZED_PKG ? 1 : a.id.localeCompare(b.id),
     );
   }, [wallet]);
-  const walletPkgName = (pid: string) =>
-    pid === UNCATEGORIZED_PKG ? "미분류" : (wallet.packages?.[pid]?.displayName ?? pid);
 
   // 우측 트리: 라이브러리 디렉토리 구조(폴더 멤버십 = defaults.packageId).
   const defsByFolder = useMemo(() => {
