@@ -217,7 +217,13 @@ function relevanceOf(def: PolicyDef): { tokens: string[]; protocols: string[] } 
   const venues = new Set<string>();
   deepFindStrings(man, "venue", venues);
   deepFindStrings(man, "name", venues); // venue.name etc.
-  const tokens = [...addrs].filter((s) => /^0x[0-9a-fA-F]{40}$/.test(s)).map((s) => s.toLowerCase());
+  // Map referenced token addresses → SYMBOLS so they match the dashboard's
+  // token rows (which key relevance by symbol). Unknown tokens contribute no
+  // relevance rather than a never-matching address.
+  const tokens = [...addrs]
+    .filter((s) => /^0x[0-9a-fA-F]{40}$/.test(s))
+    .map((s) => SYMBOL_BY_ADDR[s.toLowerCase()])
+    .filter((sym): sym is string => Boolean(sym));
   const protocols = [...venues].filter((s) => !/^0x/.test(s) && s.length < 30);
   return { tokens, protocols };
 }
