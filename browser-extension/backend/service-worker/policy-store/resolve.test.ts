@@ -40,6 +40,7 @@ import {
   defRefForPolicyId,
   extractTrigger,
   filterForAction,
+  isWalletRegistered,
   resolveBundlesForWallet,
   type ResolvedBundle,
 } from "./resolve";
@@ -86,6 +87,13 @@ describe("resolveBundlesForWallet", () => {
     await bind("u", { defId: "def::a", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
     await setPackageEnabled("u", { address: "0xa1", packageId: UNCATEGORIZED_PKG, enabled: false });
     expect(await resolveBundlesForWallet("u", "0xa1")).toEqual([]);
+  });
+
+  it("isWalletRegistered: true for a wallet with bindings (case-insensitive), false otherwise", async () => {
+    await putDef("u", def("def::a"));
+    await bind("u", { defId: "def::a", packageId: UNCATEGORIZED_PKG, addresses: ["0xA1"] });
+    expect(await isWalletRegistered("u", "0xA1")).toBe(true); // 대소문자 무관(소문자 키)
+    expect(await isWalletRegistered("u", "0xUNKNOWN")).toBe(false); // 미등록(=defaults.enabled 폴백)
   });
 
   it("a def that fails to render is skipped, others survive", async () => {

@@ -92,6 +92,14 @@ export function filterForAction(bundles: ResolvedBundle[], metas: ActionMeta[]):
   );
 }
 
+/** 이 (uid, 주소)가 등록된 지갑인지 — verdict 진단용. true면 per-wallet
+ *  바인딩(토글 존중)이 적용되고, false면 미등록 → defaults.enabled 전역 폴백이
+ *  걸린다(토글 무시). 주소는 소문자 키. */
+export async function isWalletRegistered(uid: string, address: string): Promise<boolean> {
+  const s = await readStore(uid);
+  return s.wallets.byAddress[address.toLowerCase()] !== undefined;
+}
+
 export async function resolveBundlesForWallet(uid: string, fromAddress: string): Promise<ResolvedBundle[]> {
   await ensureSeeded(uid);
   const s = await readStore(uid);

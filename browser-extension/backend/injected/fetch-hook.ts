@@ -163,7 +163,15 @@ function install(): void {
     // lookup. Best-effort — never blocks or fails the verdict.
     await ensureConnectedAccount();
     for (const payload of payloads) {
-      if (connectedAccount && !payload.wallet_id) {
+      // Always stamp `wallet_id` from OUR `eth_accounts` read — never preserve a
+      // value already on the payload. The /exchange parser does not copy
+      // `wallet_id` from the page body today, but the SW now selects the policy
+      // SET by this address (per-wallet binding resolution), so OVERWRITE rather
+      // than skip-if-present: a page-supplied `wallet_id` must never survive and
+      // pick which wallet's policies guard the order. (Defense-in-depth — closes
+      // the only field HL ignores, hence the only one that could decouple the
+      // evaluated principal from the executing account.)
+      if (connectedAccount) {
         payload.wallet_id = { address: connectedAccount, chains: [] };
       }
       const ok = await sendToStreamAndAwaitResponse(

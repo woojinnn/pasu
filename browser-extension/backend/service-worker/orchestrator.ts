@@ -30,7 +30,13 @@ import {
   ServerError as PasuServerError,
 } from "./pasu-auth";
 import { getCurrentUserId } from "./dashboard/current-user";
-import { collectActionMetas, defRefForPolicyId, filterForAction, resolveBundlesForWallet } from "./policy-store/resolve";
+import {
+  collectActionMetas,
+  defRefForPolicyId,
+  filterForAction,
+  isWalletRegistered,
+  resolveBundlesForWallet,
+} from "./policy-store/resolve";
 import type {
   ActionBundleInputDto,
   ActionTxInputDto,
@@ -53,6 +59,7 @@ import {
 } from "./venue/collect-hl-leverage";
 import { collectOrderEnrichment } from "./venue/collect-order-enrichment";
 import { resolveOrderSymbol } from "./venue/resolve-order-symbol";
+import { resolveHlMaster } from "./venue/resolve-hl-master";
 import {
   normalizeTypedDataPayload,
   routeTypedSignaturePayload,
@@ -764,9 +771,29 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     to: HL_TO_SENTINEL,
   } as const;
 
-  // 주문 제출자 지갑의 effective 바인딩을 가져온다.
+  // 주문 제출자 지갑의 effective 바인딩을 가져온다. HL 주문은 sentinel
+  // submitter(`meta.submitter`)로 들어오므로 그대로 쓰면 미등록 지갑 →
+  // defaults.enabled 전역 폴백이 걸려 per-wallet 토글이 무시된다. fetch-hook이
+  // `eth_accounts`에서 읽어 payload에 stamp한 연결 master(또는 vaultAddress /
+  // per-origin store)를 해석해 그 지갑의 effective 바인딩으로 평가한다 →
+  // 대시보드의 per-policy 토글이 HL 주문에도 적용된다. 해석 실패 시 sentinel로
+  // degrade(= 기존 defaults.enabled 폴백, best-effort, never throws).
   const venueUid = (await getCurrentUserId()) ?? "anonymous";
-  const resolved = await resolveBundlesForWallet(venueUid, tx.from);
+  const master = await resolveHlMaster(message.data);
+  const evalAddress = master ?? tx.from;
+  const resolved = await resolveBundlesForWallet(venueUid, evalAddress);
+  // 진단: registered=false 면 evalAddress가 미등록 → per-wallet 토글이 아니라
+  // defaults.enabled 전역 폴백으로 평가된 것(= 토글이 이 주문에 안 먹은 경우).
+  // master=null(주소 미해석)이나 venueUid="anonymous"(미로그인)면 대개 여기로 샌다.
+  const registered = await isWalletRegistered(venueUid, evalAddress);
+  console.info("[Pasu] HL venue policy-set resolved", {
+    requestId: message.requestId,
+    venueUid,
+    master,
+    evalAddress,
+    registered,
+    bundleCount: resolved.length,
+  });
   // 액션-단위 사전 필터(최적화) — 정밀 게이트는 엔진의 trigger 매칭.
   const bundles = filterForAction(resolved, collectActionMetas(action)).map(
     ({ policy, manifest }) => ({ policy, manifest }),

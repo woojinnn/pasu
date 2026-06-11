@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { RequestType, type Message } from "@lib/types";
+import { RequestType, type Message, type VenueOrderPayload } from "@lib/types";
 
 const OWNER = "0x1111111111111111111111111111111111111111";
 const ROUTER = "0x2222222222222222222222222222222222222222";
@@ -148,6 +148,7 @@ vi.mock("../wasm-bridge", () => ({
 }));
 vi.mock("../policy-store/resolve", () => ({
   resolveBundlesForWallet: mocks.resolveBundlesForWallet,
+  isWalletRegistered: vi.fn(async () => true),
   defRefForPolicyId: vi.fn(async () => null),
   // 픽스처 번들은 trigger 인덱스가 없으므로(=항상 포함) 필터는 패스스루로 충분.
   filterForAction: (bundles: unknown[]) => bundles,
@@ -194,6 +195,20 @@ vi.mock("../sig-routing", () => ({
     }
     return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
   },
+}));
+// Venue (HL) order enrichment collectors hit the HL info API; stub them inert so
+// the venue lifecycle test stays network-free. `resolve-hl-master` is NOT mocked
+// (it reads `payload.wallet_id` / storage — no network), so the master-resolution
+// wiring is exercised for real.
+vi.mock("../venue/collect-hl-leverage", () => ({
+  collectHlLeverage: vi.fn(async () => ({})),
+  noteHlLeverageUpdate: vi.fn(() => undefined),
+}));
+vi.mock("../venue/collect-order-enrichment", () => ({
+  collectOrderEnrichment: vi.fn(async () => ({})),
+}));
+vi.mock("../venue/resolve-order-symbol", () => ({
+  resolveOrderSymbol: vi.fn(async () => undefined),
 }));
 
 import { decideMessage } from "../orchestrator";
@@ -243,6 +258,25 @@ function untypedMessage(requestId = "sig-1"): Message {
       message: "sign this opaque payload",
     },
   };
+}
+
+/** A Hyperliquid venue order. When `walletAddress` is set it rides on the
+ *  payload as `wallet_id` (what the fetch-hook stamps from `eth_accounts`), so
+ *  `resolveHlMaster` can recover the master for per-wallet policy resolution. */
+function venueMessage(requestId: string, walletAddress?: string): Message {
+  const data: VenueOrderPayload = {
+    type: RequestType.VENUE_ORDER,
+    chainId: 0,
+    hostname: "app.hyperliquid.xyz",
+    venue: "hyperliquid",
+    endpoint: "https://api-ui.hyperliquid.xyz/exchange",
+    hlAction: {
+      kind: "order",
+      order: { a: 0, b: false, p: "60000", s: "0.1", r: false, t: { limit: { tif: "Gtc" } } },
+    },
+  };
+  if (walletAddress) data.wallet_id = { address: walletAddress, chains: [] };
+  return { requestId, data };
 }
 
 function approve(requestId: string, ok: boolean): void {
@@ -744,6 +778,28 @@ describe("orchestrator", () => {
         ],
       }),
     );
+  });
+
+  // ── Venue (HL) order — per-wallet policy resolution ──────────────────────
+  // HL orders are submitted by a sentinel (`meta.submitter`), so historically
+  // the policy set resolved against an UNREGISTERED address → the global
+  // `defaults.enabled` fallback, and per-wallet toggles never applied. The
+  // fetch-hook stamps the connected account onto `payload.wallet_id`; the venue
+  // lifecycle now resolves that master and keys the policy set by it, so the
+  // user's per-wallet binding toggles govern HL orders too.
+  describe("venue order resolves the policy set against the connected master", () => {
+    const MASTER = "0x676fa5b94067c2be14bc025df6c5c80dedf49a54";
+    const SUBMITTER_SENTINEL = "0x000000000000000000000000000000000000a01c";
+
+    it("keys the policy set by the wallet_id master (not the sentinel)", async () => {
+      await decideMessage(venueMessage("venue-master-1", MASTER), { onAwaitingUser: vi.fn() });
+      expect(mocks.resolveBundlesForWallet).toHaveBeenCalledWith("u-test", MASTER);
+    });
+
+    it("falls back to the submitter sentinel when no master is resolvable", async () => {
+      await decideMessage(venueMessage("venue-nomaster-1"), { onAwaitingUser: vi.fn() });
+      expect(mocks.resolveBundlesForWallet).toHaveBeenCalledWith("u-test", SUBMITTER_SENTINEL);
+    });
   });
 
   // ── Typed-data signature verdict path (typedSignatureLifecycle) ──────────
