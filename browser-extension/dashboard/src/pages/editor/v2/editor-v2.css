@@ -2625,3 +2625,28 @@
 .wt-binding-main.clickable:hover {
   background: var(--fog-100);
 }
+
+/* 지갑별 정책 우측: 전용/공유 대섹션 */
+.wt-section {
+  margin-bottom: 22px;
+}
+.wt-section-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--slate-400);
+  margin: 2px 2px 8px;
+}
+.wt-section-h::before,
+.wt-section-h::after {
+  content: "";
+  height: 1px;
+  background: var(--fog-300, #e3e7e3);
+  flex: 0 0 28px;
+}
+.wt-section-h::after {
+  flex: 1;
+}

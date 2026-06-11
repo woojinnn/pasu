@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/** 지갑 전용 정책(def.hidden)이 모이는 가상 폴더 키. */
-const WALLET_ONLY_FOLDER = "__wallet_only__";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -190,16 +188,8 @@ function WalletWorkspace(props: {
   // 우측 트리: 라이브러리 디렉토리 구조(폴더 멤버십 = defaults.packageId).
   const defsByFolder = useMemo(() => {
     const m = new Map<string, PolicyDef[]>();
-    const boundHere = new Set(Object.values(wallet.bindings).map((b) => b.defId));
     for (const d of Object.values(snap.library.defs)) {
-      // 지갑 전용 정책: 이 지갑에 바인딩이 있을 때만, 전용 폴더로.
-      if (d.hidden) {
-        if (!boundHere.has(d.id)) continue;
-        const arr = m.get(WALLET_ONLY_FOLDER) ?? [];
-        arr.push(d);
-        m.set(WALLET_ONLY_FOLDER, arr);
-        continue;
-      }
+      if (d.hidden) continue; // 지갑 전용 정책은 별도 섹션에서
       // 죽은 패키지를 가리키면 미분류로 — 안 그러면 폴더가 안 그려져 정책이
       // 사라져 보인다.
       const raw = d.defaults.packageId;
@@ -207,6 +197,20 @@ function WalletWorkspace(props: {
       const arr = m.get(key) ?? [];
       arr.push(d);
       m.set(key, arr);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
+    return m;
+  }, [snap]);
+
+  // 이 지갑 전용 정책: 바인딩의 지갑 패키지 기준으로 그룹 (라이브러리 폴더 무관).
+  const walletOnlyByPkg = useMemo(() => {
+    const m = new Map<string, PolicyDef[]>();
+    for (const b of Object.values(wallet.bindings)) {
+      const d = snap.library.defs[b.defId];
+      if (!d?.hidden) continue;
+      const arr = m.get(b.packageId) ?? [];
+      if (!arr.some((x) => x.id === d.id)) arr.push(d);
+      m.set(b.packageId, arr);
     }
     for (const arr of m.values()) arr.sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"));
     return m;
@@ -293,6 +297,86 @@ function WalletWorkspace(props: {
 
   const totalActive = Object.values(wallet.bindings).filter((b) => isEffectiveOn(wallet, b)).length;
   const scopePkgId = scope === "all" ? UNCATEGORIZED_PKG : scope;
+
+  /** 폴더 박스 한 개 — 전용 섹션(지갑 패키지 그룹)과 공유 섹션(라이브러리 폴더)이
+   *  같은 모양을 공유한다. bindingFilter가 있으면 그 그룹의 바인딩 줄만. */
+  const renderFolder = (
+    folder: { id: string; displayName: string },
+    defs: PolicyDef[],
+    bindingFilter: ((b: Binding) => boolean) | null,
+  ) => {
+    if (defs.length === 0) return null;
+    const open = !collapsed.has(folder.id);
+    return (
+      <div key={folder.id} className="ld-folder">
+        <div className="ld-folderhead" onClick={() => toggleFolder(folder.id)}>
+          <span className={`ld-caret${open ? " open" : ""}`}>
+            <CaretRightIcon />
+          </span>
+          <FolderIcon />
+          <span className="nm">{folder.displayName}</span>
+          <span className="cnt">{defs.length}</span>
+        </div>
+        {open && (
+          <div className="ld-defs">
+            {defs.map((d) => {
+              const cat = catKey(d.cat);
+              const rows = (bindingsByDef.get(d.id) ?? []).filter(
+                (b) =>
+                  (scope === "all" || b.packageId === scope) &&
+                  (bindingFilter === null || bindingFilter(b)),
+              );
+              return (
+                <div key={d.id} className="wt-def">
+                  <div
+                    className="ld-def"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(DRAG_DEF_MIME, d.id);
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
+                  >
+                    <span
+                      className="ld-cat"
+                      style={{ background: catStyle(cat).hex }}
+                      title={catLabel(cat)}
+                    />
+                    <span className={`nm${rows.length === 0 ? " dim" : ""}`}>{d.displayName}</span>
+                    <span className="acts">
+                      <button
+                        type="button"
+                        className="ev2-iconbtn"
+                        title={`${walletPkgName(scopePkgId)}에 추가`}
+                        onClick={() => addDefToPackage(d.id, scopePkgId)}
+                      >
+                        <PlusIcon />
+                      </button>
+                    </span>
+                  </div>
+                  {rows.map((b) => (
+                    <BindingRow
+                      key={b.id}
+                      binding={b}
+                      def={d}
+                      wallet={wallet}
+                      pkgName={walletPkgName(b.packageId)}
+                      onOpen={() =>
+                        navigate(
+                          `/editor/${encodeURIComponent(d.id)}?wallet=${address}&binding=${encodeURIComponent(b.id)}`,
+                        )
+                      }
+                      onRun={run}
+                      address={address}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="ev2-2col">
@@ -417,94 +501,38 @@ function WalletWorkspace(props: {
 
         <div className="ev2-scroll">
           <div className="ld">
-            {[
-              ...(defsByFolder.has(WALLET_ONLY_FOLDER)
-                ? [{ id: WALLET_ONLY_FOLDER, displayName: "이 지갑 전용" }]
-                : []),
-              ...Object.values(snap.library.packages).sort((a, b) =>
-                a.id === UNCATEGORIZED_PKG ? 1 : b.id === UNCATEGORIZED_PKG ? -1 : a.id.localeCompare(b.id),
-              ),
-            ]
-              .map((folder) => {
-                let defs = defsByFolder.get(folder.id) ?? [];
-                // 스코프(지갑 패키지) 선택 시: 그 패키지에 바인딩된 정책만.
-                if (scope !== "all") {
-                  defs = defs.filter((d) =>
-                    (bindingsByDef.get(d.id) ?? []).some((b) => b.packageId === scope),
-                  );
-                }
-                if (defs.length === 0) return null;
-                const open = !collapsed.has(folder.id);
-                return (
-                  <div key={folder.id} className="ld-folder">
-                    <div className="ld-folderhead" onClick={() => toggleFolder(folder.id)}>
-                      <span className={`ld-caret${open ? " open" : ""}`}>
-                        <CaretRightIcon />
-                      </span>
-                      <FolderIcon />
-                      <span className="nm">{folder.displayName}</span>
-                      <span className="cnt">{defs.length}</span>
-                    </div>
-                    {open && (
-                      <div className="ld-defs">
-                        {defs.map((d) => {
-                          const cat = catKey(d.cat);
-                          const rows = (bindingsByDef.get(d.id) ?? []).filter(
-                            (b) => scope === "all" || b.packageId === scope,
-                          );
-                          return (
-                            <div key={d.id} className="wt-def">
-                              <div
-                                className="ld-def"
-                                draggable
-                                onDragStart={(e) => {
-                                  e.dataTransfer.setData(DRAG_DEF_MIME, d.id);
-                                  e.dataTransfer.effectAllowed = "copy";
-                                }}
-                              >
-                                <span
-                                  className="ld-cat"
-                                  style={{ background: catStyle(cat).hex }}
-                                  title={catLabel(cat)}
-                                />
-                                <span className={`nm${rows.length === 0 ? " dim" : ""}`}>
-                                  {d.displayName}
-                                </span>
-                                <span className="acts">
-                                  <button
-                                    type="button"
-                                    className="ev2-iconbtn"
-                                    title={`${walletPkgName(scopePkgId)}에 추가`}
-                                    onClick={() => addDefToPackage(d.id, scopePkgId)}
-                                  >
-                                    <PlusIcon />
-                                  </button>
-                                </span>
-                              </div>
-                              {rows.map((b) => (
-                                <BindingRow
-                                  key={b.id}
-                                  binding={b}
-                                  def={d}
-                                  wallet={wallet}
-                                  pkgName={walletPkgName(b.packageId)}
-                                  onOpen={() =>
-                                    navigate(
-                                      `/editor/${encodeURIComponent(d.id)}?wallet=${address}&binding=${encodeURIComponent(b.id)}`,
-                                    )
-                                  }
-                                  onRun={run}
-                                  address={address}
-                                />
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {walletOnlyByPkg.size > 0 && (
+              <div className="wt-section">
+                <div className="wt-section-h">이 지갑 전용 정책</div>
+                {[...walletOnlyByPkg.entries()]
+                  .sort(([a], [b]) =>
+                    a === UNCATEGORIZED_PKG ? 1 : b === UNCATEGORIZED_PKG ? -1 : a.localeCompare(b),
+                  )
+                  .map(([pkgId, defs]) =>
+                    renderFolder(
+                      { id: `own:${pkgId}`, displayName: walletPkgName(pkgId) },
+                      scope === "all" ? defs : pkgId === scope ? defs : [],
+                      (b) => b.packageId === pkgId,
+                    ),
+                  )}
+              </div>
+            )}
+            <div className="wt-section">
+              <div className="wt-section-h">라이브러리 공유 정책</div>
+              {Object.values(snap.library.packages)
+                .sort((a, b) =>
+                  a.id === UNCATEGORIZED_PKG ? 1 : b.id === UNCATEGORIZED_PKG ? -1 : a.id.localeCompare(b.id),
+                )
+                .map((folder) => {
+                  let defs = defsByFolder.get(folder.id) ?? [];
+                  if (scope !== "all") {
+                    defs = defs.filter((d) =>
+                      (bindingsByDef.get(d.id) ?? []).some((b) => b.packageId === scope),
+                    );
+                  }
+                  return renderFolder(folder, defs, null);
+                })}
+            </div>
           </div>
         </div>
       </section>
