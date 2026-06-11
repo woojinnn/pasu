@@ -87,20 +87,11 @@ AGENTS.md
 # The rest of /docs/ stays ignored (scratch research/audit notes).
 /docs/*
 
-# Methodology deliverables — these SHIP with the repo (not scratch notes). A
-# teammate/agent needs them to onboard a new protocol end-to-end. ALL instruction
-# docs live in crates/integration-tests/ now (README + PROTOCOL_ONBOARDING +
-# ACTIONBODY_EXTENSION_GUIDE); this one rule un-ignores every top-level .md there
-# (current + future). Subdir .md (logs/) stay ignored except their own README.md.
-!crates/integration-tests/*.md
-!crates/integration-tests/onboarding/
-!crates/integration-tests/onboarding/**
-!crates/integration-tests/onboarding/**/*.md
-
-# integration-tests per-run harness logs — keep the dir via its README (format
-# guide + curated index), but the actual per-run dumps are local scratch.
-/crates/integration-tests/logs/*
-!/crates/integration-tests/logs/README.md
+# integration-tests is a LOCAL-ONLY crate (v3 decode harness + onboarding docs +
+# golden corpus + per-protocol e2e). No production logic — kept out of git by the
+# user's decision. Also removed from the workspace `members` list so a fresh
+# clone (CI) builds without it; cargo simply ignores the on-disk dir locally.
+crates/integration-tests/
 
 # Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
 .pasu-runtime/
@@ -127,15 +118,8 @@ crates/policy-engine-wasm/tests/eigenlayer_*.rs
 crates/policy-engine-wasm/tests/hl_preset_e2e.rs
 crates/policy-engine-wasm/tests/airdrop_claim_preset_e2e.rs
 crates/policy-engine-wasm/tests/data/
-crates/integration-tests/tests/bridge_preset_e2e.rs
-crates/integration-tests/tests/bridge_e2e_corpus.rs
-crates/integration-tests/data/bridge-e2e-corpus/
-crates/integration-tests/tests/hl_preset_e2e.rs
-crates/integration-tests/tests/seaport_sign_order_verdict.rs
-crates/integration-tests/tests/seaport_fulfill_cancel_verdict.rs
-crates/integration-tests/tests/aave_staking_preset_e2e.rs
-crates/integration-tests/tests/curve_staking_preset_e2e.rs
-crates/integration-tests/tests/ethena_staking_preset_e2e.rs
+# (integration-tests/** preset e2e + corpus are covered by the whole-crate
+#  `crates/integration-tests/` ignore above.)
 # Built extension dist for aave/curve/ethena live e2e (regenerable build output).
 .live-e2e-aave-curve/
 e2e-browser/
