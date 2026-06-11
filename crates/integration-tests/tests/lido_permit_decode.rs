@@ -10,6 +10,7 @@
 //! policy-relevant fields bound:
 //!   - typed-data SIGN route  (the pre-sign shield: `eth_signTypedData`)
 //!   - on-chain `permit()` call route (selector 0xd505accf, the rarer tx form)
+//!
 //! with `amount = $args.value` and `spender = $args.spender` so the static Cedar
 //! comparisons (`amount == U256::MAX`, `spender ∉ allowlist`) can fire.
 //!
@@ -59,12 +60,11 @@ fn word_addr(a: &str) -> String {
 /// ABI-encode `permit(owner,spender,value,deadline,v,r,s)` (selector 0xd505accf).
 fn permit_calldata(owner: &str, spender: &str, value_hex64: &str, deadline: u64) -> String {
     format!(
-        "0xd505accf{owner}{spender}{value}{deadline}{v}{r}{s}",
+        "0xd505accf{owner}{spender}{value}{deadline:064x}{v:064x}{r}{s}",
         owner = word_addr(owner),
         spender = word_addr(spender),
         value = value_hex64,
-        deadline = format!("{deadline:064x}"),
-        v = format!("{:064x}", 27u64),
+        v = 27u64,
         r = "11".repeat(32),
         s = "22".repeat(32),
     )
@@ -317,16 +317,16 @@ fn req_withdrawals_with_permit_calldata(
     amount: u128,
 ) -> String {
     format!(
-        "0xacf41e4d{off}{owner}{value}{deadline}{v}{r}{s}{len}{amt}",
-        off = format!("{:064x}", 0xe0u64),
+        "0xacf41e4d{off:064x}{owner}{value}{deadline:064x}{v:064x}{r}{s}{len:064x}{amt:064x}",
+        off = 0xe0u64,
         owner = word_addr(owner),
         value = permit_value_hex64,
-        deadline = format!("{:064x}", 9_999_999_999u64),
-        v = format!("{:064x}", 27u64),
+        deadline = 9_999_999_999u64,
+        v = 27u64,
         r = "11".repeat(32),
         s = "22".repeat(32),
-        len = format!("{:064x}", 1u64),
-        amt = format!("{amount:064x}"),
+        len = 1u64,
+        amt = amount,
     )
 }
 

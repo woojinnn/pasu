@@ -245,9 +245,10 @@ mod tests {
     /// "never expires" endTime stays a valid Cedar Long instead of faulting.
     #[test]
     fn sign_order_max_end_time_clamps_to_i64_max() {
-        let mut action = match sign_order(vec![nft_offer_item()], vec![]) {
-            ActionBody::Marketplace(MarketplaceAction::SignOrder(a)) => a,
-            _ => unreachable!(),
+        let ActionBody::Marketplace(MarketplaceAction::SignOrder(mut action)) =
+            sign_order(vec![nft_offer_item()], vec![])
+        else {
+            unreachable!()
         };
         action.end_time = policy_state::primitives::Time::from_unix(u64::MAX);
         let ctx = lowered_ctx(&ActionBody::Marketplace(MarketplaceAction::SignOrder(
