@@ -677,28 +677,31 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   // the verdict. `tryV2VerdictPath` returns `undefined` (NOT a Fail verdict) when
   // there is no real action, no v2 bundle, or a plan/dispatch throw; the lifecycle
   // then fails closed below so a flaky WASM/RPC call cannot waive a tx through.
+  let v2Fault: EngineError | null = null;
   if (v3Outcome && v3Outcome.kind === "hit" && isTransaction(message)) {
     const v2 = await tryV2VerdictPath(message, v3Outcome.value.actions);
-    if (v2) {
+    if (v2.verdict) {
       console.info("[Pasu] declarative-verdict", {
         requestId: message.requestId,
         verdictSource: "declarative-v2",
-        verdict: v2.kind,
+        verdict: v2.verdict.kind,
         decoderId: v3Outcome.value.decoderId,
         matched:
-          v2.matched?.map((m) => ({
+          v2.verdict.matched?.map((m) => ({
             id: m.policy_id,
             severity: m.severity,
           })) ?? [],
       });
       return {
-        verdict: v2,
+        verdict: v2.verdict,
         verdictSource: "declarative-v2",
         ...(declarativeV3Meta ? { declarativeV3: declarativeV3Meta } : {}),
       };
     }
-    // tryV2VerdictPath returned undefined → no real action to evaluate, no v2
-    // bundle, or a plan/dispatch throw. Fall through to the fail-closed tail.
+    // No verdict → no real action to evaluate, no v2 bundle, or a
+    // plan/dispatch/evaluate throw (carried in `fault`). Fall through to the
+    // fail-closed tail, surfacing the explicit engine error when there is one.
+    v2Fault = v2.fault ?? null;
   }
 
   // FAIL-CLOSED tail: no decoder produced an evaluable verdict. Emit a warn
@@ -708,9 +711,10 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
     verdictSource: "fail_closed",
     verdict: "warn",
     nature,
+    ...(v2Fault ? { engineError: { kind: v2Fault.kind, message: v2Fault.message } } : {}),
   });
   return {
-    verdict: noDecoderVerdict(),
+    verdict: evaluateFaultVerdict(v2Fault),
     verdictSource: "fail_closed",
     ...(declarativeV3Meta ? { declarativeV3: declarativeV3Meta } : {}),
   };
@@ -1055,6 +1059,7 @@ async function typedSignatureLifecycle(
 
   const verdicts: VerdictDto[] = [];
   let anyLegThrew = false;
+  let firstEngineError: EngineError | null = null;
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
     const meta = (a as { meta?: unknown }).meta;
@@ -1092,6 +1097,9 @@ async function typedSignatureLifecycle(
         err: err instanceof Error ? err.message : String(err),
       });
       anyLegThrew = true;
+      if (firstEngineError === null && err instanceof EngineError) {
+        firstEngineError = err;
+      }
     }
   }
 
@@ -1101,7 +1109,7 @@ async function typedSignatureLifecycle(
   const aggregate = aggregateV2Verdicts(verdicts);
   if (aggregate.kind !== "fail" && anyLegThrew) {
     return {
-      verdict: noDecoderVerdict(),
+      verdict: evaluateFaultVerdict(firstEngineError),
       verdictSource: "fail_closed",
       declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
     };
@@ -1247,11 +1255,18 @@ async function evaluateBodyTree(
   return verdicts;
 }
 
+/** {@link tryV2VerdictPath} 결과. `verdict`가 없으면 평가 불가 — 호출자가
+ *  fail-closed 꼬리로 떨어지며, 원인이 명시적 엔진 오류였다면 `fault`로 전달. */
+interface V2PathResult {
+  verdict?: VerdictDto;
+  fault?: EngineError;
+}
+
 async function tryV2VerdictPath(
   message: Message,
   actions: Record<string, unknown>[],
-): Promise<VerdictDto | undefined> {
-  if (!isTransaction(message)) return undefined;
+): Promise<V2PathResult> {
+  if (!isTransaction(message)) return {};
 
   // Skip `Unknown` bodies — fall through to fail-closed handling.
   const realActions = actions.filter((a) => {
@@ -1262,7 +1277,7 @@ async function tryV2VerdictPath(
       (body as { domain?: unknown }).domain !== "unknown"
     );
   });
-  if (realActions.length === 0) return undefined;
+  if (realActions.length === 0) return {};
 
   // `message.data.chainId` is a number; v2 `tx.chain_id` expects the CAIP-2
   // `eip155:<n>` form or the serde/trigger match fails.
@@ -1275,11 +1290,12 @@ async function tryV2VerdictPath(
   // tx.from 지갑의 effective 바인딩을 가져온다. 미등록 지갑은 defaults.enabled 적용.
   const uid = (await getCurrentUserId()) ?? "anonymous";
   const resolved = await resolveBundlesForWallet(uid, tx.from);
-  if (resolved.length === 0) return undefined;
+  if (resolved.length === 0) return {};
   const policyRpcUrl = process.env.POLICY_RPC_URL ?? "http://127.0.0.1:8787";
 
   const verdicts: VerdictDto[] = [];
   let anyLegThrew = false;
+  let firstEngineError: EngineError | null = null;
   for (const a of realActions) {
     const action = (a as { body: unknown }).body;
     // 액션-단위 사전 필터(최적화) — 정밀 게이트는 엔진의 trigger 매칭.
@@ -1336,17 +1352,43 @@ async function tryV2VerdictPath(
         err: err instanceof Error ? err.message : String(err),
       });
       anyLegThrew = true;
+      if (firstEngineError === null && err instanceof EngineError) {
+        firstEngineError = err;
+      }
     }
   }
 
   // Deny-overrides with a fault floor:
   //   - a real `fail` from any leg outranks the fault → return it,
-  //   - a fault with no computed deny falls through to the caller's fail-closed tail,
+  //   - a fault with no computed deny falls through to the caller's fail-closed
+  //     tail, carrying the explicit EngineError(예: 깨진 정책의 install_failed)
+  //     so the warn shows the real reason instead of a generic no_decoder,
   //   - otherwise the real pass/warn aggregate stands.
   const aggregate = aggregateV2Verdicts(verdicts);
-  if (aggregate.kind === "fail") return aggregate;
-  if (anyLegThrew) return undefined;
-  return aggregate;
+  if (aggregate.kind === "fail") return { verdict: aggregate };
+  if (anyLegThrew) {
+    return firstEngineError ? { fault: firstEngineError } : {};
+  }
+  return { verdict: aggregate };
+}
+
+/** Fail-closed verdict for an unevaluable leg. Same approvable-warn semantics
+ *  as {@link noDecoderVerdict}, but an explicit `EngineError` (예: 깨진 정책의
+ *  install_failed) surfaces its kind + message verbatim — 일반 no_decoder로
+ *  뭉개면 어떤 정책이 문제인지 알 수 없다. */
+function evaluateFaultVerdict(err: EngineError | null): VerdictDto {
+  if (!err) return noDecoderVerdict();
+  return {
+    kind: "warn",
+    matched: [
+      {
+        policy_id: `__engine::${err.kind}`,
+        reason: err.message,
+        severity: "warn",
+        origin: "engine_error",
+      },
+    ],
+  };
 }
 
 /**

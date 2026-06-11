@@ -257,10 +257,7 @@ function approve(requestId: string, ok: boolean): void {
  * decideMessage` before approving — that would deadlock and (because the
  * per-actor lock is still held) cascade into later same-actor cases.
  */
-async function decideAndApprove(
-  message: Message,
-  ok: boolean,
-): Promise<{ ok: boolean; verdict: { kind: string } }> {
+async function decideAndApprove(message: Message, ok: boolean) {
   const callsBefore = mocks.browser.windows.create.mock.calls.length;
   const result = decideMessage(message, { onAwaitingUser: vi.fn() });
   await vi.waitFor(() =>
@@ -707,6 +704,32 @@ describe("orchestrator", () => {
     expect(mocks.planActionRpcV2).toHaveBeenCalledOnce();
     // evaluate never ran; the lifecycle fell through to the fail-closed tail.
     expect(mocks.evaluateActionV2).not.toHaveBeenCalled();
+    expect(mocks.auditAppend).toHaveBeenCalledWith(
+      expect.objectContaining({ verdictSource: "fail_closed" }),
+    );
+  });
+
+  it("p3: an evaluate EngineError surfaces its kind + message in the fail-closed warn", async () => {
+    // 깨진 정책(예: decimal("3"))의 install_failed가 일반 no_decoder로 뭉개지면
+    // 사용자가 원인을 알 수 없다 — kind/message가 그대로 verdict에 실려야 한다.
+    mocks.tryDeclarativeRouteV3.mockResolvedValueOnce(v3HitOutcome);
+    mocks.evaluateActionV2.mockRejectedValueOnce(
+      new mocks.MockEngineError(
+        "install_failed",
+        'Failed to parse as a decimal value: "3"',
+      ),
+    );
+
+    const result = await decideAndApprove(txMessage("p3-eval-engineerr-1"), true);
+
+    expect(result.ok).toBe(true); // 여전히 승인 가능한 warn (fail-closed)
+    expect(result.verdict.kind).toBe("warn");
+    expect(result.verdict.matched?.[0]).toEqual(
+      expect.objectContaining({
+        policy_id: "__engine::install_failed",
+        reason: 'Failed to parse as a decimal value: "3"',
+      }),
+    );
     expect(mocks.auditAppend).toHaveBeenCalledWith(
       expect.objectContaining({ verdictSource: "fail_closed" }),
     );

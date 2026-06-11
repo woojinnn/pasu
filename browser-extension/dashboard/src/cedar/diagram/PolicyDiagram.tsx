@@ -334,6 +334,19 @@ function valueExprText(rhs: Expr): string {
   return exprToText(rhs);
 }
 
+/** nano 미러 필드(leaf 이름이 `*Nano`)인가 — 폼과 동일한 규칙. */
+function isNanoPath(path: string | null): boolean {
+  return !!path && /Nano$/.test(path.split(".").pop() ?? "");
+}
+
+/** 비교값 텍스트 — nano 필드의 Long 리터럴은 폼 위젯처럼 사람 단위(÷10⁹)로. */
+function scaledValueText(path: string | null, rhs: Expr): string {
+  if (isNanoPath(path) && rhs.kind === "lit" && rhs.litType === "long") {
+    return String(Number(rhs.value) / 1e9);
+  }
+  return valueExprText(rhs);
+}
+
 /** A leaf comparison as plain Korean (field label + op phrase + value), or null
  *  when `e` isn't a humanizable comparison (caller falls back to `exprToText`). */
 function exprToKorean(e: Expr): string | null {
@@ -343,12 +356,12 @@ function exprToKorean(e: Expr): string | null {
     const path = attrPath(e.left);
     if (!path) return null;
     const emptyStr = e.right.kind === "lit" && e.right.litType === "string" && e.right.value === "";
-    return naturalCondition({ subject: labelForPath(path), op: e.op, value: valueExprText(e.right), emptyStr });
+    return naturalCondition({ subject: labelForPath(path), op: e.op, value: scaledValueText(path, e.right), emptyStr });
   }
   if (e.kind === "ext" && EXT_TO_OP[e.fn] && e.args.length === 2) {
     const path = attrPath(e.args[0]);
     if (!path) return null;
-    return naturalCondition({ subject: labelForPath(path), op: EXT_TO_OP[e.fn], value: valueExprText(e.args[1]) });
+    return naturalCondition({ subject: labelForPath(path), op: EXT_TO_OP[e.fn], value: scaledValueText(path, e.args[1]) });
   }
   return null;
 }
@@ -375,13 +388,18 @@ function leafParts(e: Expr): { title: string; detail?: string } {
     rhs: Expr,
   ): { title: string; detail?: string } | null => {
     if (!path) return null;
-    const unit = getGloss(path)?.unit?.ko ? ` ${getGloss(path)!.unit!.ko}` : "";
+    // nano 필드는 폼 위젯과 같은 단위(토큰)로 — 원시 nano Long을 보여주지 않는다.
+    const unit = isNanoPath(path)
+      ? " 토큰"
+      : getGloss(path)?.unit?.ko
+        ? ` ${getGloss(path)!.unit!.ko}`
+        : "";
     const title = labelForPath(path);
     const emptyStr = rhs.kind === "lit" && rhs.litType === "string" && rhs.value === "";
     if (emptyStr) {
       return { title, detail: op === "==" ? "비어 있음" : "비어 있지 않음" };
     }
-    return { title, detail: `${OP_SYM[op] ?? op} ${valueExprText(rhs)}${unit}` };
+    return { title, detail: `${OP_SYM[op] ?? op} ${scaledValueText(path, rhs)}${unit}` };
   };
 
   if (e.kind === "binary" && OP_SYM[e.op]) {

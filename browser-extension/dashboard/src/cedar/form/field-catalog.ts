@@ -215,15 +215,17 @@ export function labelForPath(path: string): string {
  *  A field stays prominent if it is glossed, a depth-1 primitive scalar, or a
  *  token-identity `<slot>.key.address`. */
 function isAdvancedField(path: string, fieldKind: FieldKind, glossed: boolean): boolean {
-  if (glossed) return false;
   const segs = path.split(".").slice(1); // drop "context"
   const leaf = segs[segs.length - 1] ?? "";
+  // Raw amount strings ("…(원본)") demote EVEN when glossed — they're exact
+  // uint256 strings with no ordering, so the form can only ==/≠ them; the
+  // nano/USD siblings are the comparable versions users actually want.
+  if (fieldKind === "primitive.String" && /amount|^buyMin|^sellAmount|^netInput|^minOut/i.test(leaf)) return true;
+  if (glossed) return false;
   // The token-identity address (what most token gates compare) stays prominent.
   if (/\.key\.address$/.test(path)) return false;
   // Bare record nodes (`.key`, state blobs) aren't comparable → hide.
   if (fieldKind === "record") return true;
-  // Raw-hex amount strings (no ordering) — the nano/USD siblings are friendlier.
-  if (fieldKind === "primitive.String" && /amount|^buyMin|^sellAmount|^netInput|^minOut/i.test(leaf)) return true;
   // Anything nested two or more levels deep (chain ids, venue internals, …).
   if (segs.filter((s) => s !== "key").length >= 2) return true;
   return false;
