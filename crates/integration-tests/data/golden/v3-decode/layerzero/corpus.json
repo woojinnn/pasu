@@ -2,7 +2,7 @@
   "_comment": "final probe",
   "transactions": [
     {
-      "intent": "ZRO transfer(to,amount) \u2014 ERC20 op UNCOVERED (no zro token file / no erc20 callkey)",
+      "intent": "ZRO transfer(to,amount) — ERC20 op UNCOVERED (no zro token file / no erc20 callkey)",
       "expect": "pass",
       "expect_domain": "token",
       "_note": "ZRO is an OFT *and* ERC20; transfer now covered via tokens/<chain>/zro.json erc20 auto-enumerate (added 2026-05-30). flipped error->pass",
@@ -19,7 +19,7 @@
       }
     },
     {
-      "intent": "ZRO approve(spender,amount) \u2014 ERC20 op UNCOVERED",
+      "intent": "ZRO approve(spender,amount) — ERC20 op UNCOVERED",
       "expect": "pass",
       "expect_domain": "token",
       "_note": "ZRO is an OFT *and* ERC20; approve now covered via tokens/<chain>/zro.json erc20 auto-enumerate (added 2026-05-30). flipped error->pass",
@@ -36,7 +36,7 @@
       }
     },
     {
-      "intent": "ZRO transferFrom(from,to,amount) \u2014 ERC20 op UNCOVERED",
+      "intent": "ZRO transferFrom(from,to,amount) — ERC20 op UNCOVERED",
       "expect": "pass",
       "expect_domain": "token",
       "_note": "ZRO is an OFT *and* ERC20; transferFrom now covered via tokens/<chain>/zro.json erc20 auto-enumerate (added 2026-05-30). flipped error->pass",
@@ -53,7 +53,7 @@
       }
     },
     {
-      "intent": "ClaimContract claim 0xf9429637 \u2014 COVERED (domain=airdrop)",
+      "intent": "ClaimContract claim 0xf9429637 — COVERED (domain=airdrop)",
       "expect": "pass",
       "chain_id": 42161,
       "tx_hash": "0xec653977e5dd0026d683de998d5ec1671fda717188c8b8b33a0636f9ab53c899",
@@ -69,23 +69,23 @@
       "expect_domain": "airdrop"
     },
     {
-      "intent": "ClaimContract donateAndClaim 0xac6ae3ee \u2014 COVERED",
+      "intent": "DonateAndClaim wrapper donateAndClaim 0xac6ae3ee — COVERED (REAL tx; wrapper 0xb09f…1523 is the actual user-facing entry per hub DonateAndClaimSet event — 99.95% of claims; hub never dispatched this selector)",
       "expect": "pass",
       "chain_id": 42161,
-      "tx_hash": "0x35a3dd26ea7f48bd9fd250f46103a634103ece573101ff0164c36da7e6acd150",
+      "tx_hash": "0x572a44fcc368e55f6b28e342af443eea66d02a9876a6c17682a0b9dcd7cfccee",
       "rpc": {
         "params": [
           {
-            "to": "0xd6b6a6701303b5ea36fa0edf7389b562d8f894db",
-            "value": "1500000000000000",
-            "data": "0xac6ae3ee00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000005543df729c0000000000000000000000000000000000000000000000000088793477d1a689bec00000000000000000000000000000000000000000000000000000000000000c00000000000000000000000006b2b2146f23ece18b378530245626604408e69c500000000000000000000000000000000000000000000000000000000000003200000000000000000000000000000000000000000000000000000000000000012bff23a605c3556f4486a629c05c3d0fae56b08bcf5799b957d8573d366389ee51c615c23e0da9591f30c070b9393949ac0646de4ccd0a3e5e3a2ea126393fe61ec945c169ca4503f60f0c044bcd877d5cff28d4b9473acd96afcbf0607cb76735e401fd26cd0a56f5dac628e8638a0956bccb4e6f3db6a480f012eb7abad3ce37bb99b3830557fc8d24231eac3fb8e5b02ae45ce725890441c48ead8e0e4059a3e28cb2a46baadb11d280475ce54aaccffcb5d624aa2c2a5d7a17b37ed18d33b5f3f0d521ddddc77085d1732375be07fecde8fbcc3311c5d11fab891fa2b0ea3142efb5d2596479625564f0397bfd48eb578f9807d16d6e374813c687878a7d76193ea08252f9eda193cede6cdbf916d8916462fda1bb7ecebf0e75a74fcaf2143d2201a4697e3597067066504312c05488b35fd36c3f26f1734ab3ade95c8e5792b1e09d3c364793f74c8183b8fb7bdc84e62b5eb4856ae52885244a135d916145fb5118cdb598a611b0134983128600030a1dbe2d71bf053ca07aeb122e1e682a2cc664385de2293373ce7197189c6870fcca61ef3ac8cc8c7b3ea659a593d60e639296b23ac69061b9686381620f2769b6461f2f8283f09fcadd7c546993233842b4347641016875343892f627ca4f612163afe5da9e49fbc199d985a66e1aaf80ab6132c798324cdd67f66391481f69134fee5aa02c785060435f3f67b20088ccc8a02c85b7fe99af88dcf064d2c0718e5cfff88a00ec71aaf2f10b16e8ddef83d0ba62361c4608ceaea3d715632d7bec9560cb744eca3114930a9263f950000000000000000000000000000000000000000000000000000000000000000"
+            "to": "0xb09f16f625b363875e39ada56c03682088471523",
+            "value": "276495288480235",
+            "data": "0xac6ae3ee00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000fb789373b1eb0000000000000000000000000000000000000000000000008a222086da28540000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000065b90ed9303eee10d6cea9464598fe4085616c580000000000000000000000000000000000000000000000000000000000000380000000000000000000000000000000000000000000000000000000000000001501ead9e0364dd9d93331d36d4ef81b428a1fc3a33f231ec24ac1922e4301eb865433e7331c68d3083736f7cff9c216fc5e6fdd65e1449b7779a4ab5b6a1fa514bec612eef8c1ab44785303ad12fd0bf04677d18a4613c62452d189cb396167c51e5b0344bcc06ffebb43be46d83834caaaef9561d4a4386c4509f9ac940b96c73b380c090190f8c506ab99967bf7e403dbdd60cffbef993429f27af9365a0ab6fe201b485af123eca7f76e3263ae2424ec514dffdd4dcb1063f902af517f6fabe3e929badd736ff165e1de7b31737b62390d537655914a215fa892a573089b8242a8bdd6fe4889d117b95cf829057570e6f354eb2e20bb7917bd267d17275813345ae793b7815afd7c2738e8e120c0194b1f1efba0d0925af5fa92bbc3f172de27001e8e078f83c6e100a0783b0fdce6ac4e7a0090cc272f6fa5a6c461880c310fee0c27cb174c9aace58fd914501fbf5310acb2e33f3c8539944e4a965ecdbf52a0a6f3e0d065c7e834cbd1d636648aeb8433d570393ce7a3f67552323f606f9687b46762f4ddfe8d00603ca32e64c96dc3c65b238f57564a71a269aed07e62800f9cccc6ff16789ff155429ab594e3539350428047dc6799124f46b91097e06b0a3b32a39d08bc458ead56ad9e901f8c6cafe1ddb79e1d8509c6cf8b464ef05763783f6e33a96e11bb3f38a29bb41983d450a60ff3398f9253f3f23829a80a3cc64ebf9bef52d136b7c7000e987ed42c4fadf413c224e012e8a8f7fc1a7cd35c656581aefbdb3eab3dc8197dcf17af62cd371d7c4fd5477cc217aeb2fca0bc9ae69f117d127a35e00c470d6bff380bfabbca78d86668984e867861853ee8fca042d488b6a933c88ec4b41ba407ff13521c2e67e842697017bc19ed9f9a8e5d65b28f8ec7c9c9fc471c6a5000a1906b04e8da896a739ffddf6d3b71e47fd60d0000000000000000000000000000000000000000000000000000000000000000"
           }
         ]
       },
       "expect_domain": "airdrop"
     },
     {
-      "intent": "ClaimContract donateAndClaim(uint256,uint256,uint256,bytes32[],address) 0x8b2eddf9 \u2014 UNCOVERED variant (2nd most frequent)",
+      "intent": "ClaimContract donateAndClaim(uint256,uint256,uint256,bytes32[],address) 0x8b2eddf9 — UNCOVERED variant (2nd most frequent)",
       "expect": "error",
       "chain_id": 42161,
       "tx_hash": "0x16b63fa358d050cf3c2915dae2fb9d03380a3f13708eb02a70d135f8b80f3385",
@@ -101,7 +101,7 @@
       "expect_error": "no_declarative_v3_mapper"
     },
     {
-      "intent": "ClaimContract claim(uint256,uint256,bytes32[]) 0x18d79d13 \u2014 UNCOVERED claim variant",
+      "intent": "ClaimContract claim(uint256,uint256,bytes32[]) 0x18d79d13 — UNCOVERED claim variant",
       "expect": "error",
       "chain_id": 42161,
       "tx_hash": "0x14780eef0d861b39f18de6a6472103e7fd902099b49065ee36ff6a122380c2ae",
@@ -117,7 +117,7 @@
       "expect_error": "no_declarative_v3_mapper"
     },
     {
-      "intent": "ClaimContract donateAndClaim(uint256,uint256,bytes32[],address) 0xcfaf711d \u2014 UNCOVERED variant",
+      "intent": "ClaimContract donateAndClaim(uint256,uint256,bytes32[],address) 0xcfaf711d — UNCOVERED variant",
       "expect": "error",
       "chain_id": 42161,
       "tx_hash": "0x0d289293b5e4d67f5053b6b941466981769ea523ec93299c726bcdf76a3d728d",
@@ -133,7 +133,7 @@
       "expect_error": "no_declarative_v3_mapper"
     },
     {
-      "intent": "OFT send 0xc7c7f5b3 \u2014 COVERED (layerzero/oft/send manifest, domain=unknown by design; synthetic calldata, real send not in chain1/42161 sample window)",
+      "intent": "OFT send 0xc7c7f5b3 — COVERED (layerzero/oft/send manifest, domain=unknown by design; synthetic calldata, real send not in chain1/42161 sample window)",
       "expect": "excluded",
       "chain_id": 1,
       "rpc": {

@@ -121,9 +121,11 @@ crates/policy-engine/tests/eigenlayer_preset_verify_gate.rs
 crates/policy-engine/tests/preset_restaking_eigenlayer_gate.rs
 crates/policy-engine/tests/preset_staking_verify_gate.rs
 crates/policy-engine/tests/seaport_preset_compile_gate.rs
+crates/policy-engine/tests/airdrop_preset_compile_gate.rs
 # Per-preset e2e tests + their on-chain corpus (read the local presets/ tree).
 crates/policy-engine-wasm/tests/eigenlayer_*.rs
 crates/policy-engine-wasm/tests/hl_preset_e2e.rs
+crates/policy-engine-wasm/tests/airdrop_claim_preset_e2e.rs
 crates/policy-engine-wasm/tests/data/
 crates/integration-tests/tests/bridge_preset_e2e.rs
 crates/integration-tests/tests/bridge_e2e_corpus.rs

@@ -302,6 +302,7 @@ mod tests {
                 siblings: vec!["0x01".into(), "0x02".into()],
             }),
             sig: None,
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: live_bool(true),
                 actual_amount: live_amount(1_000_000_000_000_000_000u128),
@@ -382,6 +383,7 @@ mod tests {
             recipient: user(),
             proof: None,
             sig: Some("0xdeadbeef".into()),
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: live_bool(true),
                 actual_amount: live_amount(500),
@@ -409,6 +411,7 @@ mod tests {
             recipient: user(),
             proof: None,
             sig: None,
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: live_bool(true),
                 actual_amount: live_amount(500),
@@ -434,6 +437,7 @@ mod tests {
             recipient: user(),
             proof: None,
             sig: None,
+            donation: None,
             live_inputs: ClaimAirdropLiveInputs {
                 is_still_claimable: live_bool(true),
                 actual_amount: live_amount(7_777),

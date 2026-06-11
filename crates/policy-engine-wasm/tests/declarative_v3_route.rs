@@ -5195,6 +5195,10 @@ const LZ_OFT_SEND_MANIFEST: &str =
 
 // Verified 1차 addresses (task body).
 const LZ_HUB: &str = "0xd6b6a6701303b5ea36fa0edf7389b562d8f894db"; // ClaimContract, Arbitrum
+                                                                   // DonateAndClaim wrapper — the user-facing donateAndClaim entry the hub
+                                                                   // designated on-chain (DonateAndClaimSet, block 223776739); the hub itself
+                                                                   // never dispatched 0xac6ae3ee. 2026-06-11 manifest correction.
+const LZ_DONATE_WRAPPER: &str = "0xb09f16f625b363875e39ada56c03682088471523";
 const LZ_ZRO: &str = "0x6985884c4392d348587b19cb9eaaf157f13271cd"; // ZRO ERC20 / OFT
 const LZ_ARBITRUM: u64 = 42161;
 const LZ_SUBMITTER: &str = "0x000000000000000000000000000000000000aaaa";
@@ -5289,10 +5293,13 @@ fn b4_layerzero_donate_and_claim() {
     );
 
     // donateAndClaim(currency, amountToDonate, zroAmount, proof, to, extraOptions)
+    // currency = 0 → USDC (1차-verified on-chain: 65,384 real txs transfer
+    // 0xaf88…5831). amountToDonate is the gated value-out; zroAmount is the
+    // claimed amount (proof-bound) → donation.claim_amount.
     let calldata = encode_calldata(
         "0xac6ae3ee",
         &[
-            DynSolValue::Uint(AlloyU256::from(0u64), 8), // currency = 0 (native fee)
+            DynSolValue::Uint(AlloyU256::from(0u64), 8), // currency = 0 (USDC)
             DynSolValue::Uint(AlloyU256::from(1_000_000_000_000_000u128), 256), // amountToDonate
             DynSolValue::Uint(AlloyU256::from(7_000_000_000_000_000_000u128), 256), // zroAmount
             DynSolValue::Array(lz_proof_siblings()),
@@ -5300,7 +5307,13 @@ fn b4_layerzero_donate_and_claim() {
             DynSolValue::Bytes(vec![]),
         ],
     );
-    let input = route_input(LZ_ARBITRUM, LZ_HUB, "0xac6ae3ee", calldata, LZ_SUBMITTER);
+    let input = route_input(
+        LZ_ARBITRUM,
+        LZ_DONATE_WRAPPER,
+        "0xac6ae3ee",
+        calldata,
+        LZ_SUBMITTER,
+    );
     let parsed = route_ok(input);
 
     let body = &parsed["data"]["actions"][0]["body"];
@@ -5310,12 +5323,66 @@ fn b4_layerzero_donate_and_claim() {
         body["claim_target"]["kind"], "merkle_distributor",
         "{parsed}"
     );
-    assert_eq!(body["claim_target"]["contract"], LZ_HUB, "{parsed}");
+    assert_eq!(
+        body["claim_target"]["contract"], LZ_DONATE_WRAPPER,
+        "{parsed}"
+    );
     assert_eq!(body["recipient"], LZ_RECIPIENT, "{parsed}");
     assert_eq!(
         body["proof"]["siblings"].as_array().unwrap().len(),
         2,
         "{parsed}"
+    );
+    // Donation leg (pay-to-claim) decoded from calldata. ActionBody serde is
+    // snake_case (`claim_amount`); `amount` is a raw U256 hex string.
+    let donation = &body["donation"];
+    assert_eq!(
+        donation["amount"],
+        "0x38d7ea4c68000", // 1e15 = amountToDonate
+        "{parsed}"
+    );
+    assert_eq!(
+        donation["claim_amount"],
+        "0x6124fee993bc0000", // 7e18 = zroAmount
+        "{parsed}"
+    );
+    // currency = 0 → USDC erc20 token via the value-map.
+    assert_eq!(donation["token"]["key"]["standard"], "erc20", "{parsed}");
+    assert_eq!(
+        donation["token"]["key"]["address"], "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        "{parsed}"
+    );
+}
+
+/// donateAndClaim with `currency = 2` (native) → the donation token resolves to
+/// the chain's native asset (no address), and amountToDonate == msg.value.
+#[test]
+fn b4_layerzero_donate_and_claim_native_currency() {
+    install_ok(LZ_DONATE_AND_CLAIM_MANIFEST);
+    let calldata = encode_calldata(
+        "0xac6ae3ee",
+        &[
+            DynSolValue::Uint(AlloyU256::from(2u64), 8), // currency = 2 (native)
+            DynSolValue::Uint(AlloyU256::from(276_495_288_480_235u128), 256), // amountToDonate
+            DynSolValue::Uint(AlloyU256::from(9_949_000_000_000_000_000u128), 256), // zroAmount
+            DynSolValue::Array(lz_proof_siblings()),
+            DynSolValue::Address(addr(LZ_RECIPIENT)),
+            DynSolValue::Bytes(vec![]),
+        ],
+    );
+    let input = route_input(
+        LZ_ARBITRUM,
+        LZ_DONATE_WRAPPER,
+        "0xac6ae3ee",
+        calldata,
+        LZ_SUBMITTER,
+    );
+    let parsed = route_ok(input);
+    let donation = &parsed["data"]["actions"][0]["body"]["donation"];
+    assert_eq!(donation["token"]["key"]["standard"], "native", "{parsed}");
+    assert!(
+        donation["token"]["key"].get("address").is_none(),
+        "native token carries no address: {parsed}"
     );
 }
 

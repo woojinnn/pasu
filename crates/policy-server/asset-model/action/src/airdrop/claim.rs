@@ -27,8 +27,40 @@ pub struct ClaimAirdropAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[tsify(optional, type = "string")]
     pub sig: Option<Bytes>,
+    /// Mandatory payment required to claim, when the distributor charges one
+    /// (e.g. LayerZero's Proof-of-Donation: `donateAndClaim` transfers a
+    /// donation before delivering the claim). `None` for claims with no payment
+    /// leg (Compound rewards, standalone Merkle claims, …). Statically decoded
+    /// from calldata — this is the *second* value-out direction of a claim
+    /// (the first being `recipient`): an inflated donation drains the signer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub donation: Option<ClaimDonation>,
     /// Live-fetched inputs (claimability, dynamic amount, token, claim window).
     pub live_inputs: ClaimAirdropLiveInputs,
+}
+
+/// The mandatory payment leg of a pay-to-claim distributor (e.g. LayerZero
+/// Proof-of-Donation). All three fields are statically decoded from the claim
+/// calldata — no oracle / live fetch.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct ClaimDonation {
+    /// Amount paid to claim (raw token units). For a native-currency donation
+    /// this equals `msg.value`; for an ERC20 donation it is the token amount.
+    /// A malicious/buggy frontend can inflate this above the required minimum
+    /// (the distributor's check is a `>=` threshold — over-payment is kept and
+    /// not refunded), so it is the gated quantity.
+    #[tsify(type = "string")]
+    pub amount: U256,
+    /// Token the donation is paid in, resolved from the distributor's currency
+    /// selector (e.g. LayerZero `currency` enum → USDC / USDT / native).
+    pub token: TokenRef,
+    /// The claimed-asset amount the donation is charged against (e.g. the ZRO
+    /// amount), so a policy can relate the payment to what is being claimed
+    /// without an oracle. Proof-bound (not attacker-malleable).
+    #[tsify(type = "string")]
+    pub claim_amount: U256,
 }
 
 /// Distributor variant identifying how the airdrop is claimed on-chain.
