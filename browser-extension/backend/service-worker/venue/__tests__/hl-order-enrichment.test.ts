@@ -57,6 +57,14 @@ function infoFetch(opts: {
   /** Override the clearinghouseState response (e.g. no positions). */
   positions?: Array<Record<string, unknown>>;
   noClearinghouse?: boolean;
+  /** Override `marginSummary` (e.g. an isolated account with ~$0 perp equity). */
+  marginSummary?: Record<string, unknown>;
+  /**
+   * activeAssetData `availableToTrade` collateral (USD). Default "34000" makes
+   * `totalMarginUsed + availableToTrade == accountValue` for the cross fixture.
+   * `null` omits the field entirely (the SW then can't compute a spot-aware ratio).
+   */
+  availableToTrade?: string | null;
 } = {}): ReturnType<typeof vi.fn<typeof fetch>> {
   const markPx: Record<string, string> = { BTC: "60000", ETH: "3000" };
   return vi.fn(async (_url: unknown, init?: unknown) => {
@@ -75,17 +83,30 @@ function infoFetch(opts: {
     }
     if (body.type === "activeAssetData") {
       const coin = body.coin ?? "BTC";
+      const avail =
+        opts.availableToTrade === null
+          ? {}
+          : {
+              availableToTrade: [
+                opts.availableToTrade ?? "34000",
+                opts.availableToTrade ?? "34000",
+              ],
+            };
       return jsonResponse({
         user: body.user,
         coin,
         leverage: { type: "cross", value: 26 },
+        ...avail,
         markPx: markPx[coin] ?? "100",
       });
     }
     if (body.type === "clearinghouseState") {
       if (opts.noClearinghouse) return jsonResponse({});
       return jsonResponse({
-        marginSummary: { accountValue: "50000", totalMarginUsed: "16000" },
+        marginSummary: opts.marginSummary ?? {
+          accountValue: "50000",
+          totalMarginUsed: "16000",
+        },
         assetPositions: opts.positions ?? [
           {
             position: {
@@ -144,7 +165,12 @@ describe("HlInfoClient new reads", () => {
     const fetchImpl = infoFetch();
     const client = new HlInfoClient({ fetchImpl });
     const d = await client.activeAssetDataFor(MASTER, "BTC");
-    expect(d).toEqual({ leverage: 26, leverageType: "cross", markPx: 60000 });
+    expect(d).toEqual({
+      leverage: 26,
+      leverageType: "cross",
+      markPx: 60000,
+      availableToTrade: 34000,
+    });
     // leverageFor reads the SAME cache entry → no second activeAssetData fetch.
     expect(await client.leverageFor(MASTER, "BTC")).toBe(26);
     const adCalls = fetchImpl.mock.calls.filter((c) => {
@@ -158,6 +184,15 @@ describe("HlInfoClient new reads", () => {
       }
     }).length;
     expect(adCalls).toBe(1);
+  });
+
+  it("activeAssetDataFor parses availableToTrade collateral (min of buy/sell)", async () => {
+    // availableToTrade is HL's per-(user,coin) USABLE COLLATERAL in USD (spot
+    // included), NOT a leveraged notional cap (maxTradeSzs is that). The min of
+    // the [buy, sell] pair is the conservative opening-direction figure.
+    const client = new HlInfoClient({ fetchImpl: infoFetch() });
+    const d = await client.activeAssetDataFor(MASTER, "BTC");
+    expect(d?.availableToTrade).toBe(34000);
   });
 
   it("clearinghouseStateFor parses margin summary + per-coin positions", async () => {
@@ -214,6 +249,40 @@ describe("collectOrderEnrichment", () => {
     expect(out.markets?.ETH).not.toHaveProperty("position_roe_bps");
     expect(out.markets?.ETH).not.toHaveProperty("liquidation_distance_bps");
     expect(out.account).toEqual({ account_value_usd: 50000, margin_used_ratio_bps: 3200 });
+  });
+
+  it("counts spot collateral via availableToTrade, not perp-only accountValue", async () => {
+    // Real isolated-account shape (0x676f…9a54): perp marginSummary.accountValue
+    // is $0.96 fully committed to a BTC isolated position, while $116 of spot
+    // USDC is usable as collateral (HL availableToTrade). The perp-only ratio
+    // (0.96/0.96 = 100%) is a false positive; the spot-aware ratio is ~0.8%.
+    await setConnectedAccount(HOST, MASTER);
+    const client = new HlInfoClient({
+      fetchImpl: infoFetch({
+        marginSummary: { accountValue: "0.958269", totalMarginUsed: "0.958269" },
+        availableToTrade: "116.453994",
+        positions: [],
+      }),
+    });
+    const out = await collectOrderEnrichment(order("ETH"), orderPayload(1), client);
+    // 0.958269 / (0.958269 + 116.453994) × 10000 = 81.6 → 82  (was 10000)
+    expect(out.account?.margin_used_ratio_bps).toBe(82);
+  });
+
+  it("omits margin_used_ratio_bps when availableToTrade is absent (no perp-only fallback)", async () => {
+    // Without availableToTrade the spot-aware denominator is unknown; rather than
+    // fall back to the perp-only accountValue (which reintroduces the FP), the
+    // ratio is omitted → the margin-health policy stays dormant (best-effort).
+    await setConnectedAccount(HOST, MASTER);
+    const client = new HlInfoClient({
+      fetchImpl: infoFetch({
+        marginSummary: { accountValue: "0.958269", totalMarginUsed: "0.958269" },
+        availableToTrade: null,
+        positions: [],
+      }),
+    });
+    const out = await collectOrderEnrichment(order("ETH"), orderPayload(1), client);
+    expect(out.account ?? {}).not.toHaveProperty("margin_used_ratio_bps");
   });
 
   it("uses vaultAddress as the master", async () => {

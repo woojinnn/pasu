@@ -69,6 +69,15 @@ export interface ActiveAssetData {
   leverageType: string | null;
   /** `markPx` — current mark price (numeric). */
   markPx: number | null;
+  /**
+   * `availableToTrade` — USABLE COLLATERAL in USD for this (user,coin), spot
+   * balances INCLUDED (NOT a leveraged notional cap — `maxTradeSzs` is that;
+   * proven live: `maxTradeSzs × markPx / availableToTrade == leverage`). HL
+   * returns `[buy, sell]`; we keep the conservative `min` (the opening
+   * direction). `null` when absent. Used to make the account margin-utilization
+   * ratio spot-aware instead of perp-only.
+   */
+  availableToTrade: number | null;
 }
 
 /** One open perp position from `clearinghouseState.assetPositions[].position`. */
@@ -118,6 +127,19 @@ function parseNum(value: unknown): number | null {
     return Number.isFinite(n) ? n : null;
   }
   return null;
+}
+
+/**
+ * Parse HL `availableToTrade` — a `[buy, sell]` pair of USD collateral strings —
+ * to the conservative `min` (the opening direction is the smaller side when a
+ * position already exists). `null` when the shape is unusable.
+ */
+function parseAvailableToTrade(value: unknown): number | null {
+  if (!Array.isArray(value)) return null;
+  const nums = value
+    .map(parseNum)
+    .filter((n): n is number => n !== null && n >= 0);
+  return nums.length > 0 ? Math.min(...nums) : null;
 }
 
 /**
@@ -284,6 +306,7 @@ export class HlInfoClient {
       leverage: value,
       leverageType: null,
       markPx: null,
+      availableToTrade: null,
     });
   }
 
@@ -355,6 +378,7 @@ function extractActiveAssetData(parsed: unknown): ActiveAssetData {
     leverage: null,
     leverageType: null,
     markPx: null,
+    availableToTrade: null,
   };
   if (!parsed || typeof parsed !== "object") return empty;
   const o = parsed as Record<string, unknown>;
@@ -369,7 +393,12 @@ function extractActiveAssetData(parsed: unknown): ActiveAssetData {
     const t = (lev as { type?: unknown }).type;
     if (typeof t === "string" && t.length > 0) leverageType = t;
   }
-  return { leverage, leverageType, markPx: parseNum(o.markPx) };
+  return {
+    leverage,
+    leverageType,
+    markPx: parseNum(o.markPx),
+    availableToTrade: parseAvailableToTrade(o.availableToTrade),
+  };
 }
 
 /** `{type:"clearinghouseState"}` → margin summary + per-coin positions. */

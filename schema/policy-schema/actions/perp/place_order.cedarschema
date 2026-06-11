@@ -49,8 +49,8 @@ namespace Perp {
     maxLeverage?: Long,                 // meta: this market's max leverage tier
     leverageType?: String,              // activeAssetData: "cross" | "isolated"
     notionalUsd?: Long,                 // order notional USD = round(size × markPx)
-    accountValueUsd?: Long,             // clearinghouseState: account equity (USD)
-    marginUsedRatioBps?: Long,          // clearinghouseState: totalMarginUsed / accountValue, in bps
+    accountValueUsd?: Long,             // clearinghouseState: perp account equity (USD; spot NOT included)
+    marginUsedRatioBps?: Long,          // totalMarginUsed / (totalMarginUsed + availableToTrade), in bps — SPOT-AWARE (NOT perp-only accountValue, which over-warns isolated accounts backed by spot USDC)
     positionRoeBps?: Long,              // clearinghouseState: signed return-on-equity (bps) of the EXISTING position in this market
     liquidationDistanceBps?: Long,      // |markPx − liquidationPx| / markPx (bps) for this market's position
     hasOpenPosition?: Bool,             // an open position already exists in this market

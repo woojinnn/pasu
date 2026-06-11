@@ -155,13 +155,26 @@ export async function collectOrderEnrichment(
     });
 
     // ── account-wide enrichment ──
+    // The margin-utilization ratio's denominator is the SPOT-AWARE total
+    // collateral (committed + usable), NOT perp-only `marginSummary.accountValue`.
+    // HL backs new perp orders with spot USDC (`activeAssetData.availableToTrade`,
+    // proven live to be USD collateral, leverage NOT applied), so an isolated
+    // account whose small perp equity is fully committed is NOT out of margin —
+    // perp-only would read 100% and over-warn (the 0x676f…9a54 false positive).
+    // Absent `availableToTrade` → ratio OMITTED (margin-health policy stays
+    // dormant) rather than falling back to the perp-only FP.
     const accountValue = chState?.accountValue ?? null;
     const totalMarginUsed = chState?.totalMarginUsed ?? null;
+    const availableCollateral = assetData?.availableToTrade ?? null;
+    const totalCollateral =
+      totalMarginUsed !== null && availableCollateral !== null
+        ? totalMarginUsed + availableCollateral
+        : null;
     const account: AccountEnrichmentWire = compact({
       account_value_usd: roundOrUndef(accountValue),
       margin_used_ratio_bps:
-        accountValue !== null && accountValue > 0 && totalMarginUsed !== null
-          ? roundOrUndef((totalMarginUsed / accountValue) * 10_000)
+        totalMarginUsed !== null && totalCollateral !== null && totalCollateral > 0
+          ? roundOrUndef((totalMarginUsed / totalCollateral) * 10_000)
           : undefined,
     });
 
