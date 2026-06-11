@@ -19,6 +19,15 @@ struct EvaluateTriggersInput {
     tx: TxInput,
 }
 
+impl EvaluateTriggersInput {
+    /// 트리거의 tx.from/tx.to eq/in 비교도 엔진 표기(소문자) 기준 — checksum
+    /// 케이스 입력을 정규화한다 (action_eval_exports::TxInput::normalize와 동일).
+    fn normalize(&mut self) {
+        self.tx.from = self.tx.from.to_lowercase();
+        self.tx.to = self.tx.to.to_lowercase();
+    }
+}
+
 /// Transaction-level trigger fields.
 #[derive(Deserialize)]
 struct TxInput {
@@ -50,8 +59,9 @@ pub fn evaluate_triggers_json(input_json: String) -> String {
 }
 
 fn run(input_json: &str) -> Result<EvaluateTriggersOutput, String> {
-    let input: EvaluateTriggersInput =
+    let mut input: EvaluateTriggersInput =
         serde_json::from_str(input_json).map_err(|e| format!("invalid input json: {e}"))?;
+    input.normalize();
     let tx = TxView {
         chain_id: &input.tx.chain_id,
         from: &input.tx.from,

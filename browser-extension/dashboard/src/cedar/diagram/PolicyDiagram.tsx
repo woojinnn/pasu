@@ -20,7 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import type { BinaryOp, Expr, PolicyIR } from "../blocks/ir";
 import { isAllOf, setLiteralOperand } from "../diagnosis/membership";
-import { eachChild, pathByNode } from "../diagnosis/path";
+import { eachChild, enumeratePaths, pathByNode } from "../diagnosis/path";
 import { naturalCondition } from "../nl";
 import { getGloss } from "../../editor-v9/gloss/paths";
 import { labelForPath } from "../form/field-catalog";
@@ -261,6 +261,53 @@ function sentenceGate(n: DNode): DNode {
   return n;
 }
 
+// ── 실제 값 주석 (진단 컨텍스트) ──────────────────────────────────────────
+
+/** `ctx`(materialize된 Cedar context JSON)에서 `path`("context.…")의 실제 값을
+ *  사람이 읽을 텍스트로. decimal 확장은 `{__extn:{arg}}`에서 풀고, nano 미러
+ *  필드는 폼/다이어그램과 같은 사람 단위(÷10⁹)로. 없거나 못 읽으면 null. */
+function actualValueText(path: string, ctx: unknown): string | null {
+  const segs = path.split(".");
+  if (segs[0] !== "context") return null;
+  let v: unknown = ctx;
+  for (const s of segs.slice(1)) {
+    if (typeof v !== "object" || v === null || !(s in (v as Record<string, unknown>))) return null;
+    v = (v as Record<string, unknown>)[s];
+  }
+  if (typeof v === "object" && v !== null && "__extn" in (v as Record<string, unknown>)) {
+    const ext = (v as { __extn?: { arg?: unknown } }).__extn;
+    return ext && typeof ext.arg === "string" ? ext.arg : null;
+  }
+  if (typeof v === "number") return isNanoPath(path) ? String(v / 1e9) : String(v);
+  if (typeof v === "string") return v;
+  if (typeof v === "boolean") return v ? "참" : "거짓";
+  return null;
+}
+
+/** 진단이 평가한 실제 값을 각 leaf 비교 박스의 detail에 덧붙인다 —
+ *  "> 3.0" → "> 3.0 · 실제 5.0012". 비교 대상이 `context.*` 필드일 때만. */
+function annotateActuals(root: DNode, ir: PolicyIR, ctx: unknown): void {
+  const byPath = new Map(enumeratePaths(ir).map(({ path, node }) => [path, node]));
+  const visit = (n: DNode): void => {
+    if (n.kind === "leaf" || n.kind === "memberset") {
+      const e = byPath.get(n.path);
+      // 비교의 필드 쪽 피연산자 — `x > v`는 left, `[set].contains(x)`는 right,
+      // ext 비교(`x.greaterThan(decimal)`)는 보통 args[0].
+      let candidates: Expr[] = [];
+      if (e?.kind === "binary") candidates = [e.left, e.right];
+      else if (e?.kind === "ext" && e.args.length === 2) candidates = [e.args[0], e.args[1]];
+      const p = candidates.map(attrPath).find((c) => c !== null) ?? null;
+      const v = p ? actualValueText(p, ctx) : null;
+      if (v !== null) {
+        const tail = `실제 ${v}`;
+        n.detail = n.detail ? `${n.detail} · ${tail}` : tail;
+      }
+    }
+    n.children.forEach(visit);
+  };
+  visit(root);
+}
+
 /**
  * Test/debug helper: every canonical node path the diagram assigns to an Expr
  * node (excludes the synthetic root/WHEN/UNLESS wrappers). Asserting these are a
@@ -334,6 +381,19 @@ function valueExprText(rhs: Expr): string {
   return exprToText(rhs);
 }
 
+/** nano 미러 필드(leaf 이름이 `*Nano`)인가 — 폼과 동일한 규칙. */
+function isNanoPath(path: string | null): boolean {
+  return !!path && /Nano$/.test(path.split(".").pop() ?? "");
+}
+
+/** 비교값 텍스트 — nano 필드의 Long 리터럴은 폼 위젯처럼 사람 단위(÷10⁹)로. */
+function scaledValueText(path: string | null, rhs: Expr): string {
+  if (isNanoPath(path) && rhs.kind === "lit" && rhs.litType === "long") {
+    return String(Number(rhs.value) / 1e9);
+  }
+  return valueExprText(rhs);
+}
+
 /** A leaf comparison as plain Korean (field label + op phrase + value), or null
  *  when `e` isn't a humanizable comparison (caller falls back to `exprToText`). */
 function exprToKorean(e: Expr): string | null {
@@ -343,12 +403,12 @@ function exprToKorean(e: Expr): string | null {
     const path = attrPath(e.left);
     if (!path) return null;
     const emptyStr = e.right.kind === "lit" && e.right.litType === "string" && e.right.value === "";
-    return naturalCondition({ subject: labelForPath(path), op: e.op, value: valueExprText(e.right), emptyStr });
+    return naturalCondition({ subject: labelForPath(path), op: e.op, value: scaledValueText(path, e.right), emptyStr });
   }
   if (e.kind === "ext" && EXT_TO_OP[e.fn] && e.args.length === 2) {
     const path = attrPath(e.args[0]);
     if (!path) return null;
-    return naturalCondition({ subject: labelForPath(path), op: EXT_TO_OP[e.fn], value: valueExprText(e.args[1]) });
+    return naturalCondition({ subject: labelForPath(path), op: EXT_TO_OP[e.fn], value: scaledValueText(path, e.args[1]) });
   }
   return null;
 }
@@ -375,13 +435,18 @@ function leafParts(e: Expr): { title: string; detail?: string } {
     rhs: Expr,
   ): { title: string; detail?: string } | null => {
     if (!path) return null;
-    const unit = getGloss(path)?.unit?.ko ? ` ${getGloss(path)!.unit!.ko}` : "";
+    // nano 필드는 폼 위젯과 같은 단위(토큰)로 — 원시 nano Long을 보여주지 않는다.
+    const unit = isNanoPath(path)
+      ? " 토큰"
+      : getGloss(path)?.unit?.ko
+        ? ` ${getGloss(path)!.unit!.ko}`
+        : "";
     const title = labelForPath(path);
     const emptyStr = rhs.kind === "lit" && rhs.litType === "string" && rhs.value === "";
     if (emptyStr) {
       return { title, detail: op === "==" ? "비어 있음" : "비어 있지 않음" };
     }
-    return { title, detail: `${OP_SYM[op] ?? op} ${valueExprText(rhs)}${unit}` };
+    return { title, detail: `${OP_SYM[op] ?? op} ${scaledValueText(path, rhs)}${unit}` };
   };
 
   if (e.kind === "binary" && OP_SYM[e.op]) {
@@ -621,6 +686,9 @@ export interface PolicyDiagramProps {
   /** Optional resolver: rewrite 0x addresses in node labels to friendly names.
    *  The caller owns the address book (a hook), keeping this module pure. */
   humanizeLabel?: (text: string) => string;
+  /** 진단이 평가한 materialize된 Cedar context — 주어지면 각 비교 leaf에
+   *  실제 값("· 실제 5.0012")을 덧붙인다. */
+  actualContext?: unknown;
 }
 
 /** Zoom clamps for the interactive canvas. */
@@ -636,8 +704,14 @@ export function PolicyDiagram({
   selectedPaths,
   onNodeClick,
   humanizeLabel,
+  actualContext,
 }: PolicyDiagramProps) {
-  const model = useMemo(() => (ir ? layout(buildTree(ir)) : null), [ir]);
+  const model = useMemo(() => {
+    if (!ir) return null;
+    const tree = buildTree(ir);
+    if (actualContext !== undefined) annotateActuals(tree, ir, actualContext);
+    return layout(tree);
+  }, [ir, actualContext]);
 
   const PAD = compact ? 8 : 16;
   const W = (model?.width ?? 0) + PAD * 2;
