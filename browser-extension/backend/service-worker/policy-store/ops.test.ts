@@ -31,6 +31,7 @@ import {
   deleteDef,
   deletePackage,
   duplicateDef,
+  installMarket,
   provisionWallets,
   putDef,
   putPackage,
@@ -235,5 +236,89 @@ describe("지갑 전용 정책 (hidden def)", () => {
     await removeBinding("u", { address: "0xa1", bindingId: bid });
     const s = await readStore("u");
     expect(s.library.defs["def::w"]).toBeDefined();
+  });
+});
+
+describe("required hole guard (마켓 비식별 빈칸)", () => {
+  const holed = (id: string): PolicyDef => ({
+    ...def(id),
+    holes: [
+      { name: "v1", type: "address", label: "받는 주소", required: true },
+      { name: "v2", type: "long", label: "한도" },
+    ],
+    defaults: { enabled: true, params: { v2: 150 } }, // v1은 미충전
+  });
+
+  it("bind: required hole이 안 채워진 def는 거부한다", async () => {
+    await putDef("u", holed("def::m"));
+    await expect(
+      bind("u", { defId: "def::m", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] }),
+    ).rejects.toThrow(/받는 주소/);
+    const s = await readStore("u");
+    expect(Object.keys(s.wallets.byAddress["0xa1"]?.bindings ?? {})).toHaveLength(0);
+  });
+
+  it("bind: 바인딩 params가 required를 덮으면 통과한다", async () => {
+    await putDef("u", holed("def::m"));
+    await bind("u", {
+      defId: "def::m",
+      packageId: UNCATEGORIZED_PKG,
+      addresses: ["0xa1"],
+      params: { v1: "0xabc4000000000000000000000000000000007e29" },
+    });
+    const s = await readStore("u");
+    expect(Object.keys(s.wallets.byAddress["0xa1"].bindings)).toHaveLength(1);
+  });
+
+  it("installMarket: 바인딩이 생기는 scope에서 미충전이면 전체 거부(원자적)", async () => {
+    await provisionWallets("u", ["0xa1"]);
+    await expect(
+      installMarket("u", { defs: [holed("def::m")], scope: { kind: "all" } }),
+    ).rejects.toThrow(/빈칸/);
+    // mutate가 draft에서 실패 → 라이브러리 등록까지 함께 롤백된다.
+    const s = await readStore("u");
+    expect(s.library.defs["def::m"]).toBeUndefined();
+  });
+
+  it("installMarket: library-only는 미충전이어도 들어간다 (바인딩이 없으니 안전)", async () => {
+    await installMarket("u", { defs: [holed("def::m")], scope: { kind: "library-only" } });
+    const s = await readStore("u");
+    expect(s.library.defs["def::m"]).toBeDefined();
+  });
+
+  it("installMarket: opts.params 또는 defaults.params가 덮으면 통과한다", async () => {
+    await provisionWallets("u", ["0xa1"]);
+    await installMarket("u", {
+      defs: [holed("def::m")],
+      scope: { kind: "all" },
+      params: { "def::m": { v1: "0xabc4000000000000000000000000000000007e29" } },
+    });
+    const s = await readStore("u");
+    const b = Object.values(s.wallets.byAddress["0xa1"].bindings)[0];
+    expect(b.params).toEqual({ v1: "0xabc4000000000000000000000000000000007e29" });
+  });
+
+  it("provisionWallets: 미충전 def는 새 지갑에 적용하지 않고 건너뛴다", async () => {
+    await putDef("u", def("def::ok"));
+    await putDef("u", holed("def::m"));
+    await provisionWallets("u", ["0xNEW"]);
+    const s = await readStore("u");
+    const bound = Object.values(s.wallets.byAddress["0xnew"].bindings).map((b) => b.defId);
+    expect(bound).toEqual(["def::ok"]);
+  });
+
+  it("updateBinding: params 패치로 required를 다시 비우는 것을 거부한다", async () => {
+    await putDef("u", holed("def::m"));
+    await bind("u", {
+      defId: "def::m",
+      packageId: UNCATEGORIZED_PKG,
+      addresses: ["0xa1"],
+      params: { v1: "0xabc4000000000000000000000000000000007e29" },
+    });
+    const s = await readStore("u");
+    const b = Object.values(s.wallets.byAddress["0xa1"].bindings)[0];
+    await expect(
+      updateBinding("u", { address: "0xa1", bindingId: b.id, patch: { params: {} } }),
+    ).rejects.toThrow(/받는 주소/);
   });
 });

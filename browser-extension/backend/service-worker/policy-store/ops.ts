@@ -2,6 +2,7 @@
 import { mutate } from "./store";
 import {
   UNCATEGORIZED_PKG,
+  missingRequiredHoles,
   type Binding,
   type HoleValue,
   type PackageDef,
@@ -11,6 +12,22 @@ import {
 } from "./types";
 
 const newBindingId = () => `bind::${crypto.randomUUID()}`;
+
+/** 마켓 게시 때 블랭킹된 required hole이 안 채워진 def는 지갑에 바인딩
+ *  (패키지 적용)할 수 없다 — 플레이스홀더(제로주소/0)로 평가되면 조용히
+ *  무용지물이거나(양성 비교) 모든 거래에 오발화한다(부정 비교). */
+function assertHolesFilled(
+  def: PolicyDef | undefined,
+  params: Record<string, HoleValue> | undefined,
+): void {
+  if (!def) return;
+  const missing = missingRequiredHoles(def, params);
+  if (missing.length > 0) {
+    throw new Error(
+      `정책 "${def.displayName}"의 빈칸(${missing.join(", ")})을 채워야 적용할 수 있어요`,
+    );
+  }
+}
 
 function walletAt(draft: StoreSnapshot, address: string): WalletPolicyState {
   const addr = address.toLowerCase();
@@ -126,6 +143,7 @@ export function bind(
   },
 ): Promise<void> {
   return mutate(uid, (d) => {
+    assertHolesFilled(d.library.defs[opts.defId], opts.params);
     for (const address of opts.addresses) {
       const w = walletAt(d, address);
       ensureWalletPackage(d, w, opts.packageId);
@@ -151,6 +169,10 @@ export function updateBinding(
     const w = d.wallets.byAddress[opts.address.toLowerCase()];
     const b = w?.bindings[opts.bindingId];
     if (!b) throw new Error(`바인딩이 없습니다: ${opts.bindingId}`);
+    // params를 갈아끼우는 패치는 required hole을 다시 비울 수 있다.
+    if ("params" in opts.patch) {
+      assertHolesFilled(d.library.defs[b.defId], opts.patch.params);
+    }
     Object.assign(b, opts.patch, { updatedAtMs: Date.now() });
   });
 }
@@ -251,6 +273,9 @@ export function installMarket(
     }
 
     if (opts.scope.kind === "library-only") return;
+    // 바인딩이 생기는 설치는 required hole(비식별 블랭킹 칸)이 채워져 있어야
+    // 한다 — 채움값은 defaults.params(클라이언트가 병합) 또는 opts.params.
+    for (const def of opts.defs) assertHolesFilled(def, opts.params?.[def.id]);
     const addresses =
       opts.scope.kind === "all" ? Object.keys(d.wallets.byAddress) : opts.scope.addresses.map((a) => a.toLowerCase());
     for (const address of addresses) {
@@ -282,6 +307,9 @@ export function provisionWallets(uid: string, addresses: string[]): Promise<void
       const w = walletAt(d, addr);
       for (const def of Object.values(d.library.defs)) {
         if (!def.defaults.enabled) continue;
+        // 자동 경로라 throw 대신 스킵 — 빈칸이 남은 def는 새 지갑에 적용하지
+        // 않는다(채우면 그때 수동 적용).
+        if (missingRequiredHoles(def).length > 0) continue;
         const b: Binding = {
           id: newBindingId(),
           defId: def.id,

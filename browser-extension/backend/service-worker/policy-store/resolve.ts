@@ -7,7 +7,7 @@
 import { ensureSeeded } from "./seed";
 import { readStore } from "./store";
 import { renderDef } from "./render";
-import { isEffectiveOn, type HoleValue, type PolicyDef } from "./types";
+import { isEffectiveOn, missingRequiredHoles, type HoleValue, type PolicyDef } from "./types";
 
 export interface ResolvedBundle {
   id: string;
@@ -113,17 +113,30 @@ export async function resolveBundlesForWallet(uid: string, fromAddress: string):
     const live = new Set(def.holes.map((h) => h.name));
     return Object.fromEntries(Object.entries(merged).filter(([k]) => live.has(k)));
   };
+  // required hole(마켓 비식별 칸)이 안 채워진 def는 평가하지 않는다 —
+  // 바인딩 생성이 가드되지만, 가드 이전에 만들어진 상태를 방어한다.
+  // 플레이스홀더(제로주소/0)로 평가하면 조용히 무용지물이거나 모든 거래에
+  // 오발화한다.
+  const holesOk = (def: PolicyDef, params?: Record<string, HoleValue>): boolean => {
+    const missing = missingRequiredHoles(def, params);
+    if (missing.length > 0) {
+      console.warn(`[Pasu] 빈칸 미충전 정책 건너뜀: ${def.displayName} (${missing.join(", ")})`);
+      return false;
+    }
+    return true;
+  };
   if (w) {
     for (const b of Object.values(w.bindings)) {
       if (!isEffectiveOn(w, b)) continue;
       const def = s.library.defs[b.defId];
       if (!def) continue; // validate가 막지만 방어적으로
+      if (!holesOk(def, b.params)) continue;
       wanted.push({ defId: b.defId, params: knownParams(def, { ...def.defaults.params, ...b.params }) });
     }
   } else {
     // 미등록 지갑: defaults.enabled 정의를 기본 파라미터로 (안전 우선)
     for (const def of Object.values(s.library.defs)) {
-      if (def.defaults.enabled) {
+      if (def.defaults.enabled && holesOk(def)) {
         wanted.push({ defId: def.id, params: knownParams(def, def.defaults.params) });
       }
     }

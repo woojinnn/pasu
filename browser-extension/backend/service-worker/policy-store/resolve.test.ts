@@ -205,3 +205,39 @@ describe("stale param guard", () => {
     expect(out[0].policy).not.toContain("ghost");
   });
 });
+
+describe("required hole 미충전 def 방어 스킵", () => {
+  const holedDef = (id: string, enabled = true): PolicyDef => ({
+    ...def(id, undefined, enabled),
+    holes: [{ name: "v1", type: "address", label: "받는 주소", required: true }],
+    defaults: { enabled, params: {} },
+  });
+
+  it("바인딩이 있어도 required 미충전이면 평가에서 뺀다 (가드 이전 상태 방어)", async () => {
+    // bind 가드를 우회해 미충전 바인딩을 만들기 위해 def를 나중에 교체한다.
+    await putDef("u", def("def::m"));
+    await bind("u", { defId: "def::m", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
+    await putDef("u", holedDef("def::m"));
+    const out = await resolveBundlesForWallet("u", "0xa1");
+    expect(out).toEqual([]);
+  });
+
+  it("미등록 지갑 defaults 경로도 동일하게 뺀다", async () => {
+    await putDef("u", holedDef("def::m"));
+    await putDef("u", def("def::ok"));
+    const out = await resolveBundlesForWallet("u", "0xUNKNOWN");
+    expect(out.map((b) => b.id)).toEqual(["def::ok"]);
+  });
+
+  it("바인딩 params가 required를 덮으면 평가에 들어간다", async () => {
+    await putDef("u", holedDef("def::m"));
+    await bind("u", {
+      defId: "def::m",
+      packageId: UNCATEGORIZED_PKG,
+      addresses: ["0xa1"],
+      params: { v1: "0xabc4000000000000000000000000000000007e29" },
+    });
+    const out = await resolveBundlesForWallet("u", "0xa1");
+    expect(out.map((b) => b.id)).toEqual(["def::m"]);
+  });
+});

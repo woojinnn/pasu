@@ -97,3 +97,16 @@ export const UNCATEGORIZED_PKG = "pkg::uncategorized";
 export function isEffectiveOn(w: WalletPolicyState, b: Binding): boolean {
   return (w.packageEnabled[b.packageId] ?? true) && b.enabled;
 }
+
+/** required hole(마켓 비식별 블랭킹) 중 merged params(def 기본값 ⊕ 바인딩
+ *  오버라이드)가 못 덮는 칸의 라벨 목록. 비어 있지 않으면 그 def는 아직
+ *  "빈칸" 상태 — 바인딩(패키지 적용)이 거부돼야 한다. */
+export function missingRequiredHoles(
+  def: Pick<PolicyDef, "holes" | "defaults">,
+  params?: Record<string, HoleValue> | undefined,
+): string[] {
+  const merged = { ...def.defaults.params, ...(params ?? {}) };
+  return def.holes
+    .filter((h) => h.required && merged[h.name] === undefined)
+    .map((h) => h.label || h.name);
+}
