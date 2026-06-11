@@ -278,6 +278,10 @@ interface PasuDeleteWalletRequest {
   type: "pasu-delete-wallet";
   address: string;
 }
+/** ⑤ 주간 요약 토스트 수동 트리거 (advisory 표시 전용 — 결정 채널 아님). */
+interface WeeklySummaryRequest {
+  type: "PASU_WEEKLY_SUMMARY";
+}
 /** apps/web Editor + Simulation pages route Cedar through the
  *  service worker rather than bundling wasm themselves. Three
  *  request variants map 1-1 to the new exports in
@@ -404,6 +408,7 @@ type PopupRequest =
   | PasuAddWalletRequest
   | PasuUpdateWalletRequest
   | PasuDeleteWalletRequest
+  | WeeklySummaryRequest
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
@@ -430,6 +435,33 @@ type PopupRequest =
 // webextension-polyfill's listener type accepts `true | void | Promise<any>`,
 // not `boolean`. Returning `undefined` (bare `return;`) closes the channel
 // just like a literal `false` would — do not "fix" it back to `return false`.
+/**
+ * ⑤ advisory 토스트를 현재 활성 탭의 content-script 로 push.
+ * "현재 보고 있는 탭 하나"에만 — tabs.query({active,lastFocusedWindow}).
+ * content-script 가 없는 페이지(chrome:// 등)면 sendMessage 가 reject 되므로
+ * 조용히 무시(best-effort). 결정 채널 아님 — 표시 전용.
+ */
+async function pushToastToActiveTab(
+  scenario: string,
+  data?: { fail?: number; warn?: number; total?: number; risky?: number },
+): Promise<void> {
+  try {
+    const tabs = await Browser.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    const tabId = tabs[0]?.id;
+    if (tabId === undefined) return;
+    await Browser.tabs.sendMessage(tabId, {
+      type: "PASU_TOAST",
+      scenario,
+      ...(data ? { data } : {}),
+    });
+  } catch {
+    /* content-script 부재/제한 페이지 — 조용히 스킵 */
+  }
+}
+
 Browser.runtime.onMessage.addListener(
   (message: unknown, _sender, sendResponse: (r: unknown) => void) => {
     const req = message as Partial<PopupRequest> | null;
@@ -450,6 +482,30 @@ Browser.runtime.onMessage.addListener(
       return true;
     }
 
+    // ⑤ 주간 요약 토스트 (수동 트리거). 최근 7일 verdict 카운트를 모아
+    // 현재 활성 탭의 advisory content-script 에 PASU_TOAST 로 push 한다.
+    // advisory 전용 — 서명 결정과 무관(표시만).
+    if (req.type === "PASU_WEEKLY_SUMMARY") {
+      void countVerdicts({ range: "7d" })
+        .then(async (counts) => {
+          await pushToastToActiveTab("summary", {
+            fail: counts.fail,
+            warn: counts.warn,
+          });
+          sendResponse({ ok: true, data: counts });
+        })
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "weekly_summary_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    // apps/web Cedar editor / simulation. Three message types, all
+    // forwarded to policy-engine-wasm cedar_exports. Return value is
+    // the raw JSON string the wasm produces — the FE parses.
     if (req.type === "cedar-validate") {
       void validatePolicyText((req as CedarValidateRequest).text)
         .then((json) => sendResponse({ ok: true, data: json }))
