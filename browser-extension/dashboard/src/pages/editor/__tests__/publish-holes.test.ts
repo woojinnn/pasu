@@ -90,7 +90,9 @@ describe("computeShippedHoles", () => {
 });
 
 describe("manifestWithHoles / splitManifestHoles", () => {
-  const SHIPPED = [{ name: "v1", type: "address", label: "받는 주소", required: true as const }];
+  const SHIPPED = [
+    { name: "v1", type: "address" as const, label: "받는 주소", required: true as const },
+  ];
 
   it("synthesizes a valid minimal ManifestV2 when the policy had none", () => {
     const m = manifestWithHoles(undefined, SHIPPED, "my-rule") as Record<string, unknown>;

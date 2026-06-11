@@ -8,7 +8,7 @@
  *  defaults.params에서 빠진다 — SW가 충전 전 바인딩을 거부하는 판정 기준. */
 import type { PolicyDef } from "../../../sdk/policy-store-types";
 import type { PolicyIR } from "../cedar/blocks";
-import { formToIr, irToForm } from "../cedar/form";
+import { formToIr, irToForm, normalizeDecimal } from "../cedar/form";
 import { canonicalizeModel, parameterizeModel } from "../cedar/form/parameterize";
 import type { HoleSpec, HoleValue } from "../server-api/policy-store";
 import { splitManifestHoles } from "./editor/publish-holes";
@@ -117,4 +117,30 @@ export async function listingToDefs(
 /** def에서 사용자가 채워야 하는 hole 목록(설치 UI 렌더용). */
 export function requiredHolesOf(def: PolicyDef): HoleSpec[] {
   return def.holes.filter((h) => h.required);
+}
+
+/** 입력 문자열 → hole 값. 형식이 안 맞으면 null (설치 버튼 비활성 근거).
+ *  주소는 엔진 표기(소문자)로 정규화한다. */
+export function holeInputToValue(type: HoleSpec["type"], raw: string): HoleValue | null {
+  const t = raw.trim();
+  const ADDR = /^0x[0-9a-fA-F]{40}$/;
+  switch (type) {
+    case "address":
+      return ADDR.test(t) ? t.toLowerCase() : null;
+    case "addressSet": {
+      const items = t.split(/[\s,]+/).filter(Boolean);
+      if (items.length === 0 || !items.every((a) => ADDR.test(a))) return null;
+      return items.map((a) => a.toLowerCase());
+    }
+    case "long":
+      return /^-?\d+$/.test(t) ? Number(t) : null;
+    case "decimal":
+      return t ? normalizeDecimal(t) : null;
+    case "bool":
+      return t === "true" ? true : t === "false" ? false : null;
+    case "string":
+      return t || null;
+    case "field":
+      return t ? { field: t } : null;
+  }
 }

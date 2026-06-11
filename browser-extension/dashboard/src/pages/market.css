@@ -1854,3 +1854,28 @@
 .pub-btn.publish { background: var(--pass-500); color: #fff; }
 .pub-btn.publish:hover { background: var(--pass-600, var(--pass-700)); }
 .pub-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── 설치 모달: required hole 채우기 ─────────────────────────────── */
+.im-holes {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--warn-300, #f5c97b);
+  background: var(--warn-50, #fdf6e7);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.im-holes-head { font-size: 13px; font-weight: 600; }
+.im-holes-defname { font-size: 12px; font-weight: 600; opacity: 0.75; margin-top: 4px; }
+.im-hole { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.im-hole-label { font-size: 12px; font-weight: 500; }
+.im-hole input,
+.im-hole textarea {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--slate-300, #cbd5e1);
+  border-radius: 8px;
+}
+.im-hole-err { font-size: 11px; color: var(--fail-600, #b3261e); }
