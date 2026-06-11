@@ -7,7 +7,7 @@
 import { ensureSeeded } from "./seed";
 import { readStore } from "./store";
 import { renderDef } from "./render";
-import { isEffectiveOn, type HoleValue } from "./types";
+import { isEffectiveOn, type HoleValue, type PolicyDef } from "./types";
 
 export interface ResolvedBundle {
   id: string;
@@ -126,13 +126,27 @@ export async function resolveBundlesForWallet(uid: string, fromAddress: string):
     const def = s.library.defs[defId];
     try {
       const r = await renderDef(def, params);
-      out.push({ id: defId, policy: r.text, manifest: r.manifest, trigger: extractTrigger(r.manifest) });
+      // 보강 필드가 없는 정책은 manifest가 없다 — 엔진의 plan/evaluate 입력은
+      // ManifestV2 구조체가 필수라(null이 섞이면 invalid_input_json으로 그 지갑의
+      // 평가 전체가 죽는다) 빈 manifest(트리거 없음=항상 평가, 호출 없음)를 합성한다.
+      const manifest = r.manifest ?? emptyManifestFor(def);
+      out.push({ id: defId, policy: r.text, manifest, trigger: extractTrigger(manifest) });
     } catch (err) {
       // 한 정의의 손상이 전체 평가를 막지 않게 — 그 정의만 건너뛴다.
       console.warn(`[Pasu] 정책 렌더 실패 — 건너뜀: ${defId}`, err);
     }
   }
   return out;
+}
+
+/** manifest 없는 def의 평가용 최소 ManifestV2. trigger/policy_rpc/custom_context는
+ *  엔진 쪽 default(빈 값)로 채워진다. id는 Cedar `@id`(verdict의 policy_id와
+ *  일치) 우선, 없으면 def.id. */
+function emptyManifestFor(def: PolicyDef): { id: string; schema_version: number } {
+  const ann = (def.skeleton.ir as { annotations?: { name: string; value: string }[] } | null)
+    ?.annotations;
+  const cedarId = Array.isArray(ann) ? ann.find((a) => a.name === "id")?.value : undefined;
+  return { id: cedarId ?? def.id, schema_version: 2 };
 }
 
 /** verdict의 matched policy_id(=Cedar @id annotation) → def 참조.

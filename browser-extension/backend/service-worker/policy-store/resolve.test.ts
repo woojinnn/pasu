@@ -88,6 +88,23 @@ describe("resolveBundlesForWallet", () => {
     expect(await resolveBundlesForWallet("u", "0xa1")).toEqual([]);
   });
 
+  it("manifest 없는 def는 빈 ManifestV2를 합성한다 (null이 plan 입력에 섞이면 평가 전체가 죽음)", async () => {
+    const noManifest: PolicyDef = {
+      ...def("def::base"),
+      skeleton: {
+        ir: { kind: "policy", annotations: [{ name: "id", value: "swap-cap" }] },
+        // manifest 없음 — 보강 필드가 없는 폼 정책의 저장 형태.
+      },
+    };
+    await putDef("u", noManifest);
+    await bind("u", { defId: "def::base", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
+
+    const out = await resolveBundlesForWallet("u", "0xa1");
+    expect(out).toHaveLength(1);
+    expect(out[0].manifest).toEqual({ id: "swap-cap", schema_version: 2 });
+    expect(out[0].trigger).toBeUndefined(); // 빈 trigger → 항상 평가(엔진이 정밀 게이트)
+  });
+
   it("a def that fails to render is skipped, others survive", async () => {
     const { renderDef } = await import("./render");
     vi.mocked(renderDef).mockImplementationOnce(async () => {
