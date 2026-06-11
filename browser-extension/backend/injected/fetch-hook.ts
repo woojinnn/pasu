@@ -248,6 +248,10 @@ function install(): void {
   window.fetch = new Proxy(originalFetch, {
     apply: async (target, thisArg, args: Parameters<typeof fetch>) => {
       let allowedPayloads: VenueOrderPayload[] | null = null;
+      // HL 오더 게이트 타이밍: 캐치(venue POST 인지 확인) → 실제 엔드포인트
+      // 재전송(Reflect.apply) 직전까지의 총 처리 시간을 측정한다.
+      let venueT0: number | null = null;
+      let venueLabel: string | null = null;
       try {
         const [input, init] = args;
         const url =
@@ -264,6 +268,8 @@ function install(): void {
         ).toUpperCase();
         const venue = matchVenue(url);
         if (venue && method === "POST") {
+          venueT0 = performance.now();
+          venueLabel = venue;
           // The body can ride on `init.body` OR on a `Request` first arg
           // (`fetch(new Request(url, { body }))`). Read both so a Request-shaped
           // call cannot smuggle an order past the guard.
@@ -324,6 +330,14 @@ function install(): void {
           throw new Error("Pasu: venue order blocked (fail-closed)");
         }
         console.warn("[Pasu] fetch-hook non-fatal error", err);
+      }
+      // HL 오더: 캐치 → 실제 엔드포인트 재전송 직전까지의 총 처리 시간.
+      // (deny 는 위에서 throw 되어 여기 도달하지 않는다 — forward 되는 건만 측정.)
+      if (venueT0 !== null) {
+        console.info(
+          `[Pasu] HL order gate ${(performance.now() - venueT0).toFixed(1)}ms (catch→forward)`,
+          { venue: venueLabel, order: allowedPayloads != null },
+        );
       }
       try {
         const response = (await Reflect.apply(

@@ -81,6 +81,15 @@ export function mutate<T>(uid: string, fn: (draft: StoreSnapshot) => T | Promise
     const draft = structuredClone(current);
     const out = await fn(draft);
     validate(draft);
+    // 정책(def) 추가/삭제를 콘솔에 로그 — 마켓 설치 / 에디터 저장 / 삭제 등
+    // 모든 라이브러리 변경이 이 mutate 게이트를 지난다.
+    const beforeIds = Object.keys(current.library.defs);
+    const afterIds = Object.keys(draft.library.defs);
+    const added = afterIds.filter((id) => !beforeIds.includes(id));
+    const removed = beforeIds.filter((id) => !afterIds.includes(id));
+    if (added.length > 0 || removed.length > 0) {
+      console.info("[Pasu] policy-store defs changed", { uid, added, removed });
+    }
     draft.rev = current.rev + 1;
     await Browser.storage.local.set({
       [libKey(uid)]: draft.library,
