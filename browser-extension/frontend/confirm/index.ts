@@ -1,6 +1,12 @@
 import Browser from "webextension-polyfill";
 import "./styles.css";
 
+// Sentinel guard mark (B 드로어 GuardFace). 이 빌드의 webpack 은 png import
+// (asset/resource) 룰이 .wasm 에만 걸려 있어 `import x from "*.png"` 를 못 쓴다.
+// 핸드오프 권장 대안대로 에셋을 public/picture/ 에 두고(CopyPlugin 이 dist 로
+// 복사) 런타임 확장 URL 로 참조한다.
+const markNavy = Browser.runtime.getURL("picture/pasu-mark-navy.png");
+
 interface MatchedPolicy {
   policy_id: string;
   reason?: string;
@@ -71,44 +77,140 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+// Inline SVG (no extra asset) for status glyphs.
+function svgSpan(cls: string, svg: string): HTMLSpanElement {
+  const s = document.createElement("span");
+  s.className = cls;
+  s.innerHTML = svg;
+  return s;
+}
+
+const SVG = {
+  check:
+    '<svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn:
+    '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 10v4M12 17.4v.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  info:
+    '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.6v.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  globe:
+    '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 12h17M12 3.5c2.5 2.4 2.5 14.6 0 17M12 3.5c-2.5 2.4-2.5 14.6 0 17" stroke="currentColor" stroke-width="1.6"/></svg>',
+};
+
+const COPY: Record<string, { head: string; sub: string }> = {
+  fail: {
+    head: "Transaction blocked",
+    sub: "Pasu policy stopped this signature. Review the matched policies below.",
+  },
+  warn: {
+    head: "Manual review recommended",
+    sub: "This request triggered a policy warning. Check it before you proceed.",
+  },
+  pass: {
+    head: "No policy risks found",
+    sub: "This request passed Pasu's baseline checks.",
+  },
+};
+
+const BADGE: Record<string, string> = { fail: SVG.x, warn: SVG.warn, pass: SVG.check };
+const SEV_ICON: Record<string, string> = { deny: SVG.x, warn: SVG.warn, info: SVG.info };
+// severity(데이터) → 행 비주얼 클래스
+const SEV_CLASS: Record<string, string> = { deny: "fail", warn: "warn", info: "info" };
+
 function render(): void {
   const root = document.getElementById("root");
   if (!root) return;
 
-  const isFail = verdict.kind === "fail";
-  const isWarn = verdict.kind === "warn";
+  const kind = verdict.kind;
+  const isFail = kind === "fail";
+  const isWarn = kind === "warn";
+  const c = COPY[kind] ?? COPY.fail;
 
-  const banner = el("div", {
-    class: `banner ${verdict.kind}`,
-    text: isFail ? "Fail" : "Warn",
-  });
-  const heading = el("h1", {
-    text: isFail
-      ? "Transaction blocked by policy"
-      : "Policy warning — review before signing",
-  });
-  const host = hostname ? el("div", { class: "host", text: hostname }) : null;
+  // ── top bar (navy) ──
+  const mk = document.createElement("img");
+  mk.className = "mk";
+  mk.src = markNavy;
+  mk.alt = "";
+  const net = el("span", { class: "net" }, [
+    (() => {
+      const d = document.createElement("span");
+      d.className = "nd";
+      return d;
+    })(),
+    "watch-only",
+  ]);
+  const top = el("div", { class: "top" }, [
+    mk,
+    el("span", { class: "wd", text: "PASU" }),
+    net,
+  ]);
 
-  const matchedSection = el("section", { class: "matched" });
-  const matched = verdict.matched ?? [];
-  if (matched.length === 0) {
-    matchedSection.appendChild(
-      el("div", { class: "empty", text: "No matched policies reported." }),
+  // ── guard hero ──
+  const face = document.createElement("img");
+  face.src = markNavy;
+  face.alt = "";
+  const guard = el("div", { class: `guard ${kind}` }, [
+    el("div", { class: "ring" }),
+    el("div", { class: "face" }, [face]),
+  ]);
+  guard.appendChild(svgSpan("badge", BADGE[kind] ?? BADGE.fail));
+  const hero = el("div", { class: `hero ${kind}` }, [
+    guard,
+    el("div", { class: `headline ${kind}`, text: c.head }),
+    el("div", { class: "sub", text: c.sub }),
+  ]);
+
+  // ── body: origin + matched ──
+  const body = el("div", { class: "body" });
+  if (hostname) {
+    body.appendChild(
+      el("div", { class: "origin" }, [
+        svgSpan("fav", SVG.globe),
+        el("div", { class: "otx" }, [
+          el("div", { class: "oh", text: hostname }),
+          el("div", { class: "os", text: "Signature requested" }),
+        ]),
+      ]),
     );
-  } else {
-    for (const m of matched) {
-      const card = el("article", { class: `match ${m.severity}` });
-      card.appendChild(el("div", { class: "match-id", text: m.policy_id }));
-      if (m.reason) {
-        card.appendChild(el("div", { class: "match-reason", text: m.reason }));
-      }
-      card.appendChild(
-        el("div", { class: "match-meta", text: `${m.severity} • ${m.origin}` }),
-      );
-      matchedSection.appendChild(card);
-    }
   }
 
+  const matched = verdict.matched ?? [];
+  if (matched.length === 0) {
+    body.appendChild(
+      el("div", { class: "empty" }, [
+        svgSpan("empty-ic", isFail ? SVG.warn : SVG.check),
+        el("div", { class: "empty-t", text: "No matched policies reported." }),
+      ]),
+    );
+  } else {
+    body.appendChild(
+      el("div", {
+        class: "matched-label",
+        text: `${matched.length} ${matched.length === 1 ? "policy" : "policies"} matched`,
+      }),
+    );
+    const risks = el("div", { class: "risks" });
+    for (const m of matched) {
+      const sev = SEV_ICON[m.severity] ? m.severity : "info";
+      const rcls = SEV_CLASS[sev] ?? "info";
+      const tx = el("div", { class: "rtx" }, [
+        el("div", { class: "rt", text: m.reason ?? m.policy_id }),
+      ]);
+      if (m.reason) tx.appendChild(el("div", { class: "rid", text: m.policy_id }));
+      tx.appendChild(
+        el("div", {
+          class: "rmeta",
+          text: `${m.severity}${m.origin ? " • " + m.origin : ""}`,
+        }),
+      );
+      risks.appendChild(
+        el("article", { class: `risk ${rcls}` }, [svgSpan("ic", SEV_ICON[sev]), tx]),
+      );
+    }
+    body.appendChild(risks);
+  }
+
+  // ── footer (wiring unchanged) ──
   const footer = el("footer");
   const cancelBtn = el("button", {
     class: "btn-cancel",
@@ -116,7 +218,6 @@ function render(): void {
   });
   cancelBtn.addEventListener("click", () => void reply(false));
   footer.appendChild(cancelBtn);
-
   if (isWarn) {
     const approveBtn = el("button", {
       class: "btn-approve",
@@ -126,10 +227,9 @@ function render(): void {
     footer.appendChild(approveBtn);
   }
 
-  root.appendChild(banner);
-  root.appendChild(heading);
-  if (host) root.appendChild(host);
-  root.appendChild(matchedSection);
+  root.appendChild(top);
+  root.appendChild(hero);
+  root.appendChild(body);
   root.appendChild(footer);
 }
 

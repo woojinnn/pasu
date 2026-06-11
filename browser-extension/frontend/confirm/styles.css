@@ -1,57 +1,46 @@
+/* ============================================================
+   Pasu — confirm (Review request) · ④ B 우측 드로어 GuardCard
+   Sentinel(navy) 룩. 카드가 곧 창(window) 전체.
+   구조는 인터셉트 B 카드, 데이터는 VerdictDto 바인딩.
+   ============================================================ */
 :root {
-  /* Frog Green primary ramp (§7-2) */
-  --green-50: #f4f8eb;
-  --green-100: #deecc4;
-  --green-200: #c1dd92;
-  --green-400: #90c03c;
-  --green-600: #5d7c27;
-  --green-800: #394c18;
-  --green-900: #24300f;
+  --brand-700: #18283f;
+  --brand-600x: #243554;
+  --brand-500: #34476c;
+  --brand-300: #8597b7;
+  --brand-200: #b4c0d6;
+  --ink: #0e1726;
+  --slate-600: #3c4a63;
+  --slate-500: #5c6b86;
+  --slate-400: #8593a8;
+  --mist-100: #e9eef5;
+  --white: #ffffff;
+  --hair: #e4e9f1;
+  --fog: #f4f6fa;
 
-  /* Eye Gold (Warn) */
-  --gold-50: #fdf5e7;
-  --gold-100: #f9e1b7;
-  --gold-400: #efa830;
-  --gold-600: #ae710c;
-  --gold-800: #6b4607;
+  --pass-600: #1b8c5e;
+  --pass-500: #22a06b;
+  --warn-700: #9a6512;
+  --warn-600: #c0821c;
+  --warn-500: #dca02c;
+  --fail-700: #9e2e25;
+  --fail-500: #dd4a3c;
 
-  /* Blush Coral (Fail) */
-  --coral-50: #faecea;
-  --coral-100: #f0c8c1;
-  --coral-400: #e49c90;
-  --coral-600: #c2442f;
-  --coral-800: #772a1d;
+  --r-md: 12px;
+  --r-pill: 999px;
+  --ff-sans: "IBM Plex Sans KR", "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --ff-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Neutrals (§7-3) */
-  --surface-primary: #ffffff;
-  --surface-secondary: #f4f8eb;
-  --text-primary: #24300f;
-  --text-secondary: #5d7c27;
-  --text-tertiary: #6b8a5c;
-
-  /* Radius (§7-5) */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-
-  /* Green-tone shadow (§7-6) */
-  --shadow-subtle: 0 4px 12px -4px rgba(83, 144, 67, 0.12);
-
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Apple SD Gothic Neo",
-    sans-serif;
-  color: var(--text-primary);
+  font-family: var(--ff-sans);
+  color: var(--ink);
 }
 
 * {
   box-sizing: border-box;
 }
-
 body {
   margin: 0;
-  padding: 0;
-  background: var(--surface-primary);
-  color: var(--text-primary);
+  background: var(--white);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -59,118 +48,314 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 24px 24px 20px;
-  gap: 16px;
+  background: var(--white);
+  color: var(--ink);
 }
 
-/* Verdict banner — Warn=gold, Fail=coral per §7-4 */
-.banner {
-  align-self: center;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
+/* ── top bar ── */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  background: var(--brand-700);
+  flex: 0 0 auto;
 }
-.banner.warn {
-  background: var(--gold-100);
-  color: var(--gold-800);
+.top .mk {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
-.banner.fail {
-  background: var(--coral-100);
-  color: var(--coral-600);
-}
-
-h1 {
-  font-size: 20px;
-  margin: 0;
-  font-weight: 600;
-  text-align: center;
-  line-height: 1.4;
-  color: var(--text-primary);
-}
-
-.host {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+.top .wd {
   font-size: 12px;
-  color: var(--text-tertiary);
-  text-align: center;
-  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #fff;
+}
+.top .net {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--brand-200);
+  font-family: var(--ff-mono);
+}
+.top .net .nd {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pass-500);
 }
 
-/* Matched policies — green-toned shadow per §7-6 */
-.matched {
-  flex: 1;
+/* ── guard hero ── */
+.hero {
+  padding: 20px 16px 14px;
+  text-align: center;
+  flex: 0 0 auto;
+  background: linear-gradient(
+    180deg,
+    var(--brand-700) 0,
+    var(--brand-700) 46px,
+    var(--white) 46px
+  );
+}
+.guard {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto;
+}
+.guard .ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--slate-400);
+}
+.guard.warn .ring {
+  border-color: var(--warn-500);
+  box-shadow: 0 0 0 6px rgba(220, 160, 44, 0.14);
+}
+.guard.fail .ring {
+  border-color: var(--fail-500);
+  box-shadow: 0 0 0 6px rgba(221, 74, 60, 0.14);
+}
+.guard.pass .ring {
+  border-color: var(--pass-500);
+  box-shadow: 0 0 0 6px rgba(34, 160, 107, 0.14);
+}
+.guard .face {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 1px solid var(--hair);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.guard .face img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  margin-top: 4px;
+}
+.guard .badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid var(--white);
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.guard .badge svg {
+  width: 14px;
+  height: 14px;
+}
+.guard.warn .badge {
+  background: var(--warn-500);
+}
+.guard.fail .badge {
+  background: var(--fail-500);
+}
+.guard.pass .badge {
+  background: var(--pass-500);
+}
+
+.headline {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 13px;
+  color: var(--ink);
+}
+.headline.warn {
+  color: var(--warn-700);
+}
+.headline.fail {
+  color: var(--fail-700);
+}
+.headline.pass {
+  color: var(--pass-600);
+}
+.sub {
+  font-size: 12.5px;
+  color: var(--slate-500);
+  line-height: 1.5;
+  margin: 6px auto 0;
+  max-width: 300px;
+  text-wrap: pretty;
+}
+
+/* ── body ── */
+.body {
+  flex: 1 1 auto;
+  padding: 6px 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 4px;
   overflow-y: auto;
-  padding-right: 4px;
 }
 
-.match {
-  background: var(--surface-secondary);
-  border-radius: var(--radius-lg);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-subtle);
-  border-left: 3px solid var(--text-tertiary);
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--fog);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  padding: 9px 11px;
 }
-.match.deny {
-  border-left-color: var(--coral-600);
-  background: var(--coral-50);
+.origin .fav {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #fff;
+  border: 1px solid var(--hair);
+  display: grid;
+  place-items: center;
+  color: var(--slate-500);
+  flex: 0 0 auto;
 }
-.match.warn {
-  border-left-color: var(--gold-600);
-  background: var(--gold-50);
+.origin .fav svg {
+  width: 15px;
+  height: 15px;
+}
+.origin .otx {
+  min-width: 0;
+}
+.origin .oh {
+  font-size: 12.5px;
+  font-weight: 700;
+  word-break: break-all;
+}
+.origin .os {
+  font-size: 10px;
+  color: var(--slate-400);
+  font-family: var(--ff-mono);
+  margin-top: 1px;
 }
 
-.match-id {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-bottom: 6px;
+.matched-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slate-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 2px 1px 0;
 }
 
-.match-reason {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-primary);
+.risks {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
-
-.match-meta {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 8px;
+.risk {
+  display: flex;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--hair);
+  background: var(--fog);
+  align-items: flex-start;
+}
+.risk.warn {
+  background: #fdf8ec;
+  border-color: #f2dda6;
+}
+.risk.fail {
+  background: #fdefec;
+  border-color: #f4c9c2;
+}
+.risk .ic {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex: 0 0 auto;
+  background: var(--brand-600x);
+  margin-top: 1px;
+}
+.risk .ic svg {
+  width: 13px;
+  height: 13px;
+}
+.risk.warn .ic {
+  background: var(--warn-500);
+}
+.risk.fail .ic {
+  background: var(--fail-500);
+}
+.risk .rtx {
+  min-width: 0;
+}
+.risk .rt {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+.risk .rid {
+  font-size: 9.5px;
+  color: var(--slate-400);
+  font-family: var(--ff-mono);
+  margin-top: 3px;
+  word-break: break-all;
+}
+.risk .rmeta {
+  font-size: 9.5px;
+  color: var(--slate-400);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-weight: 500;
+  font-weight: 700;
+  margin-top: 4px;
 }
 
 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 26px 0;
+  color: var(--slate-400);
+}
+.empty-ic {
+  width: 32px;
+  height: 32px;
+  color: var(--slate-400);
+}
+.empty-ic svg {
+  width: 32px;
+  height: 32px;
+}
+.empty-t {
   font-size: 13px;
-  color: var(--text-tertiary);
   text-align: center;
-  padding: 16px 0;
 }
 
+/* ── footer ── */
 footer {
   display: flex;
   gap: 8px;
-  justify-content: stretch;
-  margin-top: 4px;
+  padding: 14px 16px 16px;
+  flex: 0 0 auto;
 }
-
 button {
   flex: 1;
-  padding: 12px 18px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
+  appearance: none;
   cursor: pointer;
-  border: 1px solid transparent;
-  font-weight: 500;
-  font-family: inherit;
+  font-family: var(--ff-sans);
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 0;
   transition:
     background 120ms ease,
     transform 120ms ease;
@@ -178,24 +363,18 @@ button {
 button:active {
   transform: scale(0.98);
 }
-
 .btn-cancel {
-  background: var(--surface-secondary);
-  color: var(--text-secondary);
-  border-color: var(--green-200);
+  background: var(--white);
+  color: var(--slate-600);
+  border: 1px solid var(--hair);
 }
 .btn-cancel:hover {
-  background: var(--green-100);
+  background: var(--fog);
 }
-
-/* Trust and proceed — bordered, not filled, so it doesn't read as
-   "primary approve". Warn-styled per §7-4. */
 .btn-approve {
-  background: var(--gold-50);
-  color: var(--gold-800);
-  border-color: var(--gold-600);
-  font-weight: 600;
+  background: var(--warn-500);
+  color: #fff;
 }
 .btn-approve:hover {
-  background: var(--gold-100);
+  background: var(--warn-600);
 }

@@ -14,6 +14,7 @@ import {
   type Ps2Request,
 } from "./policy-store/api";
 import { decideMessage } from "./orchestrator";
+import { refreshBadge } from "./mascot-badge";
 import { reportExecutionOutcome } from "./execution-report";
 import {
   ensureDefaultV3BundlesInstalled,
@@ -166,6 +167,13 @@ async function bootSequence(): Promise<void> {
     console.warn("[Pasu] v3 default bundle install failed:", err);
   }
 
+  // 부팅 시 마스코트 배지를 최근 24h verdict 카운트로 1회 동기화한다. SW 가
+  // 재시작되면 chrome.action 상태가 기본(safe)으로 돌아가므로 복원이 필요.
+  try {
+    await refreshBadge();
+  } catch (err) {
+    console.warn("[Pasu] mascot badge initial refresh failed:", err);
+  }
 }
 
 Browser.runtime.onConnect.addListener((port) => {
