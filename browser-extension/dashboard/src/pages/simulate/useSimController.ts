@@ -5,17 +5,9 @@
  * sim-bridge WASM) later replaces the data sources without touching the step UI.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  MOCK_ENABLED_IDS,
-  MOCK_PACKAGES,
-  MOCK_POLICIES,
-  MOCK_RUN,
-  MOCK_STATES,
-  MOCK_TX_ROWS,
-  MOCK_WALLETS,
-} from "./mock-data";
+import { mockProvider, type SimData, type SimProvider } from "./provider";
 import type {
   DenyView,
   PackageView,
@@ -26,6 +18,13 @@ import type {
   WalletView,
   WizardStep,
 } from "./types";
+
+/** `Record<addr, string[]>` → `Record<addr, Set<string>>` (enabled-ids seed). */
+function toSetMap(m: Record<string, string[]>): Record<string, Set<string>> {
+  const out: Record<string, Set<string>> = {};
+  for (const [addr, ids] of Object.entries(m)) out[addr] = new Set(ids);
+  return out;
+}
 
 /** Tri-state for a package toggle (all on / some on / all off). */
 export type PkgState = "on" | "partial" | "off";
@@ -47,18 +46,32 @@ export interface SimController {
   /** s0 state for each selected wallet, in selection order. */
   selectedStates: WalletStateView[];
 
-  // ── step 2: policies ──
+  // ── step 2: policies (managed PER WALLET) ──
   policies: PolicyView[];
   packages: PackageView[];
+  /** The wallet whose policy on/off set step 2 is currently editing. Always
+   *  one of the selected wallets. */
+  activeWallet: string;
+  setActiveWallet: (addr: string) => void;
+  /** The active wallet's s0 state (drives the step-2 relevance aside). */
+  activeState: WalletStateView | null;
+  /** Enabled policy ids FOR THE ACTIVE WALLET. */
   enabled: Set<string>;
+  /** How many policies are enabled for a given wallet (switcher chips). */
+  enabledCount: (addr: string) => number;
   togglePolicy: (id: string) => void;
   togglePackage: (id: string) => void;
   packageState: (id: string) => PkgState;
-  /** Policies whose `walletAddress` is one of the selected wallets. */
+  /** Policies scoped to the active wallet (`walletAddress` === active). */
   walletRelatedPolicies: PolicyView[];
   /** Token symbols any enabled policy references (∅ = no token filter). */
   relevantTokens: Set<string>;
   isTokenRelevant: (symbol: string) => boolean;
+  /** Protocols any enabled policy references (∅ = no protocol filter). */
+  relevantProtocols: Set<string>;
+  isProtocolRelevant: (protocol: string) => boolean;
+  /** True when at least one enabled policy narrows the state (token or protocol). */
+  hasRelevanceFilter: boolean;
 
   // ── step 3: tx queue ──
   txRows: TxRow[];
@@ -77,15 +90,48 @@ export interface SimController {
   cumulativeDenies: (cursor: number) => DenyView[];
 }
 
-export function useSimController(): SimController {
+export function useSimController(provider: SimProvider = mockProvider): SimController {
+  // Provider-sourced data: seeded synchronously from `initial()` (fixtures for
+  // mock, empty shells for real) and refreshed async via `load()`.
+  const init = useMemo<SimData>(() => provider.initial(), [provider]);
+  const [data, setData] = useState<SimData>(init);
+  useEffect(() => {
+    let live = true;
+    void provider.load().then((d) => {
+      if (live) setData(d);
+    });
+    return () => {
+      live = false;
+    };
+  }, [provider]);
+
   const [step, setStep] = useState<WizardStep>(1);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set([MOCK_WALLETS[0].address]));
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(init.wallets[0] ? [init.wallets[0].address] : []),
+  );
   const [chain, setChain] = useState("eip155:1");
-  const [enabled, setEnabled] = useState<Set<string>>(() => new Set(MOCK_ENABLED_IDS));
-  const [txRows, setTxRowsState] = useState<TxRow[]>(MOCK_TX_ROWS);
+  // Policies are managed per wallet: address → enabled policy-id set.
+  const [enabledByWallet, setEnabledByWallet] = useState<Record<string, Set<string>>>(
+    () => toSetMap(init.enabledByWallet),
+  );
+  const [activeWalletRaw, setActiveWalletRaw] = useState<string>(init.wallets[0]?.address ?? "");
+  const [txRows, setTxRowsState] = useState<TxRow[]>(init.txRows);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
   const [cursorIdx, setCursorIdx] = useState(0);
+
+  // First time real data arrives (initial() was empty), seed the user-mutable
+  // selection / enabled-set / tx-queue from it. A mock provider seeds via the
+  // synchronous initializers above, so this is a no-op there.
+  const seededRef = useRef(init.wallets.length > 0);
+  useEffect(() => {
+    if (seededRef.current || data.wallets.length === 0) return;
+    seededRef.current = true;
+    setSelected(new Set([data.wallets[0].address]));
+    setActiveWalletRaw(data.wallets[0].address);
+    setEnabledByWallet(toSetMap(data.enabledByWallet));
+    setTxRowsState(data.txRows);
+  }, [data]);
 
   // ── nav ──
   const goTo = useCallback((s: WizardStep) => setStep(s), []);
@@ -107,35 +153,65 @@ export function useSimController(): SimController {
     });
   }, []);
   const selectedStates = useMemo(
-    () => MOCK_WALLETS.filter((w) => selected.has(w.address)).map((w) => MOCK_STATES[w.address]).filter(Boolean),
-    [selected],
+    () =>
+      data.wallets
+        .filter((w) => selected.has(w.address))
+        .map((w) => data.statesByAddr[w.address])
+        .filter(Boolean),
+    [selected, data],
   );
 
-  // ── step 2 ──
-  const togglePolicy = useCallback((id: string) => {
-    setEnabled((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  }, []);
+  // ── step 2 (per-wallet policy on/off) ──
+  // activeWallet is clamped to the current selection so it can never go stale
+  // when wallets are toggled off in step 1.
+  const activeWallet = useMemo(
+    () => (selected.has(activeWalletRaw) ? activeWalletRaw : ([...selected][0] ?? activeWalletRaw)),
+    [selected, activeWalletRaw],
+  );
+  const setActiveWallet = useCallback((addr: string) => setActiveWalletRaw(addr), []);
+
+  const enabledFor = useCallback(
+    (addr: string): Set<string> => enabledByWallet[addr] ?? new Set<string>(),
+    [enabledByWallet],
+  );
+  const enabled = useMemo(() => enabledFor(activeWallet), [enabledFor, activeWallet]);
+  const enabledCount = useCallback((addr: string) => enabledFor(addr).size, [enabledFor]);
+
+  /** Apply `fn` to a fresh copy of the active wallet's enabled set. */
+  const mutateActive = useCallback(
+    (fn: (cur: Set<string>) => Set<string>) => {
+      setEnabledByWallet((prev) => {
+        const cur = new Set(prev[activeWallet] ?? []);
+        return { ...prev, [activeWallet]: fn(cur) };
+      });
+    },
+    [activeWallet],
+  );
+
+  const togglePolicy = useCallback(
+    (id: string) =>
+      mutateActive((n) => {
+        if (n.has(id)) n.delete(id);
+        else n.add(id);
+        return n;
+      }),
+    [mutateActive],
+  );
   const packageState = useCallback(
     (id: string): PkgState => {
-      const pkg = MOCK_PACKAGES.find((p) => p.id === id);
+      const pkg = data.packages.find((p) => p.id === id);
       if (!pkg || pkg.policyIds.length === 0) return "off";
       const on = pkg.policyIds.filter((pid) => enabled.has(pid)).length;
       return on === 0 ? "off" : on === pkg.policyIds.length ? "on" : "partial";
     },
-    [enabled],
+    [enabled, data.packages],
   );
   const togglePackage = useCallback(
     (id: string) => {
-      const pkg = MOCK_PACKAGES.find((p) => p.id === id);
+      const pkg = data.packages.find((p) => p.id === id);
       if (!pkg) return;
       const turnOn = packageState(id) !== "on"; // off/partial → on, on → off
-      setEnabled((prev) => {
-        const n = new Set(prev);
+      mutateActive((n) => {
         for (const pid of pkg.policyIds) {
           if (turnOn) n.add(pid);
           else n.delete(pid);
@@ -143,21 +219,32 @@ export function useSimController(): SimController {
         return n;
       });
     },
-    [packageState],
+    [packageState, mutateActive, data.packages],
   );
+  const activeState = useMemo(() => data.statesByAddr[activeWallet] ?? null, [activeWallet, data.statesByAddr]);
   const walletRelatedPolicies = useMemo(
-    () => MOCK_POLICIES.filter((p) => p.walletAddress && selected.has(p.walletAddress)),
-    [selected],
+    () => data.policies.filter((p) => p.walletAddress === activeWallet),
+    [activeWallet, data.policies],
   );
   const relevantTokens = useMemo(() => {
     const s = new Set<string>();
-    for (const p of MOCK_POLICIES) if (enabled.has(p.id)) for (const t of p.tokens) s.add(t);
+    for (const p of data.policies) if (enabled.has(p.id)) for (const t of p.tokens) s.add(t);
     return s;
-  }, [enabled]);
+  }, [enabled, data.policies]);
+  const relevantProtocols = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of data.policies) if (enabled.has(p.id)) for (const pr of p.protocols) s.add(pr);
+    return s;
+  }, [enabled, data.policies]);
   const isTokenRelevant = useCallback(
     (symbol: string) => relevantTokens.size === 0 || relevantTokens.has(symbol),
     [relevantTokens],
   );
+  const isProtocolRelevant = useCallback(
+    (protocol: string) => relevantProtocols.size === 0 || relevantProtocols.has(protocol),
+    [relevantProtocols],
+  );
+  const hasRelevanceFilter = relevantTokens.size > 0 || relevantProtocols.size > 0;
 
   // ── step 3 ──
   const setTxRows = useCallback((rows: TxRow[]) => setTxRowsState(rows), []);
@@ -181,19 +268,28 @@ export function useSimController(): SimController {
     [],
   );
 
-  // ── step 4 (mock run) ──
+  // ── step 4: run via the provider (mock fixtures / real sim-bridge) ──
   const run = useCallback(() => {
     setRunning(true);
     setResult(null);
-    // Simulate a short async run; the RealProvider will await sim-bridge here.
-    setTimeout(() => {
-      setResult(MOCK_RUN);
-      // Land the cursor on the first failing step (like the real page does).
-      const firstBad = MOCK_RUN.steps.findIndex((s) => s.verdict !== "pass");
-      setCursorIdx(firstBad >= 0 ? firstBad + 1 : MOCK_RUN.steps.length);
-      setRunning(false);
-    }, 450);
-  }, []);
+    void provider
+      .run({
+        selected: [...selected],
+        chain,
+        enabledByWallet: Object.fromEntries(
+          Object.entries(enabledByWallet).map(([addr, ids]) => [addr, [...ids]]),
+        ),
+        txRows,
+        statesByAddr: data.statesByAddr,
+      })
+      .then((res) => {
+        setResult(res);
+        // Land the cursor on the first failing step (like the real page does).
+        const firstBad = res.steps.findIndex((s) => s.verdict !== "pass");
+        setCursorIdx(firstBad >= 0 ? firstBad + 1 : res.steps.length);
+      })
+      .finally(() => setRunning(false));
+  }, [provider, selected, chain, enabledByWallet, txRows, data.statesByAddr]);
   const cumulativeDenies = useCallback(
     (cursor: number): DenyView[] => {
       if (!result) return [];
@@ -209,9 +305,12 @@ export function useSimController(): SimController {
 
   return {
     step, goTo, next, back, canAdvance,
-    wallets: MOCK_WALLETS, selected, toggleWallet, chain, setChain, selectedStates,
-    policies: MOCK_POLICIES, packages: MOCK_PACKAGES, enabled, togglePolicy, togglePackage, packageState,
+    wallets: data.wallets, selected, toggleWallet, chain, setChain, selectedStates,
+    policies: data.policies, packages: data.packages,
+    activeWallet, setActiveWallet, activeState, enabled, enabledCount,
+    togglePolicy, togglePackage, packageState,
     walletRelatedPolicies, relevantTokens, isTokenRelevant,
+    relevantProtocols, isProtocolRelevant, hasRelevanceFilter,
     txRows, setTxRows, addRow, removeRow, updateRow,
     run, running, result, cursorIdx, setCursorIdx, cumulativeDenies,
   };
