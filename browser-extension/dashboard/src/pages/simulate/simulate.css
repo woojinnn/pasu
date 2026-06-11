@@ -1,8 +1,12 @@
 /* /simulate — 4-step wizard. Uses the app's shared design tokens. */
 
-.sw-page { display: flex; flex-direction: column; min-height: 100%; }
-.sw-head { padding: 14px 22px 0; }
-.sw-body { flex: 1; padding: 8px 22px 20px; }
+/* Fill the padded .app-content area (top 24 + bottom 32 = 56) so the footer
+   pins to the bottom even when a step's content is short. */
+.sw-page { display: flex; flex-direction: column; min-height: calc(100vh - 56px); }
+/* No extra side padding — .app-content already insets 32px, so the step
+   content and the full-bleed footer's buttons line up at the same edge. */
+.sw-head { padding: 14px 0 0; }
+.sw-body { flex: 1; padding: 8px 0 20px; }
 
 /* ── step nav ─────────────────────────────────────────────────────────────── */
 .sw-nav { list-style: none; display: flex; align-items: center; gap: 0; margin: 0; padding: 0; }
@@ -36,9 +40,15 @@
 .sw-cols.result { grid-template-columns: 1fr 1fr; }
 
 /* ── footer ───────────────────────────────────────────────────────────────── */
+/* A full-bleed bottom action bar: cancel .app-content's 32px side + bottom
+   padding so the bar spans the content region edge-to-edge and sits flush at
+   the bottom (sticky keeps it visible while a tall step scrolls). */
 .sw-foot {
-  display: flex; align-items: center; gap: 10px; padding: 14px 22px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 32px;
+  margin: 0 -32px -32px;
   border-top: 1px solid var(--hairline); background: var(--surface);
+  position: sticky; bottom: 0;
 }
 .sw-foot-spacer { flex: 1; }
 .sw-btn {
