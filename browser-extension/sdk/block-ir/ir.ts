@@ -191,7 +191,7 @@ export interface PolicyIR {
 // ── Parameterization (customizable fields) ──────────────────────────────
 
 /** Structural shape a parameter hole fills — inferred from the marked value node. */
-export type Expected = "lit:long" | "lit:string" | "lit:bool" | "litEntity" | "set";
+export type Expected = "lit:long" | "lit:string" | "lit:bool" | "litEntity" | "set" | "attr";
 
 /** Adopter-input constraints an author may attach to a parameter. */
 export interface ParamConstraints {
@@ -237,7 +237,9 @@ export type ParamFillValue =
   | string
   | boolean
   | (string | number)[]
-  | { type: string; id: string };
+  | { type: string; id: string }
+  /** 다른 필드와 비교 — 점 경로(principal.address, context.custom.x …). */
+  | { field: string };
 
 /** One validation failure from `fillParams`, surfaced to the adopter form. */
 export interface ParamError {

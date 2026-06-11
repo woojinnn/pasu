@@ -50,7 +50,7 @@
 
 export { estToBlocks } from "./estToBlocks";
 export { blocksToEst } from "./blocksToEst";
-export { concretizeIr, makeHole, replaceNode, extractParams, fillParams, childExprs } from "./params";
+export { attrExprToPath, concretizeIr, makeHole, pathToAttrExpr, replaceNode, extractParams, fillParams, childExprs } from "./params";
 export {
   type SchemaField,
   type SchemaDescriptor,

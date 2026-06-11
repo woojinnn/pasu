@@ -1,9 +1,15 @@
 /** Hole parameter value — subset of sdk/block-ir ParamFillValue (no entity refs). */
-export type HoleValue = string | number | boolean | (string | number)[];
+export type HoleValue =
+  | string
+  | number
+  | boolean
+  | (string | number)[]
+  /** 필드 참조 — 비교 대상 필드 자체를 지갑별로 바꾼다. */
+  | { field: string };
 
 export interface HoleSpec {
   name: string;
-  type: "addressSet" | "address" | "long" | "decimal" | "string" | "bool";
+  type: "addressSet" | "address" | "long" | "decimal" | "string" | "bool" | "field";
   label: string;
   desc?: string;
 }
