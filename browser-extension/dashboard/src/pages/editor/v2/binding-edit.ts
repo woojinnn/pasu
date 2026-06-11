@@ -146,9 +146,15 @@ function walk(
 }
 
 export function diffBindingEdit(defIr: PolicyIR, editedIr: PolicyIR): BindingDiff {
-  // 트리거/effect/annotations(심각도·사유 포함)가 다르면 구조 변경.
-  const meta = (ir: PolicyIR) =>
-    JSON.stringify({ e: ir.effect, a: ir.annotations, s: ir.scope });
+  // 트리거/effect/annotations(심각도·사유)가 다르면 구조 변경. `@id`는 제외 —
+  // 정체성 표식이라 에디터가 def id로 다시 찍는데, baked 원본의 슬러그와 달라서
+  // 모든 값 편집이 구조 변경으로 오판된다. 비교는 이름→값 맵(순서 무관).
+  const meta = (ir: PolicyIR) => {
+    const ann = Object.fromEntries(
+      (ir.annotations ?? []).filter((a) => a.name !== "id").map((a) => [a.name, a.value]),
+    );
+    return JSON.stringify({ e: ir.effect, a: ann, s: ir.scope });
+  };
   if (meta(defIr) !== meta(editedIr)) return { kind: "structural" };
   if (defIr.conditions.length !== editedIr.conditions.length) return { kind: "structural" };
 

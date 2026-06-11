@@ -171,8 +171,12 @@ function WalletWorkspace(props: {
   // 좌측 레일 = 이 지갑의 패키지(지갑 소속 객체) + 미분류(가상). 라이브러리의
   // 폴더와는 별개 — 지갑에서 무엇을 해도 라이브러리에 비치지 않는다.
   const packages = useMemo(() => {
+    // 미분류는 가상 그룹 — 실제로 미분류 바인딩이 있을 때만 보인다.
+    const hasUncat = Object.values(wallet.bindings).some(
+      (b) => b.packageId === UNCATEGORIZED_PKG,
+    );
     const list = [
-      { id: UNCATEGORIZED_PKG, displayName: "미분류", updatedAtMs: 0 },
+      ...(hasUncat ? [{ id: UNCATEGORIZED_PKG, displayName: "미분류", updatedAtMs: 0 }] : []),
       ...Object.values(wallet.packages ?? {}),
     ];
     return list.sort((a, b) =>

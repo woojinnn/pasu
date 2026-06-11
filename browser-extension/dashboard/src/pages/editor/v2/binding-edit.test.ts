@@ -87,6 +87,23 @@ describe("diffBindingEdit", () => {
     expect(diffBindingEdit(base(), policy(edited.conditions[0].body)).kind).toBe("structural");
   });
 
+  it("@id annotation 차이는 무시된다 (에디터가 def id로 다시 찍는 정체성 표식)", () => {
+    const a = base();
+    const b = policy({
+      kind: "binary",
+      op: "&&",
+      left: { kind: "binary", op: ">", left: attr("amt"), right: lit(42) },
+      right: {
+        kind: "unary",
+        op: "!",
+        operand: { kind: "binary", op: "contains", left: strSet(["0xaa"]), right: attr("spender") },
+      },
+    });
+    b.annotations = [{ name: "id", value: "def::builtin.something-else" }];
+    const d = diffBindingEdit(a, b);
+    expect(d.kind).toBe("params");
+  });
+
   it("심각도(annotation) 변경 → structural", () => {
     const edited = base();
     edited.annotations = [{ name: "id", value: "p" }, { name: "severity", value: "warn" }];

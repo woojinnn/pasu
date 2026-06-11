@@ -11,7 +11,9 @@ import {
   provisionWallets,
   putDef,
   putPackage,
+  putWalletPackage,
   removeBinding,
+  removePackageFromWallet,
   setPackageEnabled,
   updateBinding,
   type MarketInstallScope,
@@ -100,6 +102,10 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
       return updateBinding(uid, req);
     case "ps2:remove-binding":
       return removeBinding(uid, req);
+    case "ps2:remove-wallet-package":
+      return removePackageFromWallet(uid, req);
+    case "ps2:put-wallet-package":
+      return putWalletPackage(uid, req);
     case "ps2:copy-bindings":
       return copyBindings(uid, req);
     case "ps2:set-package-enabled":
@@ -108,6 +114,10 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
       return provisionWallets(uid, req.addresses);
     case "ps2:install-market":
       return installMarket(uid, { defs: req.defs, pkg: req.pkg, scope: req.scope, params: req.params });
+    default:
+      // 새 메시지를 유니언에만 추가하고 케이스를 빠뜨리면 조용한 no-op이 된다 —
+      // 시끄럽게 실패시킨다.
+      throw new Error(`알 수 없는 ps2 메시지: ${(req as { type: string }).type}`);
   }
 }
 

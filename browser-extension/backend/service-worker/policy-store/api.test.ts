@@ -131,3 +131,39 @@ describe("ps2 message API", () => {
     expect(Object.values(s.wallets.byAddress["0xa1"].bindings).map((b) => b.defId)).toEqual(["def::a"]);
   });
 });
+
+describe("wallet package messages", () => {
+  it("put-wallet-package creates a wallet-owned package (library untouched)", async () => {
+    await handlePs2Request({
+      type: "ps2:put-wallet-package",
+      address: "0xA1",
+      pkg: { id: "pkg::w1", displayName: "콜드 전용" },
+    });
+    const s = await readStore("u");
+    expect(s.wallets.byAddress["0xa1"].packages["pkg::w1"].displayName).toBe("콜드 전용");
+    expect(s.library.packages["pkg::w1"]).toBeUndefined();
+  });
+
+  it("remove-wallet-package strips bindings+gate+entry for that wallet only", async () => {
+    await putDef("u", def("def::a"));
+    await handlePs2Request({
+      type: "ps2:put-wallet-package",
+      address: "0xA1",
+      pkg: { id: "pkg::w1", displayName: "X" },
+    });
+    await handlePs2Request({
+      type: "ps2:bind",
+      defId: "def::a",
+      packageId: "pkg::w1",
+      addresses: ["0xa1"],
+    });
+    await handlePs2Request({ type: "ps2:remove-wallet-package", address: "0xA1", packageId: "pkg::w1" });
+    const s = await readStore("u");
+    expect(Object.keys(s.wallets.byAddress["0xa1"].bindings)).toHaveLength(0);
+    expect(s.wallets.byAddress["0xa1"].packages["pkg::w1"]).toBeUndefined();
+  });
+
+  it("unknown ps2 message throws loudly (no silent no-op)", async () => {
+    await expect(handlePs2Request({ type: "ps2:nope" } as never)).rejects.toThrow("알 수 없는");
+  });
+});
