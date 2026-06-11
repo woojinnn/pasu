@@ -144,9 +144,9 @@ export const COMPLEMENT: Record<FormOp, FormOp> = {
 export function leafToExpr(leaf: FormLeaf): Expr {
   const attr = pathToExpr(leaf.fieldPath);
   let rhs = valueToExpr(leaf.value);
-  // "지갑별 설정" 승격: 값 노드를 optional 홀로 (기본값 = 현재 값). decimal은
-  // ext("decimal", [lit]) 형태라 내부 lit을 홀로 만든다(makeHole은 값 노드 전용).
-  if (leaf.param && leaf.value.kind !== "field") {
+  // 파라미터 승격: 값 노드를 optional 홀로 (기본값 = 현재 값). decimal은
+  // ext("decimal", [lit]) 형태라 내부 lit을 홀로. 필드 참조 RHS도 홀이 된다.
+  if (leaf.param) {
     const opts = { name: leaf.param.name, label: leaf.param.label, optional: true };
     if (rhs.kind === "ext" && rhs.fn === "decimal" && rhs.args.length === 1) {
       rhs = { ...rhs, args: [makeHole(rhs.args[0], opts)] };

@@ -1,5 +1,5 @@
 /** 에디터 저장 → ps2 페이로드 변환(순수). 신규 def는 범위 모달 입력을 defaults에 기록. */
-import { extractParams } from "../../../cedar/blocks";
+import { attrExprToPath, extractParams } from "../../../cedar/blocks";
 import type { PolicyIR } from "../../../cedar/blocks";
 import type { HoleSpec, HoleValue, PolicyDef } from "../../../server-api/policy-store";
 
@@ -34,6 +34,9 @@ export function holesFromIr(ir: PolicyIR): {
     } else if (d.kind === "set") {
       type = "addressSet";
       value = d.elements.flatMap((e) => (e.kind === "lit" ? [String(e.value)] : []));
+    } else if (d.kind === "attr" || d.kind === "var") {
+      type = "field";
+      value = { field: attrExprToPath(d) ?? "" };
     }
     holes.push({ name: spec.name, type, label: spec.label ?? spec.name });
     paramDefaults[spec.name] = value;
