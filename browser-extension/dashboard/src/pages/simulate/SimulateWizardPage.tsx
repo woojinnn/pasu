@@ -2,12 +2,16 @@
  * /simulate — the 4-step simulation wizard (beta). Replaces the dense single
  * /simulation page with a guided flow: 지갑·상태 → 정책 → 트랜잭션 → 결과.
  *
- * Frontend-first: all data comes from {@link useSimController}'s MockProvider;
- * the backend (server state + sim-bridge WASM) is wired step-by-step later
- * without touching these views.
+ * Data comes from a {@link SimProvider}: the MockProvider (fixtures) or the
+ * RealProvider (server + ps2 + sim-bridge). A header toggle switches between
+ * them; switching remounts the inner wizard (via `key`) so state resets cleanly.
  */
+import { useState } from "react";
+
 import { Topbar } from "../../shell/Topbar";
 
+import { mockProvider, type SimProvider } from "./provider";
+import { realProvider } from "./real-provider";
 import { StepNav } from "./StepNav";
 import { Step1Wallets } from "./Step1Wallets";
 import { Step2Policies } from "./Step2Policies";
@@ -16,13 +20,47 @@ import { Step4Results } from "./Step4Results";
 import { useSimController } from "./useSimController";
 import "./simulate.css";
 
+type Mode = "mock" | "real";
+
 export function SimulateWizardPage() {
-  const c = useSimController();
+  const [mode, setMode] = useState<Mode>("mock");
 
   return (
     <div className="sw-page">
       <Topbar here="시뮬레이션" subtitle="베타 · 4단계" />
 
+      <div className="sw-mode-row">
+        <span className="sw-mode-lbl">데이터</span>
+        <div className="sw-mode" role="tablist" aria-label="데이터 소스">
+          <button
+            type="button"
+            className={`sw-mode-btn${mode === "mock" ? " on" : ""}`}
+            aria-selected={mode === "mock"}
+            onClick={() => setMode("mock")}
+          >
+            예시(Mock)
+          </button>
+          <button
+            type="button"
+            className={`sw-mode-btn${mode === "real" ? " on" : ""}`}
+            aria-selected={mode === "real"}
+            onClick={() => setMode("real")}
+          >
+            실데이터
+          </button>
+        </div>
+      </div>
+
+      <WizardInner key={mode} provider={mode === "real" ? realProvider : mockProvider} />
+    </div>
+  );
+}
+
+function WizardInner({ provider }: { provider: SimProvider }) {
+  const c = useSimController(provider);
+
+  return (
+    <>
       <div className="sw-head">
         <StepNav step={c.step} goTo={c.goTo} />
       </div>
@@ -63,6 +101,6 @@ export function SimulateWizardPage() {
           </button>
         )}
       </footer>
-    </div>
+    </>
   );
 }
