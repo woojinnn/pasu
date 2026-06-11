@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -13,7 +14,6 @@ import {
   updateBinding,
   UNCATEGORIZED_PKG,
   type Binding,
-  type HoleValue,
   type PolicyDef,
   type StoreSnapshot,
   type WalletPolicyState,
@@ -22,7 +22,6 @@ import { listWallets } from "../../../server-api/wallets";
 import { deriveWalletRows, packageDisplayOn } from "./wallet-policies-derive";
 import { DRAG_DEF_MIME } from "./LibraryDirectory";
 import { catKey, catLabel, catStyle } from "./categories";
-import { formatHoleValue, parseHoleInput } from "./hole-params";
 import { CaretRightIcon, CopyIcon, FolderIcon, PencilIcon, PlusIcon, TrashIcon } from "./icons";
 
 /** 지갑별 정책 — 좌: 이 지갑의 패키지(추가/이름변경/토글/드롭), 우: 라이브러리
@@ -111,6 +110,7 @@ function WalletWorkspace(props: {
   invalidate: () => void;
 }) {
   const { snap, address, onToast, invalidate } = props;
+  const navigate = useNavigate();
   const wallet: WalletPolicyState = snap.wallets.byAddress[address] ?? {
     bindings: {},
     packageEnabled: {},
@@ -458,6 +458,11 @@ function WalletWorkspace(props: {
                                   def={d}
                                   wallet={wallet}
                                   pkgName={snap.library.packages[b.packageId]?.displayName ?? b.packageId}
+                                  onOpen={() =>
+                                    navigate(
+                                      `/editor/${encodeURIComponent(d.id)}?wallet=${address}&binding=${encodeURIComponent(b.id)}`,
+                                    )
+                                  }
                                   onRun={run}
                                   address={address}
                                 />
@@ -485,14 +490,14 @@ function BindingRow(props: {
   wallet: WalletPolicyState;
   pkgName: string;
   address: string;
+  onOpen: () => void;
   onRun: (label: string, fn: () => Promise<unknown>) => Promise<boolean>;
 }) {
-  const { binding: b, def, wallet, pkgName, address, onRun } = props;
+  const { binding: b, def, wallet, pkgName, address, onOpen, onRun } = props;
   const pkgOn = wallet.packageEnabled[b.packageId] ?? true;
   const effective = isEffectiveOn(wallet, b);
   const [editingAlias, setEditingAlias] = useState(false);
   const [aliasDraft, setAliasDraft] = useState(b.alias ?? "");
-  const [paramsOpen, setParamsOpen] = useState(false);
 
   const saveAlias = () => {
     setEditingAlias(false);
@@ -516,7 +521,14 @@ function BindingRow(props: {
 
   return (
     <div className={`wt-binding${effective ? "" : " off"}`}>
-      <div className="wt-binding-main">
+      <div
+        className="wt-binding-main clickable"
+        title="이 지갑 인스턴스 편집 — 값을 바꾸면 이 지갑에만 적용돼요"
+        onClick={(ev) => {
+          if ((ev.target as HTMLElement).closest("button, input, label, select")) return;
+          onOpen();
+        }}
+      >
         <span className="wt-pkg">
           {pkgName}
           {!pkgOn && <span className="wt-pkgoff">패키지 꺼짐</span>}
@@ -548,16 +560,6 @@ function BindingRow(props: {
             <PencilIcon />
           </button>
         )}
-        {def.holes.length > 0 && (
-          <button
-            type="button"
-            className={`pm-count${paramsOpen ? " on" : ""}`}
-            title="지갑별 설정 값"
-            onClick={() => setParamsOpen((v) => !v)}
-          >
-            설정 {def.holes.length}
-          </button>
-        )}
         <button type="button" className="ev2-iconbtn" title="이 지갑에 복제" onClick={duplicate}>
           <CopyIcon />
         </button>
@@ -582,80 +584,6 @@ function BindingRow(props: {
           <TrashIcon />
         </button>
       </div>
-      {paramsOpen && def.holes.length > 0 && (
-        <BindingParamsEditor
-          def={def}
-          binding={b}
-          onSave={(params) =>
-            void onRun("설정 저장", () =>
-              updateBinding({ address, bindingId: b.id, patch: { params } }),
-            ).then((ok) => ok && setParamsOpen(false))
-          }
-        />
-      )}
-    </div>
-  );
-}
-
-/** def.holes 기반 지갑별 값 편집 — 비워둔 항목은 기본값으로 평가된다. */
-function BindingParamsEditor(props: {
-  def: PolicyDef;
-  binding: Binding;
-  onSave: (params: Record<string, HoleValue>) => void;
-}) {
-  const { def, binding, onSave } = props;
-  const merged = { ...def.defaults.params, ...binding.params };
-  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
-    Object.fromEntries(def.holes.map((h) => [h.name, formatHoleValue(merged[h.name])])),
-  );
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const save = () => {
-    const params: Record<string, HoleValue> = {};
-    const errs: Record<string, string> = {};
-    for (const h of def.holes) {
-      const r = parseHoleInput(h.type, drafts[h.name] ?? "");
-      if (r.ok) params[h.name] = r.value;
-      else errs[h.name] = r.error;
-    }
-    setErrors(errs);
-    if (Object.keys(errs).length === 0) onSave(params);
-  };
-
-  return (
-    <div className="pm-holes wt-params">
-      {def.holes.map((h) => (
-        <label key={h.name} className="pm-hole">
-          <span className="lb" title={h.desc}>
-            {h.label}
-          </span>
-          {h.type === "bool" ? (
-            <select
-              value={drafts[h.name] || "false"}
-              onChange={(e) => setDrafts((d) => ({ ...d, [h.name]: e.target.value }))}
-            >
-              <option value="true">예</option>
-              <option value="false">아니오</option>
-            </select>
-          ) : h.type === "addressSet" ? (
-            <textarea
-              rows={2}
-              value={drafts[h.name] ?? ""}
-              placeholder="주소를 줄마다 하나씩"
-              onChange={(e) => setDrafts((d) => ({ ...d, [h.name]: e.target.value }))}
-            />
-          ) : (
-            <input
-              value={drafts[h.name] ?? ""}
-              onChange={(e) => setDrafts((d) => ({ ...d, [h.name]: e.target.value }))}
-            />
-          )}
-          {errors[h.name] && <span className="err">{errors[h.name]}</span>}
-        </label>
-      ))}
-      <button type="button" className="ev2-sec" onClick={save}>
-        저장
-      </button>
     </div>
   );
 }

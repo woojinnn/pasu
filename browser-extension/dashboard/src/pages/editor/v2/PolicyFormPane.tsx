@@ -854,7 +854,6 @@ function ConditionEditor({
                   onField={(p) => updateNode(si, ni, pickFieldCond(n, p, ctx.fieldByPath))}
                   onOp={(op) => updateNode(si, ni, pickOpCond(n, op, ctx.fieldByPath))}
                   onValue={(value) => updateNode(si, ni, { ...n, value })}
-                  onParam={(param) => updateNode(si, ni, { ...n, param })}
                   onGroup={() => addOr(si, ni)}
                   onRemove={() => removeNode(si, ni)}
                 />
@@ -1007,7 +1006,6 @@ function GroupBox({
             onField={(p) => update(i, pickFieldCond(c, p, ctx.fieldByPath))}
             onOp={(op) => update(i, pickOpCond(c, op, ctx.fieldByPath))}
             onValue={(value) => update(i, { ...c, value })}
-            onParam={(param) => update(i, { ...c, param })}
             onGroup={() => wrapChild(i)}
             onRemove={() => removeAt(i)}
           />
@@ -1033,7 +1031,6 @@ function ConditionRow({
   onField,
   onOp,
   onValue,
-  onParam,
   onGroup,
   onRemove,
 }: {
@@ -1048,7 +1045,6 @@ function ConditionRow({
   onField: (path: string) => void;
   onOp: (op: FormOp) => void;
   onValue: (v: FormValue) => void;
-  onParam: (p: { name: string; label: string } | undefined) => void;
   onGroup?: () => void;
   onRemove: () => void;
 }) {
@@ -1121,38 +1117,6 @@ function ConditionRow({
           />
         ) : (
           <ValueInput value={cond.value} field={field} onChange={onValue} />
-        )}
-        {!fieldMode && cond.fieldPath && (
-          <button
-            type="button"
-            className={`pf-ctl pf-param${cond.param ? " on" : ""}`}
-            onClick={() =>
-              onParam(
-                cond.param
-                  ? undefined
-                  : {
-                      name: autoParamName(cond.fieldPath),
-                      label: field?.label ?? cond.fieldPath.split(".").pop() ?? "값",
-                    },
-              )
-            }
-            title={
-              cond.param
-                ? "지갑별 설정 해제 — 이 값이 다시 고정값이 돼요"
-                : "지갑별 설정으로 — 지갑마다 다른 값을 줄 수 있어요"
-            }
-          >
-            지갑별
-          </button>
-        )}
-        {cond.param && (
-          <input
-            className="pf-ctl pf-param-label"
-            value={cond.param.label}
-            placeholder="설정 이름"
-            onChange={(e) => onParam({ ...cond.param!, label: e.target.value })}
-            title="지갑 화면에 보일 설정 이름"
-          />
         )}
         <span className="pf-grow" />
         {onGroup && (
@@ -1338,13 +1302,4 @@ function ValueInput({
       return <input className="pf-val" value={value.value} onChange={(e) => onChange({ kind: "string", value: e.target.value })} />;
     }
   }
-}
-
-/** 파라미터 내부 이름 — fieldPath 꼬리의 camelCase + 난수 suffix(모델 전체 유일성
- *  보장; UI에는 label만 보인다). 같은 필드를 두 번 승격해도 충돌하지 않는다. */
-function autoParamName(fieldPath: string): string {
-  const tail = fieldPath.split(".").pop() ?? "param";
-  const base = tail.replace(/[^A-Za-z0-9]/g, "");
-  const head = base ? base[0].toLowerCase() + base.slice(1) : "param";
-  return `${head}_${Math.random().toString(36).slice(2, 6)}`;
 }

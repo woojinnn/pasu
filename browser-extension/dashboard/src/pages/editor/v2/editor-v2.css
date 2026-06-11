@@ -2617,3 +2617,11 @@
 .wt-params {
   padding: 6px 14px 10px 72px;
 }
+
+.wt-binding-main.clickable {
+  cursor: pointer;
+  border-radius: 7px;
+}
+.wt-binding-main.clickable:hover {
+  background: var(--fog-100);
+}
