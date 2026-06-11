@@ -1077,7 +1077,10 @@ function HoldingsTable({
                 <td>
                   <WalletChips wallets={a.wallets} onClick={onWalletClick} />
                 </td>
-                <td className="num">{a.balanceSum.toLocaleString("en-US", { maximumFractionDigits: 6 })}</td>
+                <td className="num">
+                  {a.balanceSum.toLocaleString("en-US", { maximumFractionDigits: 6 })}
+                  {kind !== "nft" && a.symbol ? <span className="bal-unit">{a.symbol}</span> : null}
+                </td>
                 <td className="num strong">
                   {a.usdSum > 0 ? `$${a.usdSum.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "—"}
                 </td>
@@ -1129,7 +1132,10 @@ function HoldingsTable({
                   </td>
                   <td><ChainPill chain={chainOf(r.h)} /></td>
                   <td className="mono">{r.walletLabel ?? shortAddr(r.walletAddr)}</td>
-                  <td className="num">{fmtBalance(r.h)}</td>
+                  <td className="num">
+                    {fmtBalance(r.h)}
+                    {kind !== "nft" && r.h.symbol ? <span className="bal-unit">{r.h.symbol}</span> : null}
+                  </td>
                   <td className="num strong">
                     {r.usd > 0 ? `$${r.usd.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "—"}
                   </td>
