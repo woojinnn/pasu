@@ -11,6 +11,7 @@ import {
   type PendingRequest,
 } from "./storage";
 import { appendVerdict, type VerdictInsert } from "./verdict-storage";
+import { refreshBadge } from "./mascot-badge";
 import { appendStateDelta } from "./state-delta-storage";
 import { appendDiagnosisContext } from "./diagnosis-context-storage";
 import {
@@ -89,6 +90,15 @@ interface DecisionResult {
 
 interface DecisionOptions {
   onAwaitingUser?: () => void;
+  /** 표시 전용 advisory 사이드이펙트. 라이브 위험(fail|warn) verdict 에
+   *  fire-and-forget 으로 호출. `ok`/결정 흐름·confirm 창을 절대 건드리지 않고
+   *  `pasu:verdict-decision` 도 발신하지 않는다. 구현(데스크톱 알림)은 호출자
+   *  (index.ts)가 소유 — orchestrator 는 추상 이벤트만 방출(순환 import 회피). */
+  onRiskyVerdict?: (args: {
+    scenario: "tx" | "approval";
+    title?: string | undefined;
+    message?: string | undefined;
+  }) => void;
 }
 
 /**
@@ -219,6 +229,33 @@ async function decideInner(
     }
     const { verdict } = lifecycle;
 
+    // 표시 전용 advisory 데스크톱 알림 — 라이브 위험(fail|warn) verdict 에서만.
+    // fire-and-forget: `ok`·confirm 창·`pasu:verdict-decision` 채널 어디에도
+    // 영향을 주지 않는다. decideMessage 는 index.ts 의 라이브 호출부 한 곳에서만
+    // 불리고(시뮬레이션 핸들러는 여기 도달 안 함) onRiskyVerdict 콜백도 그곳에서만
+    // 주입되므로, 시뮬레이션 경로에선 구조적으로 발사되지 않는다.
+    // 한 decideMessage(= 한 지갑 요청) = 알림 1건 — appendVerdict 의 정책별 N회
+    // 루프와 달리 verdict 객체 기준이라 중복 없음.
+    if (verdict.kind === "fail" || verdict.kind === "warn") {
+      try {
+        const matched = verdict.matched[0];
+        const scenario = matched?.origin === "action" ? "approval" : "tx";
+        const addr = inferContractSelector(message).contract?.addr;
+        const reason = matched?.reason ?? null;
+        options.onRiskyVerdict?.({
+          scenario,
+          // 둘 다 optional — 없으면 시나리오 기본 카피로 폴백.
+          message:
+            reason ??
+            (addr
+              ? `상호작용한 주소(${addr})가 위험 목록과 일치해요.`
+              : undefined),
+        });
+      } catch {
+        /* advisory 전용 — 알림 준비 실패가 결정에 영향 주지 않게 */
+      }
+    }
+
     let ok = false;
     // user_decision is only meaningful for WARN — PASS auto-passes and FAIL's
     // popup is informational only. WARN's `ok` boolean (trust vs. cancel/X)
@@ -340,11 +377,18 @@ async function appendAudit(
     decidedAtMs: Date.now(),
   });
 
-  // Keep the user-facing verdict log on-device. The extension owns policy verdicts
-  // and audit history; the server is not the write path for verdicts.
-  void appendVerdictsForMessage(message, verdict, userDecision).catch((err) => {
-    console.warn("[Pasu] verdict-storage append failed", err);
-  });
+  // Keep the user-facing verdict log on-device. The server returns simulated
+  // state for policy evaluation; the extension owns policy verdicts and audit
+  // history, so this replaces the old server `/verdicts` write path.
+  //
+  // After the verdict row is written, refresh the toolbar mascot badge so it
+  // reflects the latest 24h fail/warn count (safe → warn → fail). Chained
+  // after the append so `countVerdicts` sees this verdict; best-effort.
+  void appendVerdictsForMessage(message, verdict, userDecision)
+    .then(() => refreshBadge())
+    .catch((err) => {
+      console.warn("[Pasu] verdict-storage append / badge refresh failed", err);
+    });
 }
 
 async function appendVerdictsForMessage(
