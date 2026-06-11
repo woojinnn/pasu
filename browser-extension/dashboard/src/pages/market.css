@@ -1576,6 +1576,37 @@
 }
 .im-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 
+/* 받기 모달 v3 — 2단계 (① 지갑 전용 vs 라이브러리 / ② 세부 설정) */
+.im-scope { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.im-field {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--slate-800);
+}
+.im-field select, .im-field input[type="text"], .im-field input:not([type]) {
+  font-size: 12.5px; padding: 5px 8px;
+  border: 1px solid var(--hairline, #e2e8f0); border-radius: 8px;
+  flex: 1; min-width: 0;
+}
+.im-wallets {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-left: 4px; max-height: 200px; overflow: auto;
+}
+.im-addr { font-variant-numeric: tabular-nums; font-size: 12px; word-break: break-all; }
+.im-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  width: 100%; text-align: left; padding: 12px 14px;
+  border: 1px solid var(--hairline, #e2e8f0); border-radius: 12px;
+  background: var(--surface, #fff); cursor: pointer;
+}
+.im-opt:hover:not(:disabled) { border-color: var(--slate-400, #94a3b8); }
+.im-opt:disabled { opacity: 0.5; cursor: not-allowed; }
+.im-opt-t { font-size: 13.5px; font-weight: 700; color: var(--slate-900); }
+.im-opt-d { font-size: 11.5px; color: var(--slate-500); line-height: 1.45; }
+.im-pkgrow { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px 26px; }
+.im-pkgrow select, .im-pkgrow input { font-size: 12px; padding: 4px 8px; border: 1px solid var(--hairline, #e2e8f0); border-radius: 8px; }
+.im-pkglabel { flex: none; font-size: 11.5px; color: var(--slate-500); }
+.im-info { font-size: 11.5px; color: var(--slate-500); margin-left: 24px; line-height: 1.5; }
+
 /* Policy card severity symbol (top-right, colored) */
 .lv-sev-sym { margin-left: auto; display: inline-flex; line-height: 0; }
 .lv-sev-sym.sev-deny { color: #dc2626; }

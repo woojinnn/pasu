@@ -233,9 +233,13 @@ export function SaveScopeModal(props: {
                     <input
                       type="checkbox"
                       checked={bulk}
-                      onChange={(e) => setBulk(e.target.checked)}
+                      onChange={(e) => {
+                        setBulk(e.target.checked);
+                        // 일괄 모드를 켜면 모든 지갑을 선택해 준다(편의 기능).
+                        if (e.target.checked) setPicked(new Set(allAddresses));
+                      }}
                     />
-                    선택한 지갑 모두에 새 패키지를 만들어 넣기
+                    모든 지갑에 새 패키지를 만들어 넣기
                   </label>
                   {bulk && (
                     <>
