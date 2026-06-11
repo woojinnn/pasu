@@ -82,6 +82,7 @@ export function Step2Policies({ c }: { c: SimController }) {
               entrance={false}
               filter={{
                 active: filtering,
+                isWidgetRelevant: c.isWidgetRelevant,
                 isTokenRelevant: c.isTokenRelevant,
                 isProtocolRelevant: c.isProtocolRelevant,
               }}
