@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -10,7 +10,9 @@ import {
   getWalletPositions,
   hlAccountOf,
   listAuditVerdicts,
+  ServerError,
   setVerdictDecision,
+  syncWallet,
   type ClassifiedApprovals,
   type ClassifiedErc20Approval,
   type ClassifiedPermit2Approval,
@@ -117,6 +119,45 @@ export function MonitoringPage() {
     })),
   });
 
+  // Wallet sync — re-pull on-chain state for the wallet(s) currently in view
+  // (all wallets in L1, the selected one in L2), then refresh every asset query
+  // so the tables reflect the new state. Replaces the old Home's sync button.
+  const qc = useQueryClient();
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  const [syncErr, setSyncErr] = useState<string | null>(null);
+  const syncMut = useMutation({
+    // Sequential, NOT Promise.all: the server holds a per-USER sync lock, so
+    // concurrent /sync calls 409 ("sync already running for this user"). The
+    // handler blocks until each wallet's refresh finishes, so awaiting in turn
+    // means the data is fresh by the time we invalidate.
+    mutationFn: async (addrs: string[]) => {
+      for (const a of addrs) await syncWallet(a);
+    },
+    onMutate: () => setSyncErr(null),
+    onError: (e) => {
+      // ServerError carries the real reason in `.body` (the handler's
+      // `internal(reason)` text); `.message` is just "500 …". Prefer the body.
+      const reason =
+        e instanceof ServerError && typeof e.body === "string" && e.body
+          ? e.body
+          : e instanceof Error
+            ? e.message
+            : "동기화에 실패했어요";
+      setSyncErr(reason);
+    },
+    onSuccess: (_v, addrs) => {
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      for (const a of addrs) {
+        qc.invalidateQueries({ queryKey: ["holdings", a] });
+        qc.invalidateQueries({ queryKey: ["approvals", a] });
+        qc.invalidateQueries({ queryKey: ["positions", a] });
+        qc.invalidateQueries({ queryKey: ["pending", a] });
+      }
+      qc.invalidateQueries({ queryKey: ["wallet-findings"] });
+      setSyncedAt(Date.now());
+    },
+  });
+
   // Per-wallet recent verdicts — only fetched in L2 mode (single wallet).
   const findingsQ = useQuery({
     queryKey: ["wallet-findings", sel],
@@ -177,6 +218,28 @@ export function MonitoringPage() {
           isL2
             ? `${selectedWallet?.label ?? shortAddr(sel)}`
             : `${wallets.length} wallets · ${summaryQ.data?.chain_breakdown.length ?? 0} chains`
+        }
+        right={
+          <div className="sync-wrap">
+            {syncErr && !syncMut.isPending && (
+              <span className="sync-err" title={syncErr}>
+                동기화 실패: {syncErr.slice(0, 100)}
+              </span>
+            )}
+            {!syncErr && syncedAt !== null && !syncMut.isPending && (
+              <span className="sync-done">방금 동기화됨</span>
+            )}
+            <button
+              type="button"
+              className="sync-btn"
+              onClick={() => syncMut.mutate(targetWallets.map((w) => w.address))}
+              disabled={syncMut.isPending || targetWallets.length === 0}
+              title={isL2 ? "이 지갑 동기화" : "모든 지갑 동기화"}
+            >
+              <span className={`sync-ic${syncMut.isPending ? " spin" : ""}`}>↻</span>
+              {syncMut.isPending ? "동기화 중…" : "동기화"}
+            </button>
+          </div>
         }
       />
       <WalletSwitch sel={sel} setSel={setSelectionAndUrl} wallets={wallets} loading={summaryQ.isLoading} />

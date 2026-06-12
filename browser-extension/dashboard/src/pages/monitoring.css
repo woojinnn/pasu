@@ -413,3 +413,20 @@
 .hl-tp { background: var(--pass-100); color: var(--pass-800); }
 .hl-sl { background: var(--fail-100); color: var(--fail-800); }
 .hl-empty { font-size: 12px; color: var(--slate-400); padding: 4px 0; }
+
+/* ── wallet sync (Topbar right action) ─────────────────────────────────────── */
+.sync-wrap { display: inline-flex; align-items: center; gap: 10px; }
+.sync-done { font-size: 12px; color: var(--pass-700); white-space: nowrap; }
+.sync-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600;
+  padding: 7px 13px; border-radius: var(--r-input, 8px);
+  border: 1px solid var(--hairline); background: var(--surface); color: var(--slate-700);
+  cursor: pointer;
+}
+.sync-btn:hover:not(:disabled) { background: var(--sage-50); border-color: var(--sage-300); color: var(--slate-900); }
+.sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.sync-ic { display: inline-block; font-size: 14px; line-height: 1; }
+.sync-ic.spin { animation: sync-spin 0.8s linear infinite; }
+@keyframes sync-spin { to { transform: rotate(360deg); } }
+.sync-err { font-size: 12px; color: var(--fail-700); white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
