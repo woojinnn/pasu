@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   bindDef,
+  deleteDef,
   getOverview,
   isEffectiveOn,
   putDef,
@@ -288,6 +289,20 @@ function WalletWorkspace(props: {
     );
   };
 
+  /** 정책 뼈대(skeleton) 수정 — 라이브러리 에디터로 이동(지갑·바인딩 없음). */
+  const editSkeleton = (defId: string) => navigate(`/editor/${encodeURIComponent(defId)}`);
+
+  /** 정책 자체를 라이브러리에서 삭제 — 모든 지갑에서 함께 제거된다. */
+  const deletePolicy = (d: PolicyDef) => {
+    const uses = Object.values(snap.wallets.byAddress).reduce(
+      (n, w) => n + Object.values(w.bindings).filter((b) => b.defId === d.id).length,
+      0,
+    );
+    const extra = uses > 0 ? `\n${uses}개 지갑에서 함께 제거됩니다.` : "";
+    if (!window.confirm(`정책 "${d.displayName}"을(를) 라이브러리에서 삭제할까요?${extra}`)) return;
+    void run("정책 삭제", () => deleteDef(d.id)).then((ok) => ok && onToast("정책을 삭제했어요"));
+  };
+
   const toggleFolder = (id: string) =>
     setCollapsed((prev) => {
       const n = new Set(prev);
@@ -480,17 +495,41 @@ function WalletWorkspace(props: {
                       title={catLabel(cat)}
                     />
                     <span className={`nm${rows.length === 0 ? " dim" : ""}`}>{d.displayName}</span>
-                    <button
-                      type="button"
-                      className="ev2-iconbtn wt-pub"
-                      title="이 정책을 마켓에 게시"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void publishDef(d);
-                      }}
-                    >
-                      <ShieldIcon />
-                    </button>
+                    <div className="ld-def-acts">
+                      <button
+                        type="button"
+                        className="ev2-iconbtn wt-pub"
+                        title="이 정책을 마켓에 게시"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void publishDef(d);
+                        }}
+                      >
+                        <ShieldIcon />
+                      </button>
+                      <button
+                        type="button"
+                        className="ev2-iconbtn"
+                        title="정책 뼈대 수정 (라이브러리)"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          editSkeleton(d.id);
+                        }}
+                      >
+                        <PencilIcon />
+                      </button>
+                      <button
+                        type="button"
+                        className="ev2-iconbtn danger"
+                        title="정책 삭제 (모든 지갑에서)"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePolicy(d);
+                        }}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </div>
                   {rows.map((b) => (
                     <BindingRow
@@ -814,18 +853,19 @@ function BindingRow(props: {
         <button type="button" className="ev2-iconbtn" title="이 지갑에 복제" onClick={duplicate}>
           <CopyIcon />
         </button>
-        <label className="pm-switch sm" title="이 정책만 켜기/끄기">
-          <input
-            type="checkbox"
-            checked={b.enabled}
-            onChange={(e) =>
-              void onRun("토글", () =>
-                updateBinding({ address, bindingId: b.id, patch: { enabled: e.target.checked } }),
-              )
-            }
-          />
-          <span className="trk" />
-        </label>
+        <button
+          type="button"
+          className={`ev2-ox${b.enabled ? " on" : ""}`}
+          title={b.enabled ? "이 정책 끄기 (제외)" : "이 정책 켜기 (포함)"}
+          aria-label={b.enabled ? "정책 끄기" : "정책 켜기"}
+          onClick={() =>
+            void onRun("토글", () =>
+              updateBinding({ address, bindingId: b.id, patch: { enabled: !b.enabled } }),
+            )
+          }
+        >
+          {b.enabled ? "○" : "✕"}
+        </button>
         <button
           type="button"
           className="ev2-iconbtn danger"
