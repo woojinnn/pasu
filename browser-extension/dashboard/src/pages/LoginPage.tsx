@@ -7,10 +7,12 @@
 
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 
 import { useAuth } from "../hooks/useAuth";
 
 export function LoginPage() {
+  const { t } = useTranslation("common");
   const { user, isLoading, login, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,7 +30,7 @@ export function LoginPage() {
   if (isLoading) {
     return (
       <div style={pageStyle}>
-        <p>Checking session…</p>
+        <p>{t("login.checkingSession")}</p>
       </div>
     );
   }
@@ -38,7 +40,12 @@ export function LoginPage() {
     return (
       <div style={pageStyle}>
         <p>
-          Signed in as <strong>{user.email}</strong> — redirecting…
+          <Trans
+            i18nKey="login.signedInRedirect"
+            ns="common"
+            values={{ email: user.email }}
+            components={{ strong: <strong /> }}
+          />
         </p>
       </div>
     );
@@ -48,14 +55,14 @@ export function LoginPage() {
     <div style={pageStyle}>
       <h1>Pasu</h1>
       <p style={{ opacity: 0.7, marginBottom: 24 }}>
-        Sign in to view your wallets and activity feed.
+        {t("login.subtitle")}
       </p>
       <button type="button" onClick={login} style={buttonStyle}>
-        Sign in with Google
+        {t("login.googleButton")}
       </button>
       {error && (
         <p style={{ color: "crimson", marginTop: 16 }}>
-          Auth error: {error.message}
+          {t("login.authError", { message: error.message })}
         </p>
       )}
     </div>

@@ -2787,6 +2787,10 @@
 
 /* 지갑별 정책 우측: 전용/공유 대섹션 */
 .wt-section {
+  /* 한 섹션 안의 폴더 박스들이 붙지 않게 세로 간격 */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 22px;
 }
 .wt-section-h {
@@ -2797,7 +2801,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--slate-400);
-  margin: 2px 2px 8px;
+  margin: 2px 2px 0;
 }
 .wt-section-h::before,
 .wt-section-h::after {

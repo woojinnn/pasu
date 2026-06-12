@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 import "./modal.css";
 
@@ -19,6 +20,7 @@ interface ModalProps {
  * (good enough for one-off forms; revisit if we add stacked dialogs).
  */
 export function Modal({ open, onClose, title, children, footer, width = 480 }: ModalProps) {
+  const { t } = useTranslation("common");
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -35,7 +37,7 @@ export function Modal({ open, onClose, title, children, footer, width = 480 }: M
       <div className="modal-panel" style={{ width }} onClick={(e) => e.stopPropagation()}>
         <header className="modal-head">
           <h3>{title}</h3>
-          <button className="modal-close" aria-label="닫기" onClick={onClose}>×</button>
+          <button className="modal-close" aria-label={t("close")} onClick={onClose}>×</button>
         </header>
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-foot">{footer}</footer>}

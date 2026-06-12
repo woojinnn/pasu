@@ -19,6 +19,8 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
 import {
   extractParams,
   fillParams,
@@ -36,6 +38,7 @@ export interface ParamFillPanelProps {
 }
 
 export function ParamFillPanel({ template, onFilled }: ParamFillPanelProps) {
+  const { t } = useTranslation("blocks");
   const specs = useMemo<ParamSpec[]>(() => {
     if (!template) return [];
     try {
@@ -87,7 +90,7 @@ export function ParamFillPanel({ template, onFilled }: ParamFillPanelProps) {
           color: "var(--slate-500, #475569)",
         }}
       >
-        파라미터 적용 — {specs.length}개 입력{success ? " ✓" : ""}
+        {t("fill.summary", { count: specs.length })}{success ? " ✓" : ""}
       </summary>
       <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
         {specs.map((s) => (
@@ -101,16 +104,16 @@ export function ParamFillPanel({ template, onFilled }: ParamFillPanelProps) {
         ))}
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button onClick={onApply} style={{ padding: "4px 12px", fontSize: 12 }}>
-            적용
+            {t("fill.apply")}
           </button>
           {success && (
             <span style={{ color: "var(--ok-700, #467a4a)", fontSize: 12 }}>
-              ✓ 모든 파라미터 적용 — 위 미리보기에서 결과 Cedar 확인
+              ✓ {t("fill.success")}
             </span>
           )}
           {errors.length > 0 && (
             <span style={{ color: "var(--fail-700, #7F4740)", fontSize: 12 }}>
-              ⚠ {errors.length}개 오류
+              ⚠ {t("fill.errorCount", { count: errors.length })}
             </span>
           )}
         </div>
@@ -127,6 +130,7 @@ interface ParamRowProps {
 }
 
 function ParamRow({ spec, value, error, onChange }: ParamRowProps) {
+  const { t } = useTranslation("blocks");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <label style={{ fontSize: 12, fontWeight: 500, display: "flex", gap: 6, alignItems: "baseline" }}>
@@ -135,7 +139,7 @@ function ParamRow({ spec, value, error, onChange }: ParamRowProps) {
         {spec.optional && <span style={chipStyle}>optional</span>}
         {spec.type && <span style={typeChipStyle}>{spec.type}</span>}
       </label>
-      {renderInput(spec, value, onChange)}
+      {renderInput(spec, value, onChange, t)}
       {error && <span style={{ fontSize: 11, color: "var(--fail-700, #7F4740)" }}>⚠ {error.message}</span>}
     </div>
   );
@@ -145,6 +149,7 @@ function renderInput(
   spec: ParamSpec,
   value: ParamFillValue | undefined,
   onChange: (v: ParamFillValue) => void,
+  t: (key: string, opts?: Record<string, unknown>) => string,
 ) {
   const hasEnum = !!spec.constraints?.enum;
   switch (spec.expected) {
@@ -156,7 +161,7 @@ function renderInput(
             onChange={(e) => onChange(Number(e.target.value))}
           >
             <option value="" disabled>
-              선택…
+              {t("fill.select")}
             </option>
             {spec.constraints!.enum!.map((opt) => (
               <option key={String(opt)} value={String(opt)}>
@@ -174,7 +179,7 @@ function renderInput(
           max={spec.constraints?.max}
           value={value === undefined ? "" : Number(value)}
           onChange={(e) => onChange(Number(e.target.value))}
-          placeholder={`기본: ${defaultPreview(spec)}`}
+          placeholder={t("fill.defaultPlaceholder", { value: defaultPreview(spec) })}
         />
       );
     }
@@ -186,7 +191,7 @@ function renderInput(
             onChange={(e) => onChange(e.target.value)}
           >
             <option value="" disabled>
-              선택…
+              {t("fill.select")}
             </option>
             {spec.constraints!.enum!.map((opt) => (
               <option key={String(opt)} value={String(opt)}>
@@ -201,7 +206,7 @@ function renderInput(
           type="text"
           value={value === undefined ? "" : String(value)}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={`기본: ${defaultPreview(spec)}`}
+          placeholder={t("fill.defaultPlaceholder", { value: defaultPreview(spec) })}
         />
       );
     }
@@ -219,14 +224,14 @@ function renderInput(
         <div style={{ display: "flex", gap: 4 }}>
           <input
             type="text"
-            placeholder="Type (예: User)"
+            placeholder={t("fill.entityTypePlaceholder")}
             value={v.type}
             onChange={(e) => onChange({ type: e.target.value, id: v.id })}
             style={{ flex: 1 }}
           />
           <input
             type="text"
-            placeholder="id (예: alice)"
+            placeholder={t("fill.entityIdPlaceholder")}
             value={v.id}
             onChange={(e) => onChange({ type: v.type, id: e.target.value })}
             style={{ flex: 1 }}
@@ -238,7 +243,7 @@ function renderInput(
       const arr = Array.isArray(value) ? value : [];
       return (
         <textarea
-          placeholder="쉼표 또는 줄바꿈으로 구분된 값들"
+          placeholder={t("fill.setPlaceholder")}
           value={arr.join(", ")}
           onChange={(e) => {
             const tokens = e.target.value

@@ -33,6 +33,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
+
+import { i18n } from "../i18n";
 
 import {
   getWalletState,
@@ -112,6 +115,8 @@ export function SimulationPage() {
 }
 
 function SimulationPageInner() {
+  const { t } = useTranslation("simulation");
+
   // ── wallets ────────────────────────────────────────────────────────────
   const walletsQ = useQuery({
     queryKey: ["wallets"],
@@ -270,7 +275,7 @@ function SimulationPageInner() {
     setRows([
       {
         id: rows[0]?.id ?? blankCalldataRow(0).id,
-        label: "history → 다시 시뮬",
+        label: t("page.historyRelabel"),
         fromWallet: urlFrom.toLowerCase(),
         to: urlTo,
         calldata: urlCalldata || "0x",
@@ -288,7 +293,7 @@ function SimulationPageInner() {
     // already-edited row. `setSearchParams({})` rewrites the location
     // without bouncing the user.
     setSearchParams({}, { replace: true });
-  }, [searchParams, setSearchParams, rows, hydratedFromUrlRef]);
+  }, [searchParams, setSearchParams, rows, hydratedFromUrlRef, t]);
 
   // ── run ────────────────────────────────────────────────────────────────
   const [stepsOut, setStepsOut] = useState<StepOutput[]>([]);
@@ -365,7 +370,7 @@ function SimulationPageInner() {
       for (const row of rows) {
         const fromAddr = row.fromWallet.toLowerCase();
         if (!fromAddr) {
-          throw new Error("from 지갑 주소가 비어있습니다");
+          throw new Error(t("page.errors.fromEmpty"));
         }
         // Non-registered addresses are allowed: the engine just needs a
         // string for the principal entity, and an empty wallet state lets
@@ -511,21 +516,29 @@ function SimulationPageInner() {
           }
         >
           {runMut.isPending
-            ? "실행 중…"
-            : `시뮬레이션 실행 (${rows.length})`}
+            ? t("page.running")
+            : t("page.run", { count: rows.length })}
         </button>
         <div className="rs-meta">
-          정책: <strong>{enabledIds.size}</strong> 활성
+          <Trans
+            t={t}
+            i18nKey="page.meta.policiesActive"
+            count={enabledIds.size}
+            components={{ s: <strong /> }}
+          />
           <span className="sep">·</span>
           TX: <strong>{rows.length}</strong>
           <span className="sep">·</span>
-          지갑: <strong>{selected.size}</strong>
+          <Trans
+            t={t}
+            i18nKey="page.meta.wallets"
+            count={selected.size}
+            components={{ s: <strong /> }}
+          />
           {v3Q.data && v3Q.data.bootCompleted && v3Q.data.count === 0 && (
             <>
               <span className="sep">·</span>
-              <span className="rs-warn">
-                v3 bundles 0개 — 디코드 결과 Unknown만 나옴
-              </span>
+              <span className="rs-warn">{t("page.meta.v3Empty")}</span>
             </>
           )}
           {v3Q.data && v3Q.data.bootCompleted && v3Q.data.count > 0 && (
@@ -617,15 +630,13 @@ function SimulationPageInner() {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function LoginGate({ onLogin }: { onLogin: () => void }) {
+  const { t } = useTranslation("simulation");
   return (
     <div className="sim-login-gate">
-      <h2>로그인이 필요합니다</h2>
-      <p>
-        시뮬레이터는 등록된 지갑들의 실제 state를 기반으로 동작합니다.
-        Google 계정으로 로그인하면 지갑 목록이 자동으로 불러와집니다.
-      </p>
+      <h2>{t("page.login.title")}</h2>
+      <p>{t("page.login.desc")}</p>
       <button className="btn primary" onClick={onLogin}>
-        Google로 로그인
+        {t("page.login.google")}
       </button>
     </div>
   );
@@ -705,7 +716,7 @@ function explainEngineError(raw: string): string {
   const notFound = raw.match(/token not found:.*address:\s*(0x[a-fA-F0-9]+)/);
   if (notFound) {
     const label = tokenLabel(notFound[1]);
-    return `이 지갑은 ${label}을(를) 추적하지 않습니다. 지갑 페이지에서 ${label}을(를) 추가하거나, 등록된 다른 토큰의 TX로 시뮬해주세요.`;
+    return i18n.t("simulation:page.errors.tokenNotTracked", { label });
   }
   // `balance underflow ... address: 0x... ... debit X` — token exists but
   // the wallet doesn't have enough to spend.
@@ -714,7 +725,10 @@ function explainEngineError(raw: string): string {
   );
   if (underflow) {
     const label = tokenLabel(underflow[1]);
-    return `${label} 잔액 부족 — ${underflow[2]} 만큼 차감하려는데 가용 잔액이 적습니다.`;
+    return i18n.t("simulation:page.errors.balanceUnderflow", {
+      label,
+      amount: underflow[2],
+    });
   }
   return raw;
 }

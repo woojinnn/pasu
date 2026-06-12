@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   UNCATEGORIZED_PKG,
@@ -22,10 +23,11 @@ import {
  *  지갑 패키지 드롭 = 그 지갑에 바인딩. */
 export const DRAG_DEF_MIME = "application/x-pasu-def-id";
 
-const SOURCE_LABEL: Record<PolicyDef["source"], string> = {
-  builtin: "내장",
-  mine: "내 정책",
-  market: "마켓",
+/** def 출처 라벨 키 — t()는 렌더 시점에 호출한다. */
+const SOURCE_LABEL_KEY: Record<PolicyDef["source"], string> = {
+  builtin: "library.source.builtin",
+  mine: "library.source.mine",
+  market: "library.source.market",
 };
 
 /** 라이브러리의 디렉토리 뷰 — 폴더(라이브러리 패키지) 안에 정의 = 파일. 폴더
@@ -54,6 +56,7 @@ export function LibraryDirectory(props: {
     onOpenDef, onDuplicate, onDelete, onDefaults, onToggleDefault,
     onRenamePackage, onDeletePackage, onPublishPackage, onMoveDef,
   } = props;
+  const { t } = useTranslation("editor");
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -149,7 +152,7 @@ export function LibraryDirectory(props: {
               {mode === "manage" && (
                 <span className="acts" onClick={(e) => e.stopPropagation()}>
                   {onPublishPackage && !locked && (
-                    <button type="button" className="ev2-iconbtn" title="이 폴더를 마켓에 패키지로 올리기" onClick={() => onPublishPackage(pkg)}>
+                    <button type="button" className="ev2-iconbtn" title={t("library.publishFolderTitle")} onClick={() => onPublishPackage(pkg)}>
                       <ShieldIcon />
                     </button>
                   )}
@@ -157,7 +160,7 @@ export function LibraryDirectory(props: {
                     <button
                       type="button"
                       className="ev2-iconbtn"
-                      title="이름 변경"
+                      title={t("library.rename")}
                       onClick={() => {
                         setRenaming(pkg.id);
                         setDraftName(pkg.displayName);
@@ -167,7 +170,7 @@ export function LibraryDirectory(props: {
                     </button>
                   )}
                   {onDeletePackage && !locked && (
-                    <button type="button" className="ev2-iconbtn danger" title="삭제" onClick={() => onDeletePackage(pkg)}>
+                    <button type="button" className="ev2-iconbtn danger" title={t("common:delete")} onClick={() => onDeletePackage(pkg)}>
                       <TrashIcon />
                     </button>
                   )}
@@ -177,7 +180,7 @@ export function LibraryDirectory(props: {
 
             {open && (
               <div className="ld-defs">
-                {defs.length === 0 && <div className="ld-empty">비어 있어요</div>}
+                {defs.length === 0 && <div className="ld-empty">{t("library.emptyFolder")}</div>}
                 {defs.map((d) => {
                   const cat = catKey(d.cat);
                   const usage = defUsageCount(snap, d.id);
@@ -194,39 +197,43 @@ export function LibraryDirectory(props: {
                     >
                       <span className="ld-cat" style={{ background: catStyle(cat).hex }} title={catLabel(cat)} />
                       <span className="nm">{d.displayName}</span>
-                      <span className="ld-src">{SOURCE_LABEL[d.source]}</span>
+                      <span className="ld-src">{t(SOURCE_LABEL_KEY[d.source])}</span>
                       {mode === "manage" && (
                         <>
-                          <span className="ld-meta">{usage > 0 ? `지갑 ${usage}` : ""}</span>
+                          <span className="ld-meta">
+                            {usage > 0 ? t("library.walletUsage", { count: usage }) : ""}
+                          </span>
                           {onToggleDefault ? (
                             <button
                               type="button"
                               className={`ld-defaultchip${d.defaults.enabled ? " on" : ""}`}
-                              title="앞으로 추가되는 지갑에 이 정책을 기본으로 적용할지 — 클릭해서 전환"
+                              title={t("library.defaultChipTitle")}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onToggleDefault(d, !d.defaults.enabled);
                               }}
                             >
-                              {d.defaults.enabled ? "새 지갑 기본 적용" : "새 지갑 적용 안 함"}
+                              {d.defaults.enabled ? t("library.defaultOn") : t("library.defaultOff")}
                             </button>
                           ) : (
-                            <span className="ld-meta">{d.defaults.enabled ? "기본 적용" : ""}</span>
+                            <span className="ld-meta">
+                              {d.defaults.enabled ? t("library.defaultApplied") : ""}
+                            </span>
                           )}
                           <span className="ld-meta time">{mtimeLabel(d.updatedAtMs, false)}</span>
                           <span className="acts" onClick={(e) => e.stopPropagation()}>
                             {onDefaults && (
-                              <button type="button" className="ev2-iconbtn" title="기본값 설정" onClick={() => onDefaults(d)}>
+                              <button type="button" className="ev2-iconbtn" title={t("library.defaultsTitle")} onClick={() => onDefaults(d)}>
                                 <PencilIcon />
                               </button>
                             )}
                             {onDuplicate && (
-                              <button type="button" className="ev2-iconbtn" title="복제" onClick={() => onDuplicate(d)}>
+                              <button type="button" className="ev2-iconbtn" title={t("library.duplicate")} onClick={() => onDuplicate(d)}>
                                 <CopyIcon />
                               </button>
                             )}
                             {onDelete && d.source !== "builtin" && (
-                              <button type="button" className="ev2-iconbtn danger" title="삭제" onClick={() => onDelete(d)}>
+                              <button type="button" className="ev2-iconbtn danger" title={t("common:delete")} onClick={() => onDelete(d)}>
                                 <TrashIcon />
                               </button>
                             )}

@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import {
   dashboardId,
@@ -20,30 +22,35 @@ interface CardDef {
   disabledNote?: string;
 }
 
-const CARDS: CardDef[] = [
-  {
-    key: "form",
-    accent: "cyan",
-    title: "폼으로 만들기",
-    summary:
-      "가장 쉬움 · 흔한 정책(forbid + AND) · .cedar와 manifest 자동 생성 · 임계값만 바꾸면 끝.",
-    rec: "처음·표준 정책",
-    pros: ["round-trip 안전망", "cedar·manifest 자동", "인라인 값 편집"],
-    cons: ["복잡한 정책(OR·중첩 등)은 폼으로 안 열릴 수 있어요"],
-    preview: "form",
-  },
-  {
-    key: "cedar",
-    accent: "slate",
-    title: "Cedar로 만들기",
-    summary:
-      "코드 직접 작성 · 최대 자유, 가드 최소 · 폼 안전망 밖 · 숙련자용.",
-    rec: "Cedar를 아는 사람",
-    pros: ["최대 자유", "manifest 직접 관리"],
-    cons: ["가드 최소", "폼 안전망 밖"],
-    preview: "cedar",
-  },
-];
+/** 카드 문구는 호출 시점에 t()로 — 모듈 평가 시점엔 i18n이 없을 수 있다. */
+function buildCards(t: TFunction): CardDef[] {
+  return [
+    {
+      key: "form",
+      accent: "cyan",
+      title: t("editor:chooser.form.title"),
+      summary: t("editor:chooser.form.summary"),
+      rec: t("editor:chooser.form.rec"),
+      pros: [
+        t("editor:chooser.form.pro1"),
+        t("editor:chooser.form.pro2"),
+        t("editor:chooser.form.pro3"),
+      ],
+      cons: [t("editor:chooser.form.con1")],
+      preview: "form",
+    },
+    {
+      key: "cedar",
+      accent: "slate",
+      title: t("editor:chooser.cedar.title"),
+      summary: t("editor:chooser.cedar.summary"),
+      rec: t("editor:chooser.cedar.rec"),
+      pros: [t("editor:chooser.cedar.pro1"), t("editor:chooser.cedar.pro2")],
+      cons: [t("editor:chooser.cedar.con1"), t("editor:chooser.cedar.con2")],
+      preview: "cedar",
+    },
+  ];
+}
 
 /**
  * Minimal seed cedar so the draft validates on save. Real authoring
@@ -61,8 +68,11 @@ interface ChooserProps {
 
 export function NewPolicyChooser({ open, onClose }: ChooserProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation("editor");
 
   if (!open) return null;
+
+  const cards = buildCards(t);
 
   // Do NOT persist here. We hand the editor an in-memory seed via navigation
   // state; nothing is written to storage until the user presses 저장. So a
@@ -74,7 +84,7 @@ export function NewPolicyChooser({ open, onClose }: ChooserProps) {
     onClose();
     navigate(`/editor/${encodeURIComponent(id)}`, {
       state: {
-        newPolicy: { method, cedarText: seedCedar(slug), displayName: "새 정책" },
+        newPolicy: { method, cedarText: seedCedar(slug), displayName: t("chooser.newPolicyName") },
       },
     });
   };
@@ -84,23 +94,20 @@ export function NewPolicyChooser({ open, onClose }: ChooserProps) {
       <div className="ev2-mpc" onClick={(e) => e.stopPropagation()}>
         <div className="ev2-mpc-h">
           <div>
-            <div className="t">새 정책 만들기</div>
-            <div className="s">
-              어떤 방식으로 시작할지 고르세요. 둘 다 같은 Cedar로 저장되고,
-              나중에 다른 방식으로도 볼 수 있어요 (폼은 단순한 정책만).
-            </div>
+            <div className="t">{t("chooser.title")}</div>
+            <div className="s">{t("chooser.subtitle")}</div>
           </div>
           <button
             type="button"
             className="ev2-mpc-x"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={t("common:close")}
           >
             <XIcon />
           </button>
         </div>
         <div className="ev2-mpc-grid">
-          {CARDS.map((c) => {
+          {cards.map((c) => {
             const disabled = !!c.disabled;
             const cls = [
               "ev2-mpc-card",
@@ -124,13 +131,13 @@ export function NewPolicyChooser({ open, onClose }: ChooserProps) {
                   </span>
                   <span className="ev2-mpc-title">{c.title}</span>
                   {c.disabled && (
-                    <span className="ev2-mpc-soon">준비 중</span>
+                    <span className="ev2-mpc-soon">{t("chooser.soon")}</span>
                   )}
                 </div>
                 <ChooserPreview kind={c.preview} />
                 <div className="ev2-mpc-summary">{c.summary}</div>
                 <div className="ev2-mpc-rec">
-                  <span className="lbl">추천</span>
+                  <span className="lbl">{t("chooser.recLabel")}</span>
                   {c.rec}
                 </div>
                 <div className="ev2-mpc-pc">
@@ -152,7 +159,7 @@ export function NewPolicyChooser({ open, onClose }: ChooserProps) {
                   </ul>
                 </div>
                 <span className="ev2-mpc-go">
-                  {c.disabled ? c.disabledNote : "이 방식으로 시작"}
+                  {c.disabled ? c.disabledNote : t("chooser.start")}
                   {!c.disabled && <CaretRightIcon />}
                 </span>
               </button>

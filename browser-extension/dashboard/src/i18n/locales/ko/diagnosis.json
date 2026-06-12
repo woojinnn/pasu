@@ -1,0 +1,17 @@
+{
+  "run": "진단 실행",
+  "running": "진단 중…",
+  "clear": "지우기",
+  "runTitle": "샘플 거래로 어느 조건이 차단하는지 진단합니다",
+  "forbidOnly": "forbid(차단) 정책만 진단할 수 있어요",
+  "notDiagnosable": "hole/raw 블록이 있어 진단할 수 없어요",
+  "unspecified": "미지정",
+  "noSample": "이 액션({{action}})의 샘플이 없어 진단할 수 없어요",
+  "culpritsShown": "차단 조건 {{n}}개를 빨갛게 표시했어요",
+  "guardOnly": "차단 조건이 필드 존재 확인(가드)에서 발생했어요",
+  "unevaluable": "이 컨텍스트로는 평가할 수 없는 조건이 있어요 (enrichment 필드 미제공 — 노란 점선 {{n}}개)",
+  "noBlockReal": "이 거래에선 차단 조건이 없었어요",
+  "noBlockSample": "이 샘플 거래는 차단되지 않았어요",
+  "failed": "진단 실패: {{message}}",
+  "parseError": "정책을 파싱할 수 없어 다이어그램을 못 그려요"
+}

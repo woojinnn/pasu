@@ -19,16 +19,41 @@ import {
 } from "../../editor-v9/gloss/paths";
 import { ENRICHMENT_FIELDS } from "../../editor-v9/manifest-gen/registry";
 
+import { i18n } from "../../i18n";
+import enCuratedJson from "../../i18n/locales/en/fields-curated.json";
+
 import { CURATED_FIELD_META } from "./curated-field-meta.generated";
 import { catalogFor } from "./schema-catalog";
 import type { FormOp, FormTrigger, FormValue } from "./model";
 
 const CUSTOM_PREFIX = "context.custom.";
 
+/** English overlay for the curated (ko) field meta — filled by the translation
+ *  pipeline; any path missing here falls back to the ko entry. */
+const EN_CURATED_FIELD_META = enCuratedJson as Record<
+  string,
+  { label: string; desc?: string }
+>;
+
+/** True when the app currently speaks English (labels compose differently). */
+const isEn = () => i18n.language === "en";
+
+/** Curated label/desc for `path` under the CURRENT language: the en overlay
+ *  when active and present (desc falls back per-field to ko), else the ko
+ *  source of truth ({@link CURATED_FIELD_META}). */
+function curatedFor(path: string): { label: string; desc?: string } | undefined {
+  const ko = CURATED_FIELD_META[path];
+  if (isEn()) {
+    const en = EN_CURATED_FIELD_META[path];
+    if (en) return { label: en.label, desc: en.desc ?? ko?.desc };
+  }
+  return ko;
+}
+
 export interface FieldOption {
   /** Dotted path, e.g. `context.direction.amountInNano`. */
   path: string;
-  /** Korean display label shown in the dropdown. */
+  /** Localized display label shown in the dropdown. */
   label: string;
   fieldKind: FieldKind;
   /** Category — drives grouping + the colour dot in the picker. */
@@ -84,100 +109,17 @@ function glossFor(path: string): GlossEntry | undefined {
   return getGloss(path) ?? GLOSS_BY_LEAF.get(path.split(".").pop()!);
 }
 
-// ── Korean label composition for un-glossed schema fields ───────────────────
+// ── Plain-language label composition for un-glossed schema fields ───────────
 // The curated gloss only names ~50 well-known paths; the schema exposes ~500
 // more (mostly `<tokenSlot>.key.address` / `.key.chain` and deep state
 // records). Rather than show raw English breadcrumbs ("tokenIn › address"),
-// we compose a plain-Korean label from a segment dictionary so the picker
-// never leaks a path. Unknown segments fall back to a spaced camelCase form
-// (only reachable for the hidden "advanced" long-tail).
-
-/** Leaf-segment → Korean. These repeat across hundreds of fields, so naming
- *  them well covers most of the un-glossed set. */
-const LEAF_KO: Record<string, string> = {
-  address: "주소",
-  chain: "체인",
-  name: "이름",
-  symbol: "심볼",
-  pool: "풀",
-  poolType: "풀 종류",
-  poolId: "풀 ID",
-  contract: "컨트랙트",
-  vault: "볼트",
-  market: "마켓",
-  marketId: "마켓 ID",
-  amount: "수량",
-  size: "크기",
-  side: "방향",
-  kind: "종류",
-  price: "가격",
-  recipient: "수신자",
-  spender: "지출 승인 대상",
-  owner: "소유자",
-  operator: "오퍼레이터",
-  router: "라우터",
-  factory: "팩토리",
-  platform: "플랫폼",
-  protocol: "프로토콜",
-  token: "토큰",
-  tokenId: "토큰 ID",
-  asset: "자산",
-  id: "ID",
-  deadline: "마감",
-  expiry: "만료",
-  leverage: "레버리지",
-  collateral: "담보",
-  fee: "수수료",
-  nonce: "논스",
-  from: "보내는 주소",
-  destination: "목적지",
-  delegatee: "위임 대상",
-  staker: "스테이커",
-};
-
-/** Slot-prefix → Korean. The first segment is usually a named token/asset
- *  slot; translate the common ones, leave the rest to the camelCase fallback. */
-const PREFIX_KO: Record<string, string> = {
-  tokenIn: "입력 토큰",
-  tokenOut: "출력 토큰",
-  assetIn: "입력 자산",
-  assetOut: "출력 자산",
-  baseAsset: "기준 자산",
-  collateralToken: "담보 토큰",
-  collateralAsset: "담보 자산",
-  collatAsset: "담보 자산",
-  addCollateralToken: "추가 담보 토큰",
-  debtAsset: "부채 자산",
-  claimToken: "청구 토큰",
-  rewardToken: "보상 토큰",
-  refundToken: "환불 토큰",
-  payToken: "지불 토큰",
-  externalToken: "외부 토큰",
-  stakeToken: "스테이킹 토큰",
-  allocatedToken: "배정 토큰",
-  lpToken: "LP 토큰",
-  venue: "거래 장소",
-  market: "선물 시장",
-  asset: "자산",
-  token: "토큰",
-  buy: "매수",
-  sell: "매도",
-  source: "출처",
-  claimTarget: "청구 대상",
-  nftKey: "NFT",
-  // common depth-1 fields that would otherwise leak English
-  gasEstimate: "예상 가스비",
-  routeEstimatedOut: "예상 수령량",
-  expectedAmountOut: "예상 수령량",
-  sourceDex: "출발 거래소",
-  destinationDex: "도착 거래소",
-  triggerPrice: "발동 가격",
-  limitPrice: "지정가",
-  oraclePrice: "오라클 가격",
-  currentPrice: "현재 가격",
-  entryPrice: "진입 가격",
-  healthFactor: "건전성 지표",
-};
+// we compose a plain label from segment dictionaries (i18n "fields" namespace,
+// `leaf.*` / `prefix.*`) so the picker never leaks a path. Unknown segments
+// fall back to a spaced camelCase form (only reachable for the hidden
+// "advanced" long-tail). The slot-prefix dictionary (`prefix.*`) covers the
+// first segment (usually a named token/asset slot); leaf segments (`leaf.*`)
+// repeat across hundreds of fields, so naming them well covers most of the
+// un-glossed set.
 
 /** Spaced, lower-cased camelCase fallback for a segment with no dictionary
  *  entry, e.g. `reserveState` → "reserve state". Only the hidden long-tail
@@ -186,28 +128,45 @@ function camelWords(seg: string): string {
   return seg.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
 }
 
-function koSegment(seg: string, isFirst: boolean): string {
-  if (isFirst && PREFIX_KO[seg]) return PREFIX_KO[seg];
-  if (LEAF_KO[seg]) return LEAF_KO[seg];
+/** Localized text for one path segment — slot-prefix dictionary first (head
+ *  segment only), then the leaf dictionary, then the camelCase fallback. */
+function segmentLabel(seg: string, isFirst: boolean): string {
+  if (isFirst && i18n.exists(`prefix.${seg}`, { ns: "fields" })) {
+    return i18n.t(`prefix.${seg}`, { ns: "fields" });
+  }
+  if (i18n.exists(`leaf.${seg}`, { ns: "fields" })) {
+    return i18n.t(`leaf.${seg}`, { ns: "fields" });
+  }
   return camelWords(seg);
 }
 
-/** Compose a plain-Korean label for a dotted path with no gloss entry.
+/** Compose a plain-language label for a dotted path with no gloss entry.
  *  Drops `context.` and the `.key` plumbing node and joins the rest, so
- *  `context.tokenIn.key.address` → "입력 토큰 주소", `context.venue.pool`
- *  → "베뉴 풀". */
+ *  `context.tokenIn.key.address` → "입력 토큰 주소" (en: "Input token
+ *  address"), `context.venue.pool` → "베뉴 풀". English keeps the same
+ *  attribute-last order and capitalizes the sentence head. */
 function composeLabel(path: string): string {
   const segs = path.split(".").slice(1).filter((s) => s !== "key");
   if (segs.length === 0) return path;
-  return segs.map((s, i) => koSegment(s, i === 0)).join(" ");
+  const joined = segs.map((s, i) => segmentLabel(s, i === 0)).join(" ");
+  return isEn() ? joined.charAt(0).toUpperCase() + joined.slice(1) : joined;
 }
 
-/** The form's Korean label for any dotted path — curated gloss first, composed
- *  label otherwise. Exported so other surfaces (the structure diagram) speak
- *  the same vocabulary instead of leaking raw paths. */
+/** The gloss label in the current language (the gloss carries both ko + en). */
+function glossLabel(g: GlossEntry | undefined): string | undefined {
+  if (!g) return undefined;
+  return isEn() ? g.en : g.ko;
+}
+
+/** The form's display label for any dotted path — curated gloss first,
+ *  composed label otherwise (en additionally checks the curated en overlay).
+ *  Exported so other surfaces (the structure diagram) speak the same
+ *  vocabulary instead of leaking raw paths. */
 export function labelForPath(path: string): string {
-  const g = glossFor(path);
-  return (g?.ko ?? composeLabel(path)).replace(/\s*\(\s*nano\s*\)/i, "").trim();
+  const raw = isEn()
+    ? (EN_CURATED_FIELD_META[path]?.label ?? glossFor(path)?.en ?? composeLabel(path))
+    : (glossFor(path)?.ko ?? composeLabel(path));
+  return raw.replace(/\s*\(\s*nano\s*\)/i, "").trim();
 }
 
 /** True for engine-internal fields the form hides by default (Rule 3): nano
@@ -255,29 +214,30 @@ export function fieldsForTrigger(trigger: FormTrigger): FieldOption[] {
   // Schema-derived base fields — only those the chosen action actually exposes.
   for (const f of catalogFor(trigger)) {
     const g = glossFor(f.path);
-    const cur = CURATED_FIELD_META[f.path];
+    const cur = curatedFor(f.path);
     const leaf = f.path.split(".").pop()!;
     // nano mirror (Long named `*Nano`): the WIDGET still scales by 10⁹ under the
     // hood (user enters/reads plain token units), but the label/desc now come
     // from the curated catalog verbatim ("수량 (비교용)" etc.).
     const isNano = f.fieldKind === "primitive.Long" && /Nano$/.test(leaf);
     const glossed = Boolean(g);
-    const composed = (g?.ko ?? composeLabel(f.path)).replace(/\s*\(\s*nano\s*\)/i, "").trim();
+    const composed = (glossLabel(g) ?? composeLabel(f.path)).replace(/\s*\(\s*nano\s*\)/i, "").trim();
     // Curated catalog (func_module/field-explorer) wins for label + desc; fall
     // back to gloss / composed label for any path it doesn't cover.
     const label = cur?.label ?? composed;
-    // Safety net: never show a half-translated label (a leftover lowercase
-    // English run like "gas estimate") in the visible list — demote it to the
-    // "고급 필드" tray. A curated label is always plain Korean, so it's exempt.
-    const hasEnglish = !cur && !glossed && /[a-z]{2,}/.test(label);
+    // Safety net (ko only — under en every label is English by design): never
+    // show a half-translated label (a leftover lowercase English run like
+    // "gas estimate") in the visible list — demote it to the "고급 필드" tray.
+    // A curated label is always plain Korean, so it's exempt.
+    const hasEnglish = !cur && !glossed && !isEn() && /[a-z]{2,}/.test(label);
     out.push({
       path: f.path,
       label,
       fieldKind: f.fieldKind,
       role: g?.role ?? inferRole(f.path, f.fieldKind),
       source: "base",
-      unit: isNano ? "토큰" : g?.unit?.ko,
-      desc: cur?.desc ?? g?.desc?.ko,
+      unit: isNano ? i18n.t("unit.token", { ns: "fields" }) : isEn() ? g?.unit?.en : g?.unit?.ko,
+      desc: cur?.desc ?? (isEn() ? g?.desc?.en : g?.desc?.ko),
       optional: f.optional,
       advanced: isAdvancedField(f.path, f.fieldKind, glossed) || hasEnglish,
       ...(isNano ? { scale: "nano" as const } : {}),
@@ -292,15 +252,15 @@ export function fieldsForTrigger(trigger: FormTrigger): FieldOption[] {
     const path = `${CUSTOM_PREFIX}${name}`;
     const g = getGloss(path);
     if (!g) continue;
-    const cur = CURATED_FIELD_META[path];
+    const cur = curatedFor(path);
     out.push({
       path,
-      label: cur?.label ?? g.ko,
+      label: cur?.label ?? (isEn() ? g.en : g.ko),
       fieldKind: g.fieldKind,
       role: g.role,
       source: "custom",
-      unit: g.unit?.ko,
-      desc: cur?.desc ?? g.desc?.ko,
+      unit: isEn() ? g.unit?.en : g.unit?.ko,
+      desc: cur?.desc ?? (isEn() ? g.desc?.en : g.desc?.ko),
       optional: true,
     });
   }

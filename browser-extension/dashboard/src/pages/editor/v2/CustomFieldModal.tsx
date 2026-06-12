@@ -11,11 +11,14 @@
  * 경로는 plan-time 셀렉터 `$.action.<X>`와 1:1 대응한다.
  */
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { EnrichmentField, EnrichmentRegistry, ParamSpec } from "../../../editor-v9/manifest-gen";
+import { i18n } from "../../../i18n";
 import type { FieldOption } from "../../../cedar/form";
 
-import { METHOD_CATALOG, type MethodSpec } from "./custom-field-methods";
+import { METHOD_CATALOG, methodDesc, methodLabel, type MethodSpec } from "./custom-field-methods";
 
 export interface CustomFieldDraft {
   name: string;
@@ -34,15 +37,20 @@ function autoName(methodName: string, existing: readonly string[]): string {
   }
 }
 
-/** 메서드 파라미터 키 → 한국어 라벨 (모르는 키는 키 그대로). */
-const PARAM_KEY_KO: Record<string, string> = {
-  chain_id: "체인",
-  asset: "토큰",
-  amount: "수량",
-  address: "주소",
-  wallet: "지갑",
-  decimals: "소수 자릿수",
+/** 메서드 파라미터 키 → 라벨 i18n 키 (모르는 키는 키 그대로 표시). */
+const PARAM_KEY_LABEL: Record<string, string> = {
+  chain_id: "customField.paramKey.chainId",
+  asset: "customField.paramKey.asset",
+  amount: "customField.paramKey.amount",
+  address: "customField.paramKey.address",
+  wallet: "customField.paramKey.wallet",
+  decimals: "customField.paramKey.decimals",
 };
+
+function paramKeyLabel(key: string, t: TFunction): string {
+  const k = PARAM_KEY_LABEL[key];
+  return k ? t(`editor:${k}`) : key;
+}
 
 /** 파라미터 키가 기대하는 값의 종류 — 드롭다운을 이 종류로만 거른다. */
 type ParamKind = "chain" | "address" | "amount" | "any";
@@ -55,12 +63,18 @@ const PARAM_KIND: Record<string, ParamKind> = {
 };
 const kindOf = (key: string): ParamKind => PARAM_KIND[key] ?? "any";
 /** 파라미터 라벨 옆에 보여줄 기대-타입 칩. */
-const KIND_CHIP: Record<ParamKind, string | null> = {
-  chain: "체인",
-  address: "주소",
-  amount: "수량",
-  any: null,
-};
+function kindChip(kind: ParamKind, t: TFunction): string | null {
+  switch (kind) {
+    case "chain":
+      return t("editor:customField.kindChip.chain");
+    case "address":
+      return t("editor:customField.kindChip.address");
+    case "amount":
+      return t("editor:customField.kindChip.amount");
+    default:
+      return null;
+  }
+}
 
 interface SelectorOption {
   sel: string;
@@ -73,9 +87,9 @@ interface SelectorOption {
 /** 거래(tx) 레벨 + 액션 필드 → 종류 태그가 붙은 셀렉터 선택지. */
 function buildOptions(fields: readonly FieldOption[]): SelectorOption[] {
   const root: SelectorOption[] = [
-    { sel: "$.root.chain_id", label: "체인 (어느 네트워크인지)", isChain: true, isAddress: false, isAmount: false },
-    { sel: "$.root.from", label: "보내는 주소 (내 지갑)", isChain: false, isAddress: true, isAmount: false },
-    { sel: "$.root.to", label: "대상 컨트랙트 주소", isChain: false, isAddress: true, isAmount: false },
+    { sel: "$.root.chain_id", label: i18n.t("editor:customField.rootChain"), isChain: true, isAddress: false, isAmount: false },
+    { sel: "$.root.from", label: i18n.t("editor:customField.rootFrom"), isChain: false, isAddress: true, isAmount: false },
+    { sel: "$.root.to", label: i18n.t("editor:customField.rootTo"), isChain: false, isAddress: true, isAmount: false },
   ];
   const action = fields
     .filter((f) => f.source === "base" && f.path.startsWith("context.") && f.fieldKind.startsWith("primitive."))
@@ -140,11 +154,12 @@ export function CustomFieldModal({
   onCreate: (draft: CustomFieldDraft) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("editor");
   const existingNames = Object.keys(existing);
   const allOptions = useMemo(() => buildOptions(fields), [fields]);
   const [method, setMethod] = useState<MethodSpec>(METHOD_CATALOG[0]);
   // 표시 이름은 메서드 라벨이 기본값 — 사용자가 고치기 전까지 메서드를 따라간다.
-  const [label, setLabel] = useState(METHOD_CATALOG[0].label.replace(/\s*\(예시\)\s*$/, ""));
+  const [label, setLabel] = useState(() => methodLabel(METHOD_CATALOG[0]));
   const [labelTouched, setLabelTouched] = useState(false);
   // 파라미터 기본값: 메서드 템플릿을 이 액션의 선택지로 해석한 것.
   const [params, setParams] = useState<Record<string, string>>(() =>
@@ -174,9 +189,9 @@ export function CustomFieldModal({
   }, [existing, method.method, projection, params]);
 
   const blockMsg = sameCall
-    ? `같은 조회(같은 입력)가 이미 '${sameCall.label.ko}' 필드로 있어요 — 그 필드를 그대로 쓰면 돼요.`
+    ? t("customField.sameCallBlock", { name: sameCall.label.ko })
     : labelDup
-      ? "이미 같은 이름의 필드가 있어요 — 다른 이름을 붙여주세요."
+      ? t("customField.labelDupBlock")
       : null;
   const canCreate = label.trim().length > 0 && !blockMsg;
 
@@ -184,7 +199,7 @@ export function CustomFieldModal({
     setMethod(m);
     setParams(defaultParams(m, allOptions));
     setProjection(m.projection);
-    if (!labelTouched) setLabel(m.label.replace(/\s*\(예시\)\s*$/, ""));
+    if (!labelTouched) setLabel(methodLabel(m));
   };
 
   const create = () => {
@@ -207,19 +222,16 @@ export function CustomFieldModal({
     <div className="cfm-bd" role="dialog" aria-modal onClick={onClose}>
       <div className="cfm" onClick={(e) => e.stopPropagation()}>
         <div className="cfm-h">
-          새 보강 필드 만들기
-          <button type="button" className="pf-iconbtn" onClick={onClose} aria-label="닫기">
+          {t("customField.title")}
+          <button type="button" className="pf-iconbtn" onClick={onClose} aria-label={t("common:close")}>
             ✕
           </button>
         </div>
-        <p className="cfm-sub">
-          서버에서 조회한 값을 조건에 쓸 수 있는 필드로 만들어요 — 무엇을 조회할지 고르고,
-          이 거래의 어떤 값을 넘길지 정하고, 받은 값에 이름을 붙이면 끝.
-        </p>
+        <p className="cfm-sub">{t("customField.sub")}</p>
 
-        <div className="cfm-step">① 무엇을 조회할까요?</div>
+        <div className="cfm-step">{t("customField.step1")}</div>
         <label className="cfm-row">
-          <span className="cfm-label">조회</span>
+          <span className="cfm-label">{t("customField.queryLabel")}</span>
           <select
             className="pf-select"
             value={method.method}
@@ -230,24 +242,24 @@ export function CustomFieldModal({
           >
             {METHOD_CATALOG.map((m) => (
               <option key={m.method} value={m.method}>
-                {m.label}
+                {m.mock ? methodLabel(m) + t("customField.mockSuffix") : methodLabel(m)}
               </option>
             ))}
           </select>
         </label>
         <div className="cfm-desc">
-          {method.desc}
-          {method.mock && <span className="cfm-mock"> · 서버 미구현 예시 — 저장은 되지만 아직 값이 채워지지 않아요</span>}
+          {methodDesc(method)}
+          {method.mock && <span className="cfm-mock"> · {t("customField.mockNote")}</span>}
         </div>
 
         <div className="cfm-params">
-          <div className="cfm-step">② 서버에 무엇을 넘길까요?</div>
+          <div className="cfm-step">{t("customField.step2")}</div>
           {Object.entries(params).map(([key, v]) => {
-            const chip = KIND_CHIP[kindOf(key)];
+            const chip = kindChip(kindOf(key), t);
             return (
               <div key={key} className="cfm-row">
                 <span className="cfm-label">
-                  {PARAM_KEY_KO[key] ?? key}
+                  {paramKeyLabel(key, t)}
                   {chip && <span className="cfm-kind">{chip}</span>}
                 </span>
                 <ParamPicker
@@ -259,7 +271,7 @@ export function CustomFieldModal({
             );
           })}
           <details className="cfm-adv">
-            <summary>고급 (셀렉터 원문·결과 위치)</summary>
+            <summary>{t("customField.advanced")}</summary>
             {Object.entries(params).map(([key, v]) => (
               <label key={key} className="cfm-row">
                 <span className="cfm-label mono">{key}</span>
@@ -271,7 +283,7 @@ export function CustomFieldModal({
               </label>
             ))}
             <label className="cfm-row">
-              <span className="cfm-label mono">결과 위치</span>
+              <span className="cfm-label mono">{t("customField.resultPath")}</span>
               <input
                 className="pf-val wide mono"
                 value={projection}
@@ -281,9 +293,9 @@ export function CustomFieldModal({
           </details>
         </div>
 
-        <div className="cfm-step">③ 받은 값을 뭐라고 부를까요?</div>
+        <div className="cfm-step">{t("customField.step3")}</div>
         <label className="cfm-row">
-          <span className="cfm-label">이름</span>
+          <span className="cfm-label">{t("customField.nameLabel")}</span>
           <input
             className="pf-val wide"
             value={label}
@@ -292,22 +304,30 @@ export function CustomFieldModal({
               setLabel(e.target.value);
               setLabelTouched(true);
             }}
-            placeholder="예: 상대 주소 위험 점수"
+            placeholder={t("customField.namePlaceholder")}
           />
         </label>
         <div className="cfm-autoname">
-          필드 선택기와 다이어그램에 이 이름으로 나와요 ·{" "}
-          {method.type === "decimal" ? "소수" : method.type === "Long" ? "숫자" : method.type === "Bool" ? "참/거짓" : "문자"}{" "}
-          타입 · 저장 이름은 자동: <code>context.custom.{name}</code>
+          {t("customField.autoNote", {
+            type:
+              method.type === "decimal"
+                ? t("type.decimal")
+                : method.type === "Long"
+                  ? t("type.long")
+                  : method.type === "Bool"
+                    ? t("type.bool")
+                    : t("type.string"),
+          })}{" "}
+          <code>context.custom.{name}</code>
         </div>
         {blockMsg && <div className="cfm-block">⚠ {blockMsg}</div>}
 
         <div className="cfm-actions">
           <button type="button" className="pf-add-cond" onClick={onClose}>
-            취소
+            {t("common:cancel")}
           </button>
           <button type="button" className="cfm-create" disabled={!canCreate} onClick={create}>
-            필드 만들기
+            {t("customField.create")}
           </button>
         </div>
       </div>
@@ -326,6 +346,7 @@ function ParamPicker({
   options: SelectorOption[];
   onChange: (v: string) => void;
 }) {
+  const { t } = useTranslation("editor");
   const known = options.find((o) => o.sel === value);
   const mode = known ? "known" : value.startsWith("$.") ? "raw" : "lit";
   return (
@@ -340,22 +361,22 @@ function ParamPicker({
           else onChange(v);
         }}
       >
-        <optgroup label="이 거래에서 가져오기">
+        <optgroup label={t("customField.fromTx")}>
           {options.map((o) => (
             <option key={o.sel} value={o.sel}>
               {o.label}
             </option>
           ))}
         </optgroup>
-        <option value="__lit">고정값 직접 입력…</option>
-        <option value="__raw">셀렉터 직접 입력 (고급)…</option>
+        <option value="__lit">{t("customField.litOption")}</option>
+        <option value="__raw">{t("customField.rawOption")}</option>
       </select>
       {mode !== "known" && (
         <input
           className="pf-val mono"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={mode === "raw" ? "$.action.…" : "고정값 (예: 6)"}
+          placeholder={mode === "raw" ? "$.action.…" : t("customField.litPlaceholder")}
         />
       )}
     </span>

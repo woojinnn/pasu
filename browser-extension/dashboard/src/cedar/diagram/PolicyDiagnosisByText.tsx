@@ -6,6 +6,7 @@
  * defer the parse.
  */
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { textToBlocks } from "..";
 import { PolicyDiagram } from "./PolicyDiagram";
@@ -31,6 +32,7 @@ export function PolicyDiagnosisByText({
   autoRun,
   structureOnly,
 }: PolicyDiagnosisByTextProps) {
+  const { t } = useTranslation("diagnosis");
   const q = useQuery({
     queryKey: ["policy-diagram-ir-by-text", cedarText],
     queryFn: async () => (await textToBlocks(cedarText))[0] ?? null,
@@ -38,9 +40,7 @@ export function PolicyDiagnosisByText({
   });
 
   if (q.isError) {
-    return (
-      <div className="pdiagram-empty">정책을 파싱할 수 없어 다이어그램을 못 그려요</div>
-    );
+    return <div className="pdiagram-empty">{t("parseError")}</div>;
   }
   if (structureOnly) {
     return <PolicyDiagram ir={q.data ?? null} compact={compact} />;

@@ -5,6 +5,7 @@ import "./tokens.css";
 import { AppRouter } from "./router";
 import { bootstrapExtensionEnv } from "./extension-bootstrap";
 import { migratePasuRenameLocalStorage } from "./pasu-rename-storage-migration";
+import { initI18n } from "./i18n";
 
 const queryClient = new QueryClient();
 
@@ -13,6 +14,10 @@ const queryClient = new QueryClient();
 // server-url / market-locale keys are populated before anything reads them —
 // a returning user keeps their session and preferences across the rename.
 migratePasuRenameLocalStorage();
+
+// i18n reads the persisted locale from localStorage, so it must init after
+// the key migration above and before the first render below.
+initI18n();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root mount node");

@@ -10,6 +10,7 @@
  * by building probes from the very `ir` prop it renders.
  */
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { PolicyIR } from "../blocks/ir";
 import {
@@ -44,6 +45,7 @@ export function PolicyDiagnosis({
   request,
   autoRun,
 }: PolicyDiagnosisProps) {
+  const { t } = useTranslation("diagnosis");
   const [diag, setDiag] = useState<{
     culprits: string[];
     errored: string[];
@@ -76,12 +78,12 @@ export function PolicyDiagnosis({
     setDiag(null);
     try {
       if (ir.effect !== "forbid") {
-        setMsg("forbid(차단) 정책만 진단할 수 있어요");
+        setMsg(t("forbidOnly"));
         return;
       }
       const { probes, diagnosable } = buildProbes(ir);
       if (!diagnosable) {
-        setMsg("hole/raw 블록이 있어 진단할 수 없어요");
+        setMsg(t("notDiagnosable"));
         return;
       }
       // Real captured context when provided (the live deny); else a SAMPLE
@@ -94,7 +96,7 @@ export function PolicyDiagnosis({
         const actionId = a.kind === "scopeEq" ? a.entity.id : undefined;
         const sample = actionId ? SAMPLE_ACTIONS[actionId] : undefined;
         if (!sample) {
-          setMsg(`이 액션(${actionId ?? "미지정"})의 샘플이 없어 진단할 수 없어요`);
+          setMsg(t("noSample", { action: actionId ?? t("unspecified") }));
           return;
         }
         base = sample();
@@ -113,26 +115,20 @@ export function PolicyDiagnosis({
       const errored = d.errored.filter(visible);
       setDiag({ culprits, errored, context: result.context });
       if (culprits.length > 0) {
-        setMsg(`차단 조건 ${culprits.length}개를 빨갛게 표시했어요`);
+        setMsg(t("culpritsShown", { n: culprits.length }));
       } else if (d.culprits.length > 0) {
         // 가드만 발화한 비정형 케이스 — 박스 없이 N개라고 말하지 않는다.
-        setMsg("차단 조건이 필드 존재 확인(가드)에서 발생했어요");
+        setMsg(t("guardOnly"));
       } else if (errored.length > 0) {
         // Every probe touching an absent field errored — typical when an
         // enrichment (context.custom.*) policy is run on a SAMPLE without those
         // results. Not "passed"; just unevaluable here.
-        setMsg(
-          `이 컨텍스트로는 평가할 수 없는 조건이 있어요 (enrichment 필드 미제공 — 노란 점선 ${errored.length}개)`,
-        );
+        setMsg(t("unevaluable", { n: errored.length }));
       } else {
-        setMsg(
-          request
-            ? "이 거래에선 차단 조건이 없었어요"
-            : "이 샘플 거래는 차단되지 않았어요",
-        );
+        setMsg(request ? t("noBlockReal") : t("noBlockSample"));
       }
     } catch (e) {
-      setMsg(`진단 실패: ${e instanceof Error ? e.message : String(e)}`);
+      setMsg(t("failed", { message: e instanceof Error ? e.message : String(e) }));
     } finally {
       setBusy(false);
     }
@@ -156,9 +152,9 @@ export function PolicyDiagnosis({
           className="pdiagnosis-run"
           onClick={run}
           disabled={busy || !ir}
-          title="샘플 거래로 어느 조건이 차단하는지 진단합니다"
+          title={t("runTitle")}
         >
-          {busy ? "진단 중…" : "진단 실행"}
+          {busy ? t("running") : t("run")}
         </button>
         {msg && <span className="pdiagnosis-msg">{msg}</span>}
         {diag && (
@@ -170,7 +166,7 @@ export function PolicyDiagnosis({
               setMsg(null);
             }}
           >
-            지우기
+            {t("clear")}
           </button>
         )}
       </div>

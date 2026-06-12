@@ -1,0 +1,400 @@
+{
+  "page": {
+    "allListings": "All listings",
+    "marketHome": "Market home"
+  },
+  "search": {
+    "placeholderHero": "Search policies & packages",
+    "placeholder": "Search policies & packages",
+    "aria": "Search the market"
+  },
+  "kind": {
+    "package": "Package",
+    "policy": "Policy",
+    "official": "Official"
+  },
+  "install": {
+    "get": "Install",
+    "installed": "Installed",
+    "installing": "Installing…",
+    "failed": "Install failed"
+  },
+  "landing": {
+    "noPackages": "No packages yet.",
+    "categories": "Categories",
+    "categoriesSub": "Browse policies and packages by the action they guard.",
+    "viewFullRanking": "View full ranking →"
+  },
+  "carousel": {
+    "prev": "previous",
+    "next": "next"
+  },
+  "sort": {
+    "popular": "Most popular",
+    "new": "Newest",
+    "rating": "Top rated"
+  },
+  "severity": {
+    "deny": "Deny",
+    "warn": "Warn"
+  },
+  "severityBadge": {
+    "deny": "DENY",
+    "warn": "WARN",
+    "info": "INFO"
+  },
+  "rating": {
+    "new": "★ New"
+  },
+  "unit": {
+    "policies": "policies"
+  },
+  "list": {
+    "selectedCategory": "{{name}}",
+    "clearAll": "Clear all",
+    "loadFailed": "Market load failed",
+    "packagesHeading": "Packages",
+    "packagesSub": "Bundles that switch on many policies at once",
+    "noPackages": "No packages.",
+    "policiesHeading": "Policies",
+    "policiesSub": "Individual policies",
+    "noPolicies": "No policies.",
+    "showLess": "Show less",
+    "showMore": "Show more (+{{n}})",
+    "matchSingle": "{{category}} {{n}}",
+    "matchMulti": "{{n}} matching"
+  },
+  "detail": {
+    "backToMarket": "Market",
+    "loadFailed": "Load failed",
+    "verifiedTier": "Verified",
+    "published": "Published {{date}}",
+    "updated": "Updated {{date}}",
+    "alreadyInstalledTitle": "Already installed. Receiving again adds a fresh local copy.",
+    "packageBlocks": "What this package blocks",
+    "policyBlocks": "What this blocks",
+    "details": "Details",
+    "whatYouInstall": "What you install",
+    "packageDetailText": "This package guards the actions below across {{n}} policies — expand each under \"Policies in this package\" for its summary and code.",
+    "includedPolicies": "Policies in this package",
+    "viewPolicyAlone": "View this policy →"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "ratingAria": "rating",
+    "placeholder": "Leave a short review",
+    "post": "Post",
+    "posting": "Posting…",
+    "failed": "Failed",
+    "empty": "No reviews yet — be the first."
+  },
+  "modal": {
+    "doneTitle": "Installed",
+    "appliedToWallets_one": "Applied \"{{name}}\" to {{count}} wallet.",
+    "appliedToWallets_other": "Applied \"{{name}}\" to {{count}} wallets.",
+    "addedToLibrary": "Added \"{{name}}\" to your library.",
+    "viewWalletPolicies": "View wallet policies",
+    "howInstallPackage": "How should this be installed?",
+    "howInstallPackageCount": "How should this be installed?",
+    "howInstallPolicy": "How should this be installed?",
+    "walletOnly": "Wallet-only",
+    "walletOnlyDesc": "Exists only on the selected wallets.",
+    "noWalletsSuffix": " (no wallets registered)",
+    "intoLibrary": "Into the library",
+    "intoLibraryDesc": "Saved as a shared template you can apply to wallets later.",
+    "pickWallets": "Pick wallets — each wallet gets its own package.",
+    "libraryOptions": "Library options.",
+    "uncategorized": "Uncategorized",
+    "newPackageOption": "+ New package…",
+    "newPackageName": "Package name",
+    "bulkCreate": "Create one new package on every wallet",
+    "bulkCollisions": "Wallets with a same-name package reuse it: {{wallets}}",
+    "folder": "Folder",
+    "groupedAs": "Installed grouped as the \"{{name}}\" package.",
+    "applyAllNow": "Apply to all wallets now ({{n}})",
+    "applyFuture": "Apply to future wallets by default",
+    "holesHead": "This listing has blanks to fill before it can apply",
+    "holeAddressSetPh": "0x… (comma/newline separated)",
+    "holeDecimalPh": "e.g. 3.0",
+    "holeLongPh": "number",
+    "errAddress": "Must be a 0x… address",
+    "errDecimal": "Decimal format (e.g. 3.0)",
+    "errFormat": "Invalid format",
+    "back": "← Back"
+  },
+  "code": {
+    "conditions": "Conditions",
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "domain": {
+    "swap": "Swap & DEX",
+    "perp": "Perps & Derivatives",
+    "lending": "Lending",
+    "security": "Wallet Security Core",
+    "nft": "NFT",
+    "airdrop": "Airdrop & Claim",
+    "portfolio": "Portfolio & Self-control",
+    "ammlp": "AMM Liquidity",
+    "bridge": "Bridge",
+    "sale": "Launchpad & Sale",
+    "staking": "Staking & LST",
+    "gov": "Governance"
+  },
+  "category": {
+    "swap": "Swap",
+    "approvals": "Token Approval",
+    "signing": "Off-chain Sign",
+    "transfer": "Transfer",
+    "derivatives": "Perp Trading",
+    "perps": "Perp Account",
+    "liquidity": "Liquidity",
+    "lending": "Lending",
+    "rewards": "Airdrop/Rewards",
+    "governance": "Governance",
+    "intents": "Blind Signing",
+    "others": "Others"
+  },
+  "installError": {
+    "noPolicies": "This listing has no policies to install",
+    "convertFailed": "Policy \"{{name}}\" can't be converted into an installable format",
+    "noPublishedVersion": "This listing has no published version."
+  },
+  "publisher": {
+    "anonymous": "anonymous"
+  },
+  "packageCopy": {
+    "wallet-first-shield": {
+      "intro": "Blocks, as one bundle, the fatal accident patterns first-time Web3 wallet users fall for most often. Even if you don't know what a signing popup means, the traps below are filtered out automatically.",
+      "blocks": [
+        { "t": "Unlimited approvals", "d": "One signature leaking the right to withdraw your entire token balance" },
+        { "t": "Recipient swapping", "d": "Swap or transfer proceeds going to an attacker instead of you" },
+        { "t": "Sends to burn addresses", "d": "Mistakes lost forever by sending to 0x0 / 0x…dead" },
+        { "t": "Approvals hidden in bundles", "d": "An approve slipped inside \"claim rewards\"" },
+        { "t": "Blind signing", "d": "Unidentified signatures whose contents can't be read" }
+      ]
+    },
+    "no-mistake-swap": {
+      "intro": "The most common swap/LP accident is \"the trade is normal — only the receiving address changed\". Checks that the recipient at every exit where funds leave is really your wallet.",
+      "blocks": [
+        { "t": "Swap recipient tampering", "d": "Tokens you bought going to an attacker's address" },
+        { "t": "LP withdrawal & fee recipient tampering", "d": "Withdrawn liquidity and fees going to someone else" },
+        { "t": "Sends to a token's own contract", "d": "Mis-sends to an unrecoverable address" },
+        { "t": "Bulk outflow of most holdings", "d": "Sending over 90% of a balance at once" }
+      ]
+    },
+    "never-again": {
+      "intro": "A policy collection reverse-engineered from real, headline-making theft incidents. Each policy is designed as \"this one line would have stopped that incident\". ($113.9M+ combined)",
+      "blocks": [
+        { "t": "Unlimited bridge approvals", "d": "LI.FI hack $11.6M — finite approvals alone meant zero loss" },
+        { "t": "Permit2 indefinite signature phishing", "d": "spWETH $32.4M · PEPE $1.39M" },
+        { "t": "Address poisoning", "d": "WBTC $68M — recipient swapping" },
+        { "t": "Fake & spoofed bridges", "d": "LINK $520K — blocks unregistered destinations" }
+      ]
+    },
+    "nft-vault-guard": {
+      "intro": "NFT theft doesn't take tokens one by one — it starts with a single setApprovalForAll approval that hands over an entire collection at once (the \"zero-price listing drain\"). Blocks the very approval fake free mints and airdrops always demand.",
+      "blocks": [
+        { "t": "Whole-collection delegation", "d": "setApprovalForAll handing everything to one operator" },
+        { "t": "Unlimited WETH approvals for bids", "d": "The unlimited approve hiding behind an offer" },
+        { "t": "NFT loss to burn addresses", "d": "Irreversible transfers" },
+        { "t": "Approvals hidden in bundles", "d": "Permission grants slipped into a multicall" }
+      ]
+    },
+    "leverage-safety": {
+      "intro": "Hyperliquid futures carry many \"permission delegation / position change\" signatures rather than transfers that drain funds instantly, so the risk is easy to miss. Catches 6 kinds of risky actions with confirmation gates, and blocks only short entries, where losses are unbounded.",
+      "blocks": [
+        { "t": "Agent wallet approvals", "d": "Delegating your account's trading rights wholesale" },
+        { "t": "Excessive leverage", "d": "Settings liquidated by even a small adverse move" },
+        { "t": "Unbounded-loss short entries", "d": "Shorts with no loss ceiling — blocked (DENY)" },
+        { "t": "HL fund sends, withdrawals & unknown actions", "d": "One more confirmation" }
+      ]
+    },
+    "claim-and-vote-guard": {
+      "intro": "Attacks in this area are distinctive in that \"your assets don't shrink, so you relax\". delegate produces a balance change of zero and sails straight through outflow detection, yet one signature hands over your voting power or collateral.",
+      "blocks": [
+        { "t": "Claim recipient tampering", "d": "Airdrops going to an attacker" },
+        { "t": "Governance & Aave collateral delegation tampering", "d": "Voting power and collateral theft" },
+        { "t": "Claim lockups", "d": "Tokens locked the moment you receive them" },
+        { "t": "Merkle proof consistency", "d": "Fake claim signatures missing their proof" }
+      ]
+    }
+  },
+  "policy": {
+    "aave-delegate-borrow-allowlist-deny": {
+      "title": "Block signing when Aave credit delegation goes to an address outside your allowlist",
+      "what": "Inspects Aave v3 credit-delegation transactions — the ones that hand another address the right to borrow against your collateral. If the delegatee is not on the allowlist you set up in advance, the signature itself is blocked (Fail).",
+      "why": "Aave's credit delegation lets another address take on debt backed by your collateral while the collateral stays put — and if the borrower never repays, the liquidation risk lands on you, the collateral owner. Ordinary users almost never use this deliberately, so when a delegation transaction shows up it is most likely a phishing site (\"claim your airdrop\", \"verify your wallet\") slipping in a delegation to an attacker address (e.g. an unregistered 0xbeef… address) without the user noticing. One signature is enough for the attacker to borrow freely against your collateral, so anything not explicitly registered by you is safer blocked."
+    },
+    "air-claim-locks-received-warn": {
+      "title": "Warn on airdrop claims that lock the tokens into staking/vesting the moment you receive them",
+      "what": "Warns about claims that look like a plain airdrop \"receive\" but are actually claimAndStake / claimAndLock style calls, where the tokens get locked into staking or vesting the instant they arrive. Since nothing is stolen it does not deny — it warns before signing that \"if you claim now, you can't use the tokens right away\".",
+      "why": "Users normally expect that pressing \"claim airdrop\" puts tokens in their wallet, ready to sell or move. But Lido/Pendle/Convex-style distributors push the claimed tokens straight into a staking contract or vesting schedule inside the claim transaction itself. For example you press \"claim 1,000\" and those 1,000 tokens go into a 30-day lockup on the spot — even if the price crashes, you cannot withdraw or sell. It isn't theft, but it's exactly the kind of pattern people sign without realizing the tokens will be locked for days or months, so instead of blocking, this warns up front so the user signs with the lockup in mind."
+    },
+    "air-delegatee-not-self-deny": {
+      "title": "Block signing when governance voting power is delegated to an address that is neither you nor on your allowlist",
+      "what": "On a governance token delegate transaction, if the delegatee is neither your own wallet address nor an address on your personal allowlist, the signature is denied (Fail). It's called \"delegation\" but in practice hands your entire voting power to an outside address — this policy stops that.",
+      "why": "delegate moves no tokens. The transaction produces a balance delta of zero, so value-diff style detectors that only watch for assets leaving will wave it straight through. The delegatee field in the decoded calldata is the only danger signal. The attack goes like this — a fake airdrop-claim page or spoofed governance site hides a delegate call behind a \"claim rewards\" button, with the delegatee filled in as the attacker's address. The user signs comfortably because no assets move, and at that moment every vote their governance tokens carry transfers to the attacker. With enough delegated votes the attacker can pass protocol proposals (governance capture) or push through proposals that drain the treasury. The tokens stay in your wallet; only the decision-making power is stolen — a hard attack to notice."
+    },
+    "air-merkle-without-proof-warn": {
+      "title": "Warn when a claim says it's a Merkle airdrop but the inclusion proof is missing",
+      "what": "Among airdrop-claim transactions, catches the case where the claim target is labeled \"merkle_distributor\" (a Merkle-tree-based distributor) yet the inclusion proof that must accompany it is missing, and raises a warning. Precision isn't perfect, so it stays a warn rather than a hard fail.",
+      "why": "A Merkle distribution structurally requires an inclusion proof at claim time — a bundle of sibling hashes proving \"this address is in the tree\". The contract checks that proof against the tree root to verify eligibility, so a genuine Merkle claim without a proof cannot exist. If a decoded action says \"this is a merkle_distributor claim\" yet carries no proof, the signature the user thinks claims an airdrop has likely been swapped for something else — an unlimited token approve, setApprovalForAll, a permission delegation, or a generic message signature an attacker can replay at will. Scam sites hiding entirely different calldata behind a \"claim airdrop\" button is a classic move, so a kind that says Merkle with an empty proof is itself a suspicious signal."
+    },
+    "air-recipient-not-self-deny": {
+      "title": "Block airdrop claims that pay the tokens to someone else's address instead of your wallet",
+      "what": "When claiming an airdrop, if the recipient address that will receive the tokens is not your own wallet, the transaction is blocked. It catches the case where the claim entitlement is yours but the tokens flow to a different address.",
+      "why": "A legitimate airdrop claim pays the entitled person — you. But malicious claim pages pre-fill the recipient field with the attacker's address: you spend your eligibility and the gas, and the tokens land in the attacker's wallet. The recipient is buried inside calldata, so a beginner who signs based on the wallet popup almost never notices — and because \"claiming with my own eligibility\" still holds true, suspicion stays low. This policy checks that one field — whether the receiving address is really your wallet — for you."
+    },
+    "ammlp-collect-recipient-not-self-deny": {
+      "title": "Block signing when LP fee collection (collect_fees) pays out to an address that isn't your wallet",
+      "what": "On a collect_fees transaction withdrawing the LP fees accrued on your AMM liquidity position, if the recipient is not your wallet address, the signature is blocked — the moment \"I collect the fees I earned\" stops being true, it denies.",
+      "why": "This is the sibling of the remove_liquidity recipient-tampering attack. While you're in an AMM as an LP, trading fees keep accruing to your position, and the collect_fees call that withdraws them usually takes a recipient argument. A malicious dApp or tampered front end swaps just that one field for an attacker address. Token, amount, function name — everything looks like an ordinary fee withdrawal on screen, and unless you compare the small receiving address character by character you sign it as is. The result: every fee accumulated so far flows wholesale to the attacker — one signature loses the entire accrual. The single fact that recipient differs from your wallet (principal.address) pinpoints this scenario exactly."
+    },
+    "ammlp-remove-recipient-not-self-deny": {
+      "title": "Block liquidity withdrawals from an AMM pool when the money exits to an address that isn't your wallet",
+      "what": "On a remove_liquidity transaction pulling LP out of an AMM (e.g. Uniswap) pool, if the recipient of the withdrawn tokens is not your wallet address, the trade is blocked. It denies exactly the case of \"yes it's a liquidity withdrawal, but the one getting paid isn't me\".",
+      "why": "A trick phishing dApp UIs use often. The screen says \"withdrawing your liquidity\" while the actual calldata swaps just the recipient field for the attacker's address. The user signs believing the LP comes back to their wallet, but both tokens leaving the pool are sent wholesale to the attacker. As the code comment notes, this is a separate path the swap output guard (UNI-01) cannot cover (it's an LP burn, not a swap), so without this policy it sails through. recipient is an optional field on the pooled_burn variant — normally empty or your own address — and that very field being quietly switched to someone else's address is the danger point."
+    },
+    "bridge-recipient-not-self-deny": {
+      "title": "Block bridging when the receiving address isn't your wallet (suspected address poisoning)",
+      "what": "On a cross-chain asset move (bridge transfer), blocks the transaction if the destination address that will receive the tokens differs from your wallet. Bridge moves without a dedicated decoder fall through to Token::Erc20Transfer, and if the recipient parsed from calldata (context.recipient) differs from your wallet address (principal.address) by even one character, the deny fires.",
+      "why": "Address poisoning is the single largest-loss attack path in bridging — one incident cited in the code comments lost $68M in WBTC alone. It works because the receiving address rides as a separate argument inside transaction calldata: users look at the amount and rarely inspect the address. The attacker pre-seeds your transaction history with dust from an address that starts with 0x and shares the same last few characters, and when you later copy-paste from your address book or history, that lookalike fake address slips in. You sign believing \"I'm bridging to my own other wallet\" and the assets exit to the attacker's address. This policy does the character-by-character comparison (receiving address != my address) for you."
+    },
+    "bridge-refund-not-self-warn": {
+      "title": "Warn when a failed bridge transfer's refund address isn't your wallet",
+      "what": "On a bridge (cross-chain transfer) transaction, warns before signing if the \"refund/recovery address\" — where funds return when the transfer fails or can't be received at the destination — differs from your wallet address. This refund address is a separate calldata argument from the recipient, a value the user can never spot from the transaction screen alone. It doesn't fail — it's a warning policy that flags \"this is risky\".",
+      "why": "Bridges don't always succeed. If the fill fails on the destination chain or the funds become unreceivable, they return to the refund/recovery address written in the transaction. The problem is that this refund address is separate from the recipient and buried in calldata, completely invisible on a normal transaction screen. If someone has slipped an attacker address into that refund argument, or it holds a contract address that cannot receive refunds, everything works fine until one transfer fails — at which point the money exits to that address instead of your wallet and becomes a permanent loss. Exactly as the policy.cedar comment puts it: \"a failed transfer becomes a permanent loss\". The BRG-01 (success-path recipient) policy that checks only the receiving address doesn't cover this refund argument at all, so the failure path needs its own dedicated policy."
+    },
+    "bridge-target-not-allowlisted-deny": {
+      "title": "Block as a fake bridge anything sending funds outside the list of 3 verified bridge contracts",
+      "what": "For bridge-like transactions that fall to Core::Action::\"Unknown\" (no dedicated decoder), denies the trade if the destination contract address the funds head to (context.target) belongs to none of the three legitimate bridge routers hard-coded in the policy — Stargate (0x8731d54e9d02c286767d56ac03e8037c07e01e98), Across SpokePool (0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5), CCTP TokenMessenger (0xbd3fa81b58ba92a82136038b25adec7066af3155). Only an exact match against one of the three passes.",
+      "why": "Fake bridges are where bridging losses run largest. Impersonation sites cloning the Stargate and Across UIs are common in practice, and one spoofed bridge drained $520K in LINK. The victim believes they're on the real bridge screen and presses \"Bridge\", but the destination the dApp requests a signature for is an attacker contract. These bridge moves have no dedicated decode, fall to Core::Unknown, and their calldata is unreadable blind-sign material — the wallet popup alone gives no way to tell a legitimate router from an impostor contract. This policy mechanically checks the destination address against the three verified routers and cuts the signature off if the address differs by even one character."
+    },
+    "bridge-unlimited-approval-deny": {
+      "title": "Block unlimited ERC20 approvals to bridge contracts",
+      "what": "Blocks transactions that approve an ERC20 token to a bridge contract as \"unlimited\". A finite approval sized to what you're sending across this time passes, but once the allowance is judged unlimited (approvalIsUnlimited == true), it denies regardless of who the spender is. The accompanying approvalAmountOverBalance ratio (approval/available balance) is computed but not used as a deny condition in this slice — the block hangs on the unlimited flag alone.",
+      "why": "The reason is the real incident baked into the policy comments. In the July 2024 LI.FI bridge hack (~$11.6M), the only wallets drained were those that had granted the bridge an \"unlimited approve\" — wallets that approved only finite amounts lost nothing. An approval persists once set, so granting it unlimited stakes your entire token balance not on \"is this bridge safe right now\" but on \"will this bridge never, ever be exploited\". The moment the bridge contract is exploited, the pre-granted unlimited allowance lets it transferFrom your whole balance of that token. Hence the premise — \"an unlimited bridge approval is never a safe default\" — and the block regardless of spender."
+    },
+    "gov-delegatee-allowlist-deny": {
+      "title": "Block signing when voting power is delegated to an address that is neither you nor on your allowlist",
+      "what": "When delegating governance voting power, if the delegatee is neither your own wallet address nor on the allowlist you registered yourself, the signature is blocked. It targets ERC20Votes / Compound-style delegate(address) calls. Not a cent leaves your balance, yet the transaction hands your voting power wholesale to a stranger's address — this catches it.",
+      "why": "Delegation phishing is the largest attack surface in governance."
+    },
+    "hl-confirm-approve-agent": {
+      "title": "On Hyperliquid, warn for confirmation right before approving an agent wallet that trades on your behalf",
+      "what": "Catches the transaction that authorizes an agent wallet to execute trades for your Hyperliquid account and, instead of blocking the signature, asks once more: \"do you really want to give this wallet trading rights?\". Severity is warn, so it's a Warn rather than a Fail — the user reviews the contents and decides whether to proceed.",
+      "why": "Approving an agent wallet on Hyperliquid delegates wholesale the right to place orders in your account's name. Once approved, that agent wallet can open and close your positions without you signing each time. The problem is that this signature is a \"permission grant\", not a transfer that drains funds on the spot, so the screen gives little sense of danger. If a phishing site registers its own controlled wallet as an agent under plausible labels like \"connect a trading bot\" or \"enable auto-trading\", the user approves what looks like a harmless setting while actually opening a path for the attacker's wallet to trade their account at will (the meta threat tags are confirm-gate and phishing-approval). So this policy unconditionally halts on every hl_approve_agent action, making sure the user realizes \"I am handing my trading rights to someone right now\" before moving on."
+    },
+    "hl-confirm-high-leverage": {
+      "title": "Warn for confirmation before raising leverage past 20x on Hyperliquid",
+      "what": "A warn policy that doesn't block setting margin leverage above 20x on the Hyperliquid perp exchange, but demands one more confirmation — \"really raise it this high?\" — before it applies. Raising to 20x or below passes; the warning fires only the moment you cross 20x.",
+      "why": "Raising leverage means holding a bigger position on the same margin, which pulls your liquidation price right up against your entry. At 5x the price must move about 20% against you to liquidate; raise it to 25x and a move of roughly 4% the wrong way wipes the position entirely. On a perp exchange like Hyperliquid, with a slider absent-mindedly dragged to the end or a dApp UI defaulting high, users don't realize they've switched on 25x or 40x risk until right before execution. It isn't always wrong enough to block (some traders use high leverage deliberately), but past 20x liquidation risk climbs steeply — this confirm-gate makes you consciously pause once before signing."
+    },
+    "hl-confirm-unknown": {
+      "title": "Unidentified Hyperliquid actions get one confirmation before they're sent",
+      "what": "Catches Hyperliquid requests we haven't attached an interpretation model to — ones the decoder dropped to `hl_unknown` because it judged \"I can't tell what this order is\" — and raises a warn. Not a block: a safety net that asks the user to take a look before sending, since \"we don't know what this request is either\".",
+      "why": "Hyperliquid has many action types and they grow often. Newly added actions, or ones we haven't given a dedicated model (like the ones that fully parse orders/cancels/leverage changes), don't map and flow into `hl_unknown`. Let them pass silently and a genuinely dangerous new action (say, a withdrawal-rights delegation or a new settlement command) rides to signature with no inspection at all. Block them unconditionally and every legitimate new feature breaks too. So \"when in doubt, ask the human first\" is the middle step — it stops blind-sign accidents without cutting off normal use."
+    },
+    "hl-confirm-usd-send": {
+      "title": "Warn right before signing a USDC send to another account on Hyperliquid",
+      "what": "Catches the action that sends USDC to another account on Hyperliquid (HlUsdSend) and, short of blocking, raises a warn demanding confirmation — \"really send this?\". A policy that gates the moment funds leave for another address on the exchange so the user doesn't slip past it unthinking.",
+      "why": "Hyperliquid's usdSend genuinely moves USDC out of your account into another. One signature and it's irreversible, yet dApp UIs show the receiving address truncated or buried in the screen flow, easy to pass over. If a phishing site hangs a usdSend behind a button like \"claim airdrop\" to siphon funds to an attacker address, or the user pastes a recipient one character off and sends to the wrong account, being told plainly right before signing — \"you are about to send USDC to another account\" — lets them stop on the spot and re-check the address. The policy.cedar reason states exactly this intent: \"Sending USDC to another account on Hyperliquid — confirm before sending\". Fund-outflow actions are rare in themselves, so the cost of asking once more each time is small and the protection against mis-sends and theft is large."
+    },
+    "hl-confirm-withdraw": {
+      "title": "Warn for one more confirmation right before signing a Hyperliquid withdrawal",
+      "what": "Catches withdrawal requests pulling funds out of Hyperliquid (the decentralized derivatives exchange) and, right before the signature goes out, raises a Warn stating \"you are taking money out of Hyperliquid right now\". It's a warning, not a deny, so the user reviews the contents and decides whether to proceed. It doesn't weigh the amount or the receiving address — the act of withdrawing, by itself, always passes through the confirmation gate.",
+      "why": "A withdrawal, once out of the exchange, cannot be undone. This policy aims at two concrete accidents. First, a phishing site slipping a Hyperliquid withdrawal request behind a screen that looks like trading or depositing and collecting the signature — a transaction you'd normally sign without thought gets labeled \"this is a withdrawal\", forcing a beat of pause. Second, pressing the withdraw button by mistake in the exchange UI or triggering a withdrawal you didn't intend — seeing the fact stated plainly right before signing gives a last chance to undo the slip. Withdrawals aren't frequent, so a warning every time doesn't wear the user down — it raises attention only at the most dangerous moment."
+    },
+    "hl-no-short-perp": {
+      "title": "Hyperliquid perpetual (perp) short orders are blocked outright before signing",
+      "what": "Blocks, right before signing, orders that open a perp (perpetual futures) position short (betting on a price fall) on Hyperliquid. The same hl_order passes if it's long (betting on a rise) or the venue isn't Hyperliquid — a pinpoint block that fires only when both \"Hyperliquid + short\" hold at once.",
+      "why": "A perp short loses more the higher the price climbs, and unlike a long there's no price ceiling, so losses are theoretically unbounded. Short a token at 1x and watch it jump 5x, and you've lost 4x your principal (a long caps the maximum loss at 100%). On top of that, on-chain perp DEXs like Hyperliquid liquidate automatically and instantly — one overnight pump can force-liquidate you. For a user who has declared \"I never short on Hyperliquid\", this policy stops both their own mis-operation (a long/short toggle slip) and short orders a phishing dApp slips in, from ever reaching a wallet signature."
+    },
+    "holding-pct-outflow-warn": {
+      "title": "Warn when a single send moves more than 90% of your holdings of one token",
+      "what": "When one kind of ERC-20 token goes out in a single transfer (erc20_transfer) and the amount exceeds 90% of the balance of that very token currently in your wallet, a warning fires. The denominator is not your total portfolio value but \"the current balance of that one token\". Hold 10,000 USDC and try to send 9,001 or more in one go, and it triggers. Not a hard block — a warning that asks you to confirm before proceeding.",
+      "why": "Exactly as the policy.cedar header comment says, sending out nearly all of one token's holdings in a single signature is the classic wallet-draining signature pattern: a phishing site emptying the balance in one \"transfer\", or a compromised dApp steering you into a direct transfer instead of an approve. It also catches fat-finger accidents — like meaning to send 1,000 USDC and entering 10,000 USDC (your entire holding) through a decimal/unit slip. Both cases surface through one signal: \"more than 90% of this token's holdings leaving at once\". Ordinary transfers under 90% pass untouched, so daily activity isn't disturbed."
+    },
+    "increase-allowance-cap-warn": {
+      "title": "Warn when increaseAllowance stacked onto an existing approval exceeds 5x your balance or becomes unlimited",
+      "what": "Intercepts ERC-20 `increaseAllowance(spender, addedValue)` calls and judges not the added amount alone but the combined result of \"the approval already sitting on chain + addedValue\". If that combined limit exceeds 5x the wallet's available balance (over-balance above 5.0000) or adds up to unlimited (U256::MAX), it raises a Warn — not a Fail, but a \"this limit is getting very large, are you sure?\" step.",
+      "why": "Unlike `approve`, `increaseAllowance` doesn't overwrite the limit — it adds to the existing value. So even if the screen shows something small like \"+100 USDC\", if the approval already in place for that spender is, say, a near-unlimited value, the combined result is authority far past your balance. The user signs looking only at the increment, but what they actually hand over is the cumulative limit — that's the danger. Typical scenario: a phishing site (meta.json threats=phishing-approval) posing as a legitimate dApp repeatedly nudges `increaseAllowance` — instead of demanding one big suspicious approval, it stacks small bumps until the limit can drain the wallet balance wholesale. As the policy.cedar comment (lines 4-7) notes, it targets exactly the blind spot where a \"small-looking addedValue combined with the current on-chain allowance far exceeds the balance\". The judgment: a limit past 5x the balance, or unlimited, no longer looks like a normal usage pattern."
+    },
+    "multicall-hidden-approval-warn": {
+      "title": "Catch and warn on token approvals hiding inside innocuous-looking multicall bundles like \"claim rewards\"",
+      "what": "Unpacks multicall transactions bundling several calls into one, and if any call handing over token authority is mixed in (erc20_approve, permit2_approve, nft_approve, nft_set_approval_for_all), raises a Warn. It doesn't block the bundle itself — it surfaces the \"hidden approval\" invisible from the outer call so the user looks at it once before signing.",
+      "why": "This is the signature move of drainer (asset-theft) sites. The user is shown one friendly button — \"claim rewards\", \"get airdrop\" — but what it actually sends is a multicall bundling several calls, and inside rides an unlimited USDC approve to the attacker's address or a setApprovalForAll(true) over an entire NFT collection they hold. The user approves looking only at the outermost \"claim\" call, but thanks to the grant that rode along, the attacker can later pull tokens or NFTs wholesale at any time. One signature leaks not assets on the spot but \"permission\", which makes it that much harder to notice. This policy makes any bundle containing even one such grant child impossible to miss, exposing the approval hidden in the friendly shell right before signing."
+    },
+    "nft-bid-weth-unlimited-warn": {
+      "title": "Warn when the WETH approval for an NFT bid is unlimited (the offer amount is all a bid needs)",
+      "what": "When approving WETH to a market conduit (intermediary contract) to bid on an NFT marketplace like OpenSea, warns if that approval amount is unlimited (approve(spender, U256::MAX)). It doesn't block the approval itself — it tells the user \"this is an unlimited approval; cap it at what the bid needs\". The trigger is a single ERC20 approve, and the only thing judged is whether this request is an unlimited approval.",
+      "why": "NFT bidding structurally requires pre-approving WETH to the marketplace conduit so the bid amount auto-withdraws when your bid wins. The problem is that granting this approval as unlimited has become the convention. You mean to place one 0.5 WETH bid, and the wallet requests approve(conduit, U256::MAX) — the bid is 0.5 WETH, the approval infinite. That conduit then becomes a standing withdrawal channel for the wallet's entire WETH balance. If the market contract or conduit later develops a vulnerability, or a fake bidding site lures an unlimited approval to the same conduit address (the phishing-approval pattern), your whole WETH holding can drain regardless of that one bid. A bid only needs the offer amount approved, so an unlimited approval is excess risk a bid never required."
+    },
+    "nft-setapprovalforall-conduit-warn": {
+      "title": "Warn when setApprovalForAll, which hands over a whole NFT collection, targets an unknown operator",
+      "what": "When setApprovalForAll(operator, true) is called on an NFT collection to hand one operator the power to move every token in that collection, warns if that operator (spender) is not one of the two market conduits we know — the OpenSea Seaport 1.1 conduit (0x1e0049783f008a0085193e00003d00cd54003c71) and Blur ExecutionDelegate (0x00000000000111abe46ff893f3b2fdf1f759a8a8). A Warn rather than a Fail, so legitimate approvals to new marketplaces aren't blocked — a human just checks once more.",
+      "why": "Exactly the scenario the policy.cedar header comment describes. setApprovalForAll(operator, true) is the on-chain precondition that lets one operator move the entire collection — not one individual token — at will, and it's the key button that makes the \"zero-price listing drain\" (the attacker lists your NFT at zero and takes it) executable. Phishing 'free mint' / 'airdrop claim' sites almost always request this approval first — one button press and your BAYC, your whole popular PFP collection, becomes takeable by an unfamiliar contract. Listing on the real OpenSea or Blur, by contrast, sends the same call legitimately to their conduit address. That's why the combination — approved is true but the target isn't either of those two conduits — is the danger signal."
+    },
+    "nft-transfer-burn-recipient-deny": {
+      "title": "Block NFT transfers to burn addresses (0x000…000 / 0x…dead) to prevent permanent loss",
+      "what": "When an NFT transfer is headed to either of the two burn addresses — zero (0x0000000000000000000000000000000000000000) or dead (0x000000000000000000000000000000000000dead) — it is denied outright, not warned. NFT transfers to any other normal address are untouched.",
+      "why": "A burn address is one for which no person on earth holds the corresponding private key. An NFT sent there — a profile PFP, a game item, an event ticket — is by definition unrecoverable by anyone, gone forever the moment the transaction confirms. For ERC20 tokens a sister policy blocking the same two burn addresses is already deployed (send-first-time-or-burn-recipient-warn, Token::Action::\"Erc20Transfer\"), but the NFT-side nft_transfer tag was an unguarded surface — grepping all 122 existing default_policies_v2 fixtures found not a single one covering it. That's exactly what \"burn for a reward / send your NFT to this address to verify\" scams against ordinary users exploit: the victim is coaxed into sending a perfectly good NFT to an address like 0x…dead themselves, and one signature later there's no way back. This policy cuts off that final moment before signing."
+    },
+    "permit2-sign-allowance-confirm": {
+      "title": "Require checking the spender and amount before signing a Permit2 token allowance",
+      "what": "Whenever a Permit2-style EIP-712 allowance signature (`permit2_sign_allowance`) comes in, raises a warn unconditionally. Not a fail — a policy that stops the user once so they look at the decoded spender, amount, and deadline themselves before approving.",
+      "why": "A Permit2 allowance hands a spender a token allowance with a single off-chain EIP-712 signature, not an on-chain transaction — no gas, and the wallet popup looks like \"just a signature\", which makes it especially easy phishing prey. A fake airdrop/minting site presents a Permit2 signature, the user signs without thinking, and the attacker's address becomes the spender, able to pull tokens like USDC up to the limit. This policy's purpose is to break that mindless signing by presenting the decoded values at the moment of signature — \"you are allowing whom (spender), how much (amount), until when (deadline)\". The design comment notes it follows the same line as the HyperLiquid agent-approval confirm: \"warn on every signature of this kind\"."
+    },
+    "permit2-sign-allowance-far-expiry-warn": {
+      "title": "Warn on Permit2 indefinite allowance signatures whose expiry is years away",
+      "what": "Among Uniswap Permit2 PermitSingle signatures (the kind often disguised as \"verify/connect\"), warns when the allowance expiry expiresAt sits far enough in the future to count as effectively indefinite. Concretely, when expiresAt (expiry in unix seconds) exceeds 2000000000 (around May 2033), it raises a Warn. It's a warning rather than a deny because users do sometimes grant long allowances deliberately.",
+      "why": "Permit2 off-chain signature phishing is currently the main path for large thefts. A single PermitSingle signature with the spender (the address receiving authority) set to an attacker hands over an effectively indefinite allowance on the token, and the wallet screen hides it behind innocuous-looking windows like \"verify / connect\". Ordinary users don't expand and read the EIP-712 JSON — they just press \"confirm\" and never notice the expiresAt inside is set years out. The allowance then stays alive long after the user has forgotten that dApp, drainable the whole time. Real losses cited in the policy code comments: $1.39M from a single PEPE signature, $32.43M from a single spWETH signature (quoted from this repo's permit2-unknown-spender-full-balance-warn/policy.cedar). The further the expiry, the longer the \"drained after you've forgotten\" window — so a far-future expiry is itself treated as a danger signal."
+    },
+    "reapprove-already-granted-warn": {
+      "title": "Warn \"this may be a duplicate approval\" when approving a spender that already has an allowance",
+      "what": "At the moment you're about to send an ERC-20 token approve, if a non-zero allowance is already recorded in wallet state for that (token, spender) pair, a warning fires. Not a deny — an informational warning telling the user \"this approval may be a duplicate\" so they don't sign on autopilot.",
+      "why": "Approving the same target that already has a limit is usually an unnecessary action. The problem is that this \"unnecessary re-approval\" is a common phishing move. Say you just approved USDC to a spender on some dapp, and moments later another approve prompt suddenly appears for the same spender — that's a strong signal the dapp is quietly raising the limit to unlimited (e.g. 1000 USDC → unlimited) or sneakily renewing an expired grant. The user thinks \"this looks like what I just did\" and signs with little suspicion, yet that one signature can give the spender the power to drain the entire wallet balance. This policy confronts the user at that second approve with the fact that \"a limit already exists\", making them pause a beat."
+    },
+    "send-first-time-or-burn-recipient-warn": {
+      "title": "Block ERC-20 sends headed to a burn address",
+      "what": "Blocks ERC-20 transfers whose recipient is a burn address (the zero address 0x0000…0000, or 0x000…dead). Not a warn-and-continue — a hard deny that doesn't let it through at all.",
+      "why": "The zero address and 0x…dead have no owner holding a private key. Tokens sent there can never be retrieved by anyone, and once the transaction confirms there's no way back. In practice the surest routes to permanent fund loss are fat-finger mistakes — typing one extra 0 while entering the recipient by hand, or an empty clipboard pasting in as 0x000…0 — or a contract mis-filling the transfer destination and sending to 0x0. Some tokens do use 0x…dead for intentional burns, but if an ordinary user typed that address into a plain send it's almost certainly a mistake, so this policy doesn't let it drift past with a one-beat warning — it blocks the transfer itself."
+    },
+    "setapprovalforall-operator-warning": {
+      "title": "Warn when handing whole-collection NFT authority (setApprovalForAll) to an operator outside your allowlist",
+      "what": "Catches `setApprovalForAll(operator, true)` calls on an NFT collection and warns when the operator address is not on the user's allowlist. setApprovalForAll lets the operator move every NFT in the collection at will, not just one token — this stops the moment that power passes to an unknown address.",
+      "why": "setApprovalForAll(operator, true) is the standard draining instrument of NFT phishing — one signature and that operator can transferFrom every NFT in a collection. Fake minting sites and \"claim airdrop\" buttons commonly use exactly this pattern: the user thinks they're signing for a \"free NFT\" but is actually delegating their entire BAYC/Azuki-style collection wholesale to an attacker contract. Unlike an individual transfer, once approved the attacker can pull any token in the collection whenever they like, so the drain often comes days later rather than immediately. Legitimate marketplace listings (the OpenSea Seaport conduit and the like) use the same call, so the filter can't be a flat block — it has to be \"is this a known operator I trade with?\". The allowlist example address in this policy, `0x1e0049783f008a0085193e00003d00cd54003c71`, is precisely the OpenSea Seaport conduit — that address passes, and any unfamiliar operator warns."
+    },
+    "signature-chain-mismatch-permit-warn": {
+      "title": "Warn when a permit signature is for a different chain than the one you're connected to",
+      "what": "When signing an ERC-20 permit (an EIP-712 off-chain signature), warns if the chain that signature is bound to differs from the chain the wallet is currently connected to. For example, connected to mainnet (chainId 1) but the incoming permit's EIP-712 domain reads Polygon (chainId 137) — the policy tells you \"this signature is for another chain\". It's a warn rather than a fail — the goal is to make the user stop and check once more.",
+      "why": "An EIP-712 signature carries which chain it's valid on in its domain.chainId field. An honest dApp requests a permit with the same chainId the user is currently looking at. When they don't match, it's the classic signal of a cross-chain replay/confusion attack. Concretely: a phishing site instructs \"approve USDC on Polygon\" and the user signs a chainId-137 permit — while the wallet is actually connected to mainnet (chainId 1). On mainnet the token is usually worth far more, and the attacker can take that signature and extract a spender approval over tokens on a chain the user never intended. Because a permit completes an approve with a single gasless signature, users tend to wave it through thinking \"it's only a signature, not even a transaction\" — which makes it more dangerous. This policy catches precisely that moment of absent-mindedly signing for the wrong chain."
+    },
+    "swap-recipient-not-self-deny": {
+      "title": "Block swaps where the tokens you bought exit to an address other than your wallet",
+      "what": "On an AMM swap, if the receiving address for the token you get out (tokenOut) is not your own wallet address, the trade is hard-denied. It blocks swaps where you hand over your tokens but the proceeds don't come to you.",
+      "why": "This is exactly a drainer favorite. The swap transaction itself is disguised as ordinary — token pair, amounts, even slippage all normal — with only the recipient field switched to the attacker's address. The user signs thinking \"just a regular swap\", but structurally they're selling off their tokens while someone else collects the proceeds. Say you sign a swap of 1 WETH to USDC with recipient set not to your wallet (principal.address) but to 0xattacker: the WETH leaves your wallet and the USDC is deposited at the attacker's address. The result is a fund-redirect attack where assets evaporate wholesale in one signature — which is why it's caught with a deny, not a warn."
+    },
+    "transfer-to-token-own-contract-deny": {
+      "title": "Block token sends addressed to the token's own contract address",
+      "what": "Blocks ERC20 transfers where the receiving address is \"the token's own contract address\" — for example sending USDC to the USDC contract address, or DAI to the DAI contract address. If the recipient exactly equals the token's contract address (token.key.address), it denies.",
+      "why": "Send an ordinary ERC20 to its own contract address and it is by definition gone forever: no one holds that address's private key, the contract has no handler accepting tokens sent to its own address, and no admin sweep-out recovery path exists. Etherscan and major token pages carry standing warnings that \"tokens sent to the contract address are lost\", and \"I sent USDC to the USDC contract by mistake — can I get it back?\" is a support staple that always ends in \"no\". The common mistake paths: copying the token contract address and pasting it straight into the recipient field (mistaking the token address from an address book or block explorer for a receiving address), or misreading a dapp-filled contract address as the recipient. Crucially, the already-deployed burn-blocking policy send-first-time-or-burn-recipient-warn checks only the two literal strings 0x000…000 and 0x…dead — it never compares the recipient against the token's own contract address, and no other fixture makes that self-referential comparison. This policy fills that blind spot."
+    },
+    "unknown-blind-sign-warning": {
+      "title": "Warn on unidentified signing requests no adapter can decode",
+      "what": "When a transaction or signing request the wallet receives can't be decoded by any manifest adapter and falls to Core::Action::\"Unknown\", a warning fires. Not a fail — a policy that tells the user the plain fact that \"we don't know exactly what this does either\" and makes them check once more. It covers opaque EIP-712 typed-data, raw eth_sign, and all calldata with no matching adapter.",
+      "why": "Signature phishing targets exactly this \"undecodable\" state. For example, a fake airdrop/minting site presents an eth_sign over a meaningless 32-byte hash, and the user signs the 0x… string on screen never knowing it's actually the hash of a transaction moving their assets. Or EIP-712 typed-data arrives from an unknown domain — with no adapter, the wallet can't unfold which token goes to whom in what amount, and the user ends up signing at a blank. The other policies (unlimited approve caps, recipient mismatches, and so on) inspect only actions that decoded successfully, so requests that fail to decode slip through that entire net. This policy fills exactly that blind spot, treating \"the moment you're about to sign without knowing the contents\" as a danger signal in itself."
+    },
+    "unlimited-approval-deny": {
+      "title": "Block transactions granting an unlimited ERC20 approve to a spender outside your allowlist",
+      "what": "Among ERC20 `approve(spender, amount)` transactions, hard-denies when the approval amount is unlimited (`amount == U256::MAX`, or a high-cap so far past the balance it's treated as unlimited) and that spender is not on your allowlist. It doesn't ban unlimited approvals outright — it blocks only when both conditions hold at once: unlimited approval + outside the allowlist. For instance, an unlimited approval to the Permit2 standard contract (`0x000000000022d473030f116ddee9f6b43ac78ba3`), the sole entry on the inlined allowlist, passes through.",
+      "why": "`approve(spender, U256::MAX)` hands that spender an indefinite, uncapped claim on the token. Once the approval lands, the spender contract can `transferFrom` your wallet's tokens up to the limit at any time — this is the classic token-draining instrument of approval phishing. The familiar scenario: a fake airdrop/minting site hides an unlimited USDC approve behind a \"claim\" button; the user thinks they're claiming, but they've actually granted an attacker contract the right to withdraw their entire USDC balance. Days later the balance vanishes wholesale — no further signature needed. So this policy carves out only known contracts where unlimited approval is normal operation (like Permit2), and for any other spender cuts unlimited approvals off with a deny, not a warning."
+    },
+    "values-recipient-denylist-deny": {
+      "title": "Block swaps when the receiving address for the purchased tokens is on your personal denylist",
+      "what": "On an AMM swap, if the address that will receive the purchased tokens (recipient) is on the personal denylist the user registered themselves, the swap is denied. It's token-agnostic — it looks only at \"where the tokens go\". The denylist is the user's local setting, not an external feed, and currently lives inlined in the Cedar policy as a Set<String> literal (the current samples are placeholders like 0x...dead, 0x...deadbeef).",
+      "why": "A control that holds the line the user drew for themselves: \"funds must never go to this address\". You might put in the counterparty wallet from a past scam, a counterparty you've decided to cut off, or an address you personally keep confusing by mistake. Because a swap can name its receiving address (recipient) directly inside the trade call, a changed dApp UI or tampered calldata routing the purchased tokens to a wrong (denylisted) address — exactly the fund-redirect threat classified in meta.json — does happen in practice. Right before signing, this policy checks whether the recipient matches your forbidden list and, on a match, blocks it — cutting off that fund outflow by the user's own rule."
+    }
+  }
+}

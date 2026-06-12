@@ -15,46 +15,21 @@
  *     확장·Raw / 파라미터. These stay for power users and unusual policies.
  */
 
+import { i18n } from "../../i18n";
 import { BLOCK_TYPES } from "../mapping/block-types";
 import {
   blockTypeForPath,
   glossByRole,
-  ROLE_LABEL_KO,
-  ROLE_LABEL_EN,
+  roleLabel,
   ROLE_COLOUR,
   type GlossEntry,
   type Role,
 } from "../gloss";
 
-const STRINGS = {
-  ko: {
-    policy: "정책",
-    scope: "범위",
-    cond: "조건",
-    fieldPicker: "필드 (전체)",
-    expr: "식 (직접 만들기)",
-    collection: "집합/레코드",
-    ops: "연산",
-    ext: "확장 / Raw",
-    params: "파라미터",
-  },
-  en: {
-    policy: "Policy",
-    scope: "Scope",
-    cond: "Condition",
-    fieldPicker: "Field (all)",
-    expr: "Expression (raw)",
-    collection: "Set / Record",
-    ops: "Ops",
-    ext: "Ext / Raw",
-    params: "Parameters",
-  },
-} as const;
-
-function fieldCategory(role: Role, entries: GlossEntry[], locale: "ko" | "en"): object {
+function fieldCategory(role: Role, entries: GlossEntry[]): object {
   return {
     kind: "category",
-    name: locale === "ko" ? ROLE_LABEL_KO[role] : ROLE_LABEL_EN[role],
+    name: roleLabel(role),
     colour: String(ROLE_COLOUR[role]),
     contents: entries.map((e) => ({
       kind: "block",
@@ -63,8 +38,20 @@ function fieldCategory(role: Role, entries: GlossEntry[], locale: "ko" | "en"): 
   };
 }
 
-export function buildToolbox(locale: "ko" | "en" = "ko"): object {
-  const s = STRINGS[locale];
+/** Category labels resolve through i18n (`blocks:toolbox.*`) at call time, so
+ *  the toolbox follows the active `i18n.language`. */
+export function buildToolbox(): object {
+  const s = {
+    policy: i18n.t("blocks:toolbox.policy"),
+    scope: i18n.t("blocks:toolbox.scope"),
+    cond: i18n.t("blocks:toolbox.cond"),
+    fieldPicker: i18n.t("blocks:toolbox.fieldPicker"),
+    expr: i18n.t("blocks:toolbox.expr"),
+    collection: i18n.t("blocks:toolbox.collection"),
+    ops: i18n.t("blocks:toolbox.ops"),
+    ext: i18n.t("blocks:toolbox.ext"),
+    params: i18n.t("blocks:toolbox.params"),
+  };
   const byRole = glossByRole();
 
   return {
@@ -104,12 +91,12 @@ export function buildToolbox(locale: "ko" | "en" = "ko"): object {
       },
 
       // ── domain-aware field categories (gloss-driven) ──
-      fieldCategory("address", byRole.address, locale),
-      fieldCategory("ref", byRole.ref, locale),
-      fieldCategory("numeric", byRole.numeric, locale),
-      fieldCategory("enum", byRole.enum, locale),
-      fieldCategory("auth", byRole.auth, locale),
-      fieldCategory("derived", byRole.derived, locale),
+      fieldCategory("address", byRole.address),
+      fieldCategory("ref", byRole.ref),
+      fieldCategory("numeric", byRole.numeric),
+      fieldCategory("enum", byRole.enum),
+      fieldCategory("auth", byRole.auth),
+      fieldCategory("derived", byRole.derived),
       {
         kind: "category",
         name: s.fieldPicker,

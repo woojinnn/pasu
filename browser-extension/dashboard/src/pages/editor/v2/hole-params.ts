@@ -1,4 +1,5 @@
 /** HoleSpec.type별 입력 문자열 ↔ HoleValue 직렬화(순수). */
+import { i18n } from "../../../i18n";
 import type { HoleSpec, HoleValue } from "../../../server-api/policy-store";
 
 export type HoleParse = { ok: true; value: HoleValue } | { ok: false; error: string };
@@ -8,9 +9,9 @@ export function parseHoleInput(type: HoleSpec["type"], raw: string): HoleParse {
   switch (type) {
     case "long":
     case "decimal": {
-      if (!t) return { ok: false, error: "숫자를 입력하세요" };
+      if (!t) return { ok: false, error: i18n.t("editor:holes.numberRequired") };
       const n = Number(t);
-      if (!Number.isFinite(n)) return { ok: false, error: "숫자를 입력하세요" };
+      if (!Number.isFinite(n)) return { ok: false, error: i18n.t("editor:holes.numberRequired") };
       return { ok: true, value: type === "long" ? Math.trunc(n) : n };
     }
     case "bool":
@@ -28,7 +29,9 @@ export function parseHoleInput(type: HoleSpec["type"], raw: string): HoleParse {
     case "string":
       return { ok: true, value: t };
     case "field":
-      return t ? { ok: true, value: { field: t } } : { ok: false, error: "필드 경로를 입력하세요" };
+      return t
+        ? { ok: true, value: { field: t } }
+        : { ok: false, error: i18n.t("editor:holes.fieldPathRequired") };
   }
 }
 

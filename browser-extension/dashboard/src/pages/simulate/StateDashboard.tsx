@@ -12,6 +12,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 import type { ApprovalView, PositionView, TokenHolding, WalletStateView } from "./types";
 
@@ -59,6 +60,7 @@ export function StateDashboard({
    *  the panel only moves in response to policy toggles. */
   entrance?: boolean;
 }) {
+  const { t } = useTranslation("simulation");
   // Which rows are expanded (by item id). Independent per dashboard instance.
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const toggle = (id: string) =>
@@ -92,14 +94,24 @@ export function StateDashboard({
 
       {/* ── summary tiles ── */}
       <div className="sd-tiles">
-        <Tile accent label="총 자산" value={s.portfolioUsd ?? `$${total.toLocaleString("en-US")}`} sub="Total value" />
-        <Tile label="토큰" value={String(s.tokens.length)} sub="Holdings" />
-        <Tile label="포지션" value={String(s.positions.length)} sub="Open" />
-        <Tile label="위험 승인" value={String(highRiskCount)} sub="High risk" danger={highRiskCount > 0} />
+        <Tile
+          accent
+          label={t("wizard.state.totalAssets")}
+          value={s.portfolioUsd ?? `$${total.toLocaleString("en-US")}`}
+          sub="Total value"
+        />
+        <Tile label={t("wizard.state.tokens")} value={String(s.tokens.length)} sub="Holdings" />
+        <Tile label={t("wizard.state.positions")} value={String(s.positions.length)} sub="Open" />
+        <Tile
+          label={t("wizard.state.riskyApprovals")}
+          value={String(highRiskCount)}
+          sub="High risk"
+          danger={highRiskCount > 0}
+        />
       </div>
 
       {total > 0 && (
-        <div className="sd-alloc" role="img" aria-label="토큰 비중">
+        <div className="sd-alloc" role="img" aria-label={t("wizard.state.allocAria")}>
           {s.tokens.map((t, i) => {
             const pct = ((t.usdNum ?? 0) / total) * 100;
             if (pct <= 0) return null;
@@ -126,9 +138,9 @@ export function StateDashboard({
         {((): WidgetDef[] => [
           {
             key: "tokens",
-            title: "토큰",
+            title: t("wizard.state.tokens"),
             total: s.tokens.length,
-            empty: "보유 토큰 없음",
+            empty: t("wizard.state.noTokens"),
             rows: s.tokens.map((t, i) => {
               // Row id unique even when addresses repeat/blank (native ETH).
               const id = `tok-${i}-${t.address}`;
@@ -150,9 +162,9 @@ export function StateDashboard({
           },
           {
             key: "positions",
-            title: "포지션",
+            title: t("wizard.state.positions"),
             total: s.positions.length,
-            empty: "열린 포지션 없음",
+            empty: t("wizard.state.noPositions"),
             rows: [
               ...perps.map((p) => ({
                 id: p.id,
@@ -168,9 +180,9 @@ export function StateDashboard({
           },
           {
             key: "approvals",
-            title: "승인",
+            title: t("wizard.state.approvals"),
             total: s.approvals.length,
-            empty: "승인 없음",
+            empty: t("wizard.state.noApprovals"),
             rows: s.approvals.map((a) => ({
               id: a.id,
               gone: tokenRel(a.token) === "gone",
@@ -289,6 +301,7 @@ function TokenRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t: tr } = useTranslation("simulation");
   const pct = total > 0 ? ((t.usdNum ?? 0) / total) * 100 : 0;
   return (
     <div className={`sd-token${relClass(rel)}${open ? " open" : ""}`}>
@@ -305,10 +318,13 @@ function TokenRow({
       <div className="sd-detail">
         <DetailGrid
           rows={[
-            ["비중", `${pct.toFixed(1)}%`],
-            ["단가", t.priceUsd ?? "—"],
-            ["사용 대기", t.committed && t.committed !== "0.00" ? `${t.committed} ${t.symbol}` : "없음"],
-            ["컨트랙트", <code key="c">{shortAddr(t.address)}</code>],
+            [tr("wizard.state.share"), `${pct.toFixed(1)}%`],
+            [tr("wizard.state.price"), t.priceUsd ?? "—"],
+            [
+              tr("wizard.state.committed"),
+              t.committed && t.committed !== "0.00" ? `${t.committed} ${t.symbol}` : tr("wizard.state.none"),
+            ],
+            [tr("wizard.state.contract"), <code key="c">{shortAddr(t.address)}</code>],
           ]}
         />
       </div>
@@ -327,25 +343,30 @@ function PerpCard({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation("simulation");
   return (
     <div className={`sd-perp${relClass(rel)}${open ? " open" : ""}`}>
       <button type="button" className="sd-perp-top" onClick={onToggle} aria-expanded={open}>
         <b className="sd-perp-name">{p.label}</b>
-        {p.side && <span className={`sd-side ${p.side}`}>{p.side === "long" ? "롱" : "숏"}</span>}
+        {p.side && (
+          <span className={`sd-side ${p.side}`}>
+            {p.side === "long" ? t("wizard.state.long") : t("wizard.state.short")}
+          </span>
+        )}
         {p.leverage && <span className="sd-lev">{p.leverage}</span>}
         {p.pnlUsd && <span className={`sd-pnl ${p.pnlSign ?? "up"}`}>{p.pnlUsd}</span>}
         <Chevron open={open} />
       </button>
       <div className="sd-perp-summary">
-        {p.sizeUsd && <Metric label="규모" value={p.sizeUsd} />}
+        {p.sizeUsd && <Metric label={t("wizard.state.size")} value={p.sizeUsd} />}
       </div>
       <div className="sd-detail">
         <DetailGrid
           rows={[
-            ["진입가", p.entryPrice ?? "—"],
-            ["현재가", p.markPrice ?? "—"],
-            ["청산가", <span key="l" className="sd-val-danger">{p.liqPrice ?? "—"}</span>],
-            ["마진", p.marginUsd ?? "—"],
+            [t("wizard.state.entryPrice"), p.entryPrice ?? "—"],
+            [t("wizard.state.markPrice"), p.markPrice ?? "—"],
+            [t("wizard.state.liqPrice"), <span key="l" className="sd-val-danger">{p.liqPrice ?? "—"}</span>],
+            [t("wizard.state.margin"), p.marginUsd ?? "—"],
             ["ROE", <span key="r" className={p.pnlSign === "down" ? "sd-val-danger" : "sd-val-good"}>{p.roe ?? "—"}</span>],
           ]}
         />
@@ -365,6 +386,7 @@ function LendingRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation("simulation");
   const lowHealth = p.health !== undefined && Number(p.health) < 1.5;
   return (
     <div className={`sd-lend${relClass(rel)}${open ? " open" : ""}`}>
@@ -378,10 +400,13 @@ function LendingRow({
       <div className="sd-detail">
         <DetailGrid
           rows={[
-            ["담보", p.collateralUsd ?? "—"],
-            ["부채", p.debtUsd ?? "—"],
-            ["순포지션", p.sizeUsd ?? "—"],
-            ["건전성(HF)", <span key="h" className={lowHealth ? "sd-val-danger" : "sd-val-good"}>{p.health ?? "—"}</span>],
+            [t("wizard.state.collateral"), p.collateralUsd ?? "—"],
+            [t("wizard.state.debt"), p.debtUsd ?? "—"],
+            [t("wizard.state.netPosition"), p.sizeUsd ?? "—"],
+            [
+              t("wizard.state.healthFactor"),
+              <span key="h" className={lowHealth ? "sd-val-danger" : "sd-val-good"}>{p.health ?? "—"}</span>,
+            ],
           ]}
         />
       </div>
@@ -409,7 +434,10 @@ function ApprovalRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation("simulation");
   const risk = a.risk ?? (a.unlimited ? "high" : "low");
+  const riskLabel =
+    risk === "high" ? t("wizard.state.riskHigh") : risk === "med" ? t("wizard.state.riskMed") : t("wizard.state.riskLow");
   return (
     <div className={`sd-appr risk-${risk}${relClass(rel)}${open ? " open" : ""}`}>
       <button type="button" className="sd-appr-main" onClick={onToggle} aria-expanded={open}>
@@ -419,19 +447,21 @@ function ApprovalRow({
           {a.spender}
           {a.spenderAddress && <span className="sd-appr-addr">{shortAddr(a.spenderAddress)}</span>}
         </span>
-        <span className={`sd-appr-amt${a.unlimited ? " unl" : ""}`}>{a.amount ?? (a.unlimited ? "무제한" : "")}</span>
-        <span className={`sd-risk ${risk}`}>{risk === "high" ? "위험" : risk === "med" ? "주의" : "안전"}</span>
+        <span className={`sd-appr-amt${a.unlimited ? " unl" : ""}`}>
+          {a.amount ?? (a.unlimited ? t("wizard.state.unlimited") : "")}
+        </span>
+        <span className={`sd-risk ${risk}`}>{riskLabel}</span>
         <Chevron open={open} />
       </button>
       <div className="sd-detail">
         {a.riskReason && <p className={`sd-appr-reason ${risk}`}>{a.riskReason}</p>}
         <DetailGrid
           rows={[
-            ["스펜더", <code key="s">{a.spenderAddress ? shortAddr(a.spenderAddress) : a.spender}</code>],
-            ["한도", a.amount ?? (a.unlimited ? "무제한" : "—")],
-            ["범위", a.scope ?? "ERC-20"],
-            ["토큰", <code key="t">{a.tokenAddress ? shortAddr(a.tokenAddress) : a.token}</code>],
-            ["승인일", a.grantedAt ?? "—"],
+            [t("wizard.state.spender"), <code key="s">{a.spenderAddress ? shortAddr(a.spenderAddress) : a.spender}</code>],
+            [t("wizard.state.allowance"), a.amount ?? (a.unlimited ? t("wizard.state.unlimited") : "—")],
+            [t("wizard.state.scope"), a.scope ?? "ERC-20"],
+            [t("wizard.state.token"), <code key="t">{a.tokenAddress ? shortAddr(a.tokenAddress) : a.token}</code>],
+            [t("wizard.state.grantedAt"), a.grantedAt ?? "—"],
           ]}
         />
       </div>

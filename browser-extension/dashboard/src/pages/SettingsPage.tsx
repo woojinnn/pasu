@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 /**
  * Server-environment toggle (reachable at `/settings`).
@@ -11,9 +12,15 @@ import { useState } from "react";
  */
 const KEY = "pasu_server_url";
 
+// Labels are i18n keys, resolved at render time (never call t() at import time).
 const PRESETS = [
-  { label: "로컬 (테스트)", url: "http://127.0.0.1:8788" },
-  { label: "프로덕션", url: "https://pasu-policy.duckdns.org" },
+  { labelKey: "settings.presetLocal", url: "http://127.0.0.1:8788" },
+  { labelKey: "settings.presetProd", url: "https://pasu-policy.duckdns.org" },
+];
+
+const LANGUAGES: Array<{ code: "ko" | "en"; labelKey: string }> = [
+  { code: "ko", labelKey: "settings.languageKo" },
+  { code: "en", labelKey: "settings.languageEn" },
 ];
 
 type ChromeStorageLocal = {
@@ -28,6 +35,7 @@ function swStorage(): ChromeStorageLocal | undefined {
 }
 
 export function SettingsPage() {
+  const { t, i18n } = useTranslation("common");
   const [value, setValue] = useState(() => window.localStorage.getItem(KEY) ?? "");
   const [saved, setSaved] = useState(false);
 
@@ -46,10 +54,9 @@ export function SettingsPage() {
 
   return (
     <div style={wrap}>
-      <h1 style={{ fontSize: 20, marginBottom: 6 }}>설정 — 서버 환경</h1>
+      <h1 style={{ fontSize: 20, marginBottom: 6 }}>{t("settings.title")}</h1>
       <p style={{ opacity: 0.7, fontSize: 13, marginTop: 0 }}>
-        대시보드 + 서비스워커가 호출할 policy-server 주소. 비우면 빌드 기본값
-        (<code>PASU_SERVER_URL</code>)을 사용합니다.
+        <Trans i18nKey="settings.desc" ns="common" components={{ code: <code /> }} />
       </p>
 
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
@@ -63,7 +70,7 @@ export function SettingsPage() {
             }}
             style={preset(value === p.url)}
           >
-            <div style={{ fontWeight: 600 }}>{p.label}</div>
+            <div style={{ fontWeight: 600 }}>{t(p.labelKey)}</div>
             <code style={{ fontSize: 11, opacity: 0.8 }}>{p.url}</code>
           </button>
         ))}
@@ -72,7 +79,7 @@ export function SettingsPage() {
       <input
         type="text"
         value={value}
-        placeholder="http://127.0.0.1:8788  (비우면 빌드 기본값)"
+        placeholder={t("settings.urlPlaceholder")}
         onChange={(e) => {
           setValue(e.target.value);
           setSaved(false);
@@ -82,17 +89,33 @@ export function SettingsPage() {
 
       <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
         <button type="button" onClick={save} style={saveBtn}>
-          저장
+          {t("save")}
         </button>
         {saved && (
           <span style={{ fontSize: 13, opacity: 0.85 }}>
-            저장됨 — 서비스워커 즉시 적용. 대시보드는{" "}
-            <a onClick={() => window.location.reload()} style={link}>
-              새로고침
-            </a>{" "}
-            후 적용.
+            <Trans
+              i18nKey="settings.savedNote"
+              ns="common"
+              components={{ reload: <a onClick={() => window.location.reload()} style={link} /> }}
+            />
           </span>
         )}
+      </div>
+
+      <h1 style={{ fontSize: 20, marginTop: 36, marginBottom: 6 }}>{t("settings.languageTitle")}</h1>
+      <p style={{ opacity: 0.7, fontSize: 13, marginTop: 0 }}>{t("settings.languageDesc")}</p>
+      <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
+        {LANGUAGES.map((l) => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => void i18n.changeLanguage(l.code)}
+            style={preset(i18n.language === l.code)}
+          >
+            <div style={{ fontWeight: 600 }}>{t(l.labelKey)}</div>
+            <code style={{ fontSize: 11, opacity: 0.8 }}>{l.code}</code>
+          </button>
+        ))}
       </div>
     </div>
   );

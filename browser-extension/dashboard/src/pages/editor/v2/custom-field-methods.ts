@@ -11,13 +11,12 @@
  * 아니면 리터럴.
  */
 
+import { i18n } from "../../../i18n";
 import type { CustomType, ParamSpec } from "../../../editor-v9/manifest-gen";
 
 export interface MethodSpec {
   /** Opaque policy-server method name (manifest `policy_rpc[].method`). */
   method: string;
-  label: string;
-  desc: string;
   /** Output type the projection yields (`custom_context` spelling). */
   type: CustomType;
   /** Default `$.result.*` projection. */
@@ -28,11 +27,19 @@ export interface MethodSpec {
   mock?: boolean;
 }
 
+/** 메서드 표시 이름 — i18n 키 `editor:methods.<method>.label` (점은 `_`로). */
+export function methodLabel(m: MethodSpec): string {
+  return i18n.t(`editor:methods.${m.method.replace(/\./g, "_")}.label`);
+}
+
+/** 메서드 설명 — i18n 키 `editor:methods.<method>.desc`. */
+export function methodDesc(m: MethodSpec): string {
+  return i18n.t(`editor:methods.${m.method.replace(/\./g, "_")}.desc`);
+}
+
 export const METHOD_CATALOG: MethodSpec[] = [
   {
     method: "oracle.usd_value",
-    label: "토큰 수량 → USD 가치",
-    desc: "동기화된 시세로 (체인, 토큰, 수량)을 USD 가치로 환산해요.",
     type: "decimal",
     projection: "$.result.usd",
     params: {
@@ -43,8 +50,6 @@ export const METHOD_CATALOG: MethodSpec[] = [
   },
   {
     method: "token.normalize_to_nano",
-    label: "토큰 수량 → nano 정규화",
-    desc: "토큰의 실제 decimals를 조회해 수량을 ×10⁹ 정수로 바꿔요 (모든 토큰 지원).",
     type: "Long",
     projection: "$.result.nano",
     params: {
@@ -55,8 +60,6 @@ export const METHOD_CATALOG: MethodSpec[] = [
   },
   {
     method: "address.risk_score",
-    label: "주소 위험 점수 (예시)",
-    desc: "상대 주소의 위험 점수(0–100)를 조회해요. 서버 구현 전 형태 예시.",
     type: "Long",
     projection: "$.result.score",
     params: {
@@ -67,8 +70,6 @@ export const METHOD_CATALOG: MethodSpec[] = [
   },
   {
     method: "intent.pending_exposure_usd",
-    label: "대기 중 인텐트 노출액 USD (예시)",
-    desc: "지갑의 미체결 오프체인 서명(인텐트) 노출 합계를 USD로 돌려줘요.",
     type: "decimal",
     projection: "$.result.usd",
     params: {
@@ -79,8 +80,6 @@ export const METHOD_CATALOG: MethodSpec[] = [
   },
   {
     method: "token.price_change_24h",
-    label: "토큰 24h 가격 변동률 (예시)",
-    desc: "토큰의 24시간 가격 변동률(%)을 돌려줘요.",
     type: "decimal",
     projection: "$.result.pct",
     params: {

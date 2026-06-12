@@ -1,0 +1,132 @@
+{
+  "addWallet": "지갑 추가 +",
+  "sync": {
+    "failedFallback": "동기화에 실패했어요",
+    "failed": "동기화 실패: {{error}}",
+    "justSynced": "방금 동기화됨",
+    "thisWallet": "이 지갑 동기화",
+    "allWallets": "모든 지갑 동기화",
+    "syncing": "동기화 중…",
+    "sync": "동기화"
+  },
+  "empty": {
+    "noWallets": "추적 중인 지갑이 없습니다",
+    "noWalletsDesc": "지갑을 추가하면 holdings · approvals · 체인 분포가 여기에 나타납니다."
+  },
+  "lens": {
+    "assets": "💰 자산 보기",
+    "risk": "🛡 위험 보기",
+    "sortRisk": "정렬: 위험 우선순위",
+    "sortUsd": "정렬: USD 평가액"
+  },
+  "banner": {
+    "suggest": "<b>BLOCKED {{count}}건</b>이 감지됐어요. 위험 보기로 전환하면 노출된 자산이 상단으로 올라옵니다.",
+    "switch": "위험 보기로 전환"
+  },
+  "walletSwitch": {
+    "all": "전체 합산"
+  },
+  "summary": {
+    "totalAssets": "총 자산",
+    "walletSum": "{{count}} 지갑 합산",
+    "pendingTx": "대기 트랜잭션",
+    "riskSignals": "위험 신호",
+    "unlimited": "무제한"
+  },
+  "l2": {
+    "totalVar": "총 VaR · 현재 노출",
+    "unlimitedApprovals": "무제한 승인"
+  },
+  "queue": {
+    "title": "긴급 항목 큐",
+    "meta": "{{count}}건 · 우선순위순",
+    "empty": "✓ 처리할 긴급 항목이 없어요 — 이 지갑은 정상입니다.",
+    "detection": "탐지",
+    "approval": "승인",
+    "trust": "신뢰",
+    "ignore": "무시",
+    "revokeHint": "아래 Approvals 표에서 철회"
+  },
+  "chains": {
+    "title": "자산 분포",
+    "noBalance": "잔고 없음"
+  },
+  "walletRatio": {
+    "title": "지갑별 자산 비율",
+    "drilldown": "{{label}} 드릴다운"
+  },
+  "holdings": {
+    "meta": "{{wallets}} 지갑 · {{tokens}} 토큰",
+    "noRiskNote": "✓ 이 view에서 위험 자산이 감지되지 않음. <b>자산 보기</b>와 정렬 순서가 동일합니다.",
+    "empty": "표시할 holding이 없습니다",
+    "noExposure": "노출 없음"
+  },
+  "table": {
+    "asset": "자산",
+    "chain": "체인",
+    "wallet": "지갑",
+    "balance": "잔고",
+    "riskOverlay": "위험 오버레이",
+    "type": "유형",
+    "amount": "금액",
+    "risk": "위험",
+    "actions": "액션"
+  },
+  "chips": {
+    "expandRest": "나머지 {{count}}개 펼치기",
+    "collapse": "접기"
+  },
+  "approvals": {
+    "tokenOrCollection": "토큰 / 컬렉션",
+    "empty": "표시할 approval이 없습니다"
+  },
+  "hl": {
+    "meta": "포지션 · 레버리지 · 오픈 오더 · 마진",
+    "noAccount": "Hyperliquid 계정이 없습니다",
+    "pendingOutflow": "출금대기 {{amount}}",
+    "long": "롱",
+    "short": "숏",
+    "cross": "교차",
+    "isolated": "격리",
+    "size": "수량",
+    "entryPrice": "진입가",
+    "notional": "평가",
+    "openOrders": "오픈 오더 {{count}}",
+    "buy": "매수",
+    "sell": "매도",
+    "trigger": "트리거",
+    "limit": "지정",
+    "limitPrice": "지정가",
+    "tp": "익절",
+    "sl": "손절",
+    "fullSize": "전량",
+    "reduceOnly": "청산전용",
+    "empty": "열린 포지션·오더 없음"
+  },
+  "pending": {
+    "title": "대기 주문 (오프체인 인텐트 · 서명)",
+    "summaryCol": "요약",
+    "signedAt": "서명 시각",
+    "empty": "대기 중인 주문이 없습니다",
+    "kind": {
+      "offchainLimitOrder": "오프체인 주문",
+      "perpVenueOrder": "perp 주문",
+      "signedPermit2": "Permit2",
+      "signedPermit2Transfer": "Permit2 전송",
+      "signedEip2612": "EIP-2612"
+    },
+    "summary": {
+      "limitOrder": "최대매도 {{sellMax}} → 최소매수 {{buyMin}}",
+      "permit": "한도 {{amount}} · spender {{spender}}"
+    }
+  },
+  "revoke": {
+    "action": "철회",
+    "title": "ERC-20 approve 철회",
+    "copyJson": "JSON 복사",
+    "desc": "아래는 <code>approve(spender, 0)</code> 호출에 필요한 calldata입니다. 지갑(MetaMask 등)에서 직접 트랜잭션으로 보내야 실제로 철회됩니다. Pasu 백엔드는 절대 자동 전송하지 않습니다.",
+    "target": "대상",
+    "building": "calldata 빌드 중…",
+    "failed": "실패: {{error}}"
+  }
+}

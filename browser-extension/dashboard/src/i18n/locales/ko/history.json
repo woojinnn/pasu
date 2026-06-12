@@ -1,0 +1,65 @@
+{
+  "loadedCount": "{{count}}건 로드",
+  "loadError": "불러오기 실패: {{error}}",
+  "count": "{{count}}건",
+  "loadMore": "더 불러오기",
+  "resetFilters": "초기화",
+  "range": {
+    "label": "전체기간",
+    "all": "전체",
+    "1h": "1h",
+    "6h": "6h",
+    "24h": "24h",
+    "7d": "7일",
+    "rollingHint": "현재 기준 롤링 윈도우"
+  },
+  "group": {
+    "label": "그룹",
+    "time": "시간순",
+    "activity": "활동별",
+    "verdict": "verdict별",
+    "origin": "dApp별",
+    "rule": "rule별"
+  },
+  "search": {
+    "placeholder": "주소 · dApp 출처 · 함수명 · 정책명 검색"
+  },
+  "table": {
+    "verdict": "판정",
+    "time": "시각",
+    "dappFn": "dApp / 함수",
+    "wallet": "지갑",
+    "policy": "정책",
+    "reason": "이유",
+    "decision": "처리"
+  },
+  "empty": {
+    "noRecords": "기록이 없습니다",
+    "noMatch": "조건에 맞는 verdict가 없어요 — 검색어/필터를 조정해 보세요"
+  },
+  "decision": {
+    "pending": "선택중"
+  },
+  "detail": {
+    "matchedPolicy": "매칭 정책",
+    "noMatchedPolicy": "매칭된 정책 없음",
+    "decodedFn": "디코딩된 함수",
+    "targetContract": "대상 컨트랙트",
+    "selector": "셀렉터",
+    "wallet": "지갑",
+    "dappOrigin": "dApp 출처",
+    "verdictTime": "판정 시각",
+    "reason": "사유",
+    "noReason": "기록된 사유 없음"
+  },
+  "structure": {
+    "show": "정책 구조 보기 ▼",
+    "hide": "정책 구조 숨기기 ▲",
+    "noContextNote": "이전 거래라 진단 컨텍스트가 저장되지 않아 실제 막힌 조건은 표시할 수 없어요. 구조만 보여드립니다 — 이후 거래의 deny부터 실제 차단 조건이 빨갛게 표시됩니다."
+  },
+  "delta": {
+    "noRecordLegacy": "기록 없음 (마이그레이션 이전 verdict)",
+    "noServerRecord": "서버 기록 없음 (로그아웃 상태이거나 서버 통신 실패)",
+    "resim": "🧪 다시 시뮬"
+  }
+}

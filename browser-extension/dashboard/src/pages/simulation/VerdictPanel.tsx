@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PolicyDiagnosisByText } from "../../cedar/diagram/PolicyDiagnosisByText";
 
@@ -24,6 +25,7 @@ export interface VerdictPanelProps {
 }
 
 export function VerdictPanel(props: VerdictPanelProps) {
+  const { t } = useTranslation("simulation");
   const { currentVerdict } = props;
   const matched: ReadonlyArray<MatchedPolicy> =
     currentVerdict && currentVerdict.kind !== "pass"
@@ -33,7 +35,7 @@ export function VerdictPanel(props: VerdictPanelProps) {
   return (
     <div className="sim-card violations-card">
       <div className="card-head">
-        <h3>판정</h3>
+        <h3>{t("historic.verdict.title")}</h3>
         {currentVerdict && (
           <span className={`vpill sm ${currentVerdict.kind}`}>
             {currentVerdict.kind.toUpperCase()}
@@ -42,12 +44,12 @@ export function VerdictPanel(props: VerdictPanelProps) {
       </div>
       {!currentVerdict && (
         <div className="muted-line">
-          시뮬레이션을 실행하면 각 TX 시점의 판정이 표시됩니다.
+          {t("historic.verdict.emptyHint")}
         </div>
       )}
       {currentVerdict && currentVerdict.kind === "pass" && (
         <div className="muted-line">
-          이 step에서 차단/경고된 정책이 없습니다.
+          {t("historic.verdict.passHint")}
         </div>
       )}
       {matched.length > 0 && (
@@ -84,6 +86,7 @@ export function VerdictPanel(props: VerdictPanelProps) {
 /** Collapsible structure diagram + on-demand diagnosis for one matched deny.
  *  Parses the policy's Cedar to IR lazily (mounted only when expanded). */
 function MatchedDiagnosis({ cedarText }: { cedarText: string }) {
+  const { t } = useTranslation("simulation");
   const [open, setOpen] = useState(false);
   return (
     <div className="vline-diagram">
@@ -93,7 +96,7 @@ function MatchedDiagnosis({ cedarText }: { cedarText: string }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        {open ? "구조 숨기기 ▲" : "구조 보기 ▼"}
+        {open ? t("historic.verdict.hideStructure") : t("historic.verdict.showStructure")}
       </button>
       {open && (
         <div className="vline-diag-body">

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 
 import {
   createListing,
@@ -69,6 +70,7 @@ interface PublishRule {
  * The published Cedar carries no real addresses; the installer fills holes.
  */
 export function PublishModal({ open, onClose, source }: PublishModalProps) {
+  const { t } = useTranslation("editor");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
@@ -149,7 +151,7 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
       const slug = source.suggestedSlug.trim();
       const trimName = name.trim() || source.suggestedDisplayName;
       if (!SLUG_RE.test(slug)) {
-        throw new Error("슬러그 형식이 잘못됐습니다 (영문/숫자/_.-()/ 만, 1-128자)");
+        throw new Error(t("publish.badSlug"));
       }
       const desc = description.trim()
         ? { en: description.trim(), ko: description.trim() }
@@ -194,7 +196,7 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
           manifest: manifestWithHoles(r.manifest, shipped, r.ruleId),
         });
       }
-      if (members.length === 0) throw new Error("발행할 멤버 정책이 없습니다.");
+      if (members.length === 0) throw new Error(t("publish.noMembersError"));
       const body: CreateListingBody = {
         slug,
         kind: "set",
@@ -229,12 +231,10 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
         <header className="pub-head">
           <span className="pub-head-ic"><ShieldIcon /></span>
           <div className="pub-head-t">
-            <div className="pub-title">마켓에 올리기</div>
-            <div className="pub-sub">
-              내가 큐레이션한 패키지를 공개해 다른 사용자가 담을 수 있게 합니다.
-            </div>
+            <div className="pub-title">{t("publish.title")}</div>
+            <div className="pub-sub">{t("publish.subtitle")}</div>
           </div>
-          <button type="button" className="pub-x" onClick={close} aria-label="닫기">
+          <button type="button" className="pub-x" onClick={close} aria-label={t("common:close")}>
             <XIcon />
           </button>
         </header>
@@ -276,15 +276,13 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
             <>
               {keptAddrCount > 0 ? (
                 <span className="pub-foot-note warn">
-                  주소 {keptAddrCount}칸이 마켓에 공개로 올라갑니다
+                  {t("publish.keptAddrFootNote", { count: keptAddrCount })}
                 </span>
               ) : (
-                <span className="pub-foot-note">
-                  주소류는 기본 비워집니다 · 칸별로 공개 선택 가능
-                </span>
+                <span className="pub-foot-note">{t("publish.blankedFootNote")}</span>
               )}
               <button type="button" className="pub-btn ghost" onClick={close}>
-                취소
+                {t("common:cancel")}
               </button>
               <button
                 type="button"
@@ -292,13 +290,13 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
                 onClick={() => setStep(2)}
                 disabled={loadingMembers}
               >
-                다음 ›
+                {t("publish.next")}
               </button>
             </>
           ) : (
             <>
               <button type="button" className="pub-btn ghost" onClick={() => setStep(1)}>
-                ‹ 뒤로
+                {t("publish.back")}
               </button>
               <span className="pub-spc" />
               <button
@@ -308,7 +306,7 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
                 disabled={publishMut.isPending}
               >
                 <ShieldIcon />
-                {publishMut.isPending ? "공개 중…" : "마켓에 공개"}
+                {publishMut.isPending ? t("publish.publishing") : t("publish.publishBtn")}
               </button>
             </>
           )}
@@ -320,10 +318,11 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
 
 /* ── stepper ───────────────────────────────────────────────────────── */
 function Stepper({ step }: { step: 1 | 2 }) {
+  const { t } = useTranslation("editor");
   const steps = [
-    { n: 1, label: "비식별 확인" },
-    { n: 2, label: "이름·설명" },
-    { n: 3, label: "공개" },
+    { n: 1, label: t("publish.step1") },
+    { n: 2, label: t("publish.step2") },
+    { n: 3, label: t("publish.step3") },
   ];
   return (
     <div className="pub-stepper">
@@ -354,6 +353,7 @@ function Step1(props: {
 }) {
   const { rules, blankedAddrCount, keptAddrCount, numberCount, kept, onToggleKeep, loading } =
     props;
+  const { t } = useTranslation("editor");
   const [openTrees, setOpenTrees] = useState<Set<string>>(new Set());
   const toggleTree = (ruleId: string) =>
     setOpenTrees((prev) => {
@@ -362,33 +362,28 @@ function Step1(props: {
       else n.add(ruleId);
       return n;
     });
-  if (loading) return <div className="pub-muted">멤버 정책 불러오는 중…</div>;
+  if (loading) return <div className="pub-muted">{t("publish.loadingMembers")}</div>;
 
   return (
     <>
       <div className="pub-info">
         <LockIcon />
         <div>
-          <b>개인정보 자동 비식별 (기본)</b>
+          <b>{t("publish.infoTitle")}</b>
           <div>
-            주소류 식별자(지갑·수취인·위임 대상·allowlist)는 기본으로{" "}
-            <b>파라미터 구멍으로 비워서</b> 올라가고, 담는 사람이 자기 값을 채웁니다.
-            주소가 정책의 본질이면(예: 특정 주소로 보내면 차단) 칸별로{" "}
-            <b>값 공개</b>를 선택할 수 있어요 — 공개한 값은 마켓에 그대로 노출됩니다.
+            <Trans t={t} i18nKey="publish.infoBody" components={{ b: <b /> }} />
           </div>
         </div>
       </div>
 
       <div className="pub-chips">
         <span className="pub-chip">
-          <SearchIcon /> 주소류 (기본 비움) · {blankedAddrCount}
+          <SearchIcon /> {t("publish.chipBlanked", { count: blankedAddrCount })}
         </span>
         {keptAddrCount > 0 && (
-          <span className="pub-chip warn"># 주소 공개 · {keptAddrCount}</span>
+          <span className="pub-chip warn">{t("publish.chipKeptAddr", { count: keptAddrCount })}</span>
         )}
-        <span className="pub-chip">
-          # 숫자 임계값 (선택) · {numberCount}
-        </span>
+        <span className="pub-chip">{t("publish.chipNumbers", { count: numberCount })}</span>
       </div>
 
       <div className="pub-rules">
@@ -403,7 +398,7 @@ function Step1(props: {
                 className={`pub-tree-toggle${openTrees.has(r.ruleId) ? " on" : ""}`}
                 onClick={() => toggleTree(r.ruleId)}
               >
-                조건 보기
+                {t("publish.viewConditions")}
               </button>
             </div>
 
@@ -424,12 +419,10 @@ function Step1(props: {
                     {ref.label} <code>{ref.path}</code>
                   </div>
                   <div className="pub-field-val">
-                    <span className="pub-runtime">
-                      런타임 값끼리 비교해요 — 텍스트에 가릴 개인 값이 없어요
-                    </span>
+                    <span className="pub-runtime">{t("publish.runtimeNote")}</span>
                   </div>
                 </div>
-                <span className="pub-blanked">개인값 없음</span>
+                <span className="pub-blanked">{t("publish.noPersonalValue")}</span>
               </div>
             ))}
 
@@ -446,7 +439,7 @@ function Step1(props: {
                         <>
                           <span>{h.display}</span>
                           <span className="arrow">→</span>
-                          <span className="param public">마켓에 공개</span>
+                          <span className="param public">{t("publish.publicTag")}</span>
                         </>
                       ) : (
                         <>
@@ -468,7 +461,7 @@ function Step1(props: {
                       className={!kept.has(h.key) ? "on" : ""}
                       onClick={() => kept.has(h.key) && onToggleKeep(h.key)}
                     >
-                      비우기
+                      {t("publish.blankBtn")}
                       <small>{h.paramName}</small>
                     </button>
                     <button
@@ -476,7 +469,7 @@ function Step1(props: {
                       className={kept.has(h.key) ? "on public" : ""}
                       onClick={() => !kept.has(h.key) && onToggleKeep(h.key)}
                     >
-                      값 공개
+                      {t("publish.keepValueBtn")}
                       <small>{h.display}</small>
                     </button>
                   </div>
@@ -489,7 +482,7 @@ function Step1(props: {
                       {h.label} <code>{h.path}</code>
                     </div>
                     <div className="pub-field-sub">
-                      원작자가 쓴 값 <b>{h.display}{h.unit ?? ""}</b>
+                      {t("publish.authorValue")} <b>{h.display}{h.unit ?? ""}</b>
                     </div>
                   </div>
                   <div className="pub-numtoggle">
@@ -498,7 +491,7 @@ function Step1(props: {
                       className={!kept.has(h.key) ? "on" : ""}
                       onClick={() => kept.has(h.key) && onToggleKeep(h.key)}
                     >
-                      비우기
+                      {t("publish.blankBtn")}
                       <small>{h.paramName}</small>
                     </button>
                     <button
@@ -506,7 +499,7 @@ function Step1(props: {
                       className={kept.has(h.key) ? "on" : ""}
                       onClick={() => !kept.has(h.key) && onToggleKeep(h.key)}
                     >
-                      추천값 남기기
+                      {t("publish.keepNumberBtn")}
                       <small>{h.display}{h.unit ?? ""}</small>
                     </button>
                   </div>
@@ -515,7 +508,7 @@ function Step1(props: {
             )}
 
             {r.holes.length === 0 && r.refs.length === 0 && (
-              <div className="pub-rule-clean">비식별할 식별자가 없어요.</div>
+              <div className="pub-rule-clean">{t("publish.nothingToRedact")}</div>
             )}
           </div>
         ))}
@@ -547,9 +540,10 @@ function Step2(props: {
     keptNumCount,
     numberCount,
   } = props;
+  const { t } = useTranslation("editor");
   return (
     <>
-      <label className="pub-l">패키지 이름</label>
+      <label className="pub-l">{t("publish.nameLabel")}</label>
       <input
         className="pub-input"
         value={name}
@@ -557,34 +551,34 @@ function Step2(props: {
         maxLength={120}
       />
 
-      <label className="pub-l">설명</label>
+      <label className="pub-l">{t("publish.descLabel")}</label>
       <textarea
         className="pub-textarea"
         value={description}
         onChange={(e) => onDescription(e.target.value)}
         rows={3}
         maxLength={500}
-        placeholder="이 패키지가 무엇을 막아주는지 간단히 적어주세요"
+        placeholder={t("publish.descPlaceholder")}
       />
 
       <div className="pub-summary">
-        <div className="pub-summary-t">공개될 내용</div>
+        <div className="pub-summary-t">{t("publish.summaryTitle")}</div>
         <div className="pub-summary-row">
-          <span>정책 수</span>
-          <b>{ruleCount}개</b>
+          <span>{t("publish.ruleCountLabel")}</span>
+          <b>{t("publish.ruleCountValue", { count: ruleCount })}</b>
         </div>
         <div className="pub-summary-row">
-          <span>주소 구멍(비식별)</span>
+          <span>{t("publish.blankedRow")}</span>
           <b>{blankedAddrCount}</b>
         </div>
         {keptAddrCount > 0 && (
           <div className="pub-summary-row warn">
-            <span>주소 공개</span>
+            <span>{t("publish.keptAddrRow")}</span>
             <b>{keptAddrCount}</b>
           </div>
         )}
         <div className="pub-summary-row">
-          <span>추천값 남김</span>
+          <span>{t("publish.keptNumRow")}</span>
           <b>
             {keptNumCount} / {numberCount}
           </b>
@@ -592,7 +586,7 @@ function Step2(props: {
       </div>
 
       <div className="pub-note">
-        <ShieldIcon /> 공개 = 누구나 마켓에서 담을 수 있음. 비공개로 되돌릴 수 있어요.
+        <ShieldIcon /> {t("publish.note")}
       </div>
     </>
   );

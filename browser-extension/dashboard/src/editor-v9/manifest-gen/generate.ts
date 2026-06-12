@@ -8,6 +8,7 @@
  * docs/design/editor-manifest-autogen.md.
  */
 
+import { i18n } from "../../i18n";
 import type { ActionScope, Expr, PolicyIR } from "../../cedar/blocks";
 import {
   ENRICHMENT_FIELDS,
@@ -77,11 +78,10 @@ export function generateManifest(
   const severity = overrides.severity ?? annotation(policy, "severity");
   const tag = actionTag(policy.scope.action);
 
-  if (!id) errors.push({ message: "정책에 @id 주석이 없습니다." });
+  if (!id) errors.push({ message: i18n.t("blocks:manifest.noId") });
   if (!tag) {
     errors.push({
-      message:
-        "enrichment 정책은 단일 `action == …` 헤드가 필요합니다 (action in […] / 미지정 불가).",
+      message: i18n.t("blocks:manifest.needSingleAction"),
     });
   }
 
@@ -93,14 +93,14 @@ export function generateManifest(
     if (!entry) {
       errors.push({
         field,
-        message: `'context.custom.${field}'를 채울 enrichment 바인딩이 없습니다. 등록된 필드만 쓸 수 있어요.`,
+        message: i18n.t("blocks:manifest.noBinding", { field }),
       });
       continue;
     }
     if (tag && !entry.appliesTo.includes(tag)) {
       errors.push({
         field,
-        message: `'${field}'는 '${tag}' 액션에서 쓸 수 없습니다 (지원: ${entry.appliesTo.join(", ")}).`,
+        message: i18n.t("blocks:manifest.notApplicable", { field, tag, supported: entry.appliesTo.join(", ") }),
       });
       continue;
     }

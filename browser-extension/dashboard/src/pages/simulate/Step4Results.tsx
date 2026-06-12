@@ -3,6 +3,8 @@
  * Right: the deny list, accumulated up to the current step, each showing WHERE
  * in the policy it was blocked (red-traced diagram, like History).
  */
+import { useTranslation } from "react-i18next";
+
 import { PolicyDiagram } from "../../cedar/diagram/PolicyDiagram";
 
 import { humanizeAddr } from "./humanize";
@@ -10,11 +12,12 @@ import type { SimController } from "./useSimController";
 import type { DenyView, StepView, WalletStateView } from "./types";
 
 export function Step4Results({ c }: { c: SimController }) {
+  const { t } = useTranslation("simulation");
   const r = c.result;
   if (c.running || !r) {
     return (
       <div className="sw-step">
-        <div className="sw-empty">{c.running ? "시뮬레이션 실행 중…" : "아직 실행하지 않았습니다."}</div>
+        <div className="sw-empty">{c.running ? t("wizard.step4.runningEmpty") : t("wizard.step4.notRunYet")}</div>
       </div>
     );
   }
@@ -28,8 +31,8 @@ export function Step4Results({ c }: { c: SimController }) {
   return (
     <div className="sw-step">
       <header className="sw-step-head">
-        <h2>④ 결과</h2>
-        <p>각 트랜잭션 적용 후 상태(s0 → s{total})와, 그때까지 누적된 차단을 봅니다.</p>
+        <h2>{t("wizard.step4.title")}</h2>
+        <p>{t("wizard.step4.desc", { total })}</p>
       </header>
 
       <div className="sw-scrub">
@@ -43,7 +46,9 @@ export function Step4Results({ c }: { c: SimController }) {
             S{i}
           </button>
         ))}
-        <span className="sw-mut">{cur === 0 ? "초기 상태" : `TX ${cur} 적용 후 (총 ${total})`}</span>
+        <span className="sw-mut">
+          {cur === 0 ? t("wizard.step4.initialState") : t("wizard.step4.afterTx", { n: cur, total })}
+        </span>
       </div>
 
       <div className="sw-cols result">
@@ -51,9 +56,9 @@ export function Step4Results({ c }: { c: SimController }) {
         <section className="sw-result-state">
           {step && (
             <div className={`sw-stepbar ${step.verdict}`}>
-              <span className="sw-stepbar-v">{verdictKo(step.verdict)}</span>
+              <span className="sw-stepbar-v">{t(`wizard.step4.verdict.${step.verdict}`)}</span>
               <b>{step.label}</b>
-              <span className="sw-mut">{name(step.fromWallet)} 실행</span>
+              <span className="sw-mut">{t("wizard.step4.executedBy", { name: name(step.fromWallet) })}</span>
             </div>
           )}
           {r.wallets.map((addr) => {
@@ -67,11 +72,11 @@ export function Step4Results({ c }: { c: SimController }) {
         {/* ── cumulative deny + diagram ── */}
         <aside className="sw-result-deny">
           <div className="sw-deny-head">
-            누적 차단 <b>{denies.length}</b>
+            {t("wizard.step4.cumulativeBlocked")} <b>{denies.length}</b>
             <span className="sw-mut"> · S0~S{cur}</span>
           </div>
           {denies.length === 0 ? (
-            <div className="sw-empty small">이 지점까지 차단된 정책이 없습니다.</div>
+            <div className="sw-empty small">{t("wizard.step4.noBlocksYet")}</div>
           ) : (
             denies.map((d) => <DenyCard key={d.policyId} d={d} />)
           )}
@@ -81,48 +86,46 @@ export function Step4Results({ c }: { c: SimController }) {
   );
 }
 
-function verdictKo(v: StepView["verdict"]): string {
-  return v === "fail" ? "차단" : v === "warn" ? "경고" : "통과";
-}
-
 function WalletSnap({ s, diff }: { s: WalletStateView; diff: StepView | null }) {
-  const deltaBySym = new Map((diff?.diff.tokens ?? []).map((t) => [t.symbol, t]));
+  const { t } = useTranslation("simulation");
+  const deltaBySym = new Map((diff?.diff.tokens ?? []).map((tk) => [tk.symbol, tk]));
   return (
     <div className="sw-statecard">
       <div className="sw-statecard-head">
         <b>{s.name}</b>
-        {diff && <span className="sw-pill changed">변경됨</span>}
+        {diff && <span className="sw-pill changed">{t("wizard.step4.changed")}</span>}
       </div>
       <table className="sw-tokens">
         <tbody>
-          {s.tokens.map((t) => {
-            const dl = deltaBySym.get(t.symbol);
+          {s.tokens.map((tk) => {
+            const dl = deltaBySym.get(tk.symbol);
             return (
-              <tr key={t.address}>
-                <td className="sym">{t.symbol}</td>
-                <td className="bal">{t.balance}</td>
+              <tr key={tk.address}>
+                <td className="sym">{tk.symbol}</td>
+                <td className="bal">{tk.balance}</td>
                 <td className={`delta ${dl?.sign ?? ""}`}>{dl ? dl.delta : ""}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      {diff?.diff.gas && <div className="sw-mut sw-gas">가스 {diff.diff.gas}</div>}
+      {diff?.diff.gas && <div className="sw-mut sw-gas">{t("wizard.step4.gas", { gas: diff.diff.gas })}</div>}
       {diff?.diff.note && <div className="sw-mut sw-note">{diff.diff.note}</div>}
     </div>
   );
 }
 
 function DenyCard({ d }: { d: DenyView }) {
+  const { t } = useTranslation("simulation");
   return (
     <div className={`sw-denycard ${d.severity}`}>
       <div className="sw-denycard-head">
-        <span className={`sw-sev ${d.severity}`}>{d.severity === "deny" ? "차단" : "경고"}</span>
+        <span className={`sw-sev ${d.severity}`}>{t(`wizard.step4.severity.${d.severity}`)}</span>
         <b>{d.policyName}</b>
         <span className="sw-step-badge">S{d.step}</span>
       </div>
       <p className="sw-deny-reason">{d.reason}</p>
-      <div className="sw-deny-note">차단 조건을 빨갛게 표시했어요 — 어디서 막혔는지</div>
+      <div className="sw-deny-note">{t("wizard.step4.blockedTraceNote")}</div>
       <div className="sw-deny-diagram">
         <PolicyDiagram ir={d.ir} highlightPaths={d.highlightPaths} humanizeLabel={humanizeAddr} compact />
       </div>

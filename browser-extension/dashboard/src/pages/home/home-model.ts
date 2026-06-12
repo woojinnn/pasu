@@ -16,6 +16,7 @@ import {
   type StoreSnapshot,
   type WalletPolicyState,
 } from "../../server-api/policy-store";
+import { i18n } from "../../i18n";
 
 export type Severity = "pass" | "warn" | "fail";
 
@@ -65,7 +66,8 @@ export function severityOf(def: PolicyDef | undefined, defId: string): Severity 
 
 function holeDisplay(v: HoleValue | undefined): string {
   if (v == null) return "—";
-  if (Array.isArray(v)) return `${v.length}개`;
+  // i18n.t at call time (component render), never at import time.
+  if (Array.isArray(v)) return i18n.t("home:param.itemsCount", { count: v.length });
   if (typeof v === "object") return `field: ${v.field}`;
   return String(v);
 }
@@ -130,7 +132,9 @@ export function buildFolders(snap: StoreSnapshot, address: string): FolderVM[] {
       const on = ws.packageEnabled[pid] ?? true;
       return {
         packageId: pid,
-        name: ws.packages[pid]?.displayName ?? (pid === UNCATEGORIZED_PKG ? "미분류" : pid),
+        name:
+          ws.packages[pid]?.displayName ??
+          (pid === UNCATEGORIZED_PKG ? i18n.t("home:folder.uncategorized") : pid),
         on,
         policies: bindings.map((b) => policyVM(snap, b, on)),
       };

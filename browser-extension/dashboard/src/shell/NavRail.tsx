@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { fetchMe, logout, listFindings } from "../server-api";
 
@@ -9,6 +10,7 @@ import { fetchMe, logout, listFindings } from "../server-api";
  * Findings count drives the History badge — refetched every 30s.
  */
 export function NavRail() {
+  const { t } = useTranslation("shell");
   const navigate = useNavigate();
   const meQ = useQuery({ queryKey: ["me"], queryFn: fetchMe, staleTime: Infinity });
   const findingsQ = useQuery({
@@ -77,18 +79,18 @@ export function NavRail() {
           <div className="nav-usermenu" role="menu">
             <button type="button" className="nav-usermenu-item" onClick={onProfile} role="menuitem">
               <ProfileIcon />
-              프로필
+              {t("nav.profile")}
             </button>
             <button type="button" className="nav-usermenu-item danger" onClick={onSignOut} role="menuitem">
               <SignOutIcon />
-              로그아웃
+              {t("nav.signOut")}
             </button>
           </div>
         )}
         <button
           className={`nav-user${menuOpen ? " open" : ""}`}
           onClick={() => setMenuOpen((v) => !v)}
-          title="계정"
+          title={t("nav.account")}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
@@ -115,9 +117,10 @@ interface RailItemProps {
 }
 
 function RailItem({ to, label, icon, end, disabled, badge, showDot }: RailItemProps) {
+  const { t } = useTranslation("shell");
   if (disabled) {
     return (
-      <span className="nav-item disabled" title="준비 중">
+      <span className="nav-item disabled" title={t("nav.comingSoon")}>
         <span className="icon">{icon}</span>
         <span className="label">{label}</span>
       </span>

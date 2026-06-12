@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Trans, useTranslation } from "react-i18next";
 
 import { deleteWallet, ServerError } from "../../server-api";
 import { Modal } from "../../components/Modal";
@@ -13,6 +14,7 @@ interface Props {
 /** In-page delete confirmation — replaces the prototype's window.confirm()
  * (the native dialog shows the extension's ugly origin string). */
 export function DeleteWalletModal({ open, onClose, address, label }: Props) {
+  const { t } = useTranslation("home");
   const qc = useQueryClient();
   const mut = useMutation({
     mutationFn: () => deleteWallet(address),
@@ -26,21 +28,26 @@ export function DeleteWalletModal({ open, onClose, address, label }: Props) {
     <Modal
       open={open}
       onClose={() => !mut.isPending && onClose()}
-      title="지갑을 삭제할까요?"
+      title={t("delete.title")}
       width={400}
       footer={
         <>
           <button className="btn" onClick={onClose} disabled={mut.isPending}>
-            취소
+            {t("common:cancel")}
           </button>
           <button className="btn danger" onClick={() => mut.mutate()} disabled={mut.isPending}>
-            {mut.isPending ? "삭제 중…" : "삭제"}
+            {mut.isPending ? t("delete.deleting") : t("common:delete")}
           </button>
         </>
       }
     >
       <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--slate-800)" }}>
-        “<b>{label ?? address}</b>” 지갑을 삭제합니다.
+        <Trans
+          t={t}
+          i18nKey="delete.confirm"
+          values={{ name: label ?? address }}
+          components={{ b: <b /> }}
+        />
       </p>
       <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "var(--fail-50)", border: "1px solid var(--fail-200)", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: "var(--slate-600)", lineHeight: 1.5 }}>
         <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="var(--fail-600)" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
@@ -49,12 +56,12 @@ export function DeleteWalletModal({ open, onClose, address, label }: Props) {
           <path d="M10 11v6M14 11v6" />
         </svg>
         <span>
-          이 지갑에 적용된 <b>패키지·정책 설정</b>도 함께 사라집니다. holdings·approval·verdict 기록은 유지됩니다.
+          <Trans t={t} i18nKey="delete.warning" components={{ b: <b /> }} />
         </span>
       </div>
       {mut.error && (
         <div className="err">
-          삭제 실패:&nbsp;
+          {t("delete.failed")}&nbsp;
           {mut.error instanceof ServerError ? `${mut.error.status} ${String(mut.error.body)}` : String(mut.error)}
         </div>
       )}

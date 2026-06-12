@@ -1,0 +1,207 @@
+{
+  "wizard": {
+    "title": "Simulation",
+    "subtitle": "4 steps",
+    "back": "← Back",
+    "next": "Next →",
+    "running": "Running…",
+    "run": "Run simulation →",
+    "runAgain": "Run again",
+    "txLabel": "Transaction {{n}}",
+    "steps": {
+      "1": "Wallets · State",
+      "2": "Policies",
+      "3": "Transactions",
+      "4": "Results"
+    },
+    "step1": {
+      "title": "① Select wallets",
+      "desc": "Pick the wallets to simulate — their current state is loaded.",
+      "wallets": "Wallets",
+      "empty": "Select a wallet on the left."
+    },
+    "step2": {
+      "title": "② Select policies",
+      "desc": "Policies are managed <b>per wallet</b>. Pick a wallet, then toggle policies and packages.",
+      "groupRelated": "Policies for the selected wallet",
+      "groupRelatedHint": "Policies targeting the chosen wallet",
+      "groupPackages": "Policy packages",
+      "groupPackagesHint": "Turning a package on enables all of its policies at once",
+      "groupAll": "All policies",
+      "groupAllHint": "Every other policy",
+      "relatedState": "Relevant state",
+      "relatedStateFiltering": "Only assets the enabled policies touch remain; the rest drop out",
+      "relatedStateIdle": "Enable a policy to narrow down to its relevant assets",
+      "managingWallet": "Wallet whose policies you're managing:",
+      "noWalletSelected": "No wallet selected",
+      "enabledCount_one": "{{count}} enabled",
+      "enabledCount_other": "{{count}} enabled",
+      "pkgCount_one": "{{count}} policy",
+      "pkgCount_other": "{{count}} policies",
+      "pkgStateOn": "All on",
+      "pkgStatePartial": "Partially on",
+      "pkgStateOff": "Off"
+    },
+    "step3": {
+      "title": "③ Transaction queue",
+      "desc": "Add the transactions to run in order. They apply cumulatively from top to bottom.",
+      "labelPlaceholder": "Label",
+      "fromWallet": "from (wallet)",
+      "toContract": "to (contract)",
+      "addTx": "+ Add transaction"
+    },
+    "step4": {
+      "title": "④ Results",
+      "desc": "See the state after each transaction (s0 → s{{total}}) and the blocks accumulated so far.",
+      "runningEmpty": "Simulation running…",
+      "notRunYet": "Not run yet.",
+      "initialState": "Initial state",
+      "afterTx": "After TX {{n}} (of {{total}})",
+      "verdict": {
+        "fail": "Blocked",
+        "warn": "Warning",
+        "pass": "Passed"
+      },
+      "severity": {
+        "deny": "Blocked",
+        "warn": "Warning"
+      },
+      "executedBy": "Run by {{name}}",
+      "cumulativeBlocked": "Cumulative blocks",
+      "noBlocksYet": "No policies blocked up to this point.",
+      "changed": "Changed",
+      "gas": "Gas {{gas}}",
+      "blockedTraceNote": "Blocking conditions are traced in red — where it was stopped"
+    },
+    "state": {
+      "totalAssets": "Total assets",
+      "tokens": "Tokens",
+      "token": "Token",
+      "positions": "Positions",
+      "approvals": "Approvals",
+      "riskyApprovals": "Risky approvals",
+      "allocAria": "Token allocation",
+      "noTokens": "No tokens held",
+      "noPositions": "No open positions",
+      "noApprovals": "No approvals",
+      "share": "Share",
+      "price": "Price",
+      "committed": "Pending use",
+      "none": "None",
+      "contract": "Contract",
+      "long": "Long",
+      "short": "Short",
+      "size": "Size",
+      "entryPrice": "Entry price",
+      "markPrice": "Mark price",
+      "liqPrice": "Liq. price",
+      "margin": "Margin",
+      "collateral": "Collateral",
+      "debt": "Debt",
+      "netPosition": "Net position",
+      "healthFactor": "Health (HF)",
+      "unlimited": "Unlimited",
+      "riskHigh": "High risk",
+      "riskMed": "Caution",
+      "riskLow": "Safe",
+      "spender": "Spender",
+      "allowance": "Allowance",
+      "scope": "Scope",
+      "grantedAt": "Granted"
+    },
+    "provider": {
+      "assetIndex": "Asset #{{index}}",
+      "allCollection": "Entire collection",
+      "nftAll": "All NFTs"
+    }
+  },
+  "historic": {
+    "account": {
+      "title": "Account-level state",
+      "walletsTotal_one": "{{count}} wallet total",
+      "walletsTotal_other": "{{count}} wallets total",
+      "tokenHoldings": "Token holdings (total)"
+    },
+    "noTokensOnChain": "No tokens held on the selected chain",
+    "noRegisteredWallets": "No registered wallets.",
+    "walletCountParen_one": "({{count}} wallet)",
+    "walletCountParen_other": "({{count}} wallets)",
+    "txQueue": {
+      "title": "Transaction queue",
+      "addFromExample": "🧪 Add TX from example…",
+      "addBlank": "+ Blank TX",
+      "labelPlaceholder": "Label (e.g. USDC approve)",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove",
+      "fromTitle": "Which wallet sends this TX. Pick a registered wallet or type any address.",
+      "fromPlaceholder": "0x… (registered wallet or any address)",
+      "registeredOption": "{{addr}} (registered)",
+      "toTitle": "Contract address (0x + 40 hex). USDC/USDT/WETH mainnet addresses match the v3 bundles.",
+      "valueTitle": "msg.value (decimal wei). Non-zero only when sending ETH along.",
+      "calldataTitle": "0xSELECTOR + ABI-encoded args. Best to start from an example in the dropdown above.",
+      "calldataPlaceholder": "0xa9059cbb… (transfer) or 0x095ea7b3… (approve)"
+    },
+    "policies": {
+      "title": "Policies",
+      "simOnly": "Simulation-only on/off",
+      "activeCount": "{{on}} / {{total}} active",
+      "allOn": "All ON",
+      "allOff": "All OFF",
+      "empty": "No installed policies."
+    },
+    "stepPicker": {
+      "initialState": "Initial state",
+      "afterTx": "After TX {{n}} (of {{total}})"
+    },
+    "verdict": {
+      "title": "Verdict",
+      "emptyHint": "Run a simulation to see the verdict at each TX.",
+      "passHint": "No policies blocked or warned at this step.",
+      "hideStructure": "Hide structure ▲",
+      "showStructure": "Show structure ▼"
+    },
+    "wallets": {
+      "title": "Select wallets",
+      "selectAll": "Select all",
+      "clearAll": "Clear",
+      "empty": "No registered wallets. Add one on the <code>/wallets</code> page.",
+      "chainUnsupported": "Selected chain ({{chain}}) not supported"
+    },
+    "walletsState": {
+      "title": "Per-wallet state",
+      "walletCount_one": "{{count}} wallet",
+      "walletCount_other": "{{count}} wallets",
+      "stepOwner": "Step owner:",
+      "changes": "Changes:",
+      "changedOnly": "Changed tokens only",
+      "noSelection": "No wallets selected.",
+      "noChange": "No changes at this step",
+      "noTokens": "No tokens held",
+      "selectedSum": "Selected wallets total"
+    }
+  },
+  "page": {
+    "running": "Running…",
+    "run_one": "Run simulation ({{count}})",
+    "run_other": "Run simulation ({{count}})",
+    "meta": {
+      "policiesActive_one": "Policies: <s>{{count}}</s> active",
+      "policiesActive_other": "Policies: <s>{{count}}</s> active",
+      "wallets_one": "Wallets: <s>{{count}}</s>",
+      "wallets_other": "Wallets: <s>{{count}}</s>",
+      "v3Empty": "0 v3 bundles — decode results will all be Unknown"
+    },
+    "historyRelabel": "history → re-simulate",
+    "errors": {
+      "fromEmpty": "The from wallet address is empty",
+      "tokenNotTracked": "This wallet doesn't track {{label}}. Add {{label}} on the wallet page, or simulate a TX with a token it already tracks.",
+      "balanceUnderflow": "Insufficient {{label}} balance — tried to debit {{amount}}, but the available balance is lower."
+    },
+    "login": {
+      "title": "Sign-in required",
+      "desc": "The simulator runs against the real state of your registered wallets. Sign in with your Google account and your wallet list loads automatically.",
+      "google": "Sign in with Google"
+    }
+  }
+}

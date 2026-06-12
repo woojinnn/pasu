@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Trans, useTranslation } from "react-i18next";
 
 import { addWallet, ServerError, type AddWalletResp } from "../server-api";
 
@@ -24,6 +25,7 @@ const CHAIN_OPTIONS: Array<{ id: string; label: string }> = [
 const ADDR_RX = /^0x[0-9a-fA-F]{40}$/;
 
 export function AddWalletModal({ open, onClose, onAdded }: AddWalletModalProps) {
+  const { t } = useTranslation("common");
   const qc = useQueryClient();
   const [address, setAddress] = useState("");
   const [label, setLabel] = useState("");
@@ -78,17 +80,17 @@ export function AddWalletModal({ open, onClose, onAdded }: AddWalletModalProps) 
           onClose();
         }
       }}
-      title={mut.data ? "지갑 추가 결과" : "지갑 추가"}
+      title={mut.data ? t("wallet.addResultTitle") : t("wallet.addTitle")}
       footer={
         mut.data ? (
-          <button className="btn primary" onClick={onClose}>닫기</button>
+          <button className="btn primary" onClick={onClose}>{t("close")}</button>
         ) : (
           <>
             <button className="btn" type="button" onClick={onClose} disabled={mut.isPending}>
-              취소
+              {t("cancel")}
             </button>
             <button className="btn primary" type="submit" form="add-wallet-form" disabled={mut.isPending || !addressOk}>
-              {mut.isPending ? "추가 중…" : "추가"}
+              {mut.isPending ? t("wallet.adding") : t("add")}
             </button>
           </>
         )
@@ -96,7 +98,7 @@ export function AddWalletModal({ open, onClose, onAdded }: AddWalletModalProps) 
     >
       <form id="add-wallet-form" onSubmit={onSubmit}>
         <div className="form-row">
-          <label htmlFor="aw-addr">주소 (0x…)</label>
+          <label htmlFor="aw-addr">{t("wallet.addressLabel")}</label>
           <input
             id="aw-addr"
             type="text"
@@ -109,23 +111,23 @@ export function AddWalletModal({ open, onClose, onAdded }: AddWalletModalProps) 
             style={{ fontFamily: "var(--ff-mono)" }}
           />
           {touched && !addressOk && (
-            <div className="err">유효한 0x 주소 (40 hex)가 아닙니다</div>
+            <div className="err">{t("wallet.addressInvalid")}</div>
           )}
         </div>
 
         <div className="form-row">
-          <label htmlFor="aw-label">라벨 (선택)</label>
+          <label htmlFor="aw-label">{t("wallet.labelOptional")}</label>
           <input
             id="aw-label"
             type="text"
-            placeholder="예: 메인 지갑, Treasury, Hot"
+            placeholder={t("wallet.labelPlaceholder")}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
         </div>
 
         <div className="form-row">
-          <label>체인 (선택 안 하면 서버 설정의 모든 체인)</label>
+          <label>{t("wallet.chainsLabel")}</label>
           <div className="chain-grid">
             {CHAIN_OPTIONS.map((c) => (
               <label key={c.id} className={`chain-chip${chains.has(c.id) ? " checked" : ""}`}>
@@ -142,13 +144,13 @@ export function AddWalletModal({ open, onClose, onAdded }: AddWalletModalProps) 
             ))}
           </div>
           <div className="hint">
-            전체 선택 안 하면: <code>pasu-sync.toml</code>에 RPC가 설정된 모든 체인을 추적합니다.
+            <Trans i18nKey="wallet.chainsHint" ns="common" components={{ code: <code /> }} />
           </div>
         </div>
 
         {mut.error && (
           <div className="err" style={{ marginTop: 8 }}>
-            추가 실패:&nbsp;
+            {t("wallet.addFailed")}&nbsp;
             {mut.error instanceof ServerError
               ? `${mut.error.status} ${String(mut.error.body)}`
               : String(mut.error)}

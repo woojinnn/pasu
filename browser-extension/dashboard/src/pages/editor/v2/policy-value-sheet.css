@@ -276,6 +276,29 @@
   min-width: 0;
 }
 
+/* 사유 입력 — 정책 공통(def). 발동 메시지를 여기서 채울 수 있다. */
+.pv-reason-input {
+  flex: 1;
+  min-width: 120px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--ink, #111827);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 5px 10px;
+  outline: none;
+}
+.pv-reason-input:focus {
+  border-color: var(--accent, #5b8cff);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.15);
+}
+.pv-reason-input.empty {
+  border-color: var(--danger-300, #fca5a5);
+  background: var(--danger-50, #fef2f2);
+}
+
 /* 예외(unless) */
 .pv-unless {
   margin: 0 18px 14px;

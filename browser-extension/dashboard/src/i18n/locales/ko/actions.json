@@ -1,0 +1,158 @@
+{
+  "group": {
+    "Token": "토큰",
+    "Amm": "스왑·유동성 (AMM)",
+    "Perp": "선물 (Perp)",
+    "HyperliquidCore": "Hyperliquid",
+    "Lending": "대출",
+    "Yield": "일드 (Pendle)",
+    "Staking": "스테이킹",
+    "LiquidStaking": "리퀴드 스테이킹",
+    "Restaking": "리스테이킹",
+    "Governance": "거버넌스",
+    "Airdrop": "에어드랍",
+    "Launchpad": "런치패드",
+    "Marketplace": "NFT 마켓",
+    "Permission": "권한",
+    "Core": "기타"
+  },
+  "name": {
+    "Amm": {
+      "Swap": "스왑",
+      "AddLiquidity": "유동성 추가",
+      "RemoveLiquidity": "유동성 제거",
+      "CollectFees": "수수료 수령",
+      "GsmSwap": "GSM 스왑",
+      "SignIntentOrder": "인텐트 주문 서명",
+      "PreSignIntentOrder": "인텐트 사전서명",
+      "SettleIntentOrder": "인텐트 정산",
+      "CancelIntentOrder": "인텐트 취소"
+    },
+    "Token": {
+      "Erc20Transfer": "토큰 전송",
+      "Erc20Approve": "토큰 승인",
+      "Erc20Permit": "토큰 Permit 서명",
+      "RevokeApproval": "승인 취소",
+      "NftTransfer": "NFT 전송",
+      "NftApprove": "NFT 승인",
+      "NftSetApprovalForAll": "NFT 전체 승인",
+      "Permit2Approve": "Permit2 승인",
+      "Permit2SignAllowance": "Permit2 허용량 서명",
+      "Permit2SignTransfer": "Permit2 전송 서명",
+      "Permit2TransferFrom": "Permit2 전송",
+      "WrapNative": "네이티브 랩핑",
+      "UnwrapNative": "네이티브 언랩"
+    },
+    "Perp": {
+      "OpenPosition": "포지션 오픈",
+      "ClosePosition": "포지션 종료",
+      "IncreasePosition": "포지션 증가",
+      "DecreasePosition": "포지션 감소",
+      "ChangeLeverage": "레버리지 변경",
+      "AdjustMargin": "마진 조정",
+      "ChangeMarginMode": "마진 모드 변경",
+      "PlaceOrder": "주문 넣기",
+      "CancelOrder": "주문 취소",
+      "ClaimFunding": "펀딩 수령"
+    },
+    "HyperliquidCore": {
+      "HlSendAsset": "HL 자산 전송",
+      "HlTokenDelegate": "HL 토큰 위임",
+      "HlWithdraw": "HL 출금"
+    },
+    "Lending": {
+      "Supply": "예치",
+      "Withdraw": "출금",
+      "Borrow": "차입",
+      "Repay": "상환",
+      "Liquidate": "청산",
+      "EnableCollateral": "담보 활성화",
+      "DisableCollateral": "담보 비활성화",
+      "SetEMode": "eMode 설정",
+      "SwapRateMode": "금리 모드 변경",
+      "DelegateBorrow": "차입 위임",
+      "SetAuthorization": "권한 설정",
+      "BuyCollateral": "담보 매수",
+      "PeripheryOperation": "주변 작업"
+    },
+    "Governance": {
+      "Delegate": "투표권 위임",
+      "Vote": "투표",
+      "Propose": "제안",
+      "Queue": "큐 등록",
+      "Execute": "실행",
+      "Cancel": "취소",
+      "StartVote": "투표 시작",
+      "CloseVote": "투표 종료",
+      "ActivateVoting": "투표 활성화",
+      "UpdateRepresentative": "대표자 변경",
+      "RedeemCancellationFee": "취소 수수료 회수"
+    },
+    "Airdrop": {
+      "Claim": "에어드랍 청구",
+      "Delegate": "에어드랍 위임"
+    },
+    "Staking": {
+      "Stake": "스테이킹",
+      "Lock": "락업",
+      "Unlock": "언락",
+      "ClaimRewards": "보상 수령",
+      "Cooldown": "쿨다운",
+      "Redeem": "리딤",
+      "GaugeDeposit": "게이지 예치",
+      "GaugeWithdraw": "게이지 출금",
+      "VoteForGauge": "게이지 투표",
+      "IncreaseLockAmount": "락업 수량 증가",
+      "IncreaseLockTime": "락업 기간 증가"
+    },
+    "LiquidStaking": {
+      "Stake": "리퀴드 스테이킹",
+      "Wrap": "랩핑",
+      "Unwrap": "언랩",
+      "RequestWithdrawal": "출금 요청",
+      "ClaimWithdrawal": "출금 청구",
+      "TransferShares": "셰어 전송"
+    },
+    "Restaking": {
+      "Deposit": "리스테이킹 예치",
+      "DelegateTo": "오퍼레이터 위임",
+      "Undelegate": "위임 해제",
+      "Redelegate": "재위임",
+      "QueueWithdrawal": "출금 큐",
+      "CompleteWithdrawal": "출금 완료",
+      "RegisterOperator": "오퍼레이터 등록"
+    },
+    "Yield": {
+      "PtSwap": "PT 스왑",
+      "YtSwap": "YT 스왑",
+      "MintPy": "PY 발행",
+      "RedeemPy": "PY 리딤",
+      "MintSy": "SY 발행",
+      "RedeemSy": "SY 리딤",
+      "ClaimYield": "일드 수령",
+      "AddMarketLiquidity": "마켓 유동성 추가",
+      "RemoveMarketLiquidity": "마켓 유동성 제거",
+      "SignLimitOrder": "지정가 주문 서명",
+      "CancelLimitOrder": "지정가 주문 취소"
+    },
+    "Launchpad": {
+      "Commit": "참여(커밋)",
+      "WithdrawCommit": "커밋 회수",
+      "ClaimAllocation": "할당 청구",
+      "ClaimVested": "베스팅 청구",
+      "Refund": "환불"
+    },
+    "Marketplace": {
+      "SignOrder": "주문 서명",
+      "FulfillOrder": "주문 체결",
+      "CancelOrder": "주문 취소"
+    },
+    "Permission": {
+      "ProtocolAuthorization": "프로토콜 권한 부여"
+    },
+    "Core": {
+      "Multicall": "멀티콜",
+      "Unknown": "알 수 없는 거래"
+    }
+  }
+}

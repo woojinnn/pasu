@@ -4,12 +4,14 @@
  * each enabled policy actually references (the rest dims out).
  */
 import type { ReactNode } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { StateDashboard } from "./StateDashboard";
 import type { SimController, PkgState } from "./useSimController";
 import type { PolicyView } from "./types";
 
 export function Step2Policies({ c }: { c: SimController }) {
+  const { t } = useTranslation("simulation");
   const related = c.walletRelatedPolicies;
   const relatedIds = new Set(related.map((p) => p.id));
   const pkgPolicyIds = new Set(c.packages.flatMap((p) => p.policyIds));
@@ -20,8 +22,10 @@ export function Step2Policies({ c }: { c: SimController }) {
   return (
     <div className="sw-step">
       <header className="sw-step-head">
-        <h2>② 정책 선택</h2>
-        <p>정책은 <b>지갑 단위</b>로 관리됩니다. 지갑을 고른 뒤 정책·패키지를 켜고 끄세요.</p>
+        <h2>{t("wizard.step2.title")}</h2>
+        <p>
+          <Trans t={t} i18nKey="wizard.step2.desc" components={{ b: <b /> }} />
+        </p>
       </header>
 
       <WalletSwitcher c={c} />
@@ -29,14 +33,14 @@ export function Step2Policies({ c }: { c: SimController }) {
       <div className="sw-cols">
         <section className="sw-policies">
           {related.length > 0 && (
-            <Group title="선택 지갑 관련 정책" hint="고른 지갑을 대상으로 하는 정책">
+            <Group title={t("wizard.step2.groupRelated")} hint={t("wizard.step2.groupRelatedHint")}>
               {related.map((p) => (
                 <PolicyRow key={p.id} p={p} on={c.enabled.has(p.id)} toggle={() => c.togglePolicy(p.id)} />
               ))}
             </Group>
           )}
 
-          <Group title="정책 패키지" hint="패키지를 켜면 포함된 정책이 한 번에 켜집니다">
+          <Group title={t("wizard.step2.groupPackages")} hint={t("wizard.step2.groupPackagesHint")}>
             {c.packages.map((pkg) => (
               <div key={pkg.id} className="sw-pkg">
                 <PkgRow
@@ -58,7 +62,7 @@ export function Step2Policies({ c }: { c: SimController }) {
           </Group>
 
           {rest.length > 0 && (
-            <Group title="전체 정책" hint="그 밖의 모든 정책">
+            <Group title={t("wizard.step2.groupAll")} hint={t("wizard.step2.groupAllHint")}>
               {rest.map((p) => (
                 <PolicyRow key={p.id} p={p} on={c.enabled.has(p.id)} toggle={() => c.togglePolicy(p.id)} />
               ))}
@@ -68,11 +72,9 @@ export function Step2Policies({ c }: { c: SimController }) {
 
         <aside className="sw-relstate">
           <div className="sw-relstate-head">
-            <b>관련 상태</b>
+            <b>{t("wizard.step2.relatedState")}</b>
             <span className="sw-mut">
-              {filtering
-                ? "켠 정책이 다루는 자산만 남고 나머지는 빠집니다"
-                : "정책을 켜면 관련 자산만 남습니다"}
+              {filtering ? t("wizard.step2.relatedStateFiltering") : t("wizard.step2.relatedStateIdle")}
             </span>
           </div>
           {c.activeState && (
@@ -96,14 +98,19 @@ export function Step2Policies({ c }: { c: SimController }) {
 
 /** Per-wallet tabs — pick which selected wallet's policy set you're editing. */
 function WalletSwitcher({ c }: { c: SimController }) {
+  const { t } = useTranslation("simulation");
   const sel = c.wallets.filter((w) => c.selected.has(w.address));
   if (sel.length <= 1) {
     const w = sel[0];
     return (
       <div className="sw-wsw single">
-        <span className="sw-mut">정책을 관리할 지갑:</span>
-        <b className="sw-wsw-name">{w ? w.name : "선택된 지갑 없음"}</b>
-        {w && <span className="sw-wsw-count">{c.enabledCount(w.address)}개 켜짐</span>}
+        <span className="sw-mut">{t("wizard.step2.managingWallet")}</span>
+        <b className="sw-wsw-name">{w ? w.name : t("wizard.step2.noWalletSelected")}</b>
+        {w && (
+          <span className="sw-wsw-count">
+            {t("wizard.step2.enabledCount", { count: c.enabledCount(w.address) })}
+          </span>
+        )}
       </div>
     );
   }
@@ -147,13 +154,20 @@ function PolicyRow({ p, on, toggle, small }: { p: PolicyView; on: boolean; toggl
 }
 
 function PkgRow({ name, count, state, toggle }: { name: string; count: number; state: PkgState; toggle: () => void }) {
+  const { t } = useTranslation("simulation");
+  const stateLabel =
+    state === "on"
+      ? t("wizard.step2.pkgStateOn")
+      : state === "partial"
+        ? t("wizard.step2.pkgStatePartial")
+        : t("wizard.step2.pkgStateOff");
   return (
     <button type="button" className={`sw-pkgrow ${state}`} onClick={toggle}>
       <span className={`sw-pkgtog ${state}`}>
         <span className="sw-pkgtog-dot" />
       </span>
       <span className="sw-pkg-name">{name}</span>
-      <span className="sw-mut">정책 {count}개 · {state === "on" ? "전체 켜짐" : state === "partial" ? "일부 켜짐" : "꺼짐"}</span>
+      <span className="sw-mut">{t("wizard.step2.pkgCount", { count })} · {stateLabel}</span>
     </button>
   );
 }

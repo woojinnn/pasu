@@ -18,6 +18,7 @@
  */
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   aggregateWalletStates,
@@ -62,6 +63,7 @@ export interface WalletsStatePanelProps {
 }
 
 export function WalletsStatePanel(props: WalletsStatePanelProps) {
+  const { t } = useTranslation("simulation");
   const {
     selected,
     histories,
@@ -89,8 +91,8 @@ export function WalletsStatePanel(props: WalletsStatePanelProps) {
   return (
     <div className="sim-card wallets-state-card">
       <div className="card-head">
-        <h3>지갑 단위 state</h3>
-        <span className="meta">{selected.length} 지갑</span>
+        <h3>{t("historic.walletsState.title")}</h3>
+        <span className="meta">{t("historic.walletsState.walletCount", { count: selected.length })}</span>
       </div>
 
       <StepPicker
@@ -102,9 +104,9 @@ export function WalletsStatePanel(props: WalletsStatePanelProps) {
       {/* Active-step summary — which wallet's delta drove this cursor. */}
       {currentDelta && currentDeltaView && (
         <div className="state-delta-summary">
-          <span className="meta">step의 주체:</span>
+          <span className="meta">{t("historic.walletsState.stepOwner")}</span>
           <code>{shortAddr(currentDelta.walletAddr)}</code>
-          <span className="meta">변화:</span>
+          <span className="meta">{t("historic.walletsState.changes")}</span>
           {isStateDeltaEmpty(currentDeltaView) ? (
             <span className="muted">no state change</span>
           ) : (
@@ -126,11 +128,11 @@ export function WalletsStatePanel(props: WalletsStatePanelProps) {
           onChange={(e) => setChangedOnly(e.target.checked)}
           disabled={touched.size === 0}
         />
-        <span>변화된 토큰만</span>
+        <span>{t("historic.walletsState.changedOnly")}</span>
       </label>
 
       {selected.length === 0 ? (
-        <div className="muted-line">선택된 지갑이 없습니다.</div>
+        <div className="muted-line">{t("historic.walletsState.noSelection")}</div>
       ) : (
         <ul className="wallets-state-list">
           {/* Selected-wallets aggregate row. Only renders for >1 wallets
@@ -199,6 +201,7 @@ function WalletSection({
   changedOnly,
   deltaView,
 }: WalletSectionProps) {
+  const { t } = useTranslation("simulation");
   /** Map tokenKeyId(key) → signed-decimal delta string. Built once per
    *  delta so the per-row render is O(1). */
   const balanceDeltaByKey = useMemo(() => {
@@ -238,7 +241,7 @@ function WalletSection({
         <div className="muted-line">no snapshot</div>
       ) : tokensToShow.length === 0 ? (
         <div className="muted-line">
-          {changedOnly ? "이 step에서 변화 없음" : "보유 토큰 없음"}
+          {changedOnly ? t("historic.walletsState.noChange") : t("historic.walletsState.noTokens")}
         </div>
       ) : (
         <ul className="state-token-list">
@@ -302,6 +305,9 @@ function SelectedSumSection({
   deltaView,
   stepOwnerInSelection,
 }: SelectedSumSectionProps) {
+  const { t } = useTranslation("simulation");
+  // Alias for use inside the token map below, where `t` is shadowed by the row.
+  const tr = t;
   const aggregate = useMemo(() => {
     const views = [];
     for (const addr of selected) {
@@ -331,11 +337,11 @@ function SelectedSumSection({
   return (
     <>
       <header className="wallets-state-head">
-        <strong>선택 지갑 합계</strong>
-        <span className="meta">{aggregate.walletCount} 지갑</span>
+        <strong>{t("historic.walletsState.selectedSum")}</strong>
+        <span className="meta">{t("historic.walletsState.walletCount", { count: aggregate.walletCount })}</span>
       </header>
       {aggregate.tokens.length === 0 ? (
-        <div className="muted-line">선택한 chain에 보유 토큰 없음</div>
+        <div className="muted-line">{t("historic.noTokensOnChain")}</div>
       ) : (
         <ul className="state-token-list">
           {aggregate.tokens.map((t: AggregatedTokenRow) => {
@@ -354,7 +360,7 @@ function SelectedSumSection({
                   <strong>{t.symbol || "?"}</strong>
                   <code className="muted">{shortAddr(t.key.address)}</code>
                   <span className="muted state-token-wcount">
-                    ({t.walletCount} 지갑)
+                    {tr("historic.walletCountParen", { count: t.walletCount })}
                   </span>
                 </div>
                 <div

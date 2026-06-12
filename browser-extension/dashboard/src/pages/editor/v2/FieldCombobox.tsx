@@ -6,8 +6,17 @@
  * no deps. Keyboard: type to filter, ↑/↓ to move, Enter to pick, Esc to close.
  */
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-import { ROLE_COLOUR, ROLE_LABEL_KO, type FieldKind, type Role } from "../../../editor-v9/gloss/paths";
+import {
+  ROLE_COLOUR,
+  ROLE_LABEL_EN,
+  ROLE_LABEL_KO,
+  type FieldKind,
+  type Role,
+} from "../../../editor-v9/gloss/paths";
+import { i18n } from "../../../i18n";
 import type { FieldOption } from "../../../cedar/form";
 
 const ROLE_ORDER: Role[] = ["address", "ref", "numeric", "enum", "auth", "derived"];
@@ -16,25 +25,30 @@ function roleColor(role: Role): string {
   return `hsl(${ROLE_COLOUR[role]} 60% 52%)`;
 }
 
+/** Role group heading — gloss carries ko/en label tables. */
+function roleLabel(role: Role): string {
+  return (i18n.language?.startsWith("en") ? ROLE_LABEL_EN : ROLE_LABEL_KO)[role];
+}
+
 /** The TYPE chip — one fixed vocabulary, independent of unit (Rule 2). The
  *  unit (USD / bp / 토큰 / …) is rendered as a separate pill, never here. */
-function typeChip(f: FieldOption): string {
+function typeChip(f: FieldOption, t: TFunction): string {
   const k: FieldKind = f.fieldKind;
   switch (k) {
     case "primitive.Bool":
-      return "참/거짓";
+      return t("editor:type.bool");
     case "primitive.Long":
-      return "숫자";
+      return t("editor:type.long");
     case "primitive.decimal":
-      return "소수";
+      return t("editor:type.decimal");
     case "primitive.String":
-      return f.role === "address" ? "주소" : "문자";
+      return f.role === "address" ? t("editor:type.address") : t("editor:type.string");
     case "ref":
-      return "참조";
+      return t("editor:type.ref");
     case "collection":
-      return "목록";
+      return t("editor:type.collection");
     case "record":
-      return "레코드";
+      return t("editor:type.record");
   }
 }
 
@@ -47,6 +61,7 @@ export function FieldCombobox({
   fields: FieldOption[];
   onChange: (path: string) => void;
 }) {
+  const { t } = useTranslation("editor");
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -127,10 +142,10 @@ export function FieldCombobox({
           <>
             <span className="fc-dot" style={{ background: roleColor(selected.role) }} />
             <span className="fc-btn-label">{selected.label}</span>
-            {selected.source === "custom" && <span className="fc-badge">보강</span>}
+            {selected.source === "custom" && <span className="fc-badge">{t("combobox.enrichBadge")}</span>}
           </>
         ) : (
-          "필드 선택…"
+          t("combobox.pickField")
         )}
         <span className="fc-caret">▾</span>
       </button>
@@ -143,15 +158,15 @@ export function FieldCombobox({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="필드 검색…"
+            placeholder={t("combobox.searchPlaceholder")}
           />
           <div className="fc-list">
-            {groups.length === 0 && <div className="fc-none">일치하는 필드 없음</div>}
+            {groups.length === 0 && <div className="fc-none">{t("combobox.noMatch")}</div>}
             {groups.map((g) => (
               <div key={g.role} className="fc-group">
                 <div className="fc-group-h">
                   <span className="fc-dot" style={{ background: roleColor(g.role) }} />
-                  {ROLE_LABEL_KO[g.role]}
+                  {roleLabel(g.role)}
                 </div>
                 {g.items.map((f) => {
                   flatIdx += 1;
@@ -166,9 +181,9 @@ export function FieldCombobox({
                     >
                       <div className="fc-opt-top">
                         <span className="fc-opt-label">{f.label}</span>
-                        {f.source === "custom" && <span className="fc-badge">보강</span>}
+                        {f.source === "custom" && <span className="fc-badge">{t("combobox.enrichBadge")}</span>}
                         {f.unit && <span className="fc-unit">{f.unit}</span>}
-                        <span className="fc-chip">{typeChip(f)}</span>
+                        <span className="fc-chip">{typeChip(f, t)}</span>
                       </div>
                       {f.desc && <div className="fc-opt-desc">{f.desc}</div>}
                     </button>
@@ -182,7 +197,9 @@ export function FieldCombobox({
                 className="fc-adv"
                 onClick={() => setShowAdvanced((s) => !s)}
               >
-                {showAdvanced ? "▾ 고급 필드 숨기기" : `▸ 고급 필드 보기 (${advancedCount})`}
+                {showAdvanced
+                  ? t("combobox.hideAdvanced")
+                  : t("combobox.showAdvanced", { count: advancedCount })}
               </button>
             )}
           </div>

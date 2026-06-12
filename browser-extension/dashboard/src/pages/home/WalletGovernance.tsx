@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import {
   setPackageEnabled,
@@ -95,6 +96,7 @@ export function WalletGovernance({ wallets, snap, onSync, syncingAddress, onRena
     if (active > wallets.length - 1) setActive(Math.max(0, wallets.length - 1));
   }, [wallets.length, active]);
 
+  const { t } = useTranslation("home");
   const activeWallet = wallets[active];
 
   if (wallets.length === 0) {
@@ -102,8 +104,8 @@ export function WalletGovernance({ wallets, snap, onSync, syncingAddress, onRena
       <section className="dial-section">
         <DialHead />
         <div className="dp-empty" style={{ minHeight: 240, border: "1px solid var(--hairline)", borderRadius: "var(--r-md)", background: "var(--surface)" }}>
-          <div className="et"><b>등록된 지갑이 없습니다</b><br />첫 지갑을 추가하세요.</div>
-          <button className="btn primary" onClick={onAddWallet}>지갑 추가 +</button>
+          <div className="et"><b>{t("empty.noWallets")}</b><br />{t("empty.addFirst")}</div>
+          <button className="btn primary" onClick={onAddWallet}>{t("addWallet")}</button>
         </div>
       </section>
     );
@@ -148,11 +150,12 @@ export function WalletGovernance({ wallets, snap, onSync, syncingAddress, onRena
 }
 
 function DialHead() {
+  const { t } = useTranslation("home");
   return (
     <div className="dial-head">
       <div className="gov-title">
-        <h2>지갑별 정책 <span className="scope-pill wallet">지갑 단위</span></h2>
-        <span className="gov-sub">지갑을 고르면 그 지갑의 패키지가 열립니다. 카드를 한 번 더 누르면 전체 지갑을 한눈에 봅니다.</span>
+        <h2>{t("head.title")} <span className="scope-pill wallet">{t("head.scopeWallet")}</span></h2>
+        <span className="gov-sub">{t("head.sub")}</span>
       </div>
     </div>
   );
@@ -170,6 +173,7 @@ function WalletDial({
   onSelect: (i: number) => void;
   onActiveClick: () => void;
 }) {
+  const { t } = useTranslation("home");
   const stageRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<HTMLDivElement[]>([]);
   const offset = useRef(active);
@@ -280,14 +284,14 @@ function WalletDial({
           >
             <div className="wc-top">
               <span className="wc-mono">{initialOf(w)}</span>
-              <span className="wc-sev"><span className="d" />지갑</span>
+              <span className="wc-sev"><span className="d" />{t("card.wallet")}</span>
             </div>
             <div className="wc-mid">
               <div className="wc-name">{w.label ?? "—"}</div>
               <div className="wc-addr">{w.address.slice(0, 6)} ·· {w.address.slice(-4)}</div>
             </div>
             <div className="wc-bot">
-              <div><div className="lbl">잔액</div><div className="wc-bal">{usd(w.balanceUsd)}</div></div>
+              <div><div className="lbl">{t("card.balance")}</div><div className="wc-bal">{usd(w.balanceUsd)}</div></div>
             </div>
           </div>
         ))}
@@ -319,6 +323,7 @@ function WalletPanel({
   onRename: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation("home");
   const qc = useQueryClient();
   const folders = useMemo(() => (snap ? buildFolders(snap, wallet.address) : []), [snap, wallet.address]);
   const applied = snap ? appliedCount(snap, wallet.address) : BASELINE_COUNT;
@@ -358,7 +363,7 @@ function WalletPanel({
         members,
       });
     } catch (err) {
-      console.error("[Pasu] 패키지 게시 준비 실패", err);
+      console.error("[Pasu] 패키지 게시 준비 실패", err); // i18n-ok
     }
   };
 
@@ -374,14 +379,14 @@ function WalletPanel({
         suggestedSlug: d.id.replace(/^def::/, ""),
       });
     } catch (err) {
-      console.error("[Pasu] 정책 게시 준비 실패", err);
+      console.error("[Pasu] 정책 게시 준비 실패", err); // i18n-ok
     }
   };
 
   return (
     <div className="dp-fade">
       <div className="dp-head">
-        <button className="dp-coin" type="button" data-tone={wallet.tone} title="전체 지갑 보기" onClick={onOpenOverview}>
+        <button className="dp-coin" type="button" data-tone={wallet.tone} title={t("panel.viewAllWallets")} onClick={onOpenOverview}>
           {initialOf(wallet)}
         </button>
         <div className="dp-id">
@@ -392,26 +397,26 @@ function WalletPanel({
         </div>
         <div className="dp-bal">
           <div className="dp-acts">
-            <button className={`dp-ib${syncing ? " spinning" : ""}`} type="button" title="지금 동기화" onClick={() => onSync(wallet.address)}><Sync /></button>
-            <button className="dp-ib" type="button" title="이름 변경" onClick={onRename}><Rename /></button>
-            <button className="dp-ib danger" type="button" title="지갑 삭제" onClick={onDelete}><Trash /></button>
+            <button className={`dp-ib${syncing ? " spinning" : ""}`} type="button" title={t("panel.syncNow")} onClick={() => onSync(wallet.address)}><Sync /></button>
+            <button className="dp-ib" type="button" title={t("panel.rename")} onClick={onRename}><Rename /></button>
+            <button className="dp-ib danger" type="button" title={t("panel.deleteWallet")} onClick={onDelete}><Trash /></button>
           </div>
           <b>{usd(wallet.balanceUsd)}</b>
-          <div><Link className="open" to={`/monitoring?wallet=${wallet.address}`}>자산 열기 <ArrowOut /></Link></div>
+          <div><Link className="open" to={`/monitoring?wallet=${wallet.address}`}>{t("panel.openAssets")} <ArrowOut /></Link></div>
         </div>
       </div>
 
       <div className="dp-stack">
         <span className="base-chip"><Shield />Baseline {BASELINE_COUNT}</span>
-        <span className="seg"><span className="arrow">+</span> 패키지 <b>{folders.length}</b><span className="mute"> ({polTotal}개 정책)</span></span>
+        <span className="seg"><span className="arrow">+</span> {t("panel.packages")} <b>{folders.length}</b><span className="mute"> {t("panel.policiesCount", { count: polTotal })}</span></span>
         <span className="arrow">→</span>
-        <span className="seg">이 지갑에 적용 <b>{applied}</b></span>
+        <span className="seg">{t("panel.appliedToWallet")} <b>{applied}</b></span>
       </div>
 
       {folders.length === 0 ? (
         <div className="dp-empty">
-          <div className="et"><b>설치된 패키지 없음</b><br />baseline만 적용됩니다.</div>
-          <Link className="btn" to="/market">패키지 받기</Link>
+          <div className="et"><b>{t("panel.noPackages")}</b><br />{t("panel.baselineOnly")}</div>
+          <Link className="btn" to="/market">{t("panel.getPackages")}</Link>
         </div>
       ) : (
         <div className="dp-policies dp-folders">
@@ -469,18 +474,19 @@ function FolderRow({
   onPublishPolicy: (p: PolicyVM) => void;
   onToggleEnabled: (p: PolicyVM, on: boolean) => void;
 }) {
+  const { t } = useTranslation("home");
   return (
     <div className={`pk-folder${open ? "" : " collapsed"}${folder.on ? "" : " off"}`}>
       <div className="pk-folder-head" onClick={onToggleFolder}>
         <span className="pk-chev"><Chevron /></span>
         <span className="pk-folder-ic"><Folder /></span>
         <span className="pk-folder-name">{folder.name}</span>
-        <span className="pk-folder-count"><b>{folder.policies.length}</b> 정책</span>
+        <span className="pk-folder-count"><b>{folder.policies.length}</b> {t("folder.policies")}</span>
         {folder.policies.length > 0 && (
           <button
             className="pk-pub"
             type="button"
-            title="이 패키지를 마켓에 게시"
+            title={t("folder.publishTitle")}
             onClick={(e) => { e.stopPropagation(); onPublishFolder(); }}
           >
             <Upload />
@@ -522,6 +528,7 @@ function PolicyRow({
   onToggleParam: (holeName: string, on: boolean) => void;
   onPublish: () => void;
 }) {
+  const { t } = useTranslation("home");
   const hasParams = policy.params.length > 0;
   const onN = policy.params.filter((p) => p.on).length;
   return (
@@ -532,14 +539,14 @@ function PolicyRow({
         <span className="pol2-name">{policy.name}</span>
         {/* 실제 적용 표시등 — 패키지 on AND 정책 o 일 때만 '적용중' */}
         <span className={`pol2-state${policy.effective ? " on" : ""}`}>
-          {policy.effective ? "적용중" : "꺼짐"}
+          {policy.effective ? t("policy.active") : t("policy.off")}
         </span>
         {/* 정책별 o/x — 패키지를 켰을 때 이 정책을 포함(o)/제외(x) */}
         <button
           type="button"
           className={`pol2-ox${policy.enabled ? " on" : ""}`}
-          title={policy.enabled ? "이 정책 제외하기 — 패키지를 켜도 꺼둠" : "이 정책 포함하기 — 패키지를 켜면 적용"}
-          aria-label={policy.enabled ? "정책 제외" : "정책 포함"}
+          title={policy.enabled ? t("policy.excludeTitle") : t("policy.includeTitle")}
+          aria-label={policy.enabled ? t("policy.exclude") : t("policy.include")}
           onClick={(e) => {
             e.stopPropagation();
             onToggleEnabled(!policy.enabled);
@@ -547,13 +554,13 @@ function PolicyRow({
         >
           {policy.enabled ? "○" : "✕"}
         </button>
-        <button className="pol2-edit" type="button" title="마켓에 게시" onClick={(e) => { e.stopPropagation(); onPublish(); }}><Upload /></button>
-        <Link className="pol2-edit" title="Editor에서 열기" to={`/editor/${encodeURIComponent(policy.defId)}`} onClick={(e) => e.stopPropagation()}><Edit /></Link>
+        <button className="pol2-edit" type="button" title={t("policy.publish")} onClick={(e) => { e.stopPropagation(); onPublish(); }}><Upload /></button>
+        <Link className="pol2-edit" title={t("policy.openInEditor")} to={`/editor/${encodeURIComponent(policy.defId)}`} onClick={(e) => e.stopPropagation()}><Edit /></Link>
       </div>
       {hasParams && (
         <div className="pol2-body" style={{ height: open ? "auto" : 0 }}>
           <div className="pol2-inner">
-            <div className="param-head">파라미터 <b>{onN}</b>/{policy.params.length}</div>
+            <div className="param-head">{t("policy.params")} <b>{onN}</b>/{policy.params.length}</div>
             {policy.params.map((pr) => (
               <div className="param-row" key={pr.holeName}>
                 <span className="param-name">{pr.label}</span>
@@ -585,11 +592,12 @@ function WalletOverview({
   onPick: (i: number) => void;
   onAddWallet: () => void;
 }) {
+  const { t } = useTranslation("home");
   return (
     <div className="dp-fade wv-wrap">
       <div className="wv-head">
-        <div className="wv-title">전체 지갑 <b>{wallets.length}</b></div>
-        <button className="btn wv-add" type="button" onClick={onAddWallet}>지갑 추가 +</button>
+        <div className="wv-title">{t("overview.allWallets")} <b>{wallets.length}</b></div>
+        <button className="btn wv-add" type="button" onClick={onAddWallet}>{t("addWallet")}</button>
       </div>
       <div className="wv-grid">
         {wallets.map((w, i) => {
@@ -602,13 +610,13 @@ function WalletOverview({
               <div className="wv-addr">{w.address}</div>
               <div className="wv-foot">
                 <span className="wv-bal">{usd(w.balanceUsd)}</span>
-                <span className="wv-meta">패키지 {pkgs} · 적용 {ap}</span>
+                <span className="wv-meta">{t("overview.meta", { packages: pkgs, applied: ap })}</span>
               </div>
             </button>
           );
         })}
       </div>
-      <div className="wv-hint">지갑을 선택하면 해당 지갑의 패키지로 돌아갑니다.</div>
+      <div className="wv-hint">{t("overview.hint")}</div>
     </div>
   );
 }
@@ -626,6 +634,7 @@ function Switch({ checked, onChange, className, small }: { checked: boolean; onC
 
 // ── drag-resize the split height (no persistence) ──────────────────────────
 function ResizeGrip({ splitRef }: { splitRef: React.RefObject<HTMLDivElement> }) {
+  const { t } = useTranslation("home");
   const rs = useRef<{ y: number; h: number } | null>(null);
   const gripRef = useRef<HTMLDivElement>(null);
   const MIN = 360;
@@ -634,7 +643,7 @@ function ResizeGrip({ splitRef }: { splitRef: React.RefObject<HTMLDivElement> })
     <div
       className="split-resize"
       ref={gripRef}
-      title="드래그해서 늘리거나 줄이기 · 더블클릭하면 기본 크기"
+      title={t("resizeHint")}
       onPointerDown={(e) => {
         const el = splitRef.current; if (!el) return;
         rs.current = { y: e.clientY, h: el.offsetHeight };

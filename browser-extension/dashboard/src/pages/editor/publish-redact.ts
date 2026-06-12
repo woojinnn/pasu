@@ -14,6 +14,10 @@
  */
 
 import { allGloss, getGloss } from "../../editor-v9/gloss/paths";
+import { i18n } from "../../i18n";
+
+/** Resolve a {ko,en} pair against the active locale (fallback ko). */
+const isEn = (): boolean => i18n.language?.startsWith("en") ?? false;
 
 export type HoleKind = "address" | "number";
 
@@ -69,12 +73,17 @@ function allSentinel(raw: string): boolean {
   return addrs.length > 0 && addrs.every((a) => SENTINEL_ADDR.test(a));
 }
 
-/** Friendly fallbacks for paths the gloss doesn't carry. */
-const PATH_LABEL: Record<string, string> = {
-  "principal.address": "내 지갑 주소",
-  "resource.allowlist": "허용 목록(allowlist)",
-  "resource.address": "대상 주소",
+/** Friendly fallbacks (i18n keys) for paths the gloss doesn't carry. */
+const PATH_LABEL_KEY: Record<string, string> = {
+  "principal.address": "publish.pathLabel.principalAddress",
+  "resource.allowlist": "publish.pathLabel.resourceAllowlist",
+  "resource.address": "publish.pathLabel.resourceAddress",
 };
+
+function pathLabel(path: string): string | undefined {
+  const key = PATH_LABEL_KEY[path];
+  return key ? i18n.t(`editor:${key}`) : undefined;
+}
 
 /** Map a Cedar path to a parameter-hole name. */
 function paramFor(path: string): string {
@@ -84,11 +93,15 @@ function paramFor(path: string): string {
 }
 
 function labelFor(path: string): string {
-  return getGloss(path)?.ko ?? PATH_LABEL[path] ?? path;
+  const g = getGloss(path);
+  if (g) return isEn() ? g.en : g.ko;
+  return pathLabel(path) ?? path;
 }
 
 function unitFor(path: string): string | undefined {
-  return getGloss(path)?.unit?.ko;
+  const u = getGloss(path)?.unit;
+  if (!u) return undefined;
+  return isEn() ? u.en : u.ko;
 }
 
 function ruleIdOf(cedarText: string): string {
@@ -131,7 +144,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
       path,
       label: labelFor(path),
       paramName: paramFor(path),
-      display: `주소 ${count}개`,
+      display: i18n.t("editor:publish.addrCount", { count }),
       raw,
       addrCount: count,
     });
@@ -168,7 +181,10 @@ export function extractHoles(cedarText: string): PublishHole[] {
       path,
       label: labelFor(path),
       paramName: paramFor(path),
-      display: count > 1 ? `주소 ${count}개` : shortAddr(raw.replace(/"/g, "")),
+      display:
+        count > 1
+          ? i18n.t("editor:publish.addrCount", { count })
+          : shortAddr(raw.replace(/"/g, "")),
       raw,
       addrCount: count,
     });
@@ -260,7 +276,7 @@ export function addressFieldRefs(
     const re = new RegExp(g.path.replace(/[.]/g, "\\.") + "(?![\\w.])");
     if (re.test(cedarText)) {
       seen.add(g.path);
-      out.push({ path: g.path, label: g.ko, paramName: paramFor(g.path) });
+      out.push({ path: g.path, label: isEn() ? g.en : g.ko, paramName: paramFor(g.path) });
     }
   }
   // principal.address is not in the gloss table but is the canonical "my wallet"
@@ -272,7 +288,7 @@ export function addressFieldRefs(
   ) {
     out.push({
       path: "principal.address",
-      label: PATH_LABEL["principal.address"],
+      label: pathLabel("principal.address") ?? "principal.address",
       paramName: "?wallet",
     });
   }

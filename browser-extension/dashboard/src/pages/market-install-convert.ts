@@ -8,6 +8,7 @@
  *  defaults.params에서 빠진다 — SW가 충전 전 바인딩을 거부하는 판정 기준. */
 import type { PolicyDef } from "../../../sdk/policy-store-types";
 import type { PolicyIR } from "../cedar/blocks";
+import { i18n } from "../i18n";
 import { formToIr, irToForm, normalizeDecimal } from "../cedar/form";
 import { canonicalizeModel, parameterizeModel } from "../cedar/form/parameterize";
 import type { HoleSpec, HoleValue } from "../server-api/policy-store";
@@ -61,7 +62,7 @@ export async function listingToDefs(
             manifest: body.manifest,
           },
         ];
-  if (items.length === 0) throw new Error("리스팅에 설치할 정책이 없어요");
+  if (items.length === 0) throw new Error(i18n.t("market:installError.noPolicies"));
 
   const defs: PolicyDef[] = [];
   for (const it of items) {
@@ -71,7 +72,7 @@ export async function listingToDefs(
     } catch {
       ir = undefined;
     }
-    if (!ir) throw new Error(`정책 "${it.name}"을(를) 설치 형식으로 변환할 수 없어요`);
+    if (!ir) throw new Error(i18n.t("market:installError.convertFailed", { name: it.name }));
 
     const { shipped, manifest } = splitManifestHoles(it.manifest);
     let skeletonIr: PolicyIR = ir;
@@ -95,7 +96,7 @@ export async function listingToDefs(
     } else if (shipped.length > 0) {
       // 게시자는 빈칸을 안내했지만 이쪽에서 폼으로 못 여는 정책 — 게이트를
       // 적용할 방법이 없으므로 기존 동작(있는 그대로 설치)으로 둔다.
-      console.warn(`[Pasu] 리스팅 "${it.name}": hole 안내를 적용할 수 없어 무시함`);
+      console.warn(`[Pasu] 리스팅 "${it.name}": hole 안내를 적용할 수 없어 무시함`); // i18n-ok
     }
 
     defs.push({

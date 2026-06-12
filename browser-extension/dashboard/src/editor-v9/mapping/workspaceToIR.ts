@@ -21,6 +21,7 @@
  */
 
 import * as Blockly from "blockly";
+import { i18n } from "../../i18n";
 import type {
   ActionScope,
   BinaryOp,
@@ -49,7 +50,7 @@ export function workspaceToIR(
     if (block.type !== BLOCK_TYPES.policy_hat) {
       errors.push({
         kind: "structural",
-        message: `최상위에 정책(policy_hat) 블록이 아닌 "${block.type}"이 있습니다`,
+        message: i18n.t("blocks:ir.topLevelNotPolicy", { type: block.type }),
         blockId: block.id,
       });
       continue;
@@ -86,7 +87,7 @@ function readScope(parent: Blockly.Block, inputName: string, errors: EditorError
   if (!child) {
     errors.push({
       kind: "structural",
-      message: `${inputName} 슬롯이 비어있습니다`,
+      message: i18n.t("blocks:ir.slotEmpty", { slot: inputName }),
       blockId: parent.id,
     });
     return { kind: "scopeAll" };
@@ -103,7 +104,7 @@ function readScope(parent: Blockly.Block, inputName: string, errors: EditorError
       if (!entityType) {
         errors.push({
           kind: "structural",
-          message: "is 블록의 Type이 비어있습니다",
+          message: i18n.t("blocks:ir.isTypeEmpty"),
           blockId: child.id,
         });
       }
@@ -117,7 +118,7 @@ function readScope(parent: Blockly.Block, inputName: string, errors: EditorError
       if (inType || inId) {
         errors.push({
           kind: "structural",
-          message: "is 블록의 in 절: TYPE / ID 를 모두 채우거나 모두 비우세요",
+          message: i18n.t("blocks:ir.isInHalfFilled"),
           blockId: child.id,
         });
       }
@@ -131,7 +132,7 @@ function readScope(parent: Blockly.Block, inputName: string, errors: EditorError
     default:
       errors.push({
         kind: "structural",
-        message: `${inputName} 슬롯에 알 수 없는 블록 "${child.type}"`,
+        message: i18n.t("blocks:ir.slotUnknownBlock", { slot: inputName, type: child.type }),
         blockId: child.id,
       });
       return { kind: "scopeAll" };
@@ -143,7 +144,7 @@ function readActionScope(parent: Blockly.Block, inputName: string, errors: Edito
   if (!child) {
     errors.push({
       kind: "structural",
-      message: `${inputName} 슬롯이 비어있습니다`,
+      message: i18n.t("blocks:ir.slotEmpty", { slot: inputName }),
       blockId: parent.id,
     });
     return { kind: "scopeAll" };
@@ -157,7 +158,7 @@ function readActionScope(parent: Blockly.Block, inputName: string, errors: Edito
       if (!id) {
         errors.push({
           kind: "structural",
-          message: "action == 의 id 가 비어있습니다",
+          message: i18n.t("blocks:ir.actionEqIdEmpty"),
           blockId: child.id,
         });
       }
@@ -172,7 +173,7 @@ function readActionScope(parent: Blockly.Block, inputName: string, errors: Edito
         } else {
           errors.push({
             kind: "structural",
-            message: `action_scope_in 목록에 예상치 못한 블록 "${cur.type}"`,
+            message: i18n.t("blocks:ir.actionInUnexpected", { type: cur.type }),
             blockId: cur.id,
           });
         }
@@ -183,7 +184,7 @@ function readActionScope(parent: Blockly.Block, inputName: string, errors: Edito
     default:
       errors.push({
         kind: "structural",
-        message: `${inputName} 슬롯에 알 수 없는 블록 "${child.type}"`,
+        message: i18n.t("blocks:ir.slotUnknownBlock", { slot: inputName, type: child.type }),
         blockId: child.id,
       });
       return { kind: "scopeAll" };
@@ -194,10 +195,10 @@ function readEntityRef(block: Blockly.Block, errors: EditorError[]): EntityRef {
   const type = (block.getFieldValue("TYPE") ?? "").trim();
   const id = (block.getFieldValue("ID") ?? "").trim();
   if (!type) {
-    errors.push({ kind: "structural", message: "엔티티 Type이 비어있습니다", blockId: block.id });
+    errors.push({ kind: "structural", message: i18n.t("blocks:ir.entityTypeEmpty"), blockId: block.id });
   }
   if (!id) {
-    errors.push({ kind: "structural", message: "엔티티 id 가 비어있습니다", blockId: block.id });
+    errors.push({ kind: "structural", message: i18n.t("blocks:ir.entityIdEmpty"), blockId: block.id });
   }
   return { type, id };
 }
@@ -221,7 +222,7 @@ function readConditionStatements(
     } else {
       errors.push({
         kind: "structural",
-        message: `조건 슬롯에 예상치 못한 블록 "${cur.type}"`,
+        message: i18n.t("blocks:ir.condUnexpected", { type: cur.type }),
         blockId: cur.id,
       });
     }
@@ -237,7 +238,7 @@ function readExpr(parent: Blockly.Block, inputName: string, errors: EditorError[
   if (!child) {
     errors.push({
       kind: "structural",
-      message: `식 슬롯 ${inputName} 가 비어있습니다`,
+      message: i18n.t("blocks:ir.exprSlotEmpty", { slot: inputName }),
       blockId: parent.id,
     });
     return { kind: "raw", est: null };
@@ -267,7 +268,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       if (!Number.isFinite(n) || !Number.isInteger(n)) {
         errors.push({
           kind: "structural",
-          message: `정수 리터럴 값이 올바르지 않습니다 (입력: ${raw})`,
+          message: i18n.t("blocks:ir.longInvalid", { value: raw }),
           blockId: block.id,
         });
         return { kind: "lit", litType: "long", value: 0 };
@@ -285,7 +286,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       const of = readExpr(block, "OF", errors);
       const attr = (block.getFieldValue("FIELD") ?? "").trim();
       if (!attr) {
-        errors.push({ kind: "structural", message: "필드 이름이 비어있습니다", blockId: block.id });
+        errors.push({ kind: "structural", message: i18n.t("blocks:ir.attrFieldEmpty"), blockId: block.id });
       }
       return { kind: "attr", of, attr };
     }
@@ -293,7 +294,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       const of = readExpr(block, "OF", errors);
       const attr = (block.getFieldValue("FIELD") ?? "").trim();
       if (!attr) {
-        errors.push({ kind: "structural", message: "has 의 필드 이름이 비어있습니다", blockId: block.id });
+        errors.push({ kind: "structural", message: i18n.t("blocks:ir.hasFieldEmpty"), blockId: block.id });
       }
       return { kind: "has", of, attr };
     }
@@ -319,7 +320,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         } else {
           errors.push({
             kind: "structural",
-            message: `set 원소 슬롯에 예상치 못한 블록 "${cur.type}"`,
+            message: i18n.t("blocks:ir.setUnexpected", { type: cur.type }),
             blockId: cur.id,
           });
         }
@@ -336,7 +337,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
           if (!key) {
             errors.push({
               kind: "structural",
-              message: "레코드 키가 비어있습니다",
+              message: i18n.t("blocks:ir.recordKeyEmpty"),
               blockId: cur.id,
             });
           }
@@ -344,7 +345,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         } else {
           errors.push({
             kind: "structural",
-            message: `record 쌍 슬롯에 예상치 못한 블록 "${cur.type}"`,
+            message: i18n.t("blocks:ir.recordUnexpected", { type: cur.type }),
             blockId: cur.id,
           });
         }
@@ -364,7 +365,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       if (!entityType) {
         errors.push({
           kind: "structural",
-          message: "is 의 Type 이 비어있습니다",
+          message: i18n.t("blocks:ir.exprIsTypeEmpty"),
           blockId: block.id,
         });
       }
@@ -386,7 +387,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       if (!fn) {
         errors.push({
           kind: "structural",
-          message: "확장 함수 이름이 비어있습니다",
+          message: i18n.t("blocks:ir.extFnEmpty"),
           blockId: block.id,
         });
       }
@@ -398,7 +399,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         } else {
           errors.push({
             kind: "structural",
-            message: `ext 인자 슬롯에 예상치 못한 블록 "${cur.type}"`,
+            message: i18n.t("blocks:ir.extArgUnexpected", { type: cur.type }),
             blockId: cur.id,
           });
         }
@@ -417,7 +418,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       } catch {
         errors.push({
           kind: "structural",
-          message: "raw 블록의 EST JSON 이 손상되었습니다",
+          message: i18n.t("blocks:ir.rawCorrupt"),
           blockId: block.id,
         });
         return { kind: "raw", est: null };
@@ -430,7 +431,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       if (!name) {
         errors.push({
           kind: "structural",
-          message: "파라미터 이름이 비어있습니다",
+          message: i18n.t("blocks:ir.holeNameEmpty"),
           blockId: block.id,
         });
       }
@@ -447,14 +448,14 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         } catch {
           errors.push({
             kind: "structural",
-            message: `파라미터 "${name}" 의 메타데이터가 손상되었습니다`,
+            message: i18n.t("blocks:ir.holeMetaCorrupt", { name }),
             blockId: block.id,
           });
         }
       } else {
         errors.push({
           kind: "structural",
-          message: `파라미터 "${name}" 의 expected/default 메타데이터가 없습니다`,
+          message: i18n.t("blocks:ir.holeMetaMissing", { name }),
           blockId: block.id,
         });
       }
@@ -482,7 +483,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       if (!getGloss(path)) {
         errors.push({
           kind: "structural",
-          message: `필드 드롭다운 값 "${path}" 가 사전에 없습니다`,
+          message: i18n.t("blocks:ir.fieldPathUnknown", { path }),
           blockId: block.id,
         });
         return { kind: "raw", est: null };
@@ -491,7 +492,7 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
       if (!chain) {
         errors.push({
           kind: "structural",
-          message: `필드 경로 "${path}" 를 attr 체인으로 변환할 수 없습니다`,
+          message: i18n.t("blocks:ir.fieldPathNoChain", { path }),
           blockId: block.id,
         });
         return { kind: "raw", est: null };
@@ -507,14 +508,14 @@ function blockToExpr(block: Blockly.Block, errors: EditorError[]): Expr {
         if (chain) return chain;
         errors.push({
           kind: "structural",
-          message: `프리셋 필드 "${presetPath}" 를 attr 체인으로 변환할 수 없습니다`,
+          message: i18n.t("blocks:ir.presetPathNoChain", { path: presetPath }),
           blockId: block.id,
         });
         return { kind: "raw", est: null };
       }
       errors.push({
         kind: "structural",
-        message: `식 슬롯에 알 수 없는 블록 "${block.type}"`,
+        message: i18n.t("blocks:ir.exprUnknownBlock", { type: block.type }),
         blockId: block.id,
       });
       return { kind: "raw", est: null };

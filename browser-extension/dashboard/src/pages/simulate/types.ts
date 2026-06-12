@@ -187,12 +187,6 @@ export interface RunResult {
   steps: StepView[];
 }
 
-/** The wizard's 4 steps. */
+/** The wizard's 4 steps. Labels live in the "simulation" i18n namespace
+ *  (`wizard.steps.*`) and are looked up at render time in {@link StepNav}. */
 export type WizardStep = 1 | 2 | 3 | 4;
-
-export const STEP_LABELS: Record<WizardStep, string> = {
-  1: "지갑 · 상태",
-  2: "정책 선택",
-  3: "트랜잭션",
-  4: "결과",
-};

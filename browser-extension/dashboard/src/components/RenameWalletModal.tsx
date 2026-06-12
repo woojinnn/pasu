@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { patchWallet, ServerError } from "../server-api";
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function RenameWalletModal({ open, onClose, address, initial }: Props) {
+  const { t } = useTranslation("common");
   const qc = useQueryClient();
   const [label, setLabel] = useState(initial ?? "");
 
@@ -34,18 +36,18 @@ export function RenameWalletModal({ open, onClose, address, initial }: Props) {
     <Modal
       open={open}
       onClose={() => !mut.isPending && onClose()}
-      title="지갑 이름 변경"
+      title={t("wallet.renameTitle")}
       footer={
         <>
-          <button className="btn" onClick={onClose} disabled={mut.isPending}>취소</button>
+          <button className="btn" onClick={onClose} disabled={mut.isPending}>{t("cancel")}</button>
           <button className="btn primary" onClick={() => mut.mutate()} disabled={mut.isPending}>
-            {mut.isPending ? "저장 중…" : "저장"}
+            {mut.isPending ? t("wallet.saving") : t("save")}
           </button>
         </>
       }
     >
       <div className="form-row">
-        <label htmlFor="rn-label">라벨 (비우면 제거)</label>
+        <label htmlFor="rn-label">{t("wallet.renameLabel")}</label>
         <input
           id="rn-label"
           type="text"
@@ -57,7 +59,7 @@ export function RenameWalletModal({ open, onClose, address, initial }: Props) {
       </div>
       {mut.error && (
         <div className="err">
-          저장 실패:&nbsp;
+          {t("wallet.saveFailed")}&nbsp;
           {mut.error instanceof ServerError
             ? `${mut.error.status} ${String(mut.error.body)}`
             : String(mut.error)}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueries, useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import {
   getDashboardSummary,
@@ -27,6 +28,7 @@ import "./home.css";
  * <WalletGovernance>; this file only fetches data and owns the wallet modals.
  */
 export function HomePage() {
+  const { t } = useTranslation("home");
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [renameFor, setRenameFor] = useState<DialWallet | null>(null);
@@ -76,7 +78,10 @@ export function HomePage() {
 
   const totalUsd = Number(summaryQ.data?.total_portfolio_usd ?? "0");
   const subtitle = summaryQ.data
-    ? `지갑 ${summaryQ.data.wallet_count} · 포트폴리오 ${"$" + totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+    ? t("head.summary", {
+        count: summaryQ.data.wallet_count,
+        total: "$" + totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 }),
+      })
     : "…";
 
   const syncMut = useMutation({

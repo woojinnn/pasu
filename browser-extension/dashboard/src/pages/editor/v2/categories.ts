@@ -8,6 +8,8 @@
  * tag fills, `ink` for tag text.
  */
 
+import { i18n } from "../../../i18n";
+
 export type CategoryKey =
   | "swap"
   | "amm"
@@ -60,7 +62,8 @@ export function catKey(cat: string | undefined): CategoryKey {
 }
 
 export function catLabel(cat: string | undefined): string {
-  return CAT[catKey(cat)].ko;
+  const c = CAT[catKey(cat)];
+  return i18n.language?.startsWith("en") ? c.en : c.ko;
 }
 
 export function catStyle(cat: string | undefined): {

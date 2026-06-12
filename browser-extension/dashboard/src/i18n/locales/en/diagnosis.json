@@ -1,0 +1,17 @@
+{
+  "run": "Run diagnosis",
+  "running": "Diagnosing…",
+  "clear": "Clear",
+  "runTitle": "Diagnose which condition blocks a sample transaction",
+  "forbidOnly": "Only forbid (block) policies can be diagnosed",
+  "notDiagnosable": "Cannot diagnose — the policy contains hole/raw blocks",
+  "unspecified": "unspecified",
+  "noSample": "No sample for this action ({{action}}) — cannot diagnose",
+  "culpritsShown": "Highlighted {{n}} blocking condition(s) in red",
+  "guardOnly": "The block came from a field-presence check (guard)",
+  "unevaluable": "Some conditions cannot be evaluated with this context (enrichment fields not provided — {{n}} yellow dashed)",
+  "noBlockReal": "No condition blocked this transaction",
+  "noBlockSample": "This sample transaction was not blocked",
+  "failed": "Diagnosis failed: {{message}}",
+  "parseError": "Cannot parse the policy, so the diagram cannot be drawn"
+}

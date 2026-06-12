@@ -14,6 +14,7 @@
  */
 
 import { useMemo } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { shortAddr } from "./state-view";
 import type { WalletId } from "../../server-api";
@@ -38,6 +39,7 @@ export interface WalletSelectorPanelProps {
 }
 
 export function WalletSelectorPanel(props: WalletSelectorPanelProps) {
+  const { t } = useTranslation("simulation");
   const {
     wallets,
     selected,
@@ -66,7 +68,7 @@ export function WalletSelectorPanel(props: WalletSelectorPanelProps) {
   return (
     <div className="sim-card wallet-selector-card">
       <div className="card-head">
-        <h3>지갑 선택</h3>
+        <h3>{t("historic.wallets.title")}</h3>
         <span className="meta">
           {selected.size} / {wallets.length}
         </span>
@@ -93,7 +95,7 @@ export function WalletSelectorPanel(props: WalletSelectorPanelProps) {
           onClick={selectAll}
           disabled={isRunning || wallets.length === 0}
         >
-          전체 선택
+          {t("historic.wallets.selectAll")}
         </button>
         <button
           type="button"
@@ -101,13 +103,13 @@ export function WalletSelectorPanel(props: WalletSelectorPanelProps) {
           onClick={clearAll}
           disabled={isRunning || selected.size === 0}
         >
-          해제
+          {t("historic.wallets.clearAll")}
         </button>
       </div>
 
       {wallets.length === 0 ? (
         <div className="muted-line">
-          등록된 지갑이 없습니다. <code>/wallets</code> 페이지에서 추가하세요.
+          <Trans t={t} i18nKey="historic.wallets.empty" components={{ code: <code /> }} />
         </div>
       ) : (
         <ul className="wallet-selector-list">
@@ -141,7 +143,7 @@ export function WalletSelectorPanel(props: WalletSelectorPanelProps) {
                 </label>
                 {!supportsChain && on && (
                   <span className="wallet-row-warn">
-                    선택한 chain ({prettyChain(chain)}) 미지원
+                    {t("historic.wallets.chainUnsupported", { chain: prettyChain(chain) })}
                   </span>
                 )}
               </li>

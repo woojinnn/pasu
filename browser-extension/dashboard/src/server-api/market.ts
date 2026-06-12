@@ -8,6 +8,7 @@
  * payload and write it into their local extension store via the SW bridge.
  */
 
+import { i18n } from "../i18n";
 import { request } from "./client";
 
 export type ListingKind = "policy" | "set";
@@ -360,7 +361,7 @@ export function publisherDisplay(
   if (tier === "official") {
     return "Wallet Guardians";
   }
-  if (!email) return locale === "ko" ? "익명" : "anonymous";
+  if (!email) return i18n.t("market:publisher.anonymous", { lng: locale });
   const at = email.indexOf("@");
   return at > 0 ? email.slice(0, at) : email;
 }

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   getDiagnosisContextRow,
@@ -30,25 +31,11 @@ const PAGE_SIZE = 50;
 type Verdict = VerdictDto["verdict"];
 type GroupMode = "time" | "activity" | "verdict" | "origin" | "rule";
 
-interface RangeOption {
-  id: VerdictRangeAlias | "all";
-  label: string;
-}
-const RANGE_OPTIONS: readonly RangeOption[] = [
-  { id: "all", label: "전체" },
-  { id: "1h", label: "1h" },
-  { id: "6h", label: "6h" },
-  { id: "24h", label: "24h" },
-  { id: "7d", label: "7일" },
-];
+// Labels live in the "history" namespace under `range.*` / `group.*` and are
+// resolved at render time (never at import time).
+const RANGE_OPTIONS: readonly (VerdictRangeAlias | "all")[] = ["all", "1h", "6h", "24h", "7d"];
 
-const GROUP_OPTIONS: readonly { id: GroupMode; label: string }[] = [
-  { id: "time", label: "시간순" },
-  { id: "activity", label: "활동별" },
-  { id: "verdict", label: "verdict별" },
-  { id: "origin", label: "dApp별" },
-  { id: "rule", label: "rule별" },
-];
+const GROUP_OPTIONS: readonly GroupMode[] = ["time", "activity", "verdict", "origin", "rule"];
 
 /** Adjacent-row time gap (seconds) under which two txs from the same
  *  (wallet, dApp origin) are treated as one user activity — e.g. the
@@ -74,6 +61,7 @@ const VERDICT_ORDER: readonly Verdict[] = ["fail", "warn", "pass"];
  *   the original v3 "why panel".
  */
 export function HistoryPage() {
+  const { t } = useTranslation("history");
   const [rangeId, setRangeId] = useState<VerdictRangeAlias | "all">("1h");
   const [pages, setPages] = useState<VerdictDto[][]>([]);
   // Cursor is a unix-seconds timestamp (`before`) — the storage layer
@@ -238,7 +226,7 @@ export function HistoryPage() {
     <>
       <Topbar
         here="History"
-        subtitle={`${allRows.length}건 로드`}
+        subtitle={t("loadedCount", { count: allRows.length })}
       />
 
       <FilterBar
@@ -255,7 +243,7 @@ export function HistoryPage() {
         onResetClient={onResetClient}
       />
 
-      {firstQ.error && <div className="err-banner">불러오기 실패: {String(firstQ.error)}</div>}
+      {firstQ.error && <div className="err-banner">{t("loadError", { error: String(firstQ.error) })}</div>}
 
       <div className="v-table-wrap">
         <table className="v-table">
@@ -263,30 +251,30 @@ export function HistoryPage() {
             <tr>
               <th style={{ width: 30 }} aria-label="expand" />
               <th style={{ width: 70 }}>seq</th>
-              <th style={{ width: 70 }}>판정</th>
-              <th style={{ width: 130 }}>시각</th>
-              <th>dApp / 함수</th>
-              <th>지갑</th>
-              <th>정책</th>
-              <th>이유</th>
-              <th style={{ width: 80 }}>처리</th>
+              <th style={{ width: 70 }}>{t("table.verdict")}</th>
+              <th style={{ width: 130 }}>{t("table.time")}</th>
+              <th>{t("table.dappFn")}</th>
+              <th>{t("table.wallet")}</th>
+              <th>{t("table.policy")}</th>
+              <th>{t("table.reason")}</th>
+              <th style={{ width: 80 }}>{t("table.decision")}</th>
             </tr>
           </thead>
           <tbody>
             {firstQ.isLoading && (
               <tr>
-                <td colSpan={9} className="v-empty">불러오는 중…</td>
+                <td colSpan={9} className="v-empty">{t("common:loading")}</td>
               </tr>
             )}
             {!firstQ.isLoading && allRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="v-empty">기록이 없습니다</td>
+                <td colSpan={9} className="v-empty">{t("empty.noRecords")}</td>
               </tr>
             )}
             {!firstQ.isLoading && allRows.length > 0 && filteredRows.length === 0 && (
               <tr>
                 <td colSpan={9} className="v-empty">
-                  조건에 맞는 verdict가 없어요 — 검색어/필터를 조정해 보세요
+                  {t("empty.noMatch")}
                 </td>
               </tr>
             )}
@@ -327,7 +315,7 @@ export function HistoryPage() {
           onClick={onLoadMore}
           disabled={loadMoreQ.isFetching}
         >
-          {loadMoreQ.isFetching ? "불러오는 중…" : "더 불러오기"}
+          {loadMoreQ.isFetching ? t("common:loading") : t("loadMore")}
         </button>
       )}
     </>
@@ -361,22 +349,23 @@ function FilterBar({
   anyClientFilter: boolean;
   onResetClient: () => void;
 }) {
+  const { t } = useTranslation("history");
   return (
     <div className="filter-bar">
       <div className="filter-row range-row">
         <span className="range-label">
-          <ClockIcon /> 전체기간
+          <ClockIcon /> {t("range.label")}
         </span>
         <div className="seg-group" role="tablist" aria-label="time range">
-          {RANGE_OPTIONS.filter((r) => r.id !== "all").map((r) => (
+          {RANGE_OPTIONS.filter((r) => r !== "all").map((r) => (
             <button
-              key={r.id}
+              key={r}
               role="tab"
-              aria-selected={rangeId === r.id}
-              className={`seg-btn${rangeId === r.id ? " on" : ""}`}
-              onClick={() => setRangeId(r.id)}
+              aria-selected={rangeId === r}
+              className={`seg-btn${rangeId === r ? " on" : ""}`}
+              onClick={() => setRangeId(r)}
             >
-              {r.label}
+              {t(`range.${r}`)}
             </button>
           ))}
         </div>
@@ -384,13 +373,13 @@ function FilterBar({
           className={`range-all${rangeId === "all" ? " on" : ""}`}
           onClick={() => setRangeId("all")}
         >
-          전체
+          {t("range.all")}
         </button>
         {rangeId !== "all" && (
-          <span className="range-hint">현재 기준 롤링 윈도우</span>
+          <span className="range-hint">{t("range.rollingHint")}</span>
         )}
         <div className="counts">
-          <span className="count-total">{counts.total}건</span>
+          <span className="count-total">{t("count", { count: counts.total })}</span>
           {counts.warn > 0 && (
             <span className="count-chip warn">{counts.warn} warn</span>
           )}
@@ -408,7 +397,7 @@ function FilterBar({
           <SearchIcon />
           <input
             type="text"
-            placeholder="주소 · dApp 출처 · 함수명 · 정책명 검색"
+            placeholder={t("search.placeholder")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -439,25 +428,25 @@ function FilterBar({
         <span className="filter-sep" />
 
         <span className="group-label">
-          <LayersIcon /> 그룹
+          <LayersIcon /> {t("group.label")}
         </span>
         <div className="seg-group" role="tablist" aria-label="grouping">
           {GROUP_OPTIONS.map((g) => (
             <button
-              key={g.id}
+              key={g}
               role="tab"
-              aria-selected={groupMode === g.id}
-              className={`seg-btn${groupMode === g.id ? " on" : ""}`}
-              onClick={() => setGroupMode(g.id)}
+              aria-selected={groupMode === g}
+              className={`seg-btn${groupMode === g ? " on" : ""}`}
+              onClick={() => setGroupMode(g)}
             >
-              {g.label}
+              {t(`group.${g}`)}
             </button>
           ))}
         </div>
 
         {anyClientFilter && (
           <button className="filter-reset" onClick={onResetClient}>
-            초기화
+            {t("resetFilters")}
           </button>
         )}
       </div>
@@ -476,6 +465,7 @@ function GroupHeaderRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation("history");
   const c = group.byVerdict ?? { pass: 0, warn: 0, fail: 0 };
   // Any fail in the group turns the whole header red, even when the group
   // isn't a verdict-typed bucket (e.g. an activity cluster).
@@ -494,7 +484,7 @@ function GroupHeaderRow({
             {open ? "▾" : "▸"}
           </span>
           <span className="gh-title">{group.label}</span>
-          <span className="gh-n">{group.rows.length}건</span>
+          <span className="gh-n">{t("count", { count: group.rows.length })}</span>
           {!group.verdictKind && (
             <span className="gh-mini">
               {c.fail > 0 && <span className="mini-fail">{c.fail} fail</span>}
@@ -629,6 +619,7 @@ function HistoryRow({
   onToggle: () => void;
   managedPolicies: ManagedPolicyEntry[];
 }) {
+  const { t } = useTranslation("history");
   const fn = v.decoded_fn ?? v.method ?? "—";
   const origin = v.dapp_origin ?? "—";
   const reason = v.reason?.ko ?? v.reason?.en ?? "—";
@@ -685,7 +676,7 @@ function HistoryRow({
             <span className="deco-cancelled">deny</span>
           )}
           {v.verdict === "warn" && v.user_decision === null && (
-            <span className="deco-pending">선택중</span>
+            <span className="deco-pending">{t("decision.pending")}</span>
           )}
         </td>
       </tr>
@@ -707,6 +698,7 @@ function HistoryDetail({
   v: VerdictDto;
   managedPolicies: ManagedPolicyEntry[];
 }) {
+  const { t } = useTranslation("history");
   const reason = v.reason?.ko ?? v.reason?.en ?? null;
   const contractAddr = v.contract?.addr ?? null;
   const contractSymbol = v.contract?.symbol ?? null;
@@ -723,7 +715,7 @@ function HistoryDetail({
   return (
     <div className="v-detail">
       <dl className="v-dprops">
-        <dt>매칭 정책</dt>
+        <dt>{t("detail.matchedPolicy")}</dt>
         <dd>
           {v.policy ? (
             <span className={`v-tag-pol ${v.policy.severity ?? ""}`}>
@@ -731,7 +723,7 @@ function HistoryDetail({
               <span className="v-tp-sev">{v.policy.severity ?? "—"}</span>
             </span>
           ) : (
-            <span className="v-empty-inline">매칭된 정책 없음</span>
+            <span className="v-empty-inline">{t("detail.noMatchedPolicy")}</span>
           )}
         </dd>
 
@@ -740,12 +732,12 @@ function HistoryDetail({
 
         {v.decoded_fn && (
           <>
-            <dt>디코딩된 함수</dt>
+            <dt>{t("detail.decodedFn")}</dt>
             <dd><span className="mono">{v.decoded_fn}</span></dd>
           </>
         )}
 
-        <dt>대상 컨트랙트</dt>
+        <dt>{t("detail.targetContract")}</dt>
         <dd>
           {contractAddr ? (
             <span className="v-addr-pill">
@@ -757,7 +749,7 @@ function HistoryDetail({
           )}
         </dd>
 
-        <dt>셀렉터</dt>
+        <dt>{t("detail.selector")}</dt>
         <dd>
           {selectorSig ? (
             <>
@@ -771,27 +763,27 @@ function HistoryDetail({
           )}
         </dd>
 
-        <dt>지갑</dt>
+        <dt>{t("detail.wallet")}</dt>
         <dd>
           <span className="mono">{v.wallet ?? "—"}</span>
         </dd>
 
-        <dt>dApp 출처</dt>
+        <dt>{t("detail.dappOrigin")}</dt>
         <dd>
           <span className="mono">{v.dapp_origin ?? "—"}</span>
         </dd>
 
-        <dt>판정 시각</dt>
+        <dt>{t("detail.verdictTime")}</dt>
         <dd>
           <span className="mono">{fullTs}</span>
         </dd>
 
-        <dt className="v-dpr-span">사유</dt>
+        <dt className="v-dpr-span">{t("detail.reason")}</dt>
         <dd className="v-dpr-span">
           {reason ? (
             <p className="v-reason-full">{reason}</p>
           ) : (
-            <span className="v-empty-inline">기록된 사유 없음</span>
+            <span className="v-empty-inline">{t("detail.noReason")}</span>
           )}
         </dd>
       </dl>
@@ -848,6 +840,7 @@ function PolicyStructureSection({
   deltaId: string | null;
   managedPolicies: ManagedPolicyEntry[];
 }) {
+  const { t } = useTranslation("history");
   const [open, setOpen] = useState(false);
   const ctxQ = useQuery({
     queryKey: ["diagnosis-context", deltaId],
@@ -891,20 +884,18 @@ function PolicyStructureSection({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        {open ? "정책 구조 숨기기 ▲" : "정책 구조 보기 ▼"}
+        {open ? t("structure.hide") : t("structure.show")}
       </button>
       {open && (
         <>
           {!ctxQ.isLoading && !ctx && (
             <div className="v-struct-note">
-              이전 거래라 진단 컨텍스트가 저장되지 않아 실제 막힌 조건은 표시할 수
-              없어요. 구조만 보여드립니다 — 이후 거래의 deny부터 실제 차단 조건이
-              빨갛게 표시됩니다.
+              {t("structure.noContextNote")}
             </div>
           )}
           <div className="v-struct-body">
             {ctxQ.isLoading || !resolved ? (
-              <div className="pdiagram-empty">불러오는 중…</div>
+              <div className="pdiagram-empty">{t("common:loading")}</div>
             ) : ctx ? (
               <PolicyDiagnosisByText
                 cedarText={resolved.text}
@@ -927,6 +918,7 @@ function PolicyStructureSection({
 }
 
 function StateDeltaSection({ v }: { v: VerdictDto }) {
+  const { t } = useTranslation("history");
   // Skip the whole section for legacy rows (delta_id stamped before the
   // schema migration carried a numeric placeholder we lost; new rows
   // either have a UUID or null).
@@ -947,7 +939,7 @@ function StateDeltaSection({ v }: { v: VerdictDto }) {
         <header className="v-delta-head">
           <strong>State-diff</strong>
           <span className="v-empty-inline">
-            기록 없음 (마이그레이션 이전 verdict)
+            {t("delta.noRecordLegacy")}
           </span>
         </header>
       </div>
@@ -959,7 +951,7 @@ function StateDeltaSection({ v }: { v: VerdictDto }) {
       <div className="v-delta-section">
         <header className="v-delta-head">
           <strong>State-diff</strong>
-          <span className="v-empty-inline">불러오는 중…</span>
+          <span className="v-empty-inline">{t("common:loading")}</span>
         </header>
       </div>
     );
@@ -972,7 +964,7 @@ function StateDeltaSection({ v }: { v: VerdictDto }) {
         <header className="v-delta-head">
           <strong>State-diff</strong>
           <span className="v-empty-inline">
-            서버 기록 없음 (로그아웃 상태이거나 서버 통신 실패)
+            {t("delta.noServerRecord")}
           </span>
         </header>
       </div>
@@ -1071,6 +1063,7 @@ function DeltaRows({ row }: { row: StateDeltaRow }) {
  *  parser populates the first row on mount, so the user lands on a
  *  ready-to-run sim with the same calldata that produced this verdict. */
 function ReSimLink({ row }: { row: StateDeltaRow }) {
+  const { t } = useTranslation("history");
   const qs = new URLSearchParams();
   qs.set("from", row.from);
   qs.set("to", row.to);
@@ -1079,7 +1072,7 @@ function ReSimLink({ row }: { row: StateDeltaRow }) {
   qs.set("chain", row.chain);
   return (
     <Link to={`/simulation?${qs.toString()}`} className="v-delta-resim">
-      🧪 다시 시뮬
+      {t("delta.resim")}
     </Link>
   );
 }

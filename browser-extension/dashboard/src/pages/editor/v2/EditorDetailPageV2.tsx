@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 
 import { stripDashboardId, type PolicyMethod } from "../../../server-api";
 import type { PolicySeverity } from "../../../server-api";
@@ -95,6 +96,7 @@ interface EditorPolicy {
 }
 
 export function EditorDetailPageV2() {
+  const { t } = useTranslation("editor");
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<{ id: string }>();
@@ -178,19 +180,19 @@ export function EditorDetailPageV2() {
         subtitle={policy ? policy.displayName : id || "…"}
         right={
           <Link to="/editor" className="ev2-back">
-            ← 목록
+            {t("detail.backToList")}
           </Link>
         }
       />
       <div className="ev2-detail-body">
-        {loading && !policy && <div className="ev2-status">불러오는 중…</div>}
+        {loading && !policy && <div className="ev2-status">{t("common:loading")}</div>}
         {!loading && !policy && (
           <div className="ev2-empty">
-            <div className="big">정책을 찾을 수 없습니다</div>
+            <div className="big">{t("detail.notFoundTitle")}</div>
             <div className="sm">
               <code>{id}</code>
               <br />
-              <Link to="/editor">← 목록으로 돌아가기</Link>
+              <Link to="/editor">{t("detail.backToListLong")}</Link>
             </div>
           </div>
         )}
@@ -248,6 +250,7 @@ function EditorBody({
   onSaved: (id: string) => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation("editor");
   const [name, setName] = useState(() => policy.displayName);
   const [severity, setSeverity] = useState<PolicySeverity>(() =>
     severityFromCedar(policy.text),
@@ -303,18 +306,20 @@ function EditorBody({
     const stamped = stampAnnotations(cedarText, name.trim() || "untitled", severity);
     let effectiveIr = ir;
     if (!effectiveIr) {
-      if (!stamped.trim()) throw new Error("정책 본문이 비어 있어요");
+      if (!stamped.trim()) throw new Error(t("detail.emptyBody"));
       // Cedar 컴파일 체크: text→EST가 wasm의 Cedar 파서를 통과해야 한다 —
       // 컴파일 안 되는 텍스트는 여기서 저장이 거부된다.
       try {
         effectiveIr = (await textToBlocks(stamped))[0] ?? null;
       } catch (err) {
         throw new Error(
-          `Cedar가 컴파일되지 않거나 저장 형식(블록) 밖의 구문이에요: ${err instanceof Error ? err.message : String(err)}`,
+          t("detail.cedarCompileError", {
+            message: err instanceof Error ? err.message : String(err),
+          }),
         );
       }
       if (!effectiveIr) {
-        throw new Error("이 Cedar 구문은 저장 형식(블록)으로 변환할 수 없어요");
+        throw new Error(t("detail.cedarNotBlocks"));
       }
     }
     // 템플릿 저장 형식: 폼 호환이면 모든 값 자리를 파라미터로(form-canonical).
@@ -330,14 +335,14 @@ function EditorBody({
       };
       finalIr = formToIr(parameterizeModel(stampedModel));
     } else if ((storedDef?.holes.length ?? 0) > 0) {
-      if (!window.confirm("이 Cedar 구문은 폼 호환이 아니라 지갑별 설정이 해제됩니다. 계속할까요?")) {
-        throw new Error("저장을 취소했어요");
+      if (!window.confirm(t("detail.holesResetConfirm"))) {
+        throw new Error(t("detail.saveCancelled"));
       }
     }
     // 메타 검증: 심각도·사유가 채워졌는지. (Cedar 컴파일은 위 textToBlocks가,
     // 폼 경로는 IR 생성이 보장한다.)
     if (!["deny", "warn", "info"].includes(severity)) {
-      throw new Error("심각도를 선택해 주세요 (차단/경고/정보)");
+      throw new Error(t("detail.severityRequired"));
     }
     const reasonText = (
       editedModel?.reason ??
@@ -345,16 +350,16 @@ function EditorBody({
       ""
     ).trim();
     if (!reasonText) {
-      throw new Error(
-        "사유가 비어 있어요 — 정책이 발동했을 때 사용자에게 보여줄 메시지예요. ③ '어떻게 알릴까요?'의 사유를 채워주세요.",
-      );
+      throw new Error(t("detail.reasonRequired"));
     }
     // decimal 리터럴 형식: Cedar 파서는 통과하지만 엔진 설치 시 거부돼
     // 모든 요청이 막히므로(fail-closed) 저장 단계에서 잡는다.
     const badDecimals = findInvalidIrDecimals(concretizeIr(finalIr));
     if (badDecimals.length > 0) {
       throw new Error(
-        `decimal 값 형식이 잘못됐어요: ${badDecimals.map((v) => `"${v}"`).join(", ")} — 소수점이 꼭 필요해요 (예: 3 → 3.0, 소수점 아래 최대 4자리)`,
+        t("detail.badDecimalsSave", {
+          values: badDecimals.map((v) => `"${v}"`).join(", "),
+        }),
       );
     }
     let manifest: unknown;
@@ -383,8 +388,8 @@ function EditorBody({
     const alias = aliasInput && aliasInput !== def.displayName ? aliasInput : undefined;
     const defModel = irToForm(def.skeleton.ir as PolicyIR);
     if (!defModel || !editedModel) {
-      window.alert("이 정책은 폼으로 분석할 수 없어서 지갑별 값 편집을 지원하지 않아요.");
-      throw new Error("저장을 취소했어요");
+      window.alert(t("detail.noFormForBinding"));
+      throw new Error(t("detail.saveCancelled"));
     }
     // 인스턴스 저장은 prepare()를 거치지 않으니 decimal 값을 여기서 검증한다.
     // ("3"처럼 정규화로 고쳐지는 값은 직렬화가 알아서 고치고, 숫자가 아닌
@@ -392,9 +397,11 @@ function EditorBody({
     const badDecimals = findInvalidModelDecimals(editedModel);
     if (badDecimals.length > 0) {
       window.alert(
-        `decimal 값 형식이 잘못됐어요: ${badDecimals.map((v) => `"${v}"`).join(", ")} — 숫자로 입력해 주세요 (예: 3.0, 소수점 아래 최대 4자리)`,
+        t("detail.badDecimalsBinding", {
+          values: badDecimals.map((v) => `"${v}"`).join(", "),
+        }),
       );
-      throw new Error("저장을 취소했어요");
+      throw new Error(t("detail.saveCancelled"));
     }
     if (structureKey(canonicalizeModel(defModel)) !== structureKey(canonicalizeModel(editedModel))) {
       // 지갑 전용 정책이 이 지갑에만 묶여 있으면 구조도 자유 — 템플릿의 집이
@@ -422,10 +429,8 @@ function EditorBody({
         await updateBinding({ address: ctx.address, bindingId: ctx.binding.id, patch: { params: {} } });
         return def.id;
       }
-      window.alert(
-        "지갑 인스턴스에서는 값(숫자·주소 목록·비교 필드)만 다르게 저장할 수 있어요.\n조건의 구성이 바뀌면 새 정책이 필요해요 — 라이브러리에서 이 정책을 복제해 수정한 뒤 지갑에 추가해 주세요.",
-      );
-      throw new Error("저장을 취소했어요");
+      window.alert(t("detail.structureLockedBinding"));
+      throw new Error(t("detail.saveCancelled"));
     }
 
     // def가 아직 파라미터화 전이면 canonical 파라미터 형태로 1회 승격(의미 불변).
@@ -433,7 +438,10 @@ function EditorBody({
     // 이 지갑에만 존재하는 정책의 유일한 이름이고, 그래야 지갑별 정책 목록과
     // 게시 모달에도 그 이름이 보인다. 공유 def만 바인딩 별칭을 쓴다.
     const renameDef = alias !== undefined && def.hidden === true;
-    const pIr = formToIr(parameterizeModel(canonicalizeModel(defModel)));
+    // 사유(reason)는 파라미터가 아니라 정책 공통(def 뼈대)이다. 시트에서 바꾼
+    // 사유를 뼈대에 반영 — 바뀌면 아래 putDef가 발동해 모든 지갑에 적용된다.
+    const skeletonModel = { ...defModel, reason: editedModel.reason };
+    const pIr = formToIr(parameterizeModel(canonicalizeModel(skeletonModel)));
     if (
       renameDef ||
       def.holes.length === 0 ||
@@ -485,10 +493,8 @@ function EditorBody({
               ? JSON.stringify(storedDef.skeleton.ir) !== JSON.stringify(prepared.ir)
               : structureKey(canonicalizeModel(oldModel)) !== structureKey(canonicalizeModel(prepared.model));
           if (changed) {
-            window.alert(
-              `이 정책은 지갑 ${usage}곳에 적용돼 있어 구조를 바꿀 수 없어요.\n값(기본 파라미터)·이름·심각도는 바꿀 수 있어요. 구조가 다른 정책이 필요하면 복제하세요.`,
-            );
-            throw new Error("저장을 취소했어요");
+            window.alert(t("detail.structureLockedUsage", { count: usage }));
+            throw new Error(t("detail.saveCancelled"));
           }
         }
       }
@@ -518,7 +524,7 @@ function EditorBody({
   // 범위 모달 confirm → (필요시 패키지/폴더 생성) → put-def + bind.
   const finishMut = useMutation({
     mutationFn: async (choice: SaveScopeChoice): Promise<string> => {
-      if (!scopeAsk) throw new Error("내부 오류: 저장 준비가 비어 있어요");
+      if (!scopeAsk) throw new Error(t("detail.internalNoPrepared"));
 
       // 지갑 전용 경로(모델 A): 지갑마다 **독립 def 사본**을 만들어 그 지갑의
       // 전용 폴더에 앵커한다. 바인딩(적용)은 만들지 않는다 — 적용은 지갑별
@@ -568,7 +574,7 @@ function EditorBody({
         pkgId = `pkg::${crypto.randomUUID()}`;
         await putPackage({
           id: pkgId,
-          displayName: choice.newPackageName ?? "새 폴더",
+          displayName: choice.newPackageName ?? t("list.newFolderName"),
           source: "mine",
           updatedAtMs: Date.now(),
         });
@@ -664,7 +670,7 @@ function EditorBody({
       });
       setFormKey((k) => k + 1);
     } catch (err) {
-      console.warn("[editor] 폼 열기 실패 — Cedar 탭으로 안내:", err);
+      console.warn("[editor] 폼 열기 실패 — Cedar 탭으로 안내:", err); // i18n-ok
       setFormEntry({ kind: "closed" });
     }
   };
@@ -692,7 +698,7 @@ function EditorBody({
             className="ev2-detail-title"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="정책 이름"
+            placeholder={t("detail.namePlaceholder")}
           />
           <span className="ev2-detail-slug">{stripDashboardId(policy.id)}</span>
           {/* 폼 탭은 ③ 심각도가 이 값을 소유(onChange로 동기화)하므로 헤더
@@ -704,9 +710,9 @@ function EditorBody({
               onChange={(e) => setSeverity(e.target.value as PolicySeverity)}
               className="ev2-detail-sev"
             >
-              <option value="deny">deny (차단)</option>
-              <option value="warn">warn (경고)</option>
-              <option value="info">info (정보)</option>
+              <option value="deny">{t("detail.sevDeny")}</option>
+              <option value="warn">{t("detail.sevWarn")}</option>
+              <option value="info">{t("detail.sevInfo")}</option>
             </select>
           )}
           {policy.cat && (
@@ -717,21 +723,18 @@ function EditorBody({
         </div>
 
         <div className="ev2-detail-meta">
-          {isNew && (
-            <span className="ev2-badge-draft">
-              새 정책 · 저장해야 적용됩니다
-            </span>
-          )}
+          {isNew && <span className="ev2-badge-draft">{t("detail.draftBadge")}</span>}
           {bindingCtx && (
             <span className="ev2-badge-draft">
-              {bindingCtx.address.slice(0, 6)}…{bindingCtx.address.slice(-4)} 지갑의 인스턴스 편집 —
-              값 변경은 이 지갑에만 적용돼요
+              {t("detail.bindingBadge", {
+                addr: `${bindingCtx.address.slice(0, 6)}…${bindingCtx.address.slice(-4)}`,
+              })}
             </span>
           )}
           {fromMarket && (
             <span className="ev2-detail-prov">
               <ShieldIcon />
-              마켓에서 가져옴
+              {t("detail.fromMarket")}
               {policy.sourceVersion ? ` · ${policy.sourceVersion}` : ""}
             </span>
           )}
@@ -741,11 +744,11 @@ function EditorBody({
           <TabBtn
             label="Cedar"
             active={tab === "cedar"}
-            badge={bindingCtx ? "읽기 전용" : undefined}
+            badge={bindingCtx ? t("detail.readOnlyBadge") : undefined}
             onClick={() => handleTabChange("cedar")}
           />
           <TabBtn
-            label="폼"
+            label={t("detail.formTab")}
             active={tab === "form"}
             onClick={() => handleTabChange("form")}
           />
@@ -755,9 +758,9 @@ function EditorBody({
               type="button"
               className="ev2-pri ghost"
               onClick={openPublish}
-              title="마켓에 올리기"
+              title={t("publish.title")}
             >
-              <ShieldIcon /> 마켓에 올리기
+              <ShieldIcon /> {t("publish.title")}
             </button>
           )}
           {!bindingCtx && (
@@ -765,32 +768,31 @@ function EditorBody({
             type="button"
             className="ev2-pri danger"
             onClick={() => {
-              const extra = usageCount > 0 ? `\n${usageCount}개 지갑에서 함께 제거됩니다.` : "";
-              if (!confirm(`정책 "${name}"을 삭제할까요?${extra}`)) return;
+              const msg =
+                usageCount > 0
+                  ? t("detail.deleteConfirmUsed", { name, count: usageCount })
+                  : t("detail.deleteConfirm", { name });
+              if (!confirm(msg)) return;
               deleteMut.mutate();
             }}
             disabled={deleteMut.isPending}
           >
-            삭제
+            {t("common:delete")}
           </button>
           )}
           <button
             type="button"
             className={`ev2-pri${bindingCtx && !formValidity.valid ? " invalid" : ""}`}
-            title={
-              bindingCtx && !formValidity.valid
-                ? "형식이 맞지 않아요 — 누르면 변경 전 상태로 되돌립니다"
-                : undefined
-            }
+            title={bindingCtx && !formValidity.valid ? t("detail.invalidSaveTitle") : undefined}
             onClick={() => {
               // 값 시트에서 형식이 안 맞으면: 저장하지 않고 안내 + 변경 전으로 복원.
               if (bindingCtx && !formValidity.valid) {
                 setRevertNotice(
-                  `형식이 맞지 않아 저장하지 않고 변경 전 상태로 되돌렸어요${
-                    formValidity.error ? ` (${formValidity.error})` : ""
-                  }.`,
+                  formValidity.error
+                    ? t("detail.revertNoticeWith", { error: formValidity.error })
+                    : t("detail.revertNotice"),
                 );
-                setResetToken((t) => t + 1);
+                setResetToken((tok) => tok + 1);
                 return;
               }
               setRevertNotice(null);
@@ -798,7 +800,7 @@ function EditorBody({
             }}
             disabled={saveMut.isPending || !cedarText.trim()}
           >
-            {saveMut.isPending ? "저장 중…" : "저장"}
+            {saveMut.isPending ? t("saving") : t("common:save")}
           </button>
         </div>
       </div>
@@ -852,20 +854,17 @@ function EditorBody({
             />
           ) : formEntry?.kind === "closed" ? (
             <div className="ev2-empty">
-              <div className="big">이 정책은 폼으로 열 수 없어요</div>
-              <div className="sm">
-                폼은 단순한 조건(AND/OR 비교)만 다뤄요. 부정(!)·중첩·if 같은 복잡한
-                정책은 Cedar 탭에서 편집해 주세요.
-              </div>
+              <div className="big">{t("detail.formClosedTitle")}</div>
+              <div className="sm">{t("detail.formClosedHint")}</div>
               <div className="ev2-empty-actions">
                 <button type="button" className="ev2-pri ghost" onClick={() => handleTabChange("cedar")}>
-                  Cedar 탭으로
+                  {t("detail.toCedarTab")}
                 </button>
               </div>
             </div>
           ) : (
             <div className="ev2-empty">
-              <div className="sm">폼을 불러오는 중…</div>
+              <div className="sm">{t("detail.formLoading")}</div>
             </div>
           ))}
       </div>
@@ -900,6 +899,7 @@ function TabBtn(props: {
   tooltip?: string;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("editor");
   return (
     <button
       type="button"
@@ -913,7 +913,7 @@ function TabBtn(props: {
       title={props.tooltip}
     >
       {props.label}
-      {props.disabled && <span className="ev2-tab-soon">준비 중</span>}
+      {props.disabled && <span className="ev2-tab-soon">{t("chooser.soon")}</span>}
       {!props.disabled && props.badge && <span className="ev2-tab-soon">{props.badge}</span>}
     </button>
   );
@@ -928,20 +928,15 @@ function CedarPane({
   readOnly?: boolean;
   onChange: (next: string) => void;
 }) {
+  const { t } = useTranslation("editor");
   return (
     <div className="ev2-cedar-pane">
       <div className="ev2-cedar-toolbar">
         <span className="ev2-cedar-hint">
           {readOnly ? (
-            <>
-              이 지갑 인스턴스의 값이 적용된 Cedar예요 — 읽기 전용. 값 수정은 폼 탭에서
-              해주세요.
-            </>
+            t("detail.cedarReadOnlyHint")
           ) : (
-            <>
-              Cedar 코드를 직접 편집합니다. 저장 시 자동으로 <code>@id</code> /{" "}
-              <code>@severity</code> 주석이 갱신됩니다.
-            </>
+            <Trans t={t} i18nKey="detail.cedarHint" components={{ c: <code /> }} />
           )}
         </span>
       </div>

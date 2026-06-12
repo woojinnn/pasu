@@ -1,0 +1,65 @@
+{
+  "addWallet": "Add wallet +",
+  "head": {
+    "title": "Per-wallet policies",
+    "scopeWallet": "wallet scope",
+    "sub": "Pick a wallet to open its packages. Click the active card again to see all wallets at a glance.",
+    "summary_one": "{{count}} wallet · portfolio {{total}}",
+    "summary_other": "{{count}} wallets · portfolio {{total}}"
+  },
+  "empty": {
+    "noWallets": "No wallets registered",
+    "addFirst": "Add your first wallet."
+  },
+  "card": {
+    "wallet": "Wallet",
+    "balance": "Balance"
+  },
+  "panel": {
+    "viewAllWallets": "View all wallets",
+    "syncNow": "Sync now",
+    "rename": "Rename",
+    "deleteWallet": "Delete wallet",
+    "openAssets": "Open assets",
+    "packages": "Packages",
+    "policiesCount_one": "({{count}} policy)",
+    "policiesCount_other": "({{count}} policies)",
+    "appliedToWallet": "Applied to this wallet",
+    "noPackages": "No packages installed",
+    "baselineOnly": "Only the baseline applies.",
+    "getPackages": "Get packages"
+  },
+  "folder": {
+    "policies": "policies",
+    "publishTitle": "Publish this package to the market",
+    "uncategorized": "Uncategorized"
+  },
+  "policy": {
+    "active": "Active",
+    "off": "Off",
+    "excludeTitle": "Exclude this policy — stays off even when the package is on",
+    "includeTitle": "Include this policy — applies when the package is on",
+    "exclude": "Exclude policy",
+    "include": "Include policy",
+    "publish": "Publish to market",
+    "openInEditor": "Open in Editor",
+    "params": "Parameters"
+  },
+  "overview": {
+    "allWallets": "All wallets",
+    "meta": "Packages {{packages}} · applied {{applied}}",
+    "hint": "Select a wallet to return to its packages."
+  },
+  "resizeHint": "Drag to resize · double-click to reset",
+  "delete": {
+    "title": "Delete this wallet?",
+    "deleting": "Deleting…",
+    "confirm": "This will delete the wallet “<b>{{name}}</b>”.",
+    "warning": "The <b>package and policy settings</b> applied to this wallet will also be removed. Holdings, approvals, and verdict records are kept.",
+    "failed": "Delete failed:"
+  },
+  "param": {
+    "itemsCount_one": "{{count}} item",
+    "itemsCount_other": "{{count}} items"
+  }
+}

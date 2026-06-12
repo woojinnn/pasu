@@ -11,6 +11,7 @@
  */
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   aggregateWalletStates,
@@ -42,6 +43,7 @@ export interface AccountStatePanelProps {
 }
 
 export function AccountStatePanel(props: AccountStatePanelProps) {
+  const { t } = useTranslation("simulation");
   const { histories, cursorIdx, setCursorIdx, totalSteps, chain } = props;
 
   const aggregate = useMemo(() => {
@@ -58,8 +60,8 @@ export function AccountStatePanel(props: AccountStatePanelProps) {
   return (
     <div className="sim-card account-state-card">
       <div className="card-head">
-        <h3>계정 단위 state</h3>
-        <span className="meta">{aggregate.walletCount} 지갑 합계</span>
+        <h3>{t("historic.account.title")}</h3>
+        <span className="meta">{t("historic.account.walletsTotal", { count: aggregate.walletCount })}</span>
       </div>
 
       <StepPicker
@@ -70,17 +72,17 @@ export function AccountStatePanel(props: AccountStatePanelProps) {
 
       {aggregate.walletCount === 0 ? (
         <div className="muted-line">
-          등록된 지갑이 없습니다.
+          {t("historic.noRegisteredWallets")}
         </div>
       ) : (
         <>
           <div className="state-section">
             <header className="state-section-head">
-              <span>토큰 보유 (합계)</span>
+              <span>{t("historic.account.tokenHoldings")}</span>
               <span className="meta">{aggregate.tokens.length}</span>
             </header>
             {aggregate.tokens.length === 0 ? (
-              <div className="muted-line">선택한 chain에 보유 토큰 없음</div>
+              <div className="muted-line">{t("historic.noTokensOnChain")}</div>
             ) : (
               <ul className="state-token-list">
                 {aggregate.tokens.map((t) => (
@@ -114,6 +116,7 @@ export function AccountStatePanel(props: AccountStatePanelProps) {
 }
 
 function AccountTokenRow({ t }: { t: AggregatedTokenRow }) {
+  const { t: tr } = useTranslation("simulation");
   const display = formatBalance(t.totalBalance, t.decimals);
   return (
     <li className="state-token-row">
@@ -121,7 +124,7 @@ function AccountTokenRow({ t }: { t: AggregatedTokenRow }) {
         <strong>{t.symbol || "?"}</strong>
         <code className="muted">{shortAddr(t.key.address)}</code>
         <span className="muted state-token-wcount">
-          ({t.walletCount} 지갑)
+          {tr("historic.walletCountParen", { count: t.walletCount })}
         </span>
       </div>
       <div className="state-token-balance" title={t.totalBalance}>

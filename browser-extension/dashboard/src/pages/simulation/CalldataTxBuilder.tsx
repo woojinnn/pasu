@@ -13,6 +13,8 @@
  * future work but out of scope here.
  */
 
+import { useTranslation } from "react-i18next";
+
 import type { EvaluateActionVerdict } from "./sim-bridge";
 
 export const MAX_TX = 5;
@@ -55,6 +57,7 @@ export interface CalldataTxBuilderProps {
 }
 
 export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
+  const { t } = useTranslation("simulation");
   const {
     rows,
     setRows,
@@ -94,7 +97,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
   return (
     <div className="sim-card tx-builder">
       <div className="card-head">
-        <h3>트랜잭션 큐</h3>
+        <h3>{t("historic.txQueue.title")}</h3>
         <span className="cap-pill" data-at-cap={atCap || undefined}>
           {rows.length} / {MAX_TX}
         </span>
@@ -125,7 +128,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
           disabled={atCap || isRunning}
         >
           <option value="" disabled>
-            🧪 예시에서 TX 추가…
+            {t("historic.txQueue.addFromExample")}
           </option>
           {CALLDATA_PRESETS.map((p) => (
             <option key={p.id} value={p.id}>
@@ -134,7 +137,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
           ))}
         </select>
         <button className="btn" onClick={add} disabled={atCap || isRunning}>
-          + 빈 TX
+          {t("historic.txQueue.addBlank")}
         </button>
       </div>
 
@@ -165,7 +168,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                 <input
                   className="tx-label"
                   type="text"
-                  placeholder="라벨 (예: USDC approve)"
+                  placeholder={t("historic.txQueue.labelPlaceholder")}
                   value={r.label ?? ""}
                   onChange={(e) => updateRow(r.id, { label: e.target.value })}
                   onClick={(e) => e.stopPropagation()}
@@ -186,7 +189,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                       move(r.id, -1);
                     }}
                     disabled={idx === 0 || isRunning}
-                    title="위로"
+                    title={t("historic.txQueue.moveUp")}
                   >
                     ▲
                   </button>
@@ -197,7 +200,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                       move(r.id, 1);
                     }}
                     disabled={idx === rows.length - 1 || isRunning}
-                    title="아래로"
+                    title={t("historic.txQueue.moveDown")}
                   >
                     ▼
                   </button>
@@ -208,7 +211,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                       remove(r.id);
                     }}
                     disabled={rows.length === 1 || isRunning}
-                    title="제거"
+                    title={t("historic.txQueue.remove")}
                   >
                     ✕
                   </button>
@@ -218,7 +221,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
               <div className="tx-grid">
                 <label
                   className="tx-grid-wide"
-                  title="이 TX를 어느 지갑에서 보낼지. 등록된 지갑 중 선택하거나, 임의 주소 직접 입력."
+                  title={t("historic.txQueue.fromTitle")}
                 >
                   <span>from (wallet)</span>
                   {/* Free-text input + datalist. The dropdown options
@@ -237,19 +240,19 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                     }
                     onClick={(e) => e.stopPropagation()}
                     disabled={isRunning}
-                    placeholder="0x… (등록 지갑 또는 임의 주소)"
+                    placeholder={t("historic.txQueue.fromPlaceholder")}
                     autoComplete="off"
                     spellCheck={false}
                   />
                   <datalist id={`from-wallets-${r.id}`}>
                     {availableWallets.map((addr) => (
                       <option key={addr} value={addr}>
-                        {shortAddrForOption(addr)} (등록)
+                        {t("historic.txQueue.registeredOption", { addr: shortAddrForOption(addr) })}
                       </option>
                     ))}
                   </datalist>
                 </label>
-                <label title="컨트랙트 주소 (0x + 40 hex). USDC/USDT/WETH 메인넷 주소는 v3 번들에 매칭됨.">
+                <label title={t("historic.txQueue.toTitle")}>
                   <span>to (contract)</span>
                   <input
                     type="text"
@@ -260,7 +263,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                     placeholder="0xa0B8…eB48 (USDC)"
                   />
                 </label>
-                <label title="msg.value (wei 10진수). ETH 함께 보낼 때만 0 아닌 값.">
+                <label title={t("historic.txQueue.valueTitle")}>
                   <span>value (wei)</span>
                   <input
                     type="text"
@@ -273,7 +276,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                 </label>
                 <label
                   className="ctx"
-                  title="0xSELECTOR + ABI 인코딩 인자. 위 드롭다운에서 예시 골라 시작하는 것 추천."
+                  title={t("historic.txQueue.calldataTitle")}
                 >
                   <span>calldata</span>
                   <textarea
@@ -283,7 +286,7 @@ export function CalldataTxBuilder(props: CalldataTxBuilderProps) {
                     }
                     onClick={(e) => e.stopPropagation()}
                     disabled={isRunning}
-                    placeholder="0xa9059cbb… (transfer) 또는 0x095ea7b3… (approve)"
+                    placeholder={t("historic.txQueue.calldataPlaceholder")}
                     rows={3}
                   />
                 </label>

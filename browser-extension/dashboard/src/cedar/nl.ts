@@ -1,9 +1,14 @@
 /**
- * Plain-Korean phrasing for a single condition, shared by the form's row chips
- * and the policy diagram's leaf labels. The caller supplies the already-rendered
- * subject (field label) and value text; this only handles the operator phrasing
- * and Korean particles (이/가, 을/를).
+ * Plain-language phrasing for a single condition, shared by the form's row
+ * chips and the policy diagram's leaf labels. The caller supplies the
+ * already-rendered subject (field label) and value text; this only handles the
+ * operator phrasing. Templates live in the i18n "fields" namespace (`nl.*`)
+ * and are resolved at CALL time; Korean particles (이/가, 을/를) are computed
+ * here and interpolated, so the ko output is identical to the original
+ * hand-written phrasing.
  */
+
+import { i18n } from "../i18n";
 
 /** Whether a word ends in a Korean final consonant (받침). Falls back for
  *  digit/latin endings (last digit's Korean reading for numerals). */
@@ -34,30 +39,50 @@ export interface NLCondition {
   neg?: boolean;
 }
 
-/** Render a condition as a Korean phrase, e.g. "수신자가 비어 있을 때". */
-export function naturalCondition({ subject, op, value, emptyStr, neg }: NLCondition): string {
-  const S = withJosa(subject, "이", "가");
-  const V = value;
+/** `nl.*` template key for an operator (+ its negation / empty-string form). */
+function nlKey(op: string, neg: boolean, emptyStr: boolean): string | null {
   switch (op) {
     case "==":
-      if (emptyStr) return `${S} ${neg ? "비어 있지 않을" : "비어 있을"} 때`;
-      return neg ? `${S} ${withJosa(V, "이", "가")} 아닐 때` : `${S} ${V}일 때`;
+      if (emptyStr) return neg ? "notEmpty" : "empty";
+      return neg ? "eqNeg" : "eq";
     case "!=":
-      if (emptyStr) return `${S} ${neg ? "비어 있을" : "비어 있지 않을"} 때`;
-      return neg ? `${S} ${V}일 때` : `${S} ${withJosa(V, "이", "가")} 아닐 때`;
+      if (emptyStr) return neg ? "empty" : "notEmpty";
+      return neg ? "eq" : "eqNeg";
     case "<":
-      return `${S} ${V}보다 ${neg ? "크거나 같을" : "작을"} 때`;
+      return neg ? "ltNeg" : "lt";
     case "<=":
-      return `${S} ${V} ${neg ? "초과일" : "이하일"} 때`;
+      return neg ? "leNeg" : "le";
     case ">":
-      return `${S} ${V}보다 ${neg ? "작거나 같을" : "클"} 때`;
+      return neg ? "gtNeg" : "gt";
     case ">=":
-      return `${S} ${V} ${neg ? "미만일" : "이상일"} 때`;
+      return neg ? "geNeg" : "ge";
     case "in":
-      return `${S} ${V} 중 ${neg ? "하나도 아닐" : "하나일"} 때`;
+      return neg ? "inNeg" : "in";
     case "contains":
-      return `${S} ${withJosa(V, "을", "를")} ${neg ? "포함하지 않을" : "포함할"} 때`;
+      return neg ? "containsNeg" : "contains";
     default:
-      return neg ? `${subject} ${op} ${V} 아님` : `${subject} ${op} ${V}`;
+      return null;
   }
+}
+
+/** Render a condition as a natural phrase, e.g. "수신자가 비어 있을 때"
+ *  (en: "when recipient is empty"). */
+export function naturalCondition({ subject, op, value, emptyStr, neg }: NLCondition): string {
+  const ko = i18n.language !== "en";
+  const V = value;
+  const vars = {
+    // Subject with its topic particle attached (ko only): "수신자" → "수신자가".
+    S: ko ? withJosa(subject, "이", "가") : subject,
+    V,
+    // Value with 이/가 (the `… 아닐 때` phrasing) / 을/를 (the `… 포함할 때`
+    // phrasing) — identity in en.
+    Vj: ko ? withJosa(V, "이", "가") : V,
+    Vc: ko ? withJosa(V, "을", "를") : V,
+    subject,
+    op,
+    value,
+  };
+  const key = nlKey(op, !!neg, !!emptyStr);
+  if (key) return i18n.t(`nl.${key}`, { ns: "fields", ...vars });
+  return i18n.t(neg ? "nl.fallbackNeg" : "nl.fallback", { ns: "fields", ...vars });
 }

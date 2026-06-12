@@ -7,6 +7,8 @@
  * the row spells out what the cursor means at the current value.
  */
 
+import { useTranslation } from "react-i18next";
+
 export interface StepPickerProps {
   totalSteps: number;
   cursorIdx: number;
@@ -18,6 +20,7 @@ export function StepPicker({
   cursorIdx,
   setCursorIdx,
 }: StepPickerProps) {
+  const { t } = useTranslation("simulation");
   return (
     <>
       <div className="state-step-buttons">
@@ -34,8 +37,8 @@ export function StepPicker({
       </div>
       <div className="state-step-label">
         {cursorIdx === 0
-          ? "초기 상태"
-          : `TX ${cursorIdx} 적용 후 (of ${totalSteps})`}
+          ? t("historic.stepPicker.initialState")
+          : t("historic.stepPicker.afterTx", { n: cursorIdx, total: totalSteps })}
       </div>
     </>
   );

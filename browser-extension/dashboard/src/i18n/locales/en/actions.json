@@ -1,0 +1,158 @@
+{
+  "group": {
+    "Token": "Tokens",
+    "Amm": "Swap · Liquidity (AMM)",
+    "Perp": "Futures (Perp)",
+    "HyperliquidCore": "Hyperliquid",
+    "Lending": "Lending",
+    "Yield": "Yield (Pendle)",
+    "Staking": "Staking",
+    "LiquidStaking": "Liquid staking",
+    "Restaking": "Restaking",
+    "Governance": "Governance",
+    "Airdrop": "Airdrop",
+    "Launchpad": "Launchpad",
+    "Marketplace": "NFT marketplace",
+    "Permission": "Permissions",
+    "Core": "Other"
+  },
+  "name": {
+    "Amm": {
+      "Swap": "Swap",
+      "AddLiquidity": "Add liquidity",
+      "RemoveLiquidity": "Remove liquidity",
+      "CollectFees": "Collect fees",
+      "GsmSwap": "GSM swap",
+      "SignIntentOrder": "Sign intent order",
+      "PreSignIntentOrder": "Pre-sign intent order",
+      "SettleIntentOrder": "Settle intent order",
+      "CancelIntentOrder": "Cancel intent order"
+    },
+    "Token": {
+      "Erc20Transfer": "Token transfer",
+      "Erc20Approve": "Token approval",
+      "Erc20Permit": "Token Permit signature",
+      "RevokeApproval": "Revoke approval",
+      "NftTransfer": "NFT transfer",
+      "NftApprove": "NFT approval",
+      "NftSetApprovalForAll": "NFT approval for all",
+      "Permit2Approve": "Permit2 approval",
+      "Permit2SignAllowance": "Permit2 allowance signature",
+      "Permit2SignTransfer": "Permit2 transfer signature",
+      "Permit2TransferFrom": "Permit2 transfer",
+      "WrapNative": "Wrap native token",
+      "UnwrapNative": "Unwrap native token"
+    },
+    "Perp": {
+      "OpenPosition": "Open position",
+      "ClosePosition": "Close position",
+      "IncreasePosition": "Increase position",
+      "DecreasePosition": "Decrease position",
+      "ChangeLeverage": "Change leverage",
+      "AdjustMargin": "Adjust margin",
+      "ChangeMarginMode": "Change margin mode",
+      "PlaceOrder": "Place order",
+      "CancelOrder": "Cancel order",
+      "ClaimFunding": "Claim funding"
+    },
+    "HyperliquidCore": {
+      "HlSendAsset": "HL asset transfer",
+      "HlTokenDelegate": "HL token delegation",
+      "HlWithdraw": "HL withdrawal"
+    },
+    "Lending": {
+      "Supply": "Supply",
+      "Withdraw": "Withdraw",
+      "Borrow": "Borrow",
+      "Repay": "Repay",
+      "Liquidate": "Liquidate",
+      "EnableCollateral": "Enable collateral",
+      "DisableCollateral": "Disable collateral",
+      "SetEMode": "Set eMode",
+      "SwapRateMode": "Switch rate mode",
+      "DelegateBorrow": "Delegate borrowing",
+      "SetAuthorization": "Set authorization",
+      "BuyCollateral": "Buy collateral",
+      "PeripheryOperation": "Periphery operation"
+    },
+    "Governance": {
+      "Delegate": "Delegate votes",
+      "Vote": "Vote",
+      "Propose": "Propose",
+      "Queue": "Queue",
+      "Execute": "Execute",
+      "Cancel": "Cancel",
+      "StartVote": "Start vote",
+      "CloseVote": "Close vote",
+      "ActivateVoting": "Activate voting",
+      "UpdateRepresentative": "Update representative",
+      "RedeemCancellationFee": "Redeem cancellation fee"
+    },
+    "Airdrop": {
+      "Claim": "Claim airdrop",
+      "Delegate": "Airdrop delegation"
+    },
+    "Staking": {
+      "Stake": "Stake",
+      "Lock": "Lock",
+      "Unlock": "Unlock",
+      "ClaimRewards": "Claim rewards",
+      "Cooldown": "Cooldown",
+      "Redeem": "Redeem",
+      "GaugeDeposit": "Gauge deposit",
+      "GaugeWithdraw": "Gauge withdrawal",
+      "VoteForGauge": "Vote for gauge",
+      "IncreaseLockAmount": "Increase lock amount",
+      "IncreaseLockTime": "Extend lock time"
+    },
+    "LiquidStaking": {
+      "Stake": "Liquid stake",
+      "Wrap": "Wrap",
+      "Unwrap": "Unwrap",
+      "RequestWithdrawal": "Request withdrawal",
+      "ClaimWithdrawal": "Claim withdrawal",
+      "TransferShares": "Transfer shares"
+    },
+    "Restaking": {
+      "Deposit": "Restaking deposit",
+      "DelegateTo": "Delegate to operator",
+      "Undelegate": "Undelegate",
+      "Redelegate": "Redelegate",
+      "QueueWithdrawal": "Queue withdrawal",
+      "CompleteWithdrawal": "Complete withdrawal",
+      "RegisterOperator": "Register operator"
+    },
+    "Yield": {
+      "PtSwap": "PT swap",
+      "YtSwap": "YT swap",
+      "MintPy": "Mint PY",
+      "RedeemPy": "Redeem PY",
+      "MintSy": "Mint SY",
+      "RedeemSy": "Redeem SY",
+      "ClaimYield": "Claim yield",
+      "AddMarketLiquidity": "Add market liquidity",
+      "RemoveMarketLiquidity": "Remove market liquidity",
+      "SignLimitOrder": "Sign limit order",
+      "CancelLimitOrder": "Cancel limit order"
+    },
+    "Launchpad": {
+      "Commit": "Commit",
+      "WithdrawCommit": "Withdraw commit",
+      "ClaimAllocation": "Claim allocation",
+      "ClaimVested": "Claim vested",
+      "Refund": "Refund"
+    },
+    "Marketplace": {
+      "SignOrder": "Sign order",
+      "FulfillOrder": "Fulfill order",
+      "CancelOrder": "Cancel order"
+    },
+    "Permission": {
+      "ProtocolAuthorization": "Protocol authorization"
+    },
+    "Core": {
+      "Multicall": "Multicall",
+      "Unknown": "Unknown transaction"
+    }
+  }
+}

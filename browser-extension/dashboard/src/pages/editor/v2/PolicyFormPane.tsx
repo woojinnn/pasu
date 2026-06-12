@@ -13,7 +13,10 @@
  * tab.
  */
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
+import { i18n } from "../../../i18n";
 import { blocksToText } from "../../../cedar";
 import type { PolicyIR } from "../../../cedar/blocks/ir";
 import { pathByNode } from "../../../cedar/diagnosis/path";
@@ -85,36 +88,62 @@ export interface PolicyFormPaneProps {
   resetToken?: number;
 }
 
-const OP_LABEL: Record<FormOp, string> = {
-  "==": "=",
-  "!=": "≠",
-  "<": "<",
-  "<=": "≤",
-  ">": ">",
-  ">=": "≥",
-  contains: "포함",
-  notContains: "포함 안 함",
-  in: "다음 중 하나",
-  notIn: "다음 중 아님",
+/** FormOp → i18n 키 조각 (sheet.op.* / 연산자 드롭다운). */
+const OP_KEY: Record<FormOp, string> = {
+  "==": "eq",
+  "!=": "ne",
+  "<": "lt",
+  "<=": "le",
+  ">": "gt",
+  ">=": "ge",
+  contains: "contains",
+  notContains: "notContains",
+  in: "in",
+  notIn: "notIn",
 };
+
+/** 연산자 드롭다운 라벨 — 기호는 언어 공통, 단어형만 번역(호출 시점 t). */
+function opShort(op: FormOp): string {
+  switch (op) {
+    case "==":
+      return "=";
+    case "!=":
+      return "≠";
+    case "<":
+      return "<";
+    case "<=":
+      return "≤";
+    case ">":
+      return ">";
+    case ">=":
+      return "≥";
+    case "contains":
+      return i18n.t("editor:op.contains");
+    case "notContains":
+      return i18n.t("editor:op.notContains");
+    case "in":
+      return i18n.t("editor:op.oneOf");
+    case "notIn":
+      return i18n.t("editor:op.noneOf");
+  }
+}
 
 /** Ops that compare two scalars — these can take a field-vs-field RHS. */
 const SCALAR_OPS = new Set<FormOp>(["==", "!=", "<", "<=", ">", ">="]);
 
-/** 값 시트(문장형)에서 한 조건을 "주어 [값] 서술어"로 읽을 때 값 뒤에 붙는 말.
- *  "~면"으로 끝나 그리고/또는 연결어와 마지막 "→ 차단"으로 자연스럽게 이어진다. */
-const SUFFIX_KO: Record<FormOp, string> = {
-  "==": "와 같으면",
-  "!=": "와 다르면",
-  "<": "보다 작으면",
-  "<=": "이하이면",
-  ">": "보다 크면",
-  ">=": "이상이면",
-  contains: "을 포함하면",
-  notContains: "을 포함하지 않으면",
-  in: "중 하나이면",
-  notIn: "중 어느 것도 아니면",
-};
+/**
+ * 값 시트(문장형)의 연산자별 술어 — 한국어/영어 어순이 달라 조각(접미사)
+ * 결합으로는 번역할 수 없어, 연산자마다 문장 전체를 통째 키로 둔다
+ * (`sheet.op.*`). 키 값 안의 `<v/>` 토큰이 값 입력 위젯 자리이고, 이 함수가
+ * 토큰 앞/뒤 텍스트로 잘라 돌려준다 (ko는 값 뒤에 "…와 같으면", en은 값 앞에
+ * "equals" — 양쪽 모두 자연스러운 어순).
+ */
+function opSentence(t: TFunction, op: FormOp): { pre: string; post: string } {
+  const raw = t(`editor:sheet.op.${OP_KEY[op]}`);
+  const idx = raw.indexOf("<v/>");
+  if (idx < 0) return { pre: "", post: raw.trim() };
+  return { pre: raw.slice(0, idx).trim(), post: raw.slice(idx + 4).trim() };
+}
 
 /** 트리 안에서 특정 leaf(동일 참조)의 값만 교체 — 시트는 값만 편집하므로
  *  구조(트리거·필드·연산자·중첩)는 그대로 두고 RHS 값만 갈아끼운다. */
@@ -129,13 +158,16 @@ function replaceLeafValue(nodes: FormNode[], target: FormCondition, value: FormV
 }
 
 /** Well-known comparison target offered alongside the catalog fields. */
-const PRINCIPAL_ADDRESS: FieldOption = {
-  path: "principal.address",
-  label: "내 지갑 주소",
-  role: "address",
-  fieldKind: "primitive.String",
-  source: "base",
-};
+const PRINCIPAL_ADDRESS_PATH = "principal.address";
+function principalAddressField(): FieldOption {
+  return {
+    path: PRINCIPAL_ADDRESS_PATH,
+    label: i18n.t("editor:form.myWalletAddress"),
+    role: "address",
+    fieldKind: "primitive.String",
+    source: "base",
+  };
+}
 
 function defaultValueOfKind(kind: FormValue["kind"]): FormValue {
   switch (kind) {
@@ -148,7 +180,7 @@ function defaultValueOfKind(kind: FormValue["kind"]): FormValue {
     case "set":
       return { kind: "set", values: [] };
     case "field":
-      return { kind: "field", path: PRINCIPAL_ADDRESS.path };
+      return { kind: "field", path: PRINCIPAL_ADDRESS_PATH };
     default:
       return { kind: "string", value: "" };
   }
@@ -277,6 +309,7 @@ interface EditorSelection {
 }
 
 export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = false, onChange, onValidity, resetToken }: PolicyFormPaneProps) {
+  const { t } = useTranslation("editor");
   const [model, setModel] = useState<FormModel>(() =>
     initialModel
       ? {
@@ -312,11 +345,11 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
       role: "derived" as const,
       source: "custom" as const,
       optional: true,
-      desc: `${def.method} 호출 값`,
+      desc: t("form.callValueDesc", { method: def.method }),
     }));
     return [...fieldsForTrigger(model.trigger), ...extra];
-  }, [model.trigger, userFields]);
-  const rhsFields = useMemo(() => [PRINCIPAL_ADDRESS, ...fields], [fields]);
+  }, [model.trigger, userFields, t]);
+  const rhsFields = useMemo(() => [principalAddressField(), ...fields], [fields]);
   const fieldByPath = useMemo(() => {
     const m = new Map<string, FieldOption>();
     for (const f of fields) m.set(f.path, f);
@@ -431,7 +464,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
   const sheetError =
     cedarError ??
     (badDecimals.length
-      ? `소수 형식이 잘못됐어요: ${badDecimals.map((v) => `"${v}"`).join(", ")} — 숫자로, 소수점 아래 최대 4자리 (예: 3 → 3.0)`
+      ? t("form.badDecimalSheet", { values: badDecimals.map((v) => `"${v}"`).join(", ") })
       : null);
   const onValidityRef = useRef(onValidity);
   onValidityRef.current = onValidity;
@@ -457,9 +490,12 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
     try {
       return { manifest: JSON.parse(manifestText) as unknown, parseErr: null as string | null };
     } catch (e) {
-      return { manifest: gen.manifest, parseErr: e instanceof Error ? e.message : "JSON 형식 오류" };
+      return {
+        manifest: gen.manifest,
+        parseErr: e instanceof Error ? e.message : t("form.jsonError"),
+      };
     }
-  }, [manifestText, gen.manifest]);
+  }, [manifestText, gen.manifest, t]);
   const trig = model.trigger;
   // Cascading trigger picker: 분류(group) → 동작(action). `currentGroup` is
   // `"*"` for the any-action case (no second dropdown).
@@ -469,7 +505,8 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
       : undefined;
   const currentGroup = trig.kind === "actionEq" ? currentAction?.group ?? ACTION_GROUPS[0]?.group ?? "*" : "*";
   const groupActions = ACTION_GROUPS.find((g) => g.group === currentGroup)?.actions ?? [];
-  const triggerText = trig.kind === "actionEq" ? currentAction?.label ?? trig.id : "모든 동작";
+  const triggerText =
+    trig.kind === "actionEq" ? currentAction?.label ?? trig.id : t("form.anyAction");
 
   // Keep onChange in a ref so the sync effect depends only on `ir`.
   const onChangeRef = useRef(onChange);
@@ -478,7 +515,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
   // Rebuild Cedar (debounced) and push {cedarText, ir, model} up.
   useEffect(() => {
     let cancelled = false;
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       void blocksToText(ir)
         .then((text) => {
           if (cancelled) return;
@@ -493,12 +530,12 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         })
         .catch((err: unknown) => {
           if (cancelled) return;
-          setCedarError(err instanceof Error ? err.message : "Cedar 변환 실패");
+          setCedarError(err instanceof Error ? err.message : t("form.cedarConvertFailed"));
         });
     }, 200);
     return () => {
       cancelled = true;
-      window.clearTimeout(t);
+      window.clearTimeout(timer);
     };
   }, [ir, model, effectiveManifest, manifestText]);
 
@@ -525,7 +562,9 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
   // 구조는 읽기전용으로 보여주고, 파라미터(RHS 값)만 인라인으로 편집한다.
   if (valuesOnly) {
     const open = openModelRef.current;
-    const dirty = !!open && (open.when !== model.when || open.unless !== model.unless);
+    const dirty =
+      !!open &&
+      (open.when !== model.when || open.unless !== model.unless || open.reason !== model.reason);
     return (
       <ValueSheet
         model={model}
@@ -539,6 +578,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         error={sheetError}
         badDecimals={badDecimalSet}
         humanizeLabel={humanizeAddrs}
+        onReason={(text) => setModel((m) => ({ ...m, reason: text }))}
         onValue={(target, value) =>
           setModel((m) => ({
             ...m,
@@ -559,15 +599,16 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         {/* ① 검사 대상 */}
         <section className="pf-section">
           <h3 className="pf-h">
-            <span className="pf-num">1</span> 무엇을 검사하나요? <span className="pf-sub">어떤 거래에 적용할지 골라요</span>
+            <span className="pf-num">1</span> {t("form.sec1Title")}{" "}
+            <span className="pf-sub">{t("form.sec1Sub")}</span>
           </h3>
           <div className="pf-row">
-            <label className="pf-label">분류</label>
+            <label className="pf-label">{t("form.groupLabel")}</label>
             <select
               className="pf-select"
               value={currentGroup}
               disabled={valuesOnly}
-              title={valuesOnly ? "검사 대상 변경은 라이브러리 정책에서 해주세요" : undefined}
+              title={valuesOnly ? t("form.triggerReadonlyTitle") : undefined}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "*") return setTrigger({ kind: "any" });
@@ -578,7 +619,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
                   setTrigger({ kind: "actionEq", entityType: first.entityType, id: first.id });
               }}
             >
-              <option value="*">모든 동작</option>
+              <option value="*">{t("form.anyAction")}</option>
               {ACTION_GROUPS.map((g) => (
                 <option key={g.group} value={g.group}>
                   {g.group}
@@ -587,11 +628,11 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
             </select>
           </div>
           <div className="pf-row">
-            <label className="pf-label">동작</label>
+            <label className="pf-label">{t("form.actionLabel")}</label>
             <select
               className="pf-select"
               disabled={valuesOnly || currentGroup === "*"}
-              title={valuesOnly ? "검사 대상 변경은 라이브러리 정책에서 해주세요" : undefined}
+              title={valuesOnly ? t("form.triggerReadonlyTitle") : undefined}
               value={currentAction ? `${currentAction.entityType}::${currentAction.id}` : ""}
               onChange={(e) => {
                 const a = groupActions.find((k) => `${k.entityType}::${k.id}` === e.target.value);
@@ -599,7 +640,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
               }}
             >
               {currentGroup === "*" ? (
-                <option value="">먼저 분류를 골라요</option>
+                <option value="">{t("form.pickGroupFirst")}</option>
               ) : (
                 groupActions.map((a) => (
                   <option key={`${a.entityType}::${a.id}`} value={`${a.entityType}::${a.id}`}>
@@ -614,13 +655,13 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         {/* ② 조건 (when) */}
         <section className="pf-section">
           <h3 className="pf-h">
-            <span className="pf-num">2</span> 언제 위험한가요?{" "}
-            <span className="pf-sub">아래 상황 중 하나라도 해당되면 발동해요</span>
+            <span className="pf-num">2</span> {t("form.sec2Title")}{" "}
+            <span className="pf-sub">{t("form.sec2Sub")}</span>
           </h3>
           <ConditionEditor
             nodes={model.when}
             ctx={ctx}
-            emptyHint="조건이 없으면 이 동작은 항상 막힙니다."
+            emptyHint={t("form.emptyCondHint")}
             onChange={(when) => patch({ when })}
             selection={editorSelection}
           />
@@ -629,13 +670,14 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         {/* ③ 알림 */}
         <section className="pf-section">
           <h3 className="pf-h">
-            <span className="pf-num">3</span> 어떻게 알릴까요? <span className="pf-sub">심각도·사유</span>
+            <span className="pf-num">3</span> {t("form.sec3Title")}{" "}
+            <span className="pf-sub">{t("form.sec3Sub")}</span>
           </h3>
           <div className="pf-row">
-            <label className="pf-label">심각도</label>
+            <label className="pf-label">{t("form.severityLabel")}</label>
             <div
               className="pf-sev"
-              title={valuesOnly ? "심각도·사유는 라이브러리 정책에서 관리돼요" : undefined}
+              title={valuesOnly ? t("form.severityReadonlyTitle") : undefined}
             >
               <button
                 type="button"
@@ -643,7 +685,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
                 disabled={valuesOnly}
                 onClick={() => patch({ severity: "warn" })}
               >
-                ● 경고
+                ● {t("severity.warn")}
               </button>
               <button
                 type="button"
@@ -651,21 +693,21 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
                 disabled={valuesOnly}
                 onClick={() => patch({ severity: "deny" })}
               >
-                ● 차단
+                ● {t("severity.deny")}
               </button>
             </div>
           </div>
           <div className="pf-row">
-            <label className="pf-label">사유</label>
+            <label className="pf-label">{t("form.reasonLabel")}</label>
             <input
               className="pf-input"
               value={model.reason}
               readOnly={valuesOnly}
-              title={valuesOnly ? "심각도·사유는 라이브러리 정책에서 관리돼요" : undefined}
+              title={valuesOnly ? t("form.severityReadonlyTitle") : undefined}
               onChange={(e) => {
                 if (!valuesOnly) patch({ reason: e.target.value });
               }}
-              placeholder="예: 고위험 동작 차단"
+              placeholder={t("form.reasonPlaceholder")}
             />
           </div>
         </section>
@@ -675,7 +717,7 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         {!valid && (
           <div className="pf-status bad">
             <span className="pf-status-main">
-              ⚠ {cedarError ?? manifestErrors[0]?.message ?? "유효하지 않음"}
+              ⚠ {cedarError ?? manifestErrors[0]?.message ?? t("form.invalid")}
             </span>
           </div>
         )}
@@ -684,12 +726,16 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
       {/* 우측 라이브 구조 다이어그램 + manifest 미리보기 */}
       <aside className="pf-cedar">
         <div className="pf-cedar-head">
-          구조 미리보기
-          <span className={`pf-sync${cedarError ? " err" : ""}`}>{cedarError ? "변환 오류" : "폼과 동기화됨"}</span>
+          {t("form.structurePreview")}
+          <span className={`pf-sync${cedarError ? " err" : ""}`}>
+            {cedarError ? t("form.convertError") : t("form.syncedWithForm")}
+          </span>
         </div>
         {/* 문장형 프레임: 위(무엇에서) → 트리(언제) → 아래(어떻게) 한 문장으로 읽힘 */}
         <div className="pf-sentence top">
-          {trig.kind === "actionEq" ? <>「{triggerText}」 거래에서</> : <>모든 거래에서</>}
+          {trig.kind === "actionEq"
+            ? t("form.sentenceTopAction", { trigger: triggerText })
+            : t("form.sentenceTopAny")}
         </div>
         <div className="pf-diagram-body">
           <PolicyDiagram
@@ -701,8 +747,14 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
           />
         </div>
         <div className={`pf-sentence bottom ${model.severity}`}>
-          {model.reason ? `'${model.reason}' (이)라는 메시지와 함께 ` : ""}
-          {model.severity === "deny" ? "차단" : "경고"}
+          {model.reason
+            ? t("form.sentenceBottom", {
+                reason: model.reason,
+                action: model.severity === "deny" ? t("severity.deny") : t("severity.warn"),
+              })
+            : model.severity === "deny"
+              ? t("severity.deny")
+              : t("severity.warn")}
         </div>
         <ManifestPreview
           open={manifestOpen}
@@ -752,6 +804,7 @@ function ValueSheet({
   badDecimals,
   humanizeLabel,
   onValue,
+  onReason,
   onRevert,
 }: {
   model: FormModel;
@@ -768,20 +821,33 @@ function ValueSheet({
   badDecimals: Set<string>;
   humanizeLabel: (text: string) => string;
   onValue: (target: FormCondition, value: FormValue) => void;
+  /** 사유 편집 — 사유는 정책 공통(def)이라 모든 지갑에 적용된다. */
+  onReason: (text: string) => void;
   onRevert: () => void;
 }) {
+  const { t } = useTranslation("editor");
   const renderLeaf = (cond: FormCondition): ReactNode => {
     const field = ctx.fieldByPath.get(cond.fieldPath);
-    const subject = field?.label ?? cond.fieldPath ?? "값";
+    const subject = field?.label ?? cond.fieldPath ?? t("form.subjectFallback");
     // RHS는 값이든 "다른 필드(예: 내 지갑 주소)"든 전부 파라미터다 — 빌더처럼
     // 값/필드 토글 + 편집을 그대로 제공한다(저장은 이미 field 참조도 지원).
     const rhsOptions = compatibleRhsFields(ctx.rhsFields, field);
     const canField = SCALAR_OPS.has(cond.op) && rhsOptions.length > 0;
     const fieldMode = cond.value.kind === "field";
     const invalid = cond.value.kind === "decimal" && badDecimals.has(cond.value.value);
+    // 주어: ko는 조사(이/가) 선택이 필요해 `subjectJosa`를, en은 `subject`를
+    // 키 쪽에서 골라 쓴다 (sheet.subject = ko "{{subjectJosa}}" / en "{{subject}}").
+    const subjectText = t("sheet.subject", {
+      subject,
+      subjectJosa: withJosa(subject, "이", "가"), // i18n-ok
+    });
+    // 술어: 연산자별 문장 전체 키를 <v/> 토큰 기준으로 앞/뒤로 갈라 입력 위젯을
+    // 끼워 넣는다 — ko "… <v/>와 같으면", en "… equals <v/>".
+    const { pre, post } = opSentence(t, cond.op);
     return (
       <span className="pv-line">
-        <span className="pv-subj">{withJosa(subject, "이", "가")}</span>
+        <span className="pv-subj">{subjectText}</span>
+        {pre && <span className="pv-word">{pre}</span>}
         {fieldMode ? (
           <span className="pv-blank field">
             <FieldCombobox
@@ -807,12 +873,12 @@ function ValueSheet({
                   : { kind: "field", path: rhsOptions[0]?.path ?? "principal.address" },
               )
             }
-            title={fieldMode ? "고정 값(주소·숫자)으로 바꾸기" : "다른 필드와 비교"}
+            title={fieldMode ? t("sheet.toValueTitle") : t("form.toFieldTitle")}
           >
-            {fieldMode ? "값으로" : "필드로"}
+            {fieldMode ? t("sheet.toValue") : t("sheet.toField")}
           </button>
         )}
-        <span className="pv-word">{SUFFIX_KO[cond.op]}</span>
+        {post && <span className="pv-word">{post}</span>}
       </span>
     );
   };
@@ -822,7 +888,7 @@ function ValueSheet({
   const renderNodes = (nodes: FormNode[], or: boolean): ReactNode =>
     nodes.map((n, i) => (
       <Fragment key={i}>
-        {i > 0 && <span className="pv-conn">{or ? "또는" : "그리고"}</span>}
+        {i > 0 && <span className="pv-conn">{or ? t("or") : t("and")}</span>}
         {isGroupNode(n) ? (
           <span className="pv-group">{renderNodes(n.conds, !or)}</span>
         ) : (
@@ -837,7 +903,7 @@ function ValueSheet({
       <Fragment key={si}>
         {si > 0 && (
           <div className={`pv-or-div${sm ? " sm" : ""}`}>
-            <span>또는</span>
+            <span>{t("or")}</span>
           </div>
         )}
         <div className={`pv-flow${sm ? " sm" : ""}`}>{renderNodes(run, false)}</div>
@@ -859,18 +925,18 @@ function ValueSheet({
       <div className="pv-main">
       <div className="pv-card">
         <div className="pv-top">
-          <span className="pv-top-lk">이 지갑에서</span>
+          <span className="pv-top-lk">{t("sheet.inThisWallet")}</span>
           <b className={`pv-trigchip${triggerAny ? " any" : ""}`}>
-            {triggerAny ? "모든 거래" : triggerLabel}
+            {triggerAny ? t("sheet.anyTx") : triggerLabel}
           </b>
-          <span className="pv-top-lk">{triggerAny ? "마다" : "거래에서"}</span>
+          <span className="pv-top-lk">{triggerAny ? t("sheet.every") : t("sheet.inTx")}</span>
           <span className="pv-spacer" />
-          <span className="pv-ro-pill">뼈대 · 읽기전용</span>
+          <span className="pv-ro-pill">{t("sheet.skeletonReadonly")}</span>
         </div>
 
         <div className="pv-when">
           {whenRuns.length === 0 ? (
-            <div className="pv-empty">조건이 없어 이 거래는 항상 적용돼요.</div>
+            <div className="pv-empty">{t("sheet.noConditions")}</div>
           ) : (
             renderSituations(model.when)
           )}
@@ -879,14 +945,24 @@ function ValueSheet({
         <div className={`pv-verb ${severity}`}>
           <span className="pv-arrow">→</span>
           <span className="pv-verb-act">
-            {severity === "deny" ? "🚫 차단" : severity === "warn" ? "⚠ 경고" : "ℹ 정보"}
+            {severity === "deny"
+              ? `🚫 ${t("severity.deny")}`
+              : severity === "warn"
+                ? `⚠ ${t("severity.warn")}`
+                : `ℹ ${t("severity.info")}`}
           </span>
-          {reason && <span className="pv-reason">'{reason}'</span>}
+          <input
+            className={`pv-reason-input${reason.trim() ? "" : " empty"}`}
+            value={reason}
+            placeholder={t("sheet.reasonPlaceholder")}
+            title={t("sheet.reasonTitle")}
+            onChange={(e) => onReason(e.target.value)}
+          />
         </div>
 
         {hasUnless && (
           <div className="pv-unless">
-            <span className="pv-unless-lk">단, 다음이면 적용하지 않아요</span>
+            <span className="pv-unless-lk">{t("sheet.unlessLabel")}</span>
             {renderSituations(model.unless, true)}
           </div>
         )}
@@ -894,8 +970,8 @@ function ValueSheet({
 
       <div className="pv-diagram-card">
         <div className="pv-diagram-head">
-          정책 흐름도
-          <span className="pv-ro-pill">읽기전용</span>
+          {t("sheet.diagramTitle")}
+          <span className="pv-ro-pill">{t("sheet.readonly")}</span>
         </div>
         <div className="pv-diagram-body">
           <PolicyDiagram ir={ir} interactive humanizeLabel={humanizeLabel} />
@@ -904,12 +980,10 @@ function ValueSheet({
       </div>
 
       <div className="pv-foot">
-        <span className="pv-foot-note">
-          값만 바꿀 수 있어요 · 구조·트리거·심각도는 라이브러리 정책에서 수정해요.
-        </span>
+        <span className="pv-foot-note">{t("sheet.footNote")}</span>
         <span className="pv-spacer" />
         <button type="button" className="pv-revert" onClick={onRevert} disabled={!dirty}>
-          되돌리기
+          {t("sheet.revert")}
         </button>
       </div>
     </div>
@@ -944,15 +1018,16 @@ function ManifestPreview({
   onChangeText: (v: string) => void;
   onReset: () => void;
 }) {
+  const { t } = useTranslation("editor");
   const editing = overrideText !== null;
   const hasManifest = autoManifest !== undefined;
   const tag = editing
-    ? "직접 편집됨"
+    ? t("manifest.edited")
     : errors.length > 0
-      ? `오류 ${errors.length}`
+      ? t("manifest.errors", { count: errors.length })
       : hasManifest
-        ? "보강 필드 있음"
-        : "필요 없음";
+        ? t("manifest.hasFields")
+        : t("manifest.notNeeded");
   return (
     <div className="pf-manifest">
       <button type="button" className="pf-manifest-head" onClick={onToggle} aria-expanded={open}>
@@ -966,20 +1041,18 @@ function ManifestPreview({
             {editing ? (
               <>
                 <span className={`pf-manifest-status${parseErr ? " err" : " ok"}`}>
-                  {parseErr ? `JSON 오류 · 저장 시 자동값 사용` : "직접 편집 중 · 저장 시 이 값 사용"}
+                  {parseErr ? t("manifest.jsonErrStatus") : t("manifest.editingStatus")}
                 </span>
                 <button type="button" className="pf-manifest-btn" onClick={onReset}>
-                  ↺ 자동으로
+                  ↺ {t("manifest.toAuto")}
                 </button>
               </>
             ) : (
               <>
-                <span className="pf-manifest-status">
-                  정책에서 자동 생성됨 · 저장 시 이 값 사용
-                </span>
+                <span className="pf-manifest-status">{t("manifest.autoStatus")}</span>
                 {canEdit && (
                   <button type="button" className="pf-manifest-btn" onClick={onEdit}>
-                    ✎ 직접 편집
+                    ✎ {t("manifest.editBtn")}
                   </button>
                 )}
               </>
@@ -1004,8 +1077,7 @@ function ManifestPreview({
             <pre className="pf-manifest-json">{JSON.stringify(autoManifest, null, 2)}</pre>
           ) : (
             <div className="pf-manifest-empty">
-              이 정책은 <code>context.custom.*</code> 보강 필드를 쓰지 않아 manifest가 필요 없어요.
-              직접 편집으로 수동 manifest를 추가할 수도 있어요.
+              {t("manifest.emptyBefore")} <code>context.custom.*</code> {t("manifest.emptyAfter")}
             </div>
           )}
         </div>
@@ -1063,6 +1135,7 @@ function ConditionEditor({
   onChange: (nodes: FormNode[]) => void;
   selection: EditorSelection;
 }) {
+  const { t } = useTranslation("editor");
   const runs = situationsOf(nodes);
   // 모든 편집은 정규화를 거친다 — 투명 박스(자식 0/1)가 즉시 녹아서, 행의
   // "+또는"이 한 줄짜리 모두-박스 안에서 눌려도 바깥 하나라도-박스로 합쳐진다.
@@ -1103,7 +1176,7 @@ function ConditionEditor({
         <div key={si}>
           {si > 0 && (
             <div className="pf-or-div">
-              <span>또는</span>
+              <span>{t("or")}</span>
             </div>
           )}
           <div
@@ -1127,16 +1200,16 @@ function ConditionEditor({
                 selection.onClickSituation(run[0]);
               }}
             >
-              <span className="pf-sit-title">상황 {si + 1}</span>
-              {run.length > 1 && <span className="pf-sit-mode">다음에 모두 해당</span>}
+              <span className="pf-sit-title">{t("form.situationN", { n: si + 1 })}</span>
+              {run.length > 1 && <span className="pf-sit-mode">{t("form.allMatch")}</span>}
               <span className="pf-spc" />
               {!ctx.valuesOnly && (
                 <button
                   type="button"
                   className="pf-iconbtn danger"
                   onClick={() => removeSituation(si)}
-                  aria-label="상황 삭제"
-                  title="상황 삭제"
+                  aria-label={t("form.removeSituation")}
+                  title={t("form.removeSituation")}
                 >
                   ✕
                 </button>
@@ -1175,7 +1248,7 @@ function ConditionEditor({
             )}
             {!ctx.valuesOnly && (
               <button type="button" className="pf-add-cond sm" onClick={() => addCond(si)}>
-                + 그리고
+                {t("form.addAnd")}
               </button>
             )}
           </div>
@@ -1190,13 +1263,13 @@ function ConditionEditor({
             dropTo({ kind: "new-situation" });
           }}
         >
-          여기에 놓아 새 상황으로 만들기
+          {t("form.dropNewSituation")}
         </div>
       )}
       {!ctx.valuesOnly && (
         <div className="pf-add-row">
           <button type="button" className="pf-add-cond" onClick={addSituation}>
-            {runs.length === 0 ? "+ 위험 상황 추가" : "+ 또는"}
+            {runs.length === 0 ? t("form.addSituation") : t("form.addOr")}
           </button>
           <button
             type="button"
@@ -1205,11 +1278,11 @@ function ConditionEditor({
             disabled={!ctx.customFieldEnabled}
             title={
               ctx.customFieldEnabled
-                ? "서버에서 조회한 값(위험 점수, USD 가치 등)으로 조건을 걸 수 있는 필드를 만들어요"
-                : "먼저 ①에서 동작을 골라주세요 — 어떤 값을 넘길 수 있는지가 동작마다 달라요"
+                ? t("form.customFieldEnabledTitle")
+                : t("form.customFieldDisabledTitle")
             }
           >
-            ＋ 새 보강 필드 만들기
+            ＋ {t("form.newCustomField")}
           </button>
         </div>
       )}
@@ -1243,6 +1316,7 @@ function GroupBox({
   onConds: (conds: FormNode[]) => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation("editor");
   const { conds } = group;
   // joiner는 그룹 안에서 의미가 없지만 관례(머리 and, 나머지 or)로 정규화.
   const norm = (xs: FormNode[]): FormNode[] =>
@@ -1291,10 +1365,16 @@ function GroupBox({
           selection.onClickNode(group);
         }}
       >
-        <span className="pf-box-label">{orCtx ? "다음 중 하나라도" : "다음에 모두 해당"}</span>
+        <span className="pf-box-label">{orCtx ? t("form.anyMatch") : t("form.allMatch")}</span>
         <span className="pf-spc" />
         {!ctx.valuesOnly && (
-          <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="삭제" title="이 묶음 전체 삭제">
+          <button
+            type="button"
+            className="pf-iconbtn danger"
+            onClick={onRemove}
+            aria-label={t("common:delete")}
+            title={t("form.removeGroupTitle")}
+          >
             ✕
           </button>
         )}
@@ -1333,7 +1413,7 @@ function GroupBox({
       )}
       {!ctx.valuesOnly && (
         <button type="button" className="pf-or-btn" onClick={() => onConds(norm([...conds, newCond(ctx.fields)]))}>
-          {orCtx ? "+ 또는" : "+ 그리고"}
+          {orCtx ? t("form.addOr") : t("form.addAnd")}
         </button>
       )}
     </div>
@@ -1370,6 +1450,7 @@ function ConditionRow({
   onGroup?: () => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation("editor");
   const field = ctx.fieldByPath.get(cond.fieldPath);
   const ops = field ? operatorsFor(field.fieldKind) : (["=="] as FormOp[]);
   const chip = cond.fieldPath ? condChip(cond, ctx) : "…";
@@ -1401,7 +1482,7 @@ function ConditionRow({
               e.dataTransfer.setData("text/plain", "cond"); // Firefox needs data
               onDragStart();
             }}
-            title="드래그해서 다른 상황·묶음으로 이동"
+            title={t("form.dragTitle")}
           >
             ⠿
           </span>
@@ -1410,10 +1491,10 @@ function ConditionRow({
         {ctx.valuesOnly ? (
           // 인스턴스 편집: 비교 필드(LHS)·연산자는 구조 — 읽기 전용 칩으로.
           <>
-            <span className="pf-ctl pf-ro" title="조건 구성 변경은 라이브러리 정책에서 해주세요">
+            <span className="pf-ctl pf-ro" title={t("form.structureReadonlyTitle")}>
               {field?.label ?? cond.fieldPath ?? "…"}
             </span>
-            <span className="pf-ctl pf-leaf-op pf-ro">{OP_LABEL[cond.op]}</span>
+            <span className="pf-ctl pf-leaf-op pf-ro">{opShort(cond.op)}</span>
           </>
         ) : (
           <>
@@ -1421,7 +1502,7 @@ function ConditionRow({
             <select className="pf-ctl pf-leaf-op" value={cond.op} onChange={(e) => onOp(e.target.value as FormOp)}>
               {ops.map((op) => (
                 <option key={op} value={op}>
-                  {OP_LABEL[op]}
+                  {opShort(op)}
                 </option>
               ))}
             </select>
@@ -1438,9 +1519,9 @@ function ConditionRow({
                   : { kind: "field", path: rhsOptions[0]?.path ?? "principal.address" },
               )
             }
-            title={fieldMode ? "고정 값으로" : "다른 필드와 비교"}
+            title={fieldMode ? t("form.toValueTitle") : t("form.toFieldTitle")}
           >
-            {fieldMode ? "필드" : "값"}
+            {fieldMode ? t("form.fieldWord") : t("form.valueWord")}
           </button>
         )}
         {fieldMode ? (
@@ -1458,17 +1539,19 @@ function ConditionRow({
             type="button"
             className="pf-iconbtn"
             onClick={onGroup}
-            title={
-              alt
-                ? "이 선택지에 '그리고' 조건을 붙여요 — 다음에 모두 해당 묶음이 생겨요"
-                : "이 조건에 '또는' 선택지를 붙여요 — 다음 중 하나라도 묶음이 생겨요"
-            }
+            title={alt ? t("form.addAndTitle") : t("form.addOrTitle")}
           >
-            {alt ? "+그리고" : "+또는"}
+            {alt ? t("form.plusAnd") : t("form.plusOr")}
           </button>
         )}
         {!ctx.valuesOnly && (
-          <button type="button" className="pf-iconbtn danger" onClick={onRemove} aria-label="조건 삭제" title="삭제">
+          <button
+            type="button"
+            className="pf-iconbtn danger"
+            onClick={onRemove}
+            aria-label={t("form.removeCond")}
+            title={t("common:delete")}
+          >
             ✕
           </button>
         )}
@@ -1494,7 +1577,7 @@ function valueText(v: FormValue, ctx: EditorCtx, field?: FieldOption): string {
   const unit = field?.unit ? ` ${field.unit}` : "";
   switch (v.kind) {
     case "bool":
-      return v.value ? "참" : "거짓";
+      return v.value ? i18n.t("editor:value.true") : i18n.t("editor:value.false");
     case "long":
       // nano fields are stored ×10⁹; show plain token units to match the widget.
       return (field?.scale === "nano" ? v.value / 1e9 : v.value) + unit;
@@ -1505,7 +1588,9 @@ function valueText(v: FormValue, ctx: EditorCtx, field?: FieldOption): string {
       // Resolve a known address to its name; otherwise quote the literal.
       return ctx.lookupAddr(v.value) ? addrText(v.value, ctx) : `"${v.value}"`;
     case "set":
-      return v.values.length ? `[${v.values.map((x) => addrText(x, ctx)).join(", ")}]` : "[비어 있음]";
+      return v.values.length
+        ? `[${v.values.map((x) => addrText(x, ctx)).join(", ")}]`
+        : `[${i18n.t("editor:value.emptySet")}]`;
     case "field":
       return labelOf(v.path, ctx);
   }
@@ -1542,6 +1627,7 @@ function ValueInput({
   invalid?: boolean;
   onChange: (v: FormValue) => void;
 }) {
+  const { t } = useTranslation("editor");
   const unit = field?.unit;
   switch (value.kind) {
     case "bool":
@@ -1607,7 +1693,7 @@ function ValueInput({
           onChange={(e) =>
             onChange({ kind: "set", values: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })
           }
-          placeholder="값1, 값2, …"
+          placeholder={t("form.setPlaceholder")}
         />
       );
     }
@@ -1636,7 +1722,7 @@ function ValueInput({
               list={sugg ? listId : undefined}
               value={value.value}
               onChange={(e) => onChange({ kind: "string", value: e.target.value })}
-              placeholder={field?.desc ? field.desc.slice(0, 24) : "값"}
+              placeholder={field?.desc ? field.desc.slice(0, 24) : t("form.valuePlaceholder")}
             />
             {sugg && (
               <datalist id={listId}>

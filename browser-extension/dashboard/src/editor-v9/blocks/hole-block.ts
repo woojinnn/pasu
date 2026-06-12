@@ -20,19 +20,24 @@
  * The visible label changes to `[name : type]` if TYPE is non-empty, else
  * `[name]`. Adopter view (Phase F) replaces this with the supplied value
  * before evaluation.
+ *
+ * Exported as a factory so the tooltip resolves through i18n at registration
+ * time, not at module import.
  */
 
-export const EXPR_HOLE_BLOCK_JSON = {
-  type: "expr_hole",
-  message0: "param %1",
-  args0: [{ type: "field_input", name: "NAME", text: "param" }],
-  message1: "label %1",
-  args1: [{ type: "field_input", name: "LABEL", text: "" }],
-  message2: "type %1",
-  args2: [{ type: "field_input", name: "TYPE", text: "" }],
-  output: "Expr",
-  inputsInline: false,
-  colour: 320,
-  tooltip:
-    "파라미터 슬롯 — 작성자가 빈 자리로 노출, 적용자가 폼에서 값을 채웁니다",
-} as const;
+import { i18n } from "../../i18n";
+
+export const EXPR_HOLE_BLOCK_JSON = () =>
+  ({
+    type: "expr_hole",
+    message0: "param %1",
+    args0: [{ type: "field_input", name: "NAME", text: "param" }],
+    message1: "label %1",
+    args1: [{ type: "field_input", name: "LABEL", text: "" }],
+    message2: "type %1",
+    args2: [{ type: "field_input", name: "TYPE", text: "" }],
+    output: "Expr",
+    inputsInline: false,
+    colour: 320,
+    tooltip: i18n.t("blocks:block.expr_hole.tooltip"),
+  }) as const;

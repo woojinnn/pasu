@@ -13,6 +13,11 @@
  *
  * Run:  node scripts/gen-field-catalog.mjs            (writes the .generated.ts)
  *       node scripts/gen-field-catalog.mjs --inspect  (prints a few actions)
+ *
+ * i18n note: the generated curated-field-meta.generated.ts is the Korean
+ * source of truth for field labels/descs. The English translations live in
+ * src/i18n/locales/en/fields-curated.json as a manually maintained overlay.
+ * When regenerating with new fields, add matching en entries there.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "fs";
 import { dirname, join } from "path";

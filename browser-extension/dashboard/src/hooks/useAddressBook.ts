@@ -13,6 +13,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { getDashboardSummary, listTokens, tokenAddress } from "../server-api";
 import { KNOWN_TOKENS } from "./known-tokens.generated";
@@ -44,6 +45,7 @@ export function shortAddress(address: string): string {
 }
 
 export function useAddressBook(): AddressBook {
+  const { t } = useTranslation("common");
   const walletsQ = useQuery({
     queryKey: ["dashboard", "summary"],
     queryFn: getDashboardSummary,
@@ -67,22 +69,22 @@ export function useAddressBook(): AddressBook {
       if (!label) continue;
       const address = w.address.toLowerCase();
       if (map.has(address)) continue;
-      const entry: AddressEntry = { address, name: label, kind: "wallet", sub: "내 지갑" };
+      const entry: AddressEntry = { address, name: label, kind: "wallet", sub: t("addressBook.myWallet") };
       map.set(address, entry);
       suggestions.push(entry);
     }
-    for (const t of tokensQ.data ?? []) {
-      const address = tokenAddress(t.key);
-      const symbol = t.symbol?.trim();
+    for (const tok of tokensQ.data ?? []) {
+      const address = tokenAddress(tok.key);
+      const symbol = tok.symbol?.trim();
       if (!address || !symbol || map.has(address)) continue;
-      const entry: AddressEntry = { address, name: symbol, kind: "token", sub: "토큰" };
+      const entry: AddressEntry = { address, name: symbol, kind: "token", sub: t("addressBook.token") };
       map.set(address, entry);
       suggestions.push(entry);
     }
     // Bundled common tokens — resolve well-known addresses even when not held.
     for (const [address, symbol] of KNOWN_TOKENS) {
       if (map.has(address)) continue;
-      const entry: AddressEntry = { address, name: symbol, kind: "token", sub: "토큰" };
+      const entry: AddressEntry = { address, name: symbol, kind: "token", sub: t("addressBook.token") };
       map.set(address, entry);
       suggestions.push(entry);
     }
@@ -92,5 +94,5 @@ export function useAddressBook(): AddressBook {
       suggestions,
       loading: walletsQ.isLoading || tokensQ.isLoading,
     };
-  }, [walletsQ.data, tokensQ.data, walletsQ.isLoading, tokensQ.isLoading]);
+  }, [walletsQ.data, tokensQ.data, walletsQ.isLoading, tokensQ.isLoading, t]);
 }

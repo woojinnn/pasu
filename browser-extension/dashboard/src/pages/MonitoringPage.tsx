@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import {
   getDashboardSummary,
@@ -56,6 +58,7 @@ import "./monitoring.css";
  * joining approvals into holdings on `(chain, contract-address)`.
  */
 export function MonitoringPage() {
+  const { t } = useTranslation("monitoring");
   const [params, setParams] = useSearchParams();
   const [sel, setSel] = useState<"all" | string>(() => params.get("wallet") ?? "all");
   const [addOpen, setAddOpen] = useState(false);
@@ -142,7 +145,7 @@ export function MonitoringPage() {
           ? e.body
           : e instanceof Error
             ? e.message
-            : "동기화에 실패했어요";
+            : t("sync.failedFallback");
       setSyncErr(reason);
     },
     onSuccess: (_v, addrs) => {
@@ -193,13 +196,13 @@ export function MonitoringPage() {
       <>
         <div className="card" style={{ padding: 36, textAlign: "center" }}>
           <p style={{ margin: "0 0 8px 0", fontSize: 14, color: "var(--slate-700)", fontWeight: 600 }}>
-            추적 중인 지갑이 없습니다
+            {t("empty.noWallets")}
           </p>
           <p style={{ margin: "0 0 16px 0", fontSize: 12, color: "var(--slate-500)" }}>
-            지갑을 추가하면 holdings · approvals · 체인 분포가 여기에 나타납니다.
+            {t("empty.noWalletsDesc")}
           </p>
           <button className="btn primary" onClick={() => setAddOpen(true)}>
-            지갑 추가 +
+            {t("addWallet")}
           </button>
         </div>
         <AddWalletModal open={addOpen} onClose={() => setAddOpen(false)} />
@@ -223,21 +226,21 @@ export function MonitoringPage() {
           <div className="sync-wrap">
             {syncErr && !syncMut.isPending && (
               <span className="sync-err" title={syncErr}>
-                동기화 실패: {syncErr.slice(0, 100)}
+                {t("sync.failed", { error: syncErr.slice(0, 100) })}
               </span>
             )}
             {!syncErr && syncedAt !== null && !syncMut.isPending && (
-              <span className="sync-done">방금 동기화됨</span>
+              <span className="sync-done">{t("sync.justSynced")}</span>
             )}
             <button
               type="button"
               className="sync-btn"
               onClick={() => syncMut.mutate(targetWallets.map((w) => w.address))}
               disabled={syncMut.isPending || targetWallets.length === 0}
-              title={isL2 ? "이 지갑 동기화" : "모든 지갑 동기화"}
+              title={isL2 ? t("sync.thisWallet") : t("sync.allWallets")}
             >
               <span className={`sync-ic${syncMut.isPending ? " spin" : ""}`}>↻</span>
-              {syncMut.isPending ? "동기화 중…" : "동기화"}
+              {syncMut.isPending ? t("sync.syncing") : t("sync.sync")}
             </button>
           </div>
         }
@@ -270,7 +273,7 @@ export function MonitoringPage() {
         <LensToggle lens={lens} setLens={setLens} />
         {!isL2 && (
           <span className="meta" style={{ marginLeft: "auto", fontSize: 12, color: "var(--slate-400)" }}>
-            정렬: {lens === "risk" ? "위험 우선순위" : "USD 평가액"}
+            {lens === "risk" ? t("lens.sortRisk") : t("lens.sortUsd")}
           </span>
         )}
       </div>
@@ -295,7 +298,10 @@ export function MonitoringPage() {
       <div className="sec-head">
         <h3>Holdings</h3>
         <span className="meta">
-          {targetWallets.length} 지갑 · {holdingsQs.reduce((n, q) => n + (q.data?.length ?? 0), 0)} 토큰
+          {t("holdings.meta", {
+            wallets: targetWallets.length,
+            tokens: holdingsQs.reduce((n, q) => n + (q.data?.length ?? 0), 0),
+          })}
         </span>
       </div>
       <HoldingsTable
@@ -314,12 +320,12 @@ export function MonitoringPage() {
 
       <div className="sec-head">
         <h3>Hyperliquid</h3>
-        <span className="meta">포지션 · 레버리지 · 오픈 오더 · 마진</span>
+        <span className="meta">{t("hl.meta")}</span>
       </div>
       <HyperliquidSection wallets={targetWallets} queries={positionsQs} />
 
       <div className="sec-head">
-        <h3>대기 주문 (오프체인 인텐트 · 서명)</h3>
+        <h3>{t("pending.title")}</h3>
         <span className="meta">UniswapX · CoW · 1inch · permit</span>
       </div>
       <PendingTable wallets={targetWallets} queries={pendingQs} />
@@ -342,11 +348,12 @@ function WalletSwitch({
   wallets: DashboardWalletSummary[];
   loading: boolean;
 }) {
-  if (loading) return <div className="wallet-switch"><span className="ws-chip">불러오는 중…</span></div>;
+  const { t } = useTranslation("monitoring");
+  if (loading) return <div className="wallet-switch"><span className="ws-chip">{t("common:loading")}</span></div>;
   return (
     <div className="wallet-switch" role="group" aria-label="wallet switcher">
       <button className={`ws-chip${sel === "all" ? " on" : ""}`} onClick={() => setSel("all")}>
-        전체 합산
+        {t("walletSwitch.all")}
         <span className="ws-amt">{wallets.length}</span>
       </button>
       {wallets.map((w) => {
@@ -390,6 +397,7 @@ function aggregate(rows: DashboardWalletSummary[]): Aggregate {
 }
 
 function SummaryBar({ agg, loading }: { agg: Aggregate; loading: boolean }) {
+  const { t } = useTranslation("monitoring");
   if (loading) {
     return (
       <div className="summary-bar">
@@ -402,19 +410,19 @@ function SummaryBar({ agg, loading }: { agg: Aggregate; loading: boolean }) {
   return (
     <div className="summary-bar">
       <div className="sum-cell">
-        <span className="sc-k">총 자산</span>
+        <span className="sc-k">{t("summary.totalAssets")}</span>
         <span className="sc-v">${agg.totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
-        <span className="sc-sub">{agg.walletCount} 지갑 합산</span>
+        <span className="sc-sub">{t("summary.walletSum", { count: agg.walletCount })}</span>
       </div>
       <div className="sum-cell">
-        <span className="sc-k">대기 트랜잭션</span>
+        <span className="sc-k">{t("summary.pendingTx")}</span>
         <span className="sc-v">{agg.pending}</span>
         <span className="sc-sub">pending pool</span>
       </div>
       <div className="sum-cell">
-        <span className="sc-k">위험 신호</span>
+        <span className="sc-k">{t("summary.riskSignals")}</span>
         <div className="risk-chips">
-          <span className="risk-chip unl"><span className="rc-dot" />무제한 <b>{agg.unlimited}</b></span>
+          <span className="risk-chip unl"><span className="rc-dot" />{t("summary.unlimited")} <b>{agg.unlimited}</b></span>
         </div>
       </div>
     </div>
@@ -434,6 +442,7 @@ function L2HeaderBand({
   holdings: TokenHolding[];
   apIdx?: ApprovalIndex;
 }) {
+  const { t } = useTranslation("monitoring");
   const fails = findings.filter((f) => f.verdict === "fail" && f.user_decision === null).length;
   const warns = findings.filter((f) => f.verdict === "warn" && f.user_decision === null).length;
   const totalVar = holdings.reduce((s, h) => s + varOfHolding(h, apIdx), 0);
@@ -451,16 +460,16 @@ function L2HeaderBand({
       </div>
       <div className="l2h-metrics">
         <div className="l2m">
-          <span className="l2m-k">총 자산</span>
+          <span className="l2m-k">{t("summary.totalAssets")}</span>
           <span className="l2m-v">${totalUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
         </div>
         <div className="l2m">
-          <span className="l2m-k">총 VaR · 현재 노출</span>
+          <span className="l2m-k">{t("l2.totalVar")}</span>
           <span className="l2m-v var">${totalVar.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
           <span className="l2m-sub">min(allowance, balance) × price</span>
         </div>
         <div className="l2m">
-          <span className="l2m-k">무제한 승인</span>
+          <span className="l2m-k">{t("l2.unlimitedApprovals")}</span>
           <span className="l2m-v unl">{wallet.unlimited_count}</span>
           <span className="l2m-sub">potential exposure</span>
         </div>
@@ -492,6 +501,7 @@ function ActionQueueCard({
   loading: boolean;
   apIdx?: ApprovalIndex;
 }) {
+  const { t } = useTranslation("monitoring");
   const items: QueueItem[] = useMemo(() => {
     const out: QueueItem[] = [];
     findings
@@ -525,13 +535,13 @@ function ActionQueueCard({
   return (
     <section className="card aq-card">
       <div className="aq-head">
-        <h3 className="aq-title">긴급 항목 큐</h3>
-        <span className="aq-meta">{items.length}건 · 우선순위순</span>
+        <h3 className="aq-title">{t("queue.title")}</h3>
+        <span className="aq-meta">{t("queue.meta", { count: items.length })}</span>
       </div>
-      {loading && <div className="empty-cell">불러오는 중…</div>}
+      {loading && <div className="empty-cell">{t("common:loading")}</div>}
       {!loading && items.length === 0 && (
         <div className="aq-empty">
-          ✓ 처리할 긴급 항목이 없어요 — 이 지갑은 정상입니다.
+          {t("queue.empty")}
         </div>
       )}
       {!loading && items.length > 0 && (
@@ -544,6 +554,7 @@ function ActionQueueCard({
 }
 
 function QueueRow({ item, walletLabel: _walletLabel }: { item: QueueItem; walletLabel: string }) {
+  const { t } = useTranslation("monitoring");
   const qc = useMutation({
     mutationFn: (decision: "trusted" | "cancelled") =>
       item.data.type === "finding" ? setVerdictDecision(item.data.v.id, decision) : Promise.resolve(),
@@ -553,7 +564,7 @@ function QueueRow({ item, walletLabel: _walletLabel }: { item: QueueItem; wallet
     return (
       <div className={`aq-row ${item.severity}`}>
         <div className="aq-tag">
-          <span className="type-tag detection">탐지</span>
+          <span className="type-tag detection">{t("queue.detection")}</span>
           <span className={`v-pill ${item.severity}`}>{item.severity.toUpperCase()}</span>
         </div>
         <div className="aq-main">
@@ -561,8 +572,8 @@ function QueueRow({ item, walletLabel: _walletLabel }: { item: QueueItem; wallet
           <div className="aq-sub mono">{v.dapp_origin ?? "—"} · {v.reason?.ko ?? v.reason?.en ?? "—"}</div>
         </div>
         <div className="aq-actions">
-          <button className="btn primary" disabled={qc.isPending} onClick={() => qc.mutate("trusted")}>신뢰</button>
-          <button className="btn" disabled={qc.isPending} onClick={() => qc.mutate("cancelled")}>무시</button>
+          <button className="btn primary" disabled={qc.isPending} onClick={() => qc.mutate("trusted")}>{t("queue.trust")}</button>
+          <button className="btn" disabled={qc.isPending} onClick={() => qc.mutate("cancelled")}>{t("queue.ignore")}</button>
         </div>
       </div>
     );
@@ -572,7 +583,7 @@ function QueueRow({ item, walletLabel: _walletLabel }: { item: QueueItem; wallet
   return (
     <div className={`aq-row ${item.severity}`}>
       <div className="aq-tag">
-        <span className="type-tag approval">승인</span>
+        <span className="type-tag approval">{t("queue.approval")}</span>
         <span className={`v-pill ${item.severity}`}>{item.severity.toUpperCase()}</span>
       </div>
       <div className="aq-main">
@@ -584,7 +595,7 @@ function QueueRow({ item, walletLabel: _walletLabel }: { item: QueueItem; wallet
         </div>
       </div>
       <div className="aq-actions">
-        <span style={{ fontSize: 11, color: "var(--slate-400)" }}>아래 Approvals 표에서 철회</span>
+        <span style={{ fontSize: 11, color: "var(--slate-400)" }}>{t("queue.revokeHint")}</span>
       </div>
     </div>
   );
@@ -593,6 +604,7 @@ function QueueRow({ item, walletLabel: _walletLabel }: { item: QueueItem; wallet
 // ── Lens toggle + risk suggest banner ───────────────────────────────────
 
 function LensToggle({ lens, setLens }: { lens: "assets" | "risk"; setLens: (l: "assets" | "risk") => void }) {
+  const { t } = useTranslation("monitoring");
   return (
     <div className="lens-toggle" role="tablist" aria-label="lens">
       <button
@@ -601,7 +613,7 @@ function LensToggle({ lens, setLens }: { lens: "assets" | "risk"; setLens: (l: "
         className={`lens-btn${lens === "assets" ? " on" : ""}`}
         onClick={() => setLens("assets")}
       >
-        💰 자산 보기
+        {t("lens.assets")}
       </button>
       <button
         role="tab"
@@ -609,7 +621,7 @@ function LensToggle({ lens, setLens }: { lens: "assets" | "risk"; setLens: (l: "
         className={`lens-btn${lens === "risk" ? " on risk-on" : ""}`}
         onClick={() => setLens("risk")}
       >
-        🛡 위험 보기
+        {t("lens.risk")}
       </button>
     </div>
   );
@@ -624,13 +636,14 @@ function RiskSuggestBanner({
   onSwitch: () => void;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation("monitoring");
   return (
     <div className="risk-suggest">
       <span className="rs-ic">⚠</span>
       <span className="rs-txt">
-        <b>BLOCKED {failCount}건</b>이 감지됐어요. 위험 보기로 전환하면 노출된 자산이 상단으로 올라옵니다.
+        <Trans t={t} i18nKey="banner.suggest" count={failCount} components={{ b: <b /> }} />
       </span>
-      <button className="rs-act" onClick={onSwitch}>위험 보기로 전환</button>
+      <button className="rs-act" onClick={onSwitch}>{t("banner.switch")}</button>
       <button className="rs-dismiss" onClick={onDismiss} aria-label="dismiss">✕</button>
     </div>
   );
@@ -684,6 +697,7 @@ function ChainPill({ chain }: { chain: string | null }) {
 }
 
 function ChainBreakdown({ summary, loading }: { summary?: DashboardSummary; loading: boolean }) {
+  const { t } = useTranslation("monitoring");
   if (loading || !summary) {
     return <div className="chain-card"><div className="skeleton-row" style={{ width: "100%" }} /></div>;
   }
@@ -708,8 +722,8 @@ function ChainBreakdown({ summary, loading }: { summary?: DashboardSummary; load
     return (
       <div className="chain-card">
         <div className="cc-head">
-          <span className="cc-ttl">자산 분포</span>
-          <span className="cc-meta">잔고 없음</span>
+          <span className="cc-ttl">{t("chains.title")}</span>
+          <span className="cc-meta">{t("chains.noBalance")}</span>
         </div>
       </div>
     );
@@ -717,7 +731,7 @@ function ChainBreakdown({ summary, loading }: { summary?: DashboardSummary; load
   return (
     <div className="chain-card">
       <div className="cc-head">
-        <span className="cc-ttl">자산 분포</span>
+        <span className="cc-ttl">{t("chains.title")}</span>
         <span className="cc-meta">{rows.length} sources</span>
       </div>
       <div className="chain-bar">
@@ -772,6 +786,7 @@ function WalletAssetRatio({
   loading: boolean;
   onWalletClick: (addr: string) => void;
 }) {
+  const { t } = useTranslation("monitoring");
   if (loading) {
     return <div className="chain-card"><div className="skeleton-row" style={{ width: "100%" }} /></div>;
   }
@@ -780,8 +795,8 @@ function WalletAssetRatio({
     return (
       <div className="chain-card">
         <div className="cc-head">
-          <span className="cc-ttl">지갑별 자산 비율</span>
-          <span className="cc-meta">잔고 없음</span>
+          <span className="cc-ttl">{t("walletRatio.title")}</span>
+          <span className="cc-meta">{t("chains.noBalance")}</span>
         </div>
       </div>
     );
@@ -803,7 +818,7 @@ function WalletAssetRatio({
   return (
     <div className="chain-card">
       <div className="cc-head">
-        <span className="cc-ttl">지갑별 자산 비율</span>
+        <span className="cc-ttl">{t("walletRatio.title")}</span>
         <span className="cc-meta">{wallets.length} wallets</span>
       </div>
       <div className="chain-bar">
@@ -823,7 +838,7 @@ function WalletAssetRatio({
             type="button"
             className="chain-leg wallet-leg"
             onClick={() => onWalletClick(r.addr)}
-            title={`${r.label} 드릴다운`}
+            title={t("walletRatio.drilldown", { label: r.label })}
           >
             <span className="cl-dot" style={{ background: r.color }} />
             <span className="cl-name">{r.label}</span>
@@ -1023,6 +1038,7 @@ function HoldingsTable({
   lens: "assets" | "risk";
   onWalletClick: (addr: string) => void;
 }) {
+  const { t } = useTranslation("monitoring");
   const anyLoading = queries.some((q) => q.isLoading);
   const rows: HoldingRow[] = wallets.flatMap((w, i) => {
     const data = queries[i]?.data ?? [];
@@ -1088,27 +1104,27 @@ function HoldingsTable({
     <div className={`tbl-wrap lens-${lens}`}>
       {noRiskFound && (
         <div className="lens-empty-note">
-          ✓ 이 view에서 위험 자산이 감지되지 않음. <b>자산 보기</b>와 정렬 순서가 동일합니다.
+          <Trans t={t} i18nKey="holdings.noRiskNote" components={{ b: <b /> }} />
         </div>
       )}
       <table>
         <thead>
           <tr>
-            <th>자산</th>
-            <th>체인</th>
-            <th>지갑</th>
-            <th className="num">잔고</th>
+            <th>{t("table.asset")}</th>
+            <th>{t("table.chain")}</th>
+            <th>{t("table.wallet")}</th>
+            <th className="num">{t("table.balance")}</th>
             <th className={`num${lens === "assets" ? " col-emph" : ""}`}>USD</th>
-            <th className={lens === "risk" ? "col-emph" : ""}>위험 오버레이</th>
+            <th className={lens === "risk" ? "col-emph" : ""}>{t("table.riskOverlay")}</th>
             <th className={`num${lens === "risk" ? " col-emph" : ""}`}>VaR</th>
           </tr>
         </thead>
         <tbody>
           {anyLoading && (
-            <tr><td colSpan={7} className="empty-cell">불러오는 중…</td></tr>
+            <tr><td colSpan={7} className="empty-cell">{t("common:loading")}</td></tr>
           )}
           {!anyLoading && aggregated.length === 0 && (
-            <tr><td colSpan={7} className="empty-cell">표시할 holding이 없습니다</td></tr>
+            <tr><td colSpan={7} className="empty-cell">{t("holdings.empty")}</td></tr>
           )}
           {!anyLoading && isAggregated && aggregated.map((a) => {
             const rc = a.riskTags.includes("BLOCKED")
@@ -1149,7 +1165,7 @@ function HoldingsTable({
                 </td>
                 <td>
                   {a.riskTags.length === 0 ? (
-                    <span className="r-safe">노출 없음</span>
+                    <span className="r-safe">{t("holdings.noExposure")}</span>
                   ) : (
                     a.riskTags.map((t) => <span key={t} className={`risk-tag ${t}`}>{t}</span>)
                   )}
@@ -1204,7 +1220,7 @@ function HoldingsTable({
                   </td>
                   <td>
                     {tags.length === 0 ? (
-                      <span className="r-safe">노출 없음</span>
+                      <span className="r-safe">{t("holdings.noExposure")}</span>
                     ) : (
                       tags.map((t) => <span key={t} className={`risk-tag ${t}`}>{t}</span>)
                     )}
@@ -1237,6 +1253,7 @@ function WalletChips({
   wallets: Array<{ addr: string; label: string | null; balance: number; usd: number }>;
   onClick: (addr: string) => void;
 }) {
+  const { t } = useTranslation("monitoring");
   const [expanded, setExpanded] = useState(false);
   const sorted = useMemo(() => [...wallets].sort((a, b) => b.usd - a.usd), [wallets]);
   const visible = expanded ? sorted : sorted.slice(0, WALLET_CHIPS_VISIBLE);
@@ -1260,7 +1277,7 @@ function WalletChips({
             e.stopPropagation();
             setExpanded(true);
           }}
-          title={`나머지 ${hidden}개 펼치기`}
+          title={t("chips.expandRest", { count: hidden })}
         >
           +{hidden}
         </button>
@@ -1272,9 +1289,9 @@ function WalletChips({
             e.stopPropagation();
             setExpanded(false);
           }}
-          title="접기"
+          title={t("chips.collapse")}
         >
-          접기
+          {t("chips.collapse")}
         </button>
       )}
     </div>
@@ -1305,6 +1322,7 @@ function ApprovalsTable({
   wallets: DashboardWalletSummary[];
   queries: Array<ReturnType<typeof useQuery<ClassifiedApprovals>>>;
 }) {
+  const { t } = useTranslation("monitoring");
   const [revokeItem, setRevokeItem] = useState<RevokeItem | null>(null);
 
   const anyLoading = queries.some((q) => q.isLoading);
@@ -1328,21 +1346,21 @@ function ApprovalsTable({
         <table>
           <thead>
             <tr>
-              <th>유형</th>
-              <th>토큰 / 컬렉션</th>
-              <th>지갑</th>
+              <th>{t("table.type")}</th>
+              <th>{t("approvals.tokenOrCollection")}</th>
+              <th>{t("table.wallet")}</th>
               <th>spender / operator</th>
-              <th>금액</th>
-              <th>위험</th>
-              <th style={{ width: 80 }}>액션</th>
+              <th>{t("table.amount")}</th>
+              <th>{t("table.risk")}</th>
+              <th style={{ width: 80 }}>{t("table.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {anyLoading && (
-              <tr><td colSpan={7} className="empty-cell">불러오는 중…</td></tr>
+              <tr><td colSpan={7} className="empty-cell">{t("common:loading")}</td></tr>
             )}
             {!anyLoading && rows.length === 0 && (
-              <tr><td colSpan={7} className="empty-cell">표시할 approval이 없습니다</td></tr>
+              <tr><td colSpan={7} className="empty-cell">{t("approvals.empty")}</td></tr>
             )}
             {!anyLoading && rows.map((r, idx) => {
               const isErc20 = r.kind === "erc20";
@@ -1383,7 +1401,7 @@ function ApprovalsTable({
                           })
                         }
                       >
-                        철회
+                        {t("revoke.action")}
                       </button>
                     ) : (
                       <span style={{ fontSize: 11, color: "var(--slate-400)" }}>—</span>
@@ -1410,6 +1428,7 @@ function HyperliquidSection({
   wallets: DashboardWalletSummary[];
   queries: Array<ReturnType<typeof useQuery<Position[]>>>;
 }) {
+  const { t } = useTranslation("monitoring");
   const anyLoading = queries.some((q) => q.isLoading);
   const accounts = wallets
     .map((w, i) => ({ w, acct: hlAccountOf(queries[i]?.data ?? []) }))
@@ -1419,7 +1438,7 @@ function HyperliquidSection({
     return (
       <div className="tbl-wrap">
         <div className="empty-cell" style={{ padding: 12 }}>
-          {anyLoading ? "불러오는 중…" : "Hyperliquid 계정이 없습니다"}
+          {anyLoading ? t("common:loading") : t("hl.noAccount")}
         </div>
       </div>
     );
@@ -1470,6 +1489,7 @@ function hlVaultUsd(acct: HlAccount): number {
 }
 
 function HlAccountCard({ wallet, acct }: { wallet: DashboardWalletSummary; acct: HlAccount }) {
+  const { t } = useTranslation("monitoring");
   const levByAsset = new Map(acct.leverage_settings.map((s) => [s.asset_index, s]));
   const posByAsset = new Map(acct.positions.map((p) => [p.asset_index, p]));
   const label = wallet.label ?? shortAddr(wallet.address);
@@ -1487,7 +1507,7 @@ function HlAccountCard({ wallet, acct }: { wallet: DashboardWalletSummary; acct:
           {spotUsd > 0 && <span className="hl-chip muted">Spot {fmtUsd(String(spotUsd), 2)}</span>}
           {vaultUsd > 0 && <span className="hl-chip muted">Vault {fmtUsd(String(vaultUsd), 2)}</span>}
           {Number(acct.pending_outflow) > 0 && (
-            <span className="hl-chip danger">출금대기 {fmtUsd(acct.pending_outflow, 2)}</span>
+            <span className="hl-chip danger">{t("hl.pendingOutflow", { amount: fmtUsd(acct.pending_outflow, 2) })}</span>
           )}
           {acct.agents.length > 0 && <span className="hl-chip danger">agent {acct.agents.length}</span>}
         </div>
@@ -1502,14 +1522,14 @@ function HlAccountCard({ wallet, acct }: { wallet: DashboardWalletSummary; acct:
             <div className="hl-pos-main">
               <span className="hl-sym">{coin}</span>
               {dex && <span className="hl-dex">{dex}</span>}
-              <span className={`hl-side ${p.is_long ? "long" : "short"}`}>{p.is_long ? "롱" : "숏"}</span>
-              {lev && <span className="hl-chip">{lev.leverage}x {lev.is_cross ? "교차" : "격리"}</span>}
+              <span className={`hl-side ${p.is_long ? "long" : "short"}`}>{p.is_long ? t("hl.long") : t("hl.short")}</span>
+              {lev && <span className="hl-chip">{lev.leverage}x {lev.is_cross ? t("hl.cross") : t("hl.isolated")}</span>}
             </div>
             <div className="hl-stats">
-              <span className="hl-stat"><span className="k">수량</span><span className="v">{fmtDec(p.size)}</span></span>
-              <span className="hl-stat"><span className="k">진입가</span><span className="v">{fmtDec(p.entry_price)}</span></span>
+              <span className="hl-stat"><span className="k">{t("hl.size")}</span><span className="v">{fmtDec(p.size)}</span></span>
+              <span className="hl-stat"><span className="k">{t("hl.entryPrice")}</span><span className="v">{fmtDec(p.entry_price)}</span></span>
               {isFinite(notional) && (
-                <span className="hl-stat"><span className="k">평가</span><span className="v">{fmtUsd(notional, 0)}</span></span>
+                <span className="hl-stat"><span className="k">{t("hl.notional")}</span><span className="v">{fmtUsd(notional, 0)}</span></span>
               )}
             </div>
           </div>
@@ -1518,27 +1538,27 @@ function HlAccountCard({ wallet, acct }: { wallet: DashboardWalletSummary; acct:
 
       {acct.open_orders.length > 0 && (
         <>
-          <div className="hl-group-label">오픈 오더 {acct.open_orders.length}</div>
+          <div className="hl-group-label">{t("hl.openOrders", { count: acct.open_orders.length })}</div>
           {acct.open_orders.map((o, i) => {
             const { coin } = splitSym(o.symbol, o.asset_index);
             const tag = tpSlOf(o, posByAsset.get(o.asset_index));
             return (
               <div className="hl-ord" key={`o${i}`}>
-                <span className={`hl-side ${o.is_buy ? "long" : "short"}`}>{o.is_buy ? "매수" : "매도"}</span>
+                <span className={`hl-side ${o.is_buy ? "long" : "short"}`}>{o.is_buy ? t("hl.buy") : t("hl.sell")}</span>
                 <span className="hl-sym sm">{coin}</span>
                 {o.is_trigger && o.trigger_price ? (
                   <span className="hl-trigger">
-                    트리거 {fmtDec(o.trigger_price)} <span className="arrow">→</span> 지정 {fmtDec(o.price)}
+                    {t("hl.trigger")} {fmtDec(o.trigger_price)} <span className="arrow">→</span> {t("hl.limit")} {fmtDec(o.price)}
                   </span>
                 ) : (
-                  <span className="hl-trigger">지정가 {fmtDec(o.price)}</span>
+                  <span className="hl-trigger">{t("hl.limitPrice")} {fmtDec(o.price)}</span>
                 )}
-                {tag === "tp" && <span className="hl-tp">익절</span>}
-                {tag === "sl" && <span className="hl-sl">손절</span>}
+                {tag === "tp" && <span className="hl-tp">{t("hl.tp")}</span>}
+                {tag === "sl" && <span className="hl-sl">{t("hl.sl")}</span>}
                 <span className="hl-ord-meta">
-                  수량 {o.is_position_tpsl || Number(o.size) === 0 ? "전량" : fmtDec(o.size)} ·{" "}
+                  {t("hl.size")} {o.is_position_tpsl || Number(o.size) === 0 ? t("hl.fullSize") : fmtDec(o.size)} ·{" "}
                   {o.tif.toUpperCase()}
-                  {o.reduce_only ? " · 청산전용" : ""}
+                  {o.reduce_only ? ` · ${t("hl.reduceOnly")}` : ""}
                 </span>
               </div>
             );
@@ -1546,31 +1566,32 @@ function HlAccountCard({ wallet, acct }: { wallet: DashboardWalletSummary; acct:
         </>
       )}
 
-      {empty && <div className="hl-empty">열린 포지션·오더 없음</div>}
+      {empty && <div className="hl-empty">{t("hl.empty")}</div>}
     </div>
   );
 }
 
 // ── Pending (off-chain intent orders / signed permits) ───────────────────
 
-const PENDING_LABELS: Record<PendingKind["kind"], string> = {
-  offchain_limit_order: "오프체인 주문",
-  perp_venue_order: "perp 주문",
-  signed_permit2: "Permit2",
-  signed_permit2_transfer: "Permit2 전송",
-  signed_e_i_p2612: "EIP-2612",
+// i18n keys only — resolved through t() at render time (never at import time).
+const PENDING_LABEL_KEYS: Record<PendingKind["kind"], string> = {
+  offchain_limit_order: "pending.kind.offchainLimitOrder",
+  perp_venue_order: "pending.kind.perpVenueOrder",
+  signed_permit2: "pending.kind.signedPermit2",
+  signed_permit2_transfer: "pending.kind.signedPermit2Transfer",
+  signed_e_i_p2612: "pending.kind.signedEip2612",
 };
 
-function pendingSummary(k: PendingKind): string {
+function pendingSummary(t: TFunction<"monitoring">, k: PendingKind): string {
   switch (k.kind) {
     case "offchain_limit_order":
-      return `최대매도 ${k.sell_max} → 최소매수 ${k.buy_min}`;
+      return t("pending.summary.limitOrder", { sellMax: k.sell_max, buyMin: k.buy_min });
     case "perp_venue_order":
       return `${k.side} ${k.size_base} @ ${k.price}${k.reduce_only ? " (reduce)" : ""}`;
     case "signed_permit2":
     case "signed_permit2_transfer":
     case "signed_e_i_p2612":
-      return `한도 ${k.amount} · spender ${shortAddr(k.spender)}`;
+      return t("pending.summary.permit", { amount: k.amount, spender: shortAddr(k.spender) });
   }
 }
 
@@ -1581,26 +1602,27 @@ function PendingTable({
   wallets: DashboardWalletSummary[];
   queries: Array<ReturnType<typeof useQuery<PendingTx[]>>>;
 }) {
+  const { t } = useTranslation("monitoring");
   const anyLoading = queries.some((q) => q.isLoading);
   const rows = wallets.flatMap((w, i) => (queries[i]?.data ?? []).map((p) => ({ w, p })));
   return (
     <div className="tbl-wrap">
       <table>
         <thead>
-          <tr><th>유형</th><th>지갑</th><th>요약</th><th>서명 시각</th></tr>
+          <tr><th>{t("table.type")}</th><th>{t("table.wallet")}</th><th>{t("pending.summaryCol")}</th><th>{t("pending.signedAt")}</th></tr>
         </thead>
         <tbody>
           {anyLoading && rows.length === 0 && (
-            <tr><td colSpan={4} className="empty-cell">불러오는 중…</td></tr>
+            <tr><td colSpan={4} className="empty-cell">{t("common:loading")}</td></tr>
           )}
           {!anyLoading && rows.length === 0 && (
-            <tr><td colSpan={4} className="empty-cell">대기 중인 주문이 없습니다</td></tr>
+            <tr><td colSpan={4} className="empty-cell">{t("pending.empty")}</td></tr>
           )}
           {rows.map(({ w, p }, idx) => (
             <tr key={idx}>
-              <td className="strong" style={{ fontSize: 11 }}>{PENDING_LABELS[p.kind.kind] ?? p.kind.kind}</td>
+              <td className="strong" style={{ fontSize: 11 }}>{PENDING_LABEL_KEYS[p.kind.kind] ? t(PENDING_LABEL_KEYS[p.kind.kind]) : p.kind.kind}</td>
               <td className="mono">{w.label ?? shortAddr(w.address)}</td>
-              <td className="meta">{pendingSummary(p.kind)}</td>
+              <td className="meta">{pendingSummary(t, p.kind)}</td>
               <td className="mono num">{p.signed_at ? new Date(p.signed_at * 1000).toLocaleString() : "—"}</td>
             </tr>
           ))}
@@ -1626,6 +1648,7 @@ function fmtUsd(d: string | number, frac: number): string {
 // ── Revoke modal ────────────────────────────────────────────────────────
 
 function RevokeModal({ item, onClose }: { item: RevokeItem; onClose: () => void }) {
+  const { t } = useTranslation("monitoring");
   const planMut = useMutation({
     mutationFn: async () => planRevokesLocal([item]),
   });
@@ -1635,11 +1658,11 @@ function RevokeModal({ item, onClose }: { item: RevokeItem; onClose: () => void 
     <Modal
       open
       onClose={onClose}
-      title="ERC-20 approve 철회"
+      title={t("revoke.title")}
       width={560}
       footer={
         <>
-          <button className="btn" onClick={onClose}>닫기</button>
+          <button className="btn" onClick={onClose}>{t("common:close")}</button>
           {planMut.data && (
             <button
               className="btn primary"
@@ -1647,27 +1670,25 @@ function RevokeModal({ item, onClose }: { item: RevokeItem; onClose: () => void 
                 navigator.clipboard.writeText(JSON.stringify(planMut.data, null, 2));
               }}
             >
-              JSON 복사
+              {t("revoke.copyJson")}
             </button>
           )}
         </>
       }
     >
       <p style={{ marginTop: 0, fontSize: 13, color: "var(--slate-600)" }}>
-        아래는 <code>approve(spender, 0)</code> 호출에 필요한 calldata입니다.
-        지갑(MetaMask 등)에서 직접 트랜잭션으로 보내야 실제로 철회됩니다.
-        Pasu 백엔드는 절대 자동 전송하지 않습니다.
+        <Trans t={t} i18nKey="revoke.desc" components={{ code: <code /> }} />
       </p>
       <div className="form-row">
-        <label>대상</label>
+        <label>{t("revoke.target")}</label>
         <div className="mono" style={{ fontSize: 12, color: "var(--slate-700)", padding: "8px 10px", background: "var(--fog-200)", borderRadius: "var(--r-sm)" }}>
           token: {item.token}
           <br />spender: {item.spender}
           <br />chain: {item.chain}
         </div>
       </div>
-      {planMut.isPending && <div>calldata 빌드 중…</div>}
-      {planMut.error && <div className="err">실패: {String(planMut.error)}</div>}
+      {planMut.isPending && <div>{t("revoke.building")}</div>}
+      {planMut.error && <div className="err">{t("revoke.failed", { error: String(planMut.error) })}</div>}
       {planMut.data && <CallPreview resp={planMut.data} />}
     </Modal>
   );

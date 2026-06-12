@@ -11,7 +11,9 @@
  * 폼 비호환 정책(irToForm 실패)은 안내 문구로 폴백.
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
+import { i18n } from "../../i18n";
 import { textToBlocks } from "../../cedar";
 import {
   irToForm,
@@ -28,18 +30,31 @@ import { getGloss } from "../../editor-v9/gloss/paths";
 import { splitManifestHoles } from "./publish-holes";
 import type { PublishHole } from "./publish-redact";
 
-const OP_LABEL: Record<FormOp, string> = {
-  "==": "=",
-  "!=": "≠",
-  "<": "<",
-  "<=": "≤",
-  ">": ">",
-  ">=": "≥",
-  contains: "포함",
-  notContains: "포함 안 함",
-  in: "∈",
-  notIn: "∉",
-};
+/** 연산자 칩 — 기호는 언어 공통, 포함류만 번역. 호출 시점 t() (모듈 평가 금지). */
+function opLabel(op: FormOp): string {
+  switch (op) {
+    case "==":
+      return "=";
+    case "!=":
+      return "≠";
+    case "<":
+      return "<";
+    case "<=":
+      return "≤";
+    case ">":
+      return ">";
+    case ">=":
+      return "≥";
+    case "contains":
+      return i18n.t("editor:op.contains");
+    case "notContains":
+      return i18n.t("editor:op.notContains");
+    case "in":
+      return "∈";
+    case "notIn":
+      return "∉";
+  }
+}
 
 function kindMatches(value: FormValue, kind: PublishHole["kind"]): boolean {
   if (kind === "address") {
@@ -83,7 +98,9 @@ export function holeAssignments(
 }
 
 function fieldLabel(path: string): string {
-  return getGloss(path)?.ko ?? path.split(".").pop() ?? path;
+  const g = getGloss(path);
+  if (g) return i18n.language?.startsWith("en") ? g.en : g.ko;
+  return path.split(".").pop() ?? path;
 }
 
 function shortAddr(a: string): string {
@@ -93,7 +110,7 @@ function shortAddr(a: string): string {
 function valueText(v: FormValue): string {
   switch (v.kind) {
     case "bool":
-      return v.value ? "참" : "거짓";
+      return v.value ? i18n.t("editor:value.true") : i18n.t("editor:value.false");
     case "long":
       return String(v.value);
     case "decimal":
@@ -108,7 +125,7 @@ function valueText(v: FormValue): string {
 }
 
 function triggerText(model: FormModel): string {
-  if (model.trigger.kind === "any") return "모든 액션";
+  if (model.trigger.kind === "any") return i18n.t("editor:tree.anyAction");
   const t = model.trigger;
   const known = KNOWN_ACTIONS.find((a) => a.entityType === t.entityType && a.id === t.id);
   return known?.label ?? t.id;
@@ -147,20 +164,22 @@ export function ConditionTree(props: {
   renderValue: (leaf: FormCondition) => ReactNode;
 }) {
   const { model, renderValue } = props;
+  const { t } = useTranslation("editor");
+  const joiner = (j: "and" | "or") => (j === "or" ? t("or") : t("and"));
   const renderNodes = (nodes: FormNode[]) =>
     nodes.map((n, i) =>
       isGroupNode(n) ? (
         <div key={i} className="pub-tree-grouprow">
-          {i > 0 && <span className="pub-tree-joiner">{n.joiner === "or" ? "또는" : "그리고"}</span>}
+          {i > 0 && <span className="pub-tree-joiner">{joiner(n.joiner)}</span>}
           <div className="pub-tree-group">{renderNodes(n.conds)}</div>
         </div>
       ) : (
         <div key={i} className="pub-tree-row">
-          {i > 0 && <span className="pub-tree-joiner">{n.joiner === "or" ? "또는" : "그리고"}</span>}
+          {i > 0 && <span className="pub-tree-joiner">{joiner(n.joiner)}</span>}
           <span className="pub-tree-field">
             {fieldLabel(n.fieldPath)} <code>{n.fieldPath}</code>
           </span>
-          <span className="pub-tree-op">{OP_LABEL[n.op]}</span>
+          <span className="pub-tree-op">{opLabel(n.op)}</span>
           {renderValue(n)}
         </div>
       ),
@@ -169,18 +188,18 @@ export function ConditionTree(props: {
   return (
     <div className="pub-tree">
       <div className="pub-tree-sec">
-        <span className="pub-tree-sech">대상</span>
+        <span className="pub-tree-sech">{t("tree.target")}</span>
         <span className="pub-tree-trigger">{triggerText(model)}</span>
       </div>
       {model.when.length > 0 && (
         <div className="pub-tree-sec">
-          <span className="pub-tree-sech">조건</span>
+          <span className="pub-tree-sech">{t("tree.conditions")}</span>
           <div className="pub-tree-list">{renderNodes(model.when)}</div>
         </div>
       )}
       {model.unless.length > 0 && (
         <div className="pub-tree-sec">
-          <span className="pub-tree-sech">단, 제외</span>
+          <span className="pub-tree-sech">{t("tree.unless")}</span>
           <div className="pub-tree-list">{renderNodes(model.unless)}</div>
         </div>
       )}
@@ -196,15 +215,13 @@ export function PublishPreviewTree(props: {
   onToggleKeep: (key: string) => void;
 }) {
   const { cedarText, holes, kept, onToggleKeep } = props;
+  const { t } = useTranslation("editor");
   const model = useFormModel(cedarText);
 
-  if (model === "loading") return <div className="pub-tree-muted">조건 불러오는 중…</div>;
+  if (model === "loading")
+    return <div className="pub-tree-muted">{t("tree.loadingConditions")}</div>;
   if (!model) {
-    return (
-      <div className="pub-tree-muted">
-        폼 미리보기를 지원하지 않는 정책이에요 — Cedar 원문이 그대로 게시됩니다.
-      </div>
-    );
+    return <div className="pub-tree-muted">{t("tree.noFormPreview")}</div>;
   }
 
   const assigned = holeAssignments(model, holes);
@@ -219,13 +236,13 @@ export function PublishPreviewTree(props: {
         className={`pub-tree-hole${isKept ? " public" : ""}`}
         title={
           isKept
-            ? "이 값이 마켓에 그대로 공개됩니다 — 클릭해서 비우기"
-            : `게시 시 비워지고 설치자가 채웁니다 (${h.paramName}) — 클릭해서 값 공개`
+            ? t("tree.keptTitle")
+            : t("tree.blankedTitle", { param: h.paramName })
         }
         onClick={() => onToggleKeep(h.key)}
       >
         <span className={isKept ? "" : "strike"}>{valueText(leaf.value)}</span>
-        <span className="tag">{isKept ? "공개" : h.paramName}</span>
+        <span className="tag">{isKept ? t("tree.publicTag") : h.paramName}</span>
       </button>
     );
   };
@@ -245,26 +262,24 @@ function toParameterized(m: FormModel): FormModel {
  */
 export function ListingConditionTree(props: { cedarText: string; manifest?: unknown }) {
   const { cedarText, manifest } = props;
+  const { t } = useTranslation("editor");
   const model = useFormModel(cedarText, toParameterized);
   const shipped = splitManifestHoles(manifest).shipped;
   const byName = new Map(shipped.map((s) => [s.name, s]));
 
-  if (model === "loading") return <div className="pub-tree-muted">조건 불러오는 중…</div>;
+  if (model === "loading")
+    return <div className="pub-tree-muted">{t("tree.loadingConditions")}</div>;
   if (!model) {
-    return (
-      <div className="pub-tree-muted">
-        이 정책은 조건 보기를 지원하지 않아요 — policy.cedar 탭에서 원문을 확인하세요.
-      </div>
-    );
+    return <div className="pub-tree-muted">{t("tree.noConditionView")}</div>;
   }
 
   const renderValue = (leaf: FormCondition) => {
     const spec = leaf.param ? byName.get(leaf.param.name) : undefined;
     if (spec) {
       return (
-        <span className="pub-tree-hole asis" title="게시자가 비워둔 칸 — 받을 때 내 값을 채워야 적용돼요">
-          <span className="tag">빈칸</span>
-          {spec.label} — 설치할 때 채워요
+        <span className="pub-tree-hole asis" title={t("tree.holeTitle")}>
+          <span className="tag">{t("tree.holeTag")}</span>
+          {t("tree.fillAtInstall", { label: spec.label })}
         </span>
       );
     }

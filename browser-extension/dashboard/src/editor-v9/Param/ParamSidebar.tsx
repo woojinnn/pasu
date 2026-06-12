@@ -15,6 +15,8 @@
  * via @tanstack/react-virtual is a small follow-up (deps already present).
  */
 
+import { useTranslation } from "react-i18next";
+
 import type { ParamSpec, PolicyIR } from "../../cedar/blocks";
 import { extractParams } from "../../cedar/blocks";
 
@@ -26,11 +28,13 @@ export interface ParamSidebarProps {
 }
 
 export function ParamSidebar({ policy, onJump }: ParamSidebarProps) {
+  const { t } = useTranslation("blocks");
+
   if (!policy) {
     return (
       <div style={paneStyle}>
-        <div style={headerStyle}>파라미터</div>
-        <div style={emptyStyle}>(워크스페이스가 비어있습니다)</div>
+        <div style={headerStyle}>{t("sidebar.title")}</div>
+        <div style={emptyStyle}>{t("sidebar.emptyWorkspace")}</div>
       </div>
     );
   }
@@ -46,16 +50,14 @@ export function ParamSidebar({ policy, onJump }: ParamSidebarProps) {
   return (
     <div style={paneStyle}>
       <div style={headerStyle}>
-        파라미터
+        {t("sidebar.title")}
         <span style={countStyle}>{specs.length}</span>
       </div>
       {extractError && (
         <div style={errorStyle}>⚠ {extractError}</div>
       )}
       {!extractError && specs.length === 0 && (
-        <div style={emptyStyle}>
-          (없음) — 값 블록을 우클릭 → "파라미터로 만들기"
-        </div>
+        <div style={emptyStyle}>{t("sidebar.emptyHint")}</div>
       )}
       <ul style={listStyle}>
         {specs.map((s) => (
@@ -63,16 +65,16 @@ export function ParamSidebar({ policy, onJump }: ParamSidebarProps) {
             key={s.name}
             style={rowStyle}
             onClick={() => onJump?.(s.name)}
-            title="클릭: 캔버스에서 블록 찾기"
+            title={t("sidebar.rowTitle")}
           >
             <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
               <span style={nameStyle}>{s.name}</span>
               {s.optional && <span style={chipStyle}>optional</span>}
             </div>
             <div style={metaStyle}>
-              <span>{s.label ? s.label : <em style={dimStyle}>(라벨 없음)</em>}</span>
+              <span>{s.label ? s.label : <em style={dimStyle}>{t("sidebar.noLabel")}</em>}</span>
               {s.type && <span style={typeChipStyle}>{s.type}</span>}
-              <span style={dimStyle}>{describeExpected(s.expected)}</span>
+              <span style={dimStyle}>{t(`sidebar.expected.${EXPECTED_KEY[s.expected]}`)}</span>
             </div>
           </li>
         ))}
@@ -81,22 +83,14 @@ export function ParamSidebar({ policy, onJump }: ParamSidebarProps) {
   );
 }
 
-function describeExpected(e: ParamSpec["expected"]): string {
-  switch (e) {
-    case "lit:long":
-      return "정수";
-    case "lit:string":
-      return "문자열";
-    case "lit:bool":
-      return "true/false";
-    case "litEntity":
-      return "엔티티";
-    case "set":
-      return "집합";
-    case "attr":
-      return "필드 참조";
-  }
-}
+const EXPECTED_KEY: Record<ParamSpec["expected"], string> = {
+  "lit:long": "long",
+  "lit:string": "string",
+  "lit:bool": "bool",
+  litEntity: "entity",
+  set: "set",
+  attr: "attr",
+};
 
 const paneStyle: React.CSSProperties = {
   width: 240,

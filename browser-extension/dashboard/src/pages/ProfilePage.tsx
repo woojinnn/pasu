@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import {
   deleteListing,
@@ -22,6 +23,7 @@ import "./profile.css";
  *  3. Reset switches: wipe this account's wallets / policies.
  */
 export function ProfilePage() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user, logout } = useAuth();
@@ -49,9 +51,9 @@ export function ProfilePage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["wallets"] });
-      setBanner("지갑을 모두 초기화했어요.");
+      setBanner(t("profile.resetWalletsDone"));
     },
-    onError: (e) => setBanner(`지갑 초기화 실패: ${String(e)}`),
+    onError: (e) => setBanner(t("profile.resetWalletsFailed", { error: String(e) })),
   });
 
   const resetPoliciesMut = useMutation({
@@ -66,9 +68,9 @@ export function ProfilePage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
-      setBanner("정책·패키지를 모두 초기화했어요.");
+      setBanner(t("profile.resetPoliciesDone"));
     },
-    onError: (e) => setBanner(`정책 초기화 실패: ${String(e)}`),
+    onError: (e) => setBanner(t("profile.resetPoliciesFailed", { error: String(e) })),
   });
 
   const deleteListingMut = useMutation({
@@ -76,9 +78,9 @@ export function ProfilePage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["my-listings"] });
       void qc.invalidateQueries({ queryKey: ["market-listings"] });
-      setBanner("게시물을 삭제했어요.");
+      setBanner(t("profile.deleteListingDone"));
     },
-    onError: (e) => setBanner(`게시물 삭제 실패: ${String(e)}`),
+    onError: (e) => setBanner(t("profile.deleteListingFailed", { error: String(e) })),
   });
 
   const onLogout = () => {
@@ -91,7 +93,7 @@ export function ProfilePage() {
 
   return (
     <>
-      <Topbar here="프로필" subtitle="내 계정" showSearch={false} />
+      <Topbar here={t("profile.title")} subtitle={t("profile.subtitle")} showSearch={false} />
       <div className="pp-body">
         {banner && <div className="pp-banner">{banner}</div>}
 
@@ -102,22 +104,19 @@ export function ProfilePage() {
             <div className="pp-email">{email}</div>
           </div>
           <button type="button" className="pp-btn ghost danger" onClick={onLogout}>
-            로그아웃
+            {t("profile.signOut")}
           </button>
         </section>
 
         {/* published posts */}
         <section className="pp-card">
           <div className="pp-sec-head">
-            <h2>올린 게시물</h2>
+            <h2>{t("profile.myListings")}</h2>
             <span className="pp-count">{myListingsQ.data?.length ?? 0}</span>
           </div>
-          {myListingsQ.isLoading && <div className="pp-muted">불러오는 중…</div>}
+          {myListingsQ.isLoading && <div className="pp-muted">{t("loading")}</div>}
           {myListingsQ.data && myListingsQ.data.length === 0 && (
-            <div className="pp-empty">
-              아직 마켓에 올린 게시물이 없어요. 에디터에서 정책을 만들고 “마켓에
-              올리기”로 공개해보세요.
-            </div>
+            <div className="pp-empty">{t("profile.noListings")}</div>
           )}
           {myListingsQ.data && myListingsQ.data.length > 0 && (
             <ul className="pp-listings">
@@ -131,7 +130,7 @@ export function ProfilePage() {
                       <span className="pp-listing-slug">{l.slug}</span>
                     </div>
                     <div className="pp-listing-stats">
-                      <span title="설치 수">↓ {l.install_count}</span>
+                      <span title={t("profile.installCount")}>↓ {l.install_count}</span>
                       {l.current_version && (
                         <span className="pp-ver">{l.current_version}</span>
                       )}
@@ -141,18 +140,18 @@ export function ProfilePage() {
                   <button
                     type="button"
                     className="pp-listing-del"
-                    title="이 게시물 삭제"
+                    title={t("profile.deleteListingTitle")}
                     disabled={deleteListingMut.isPending}
                     onClick={() => {
                       if (
                         window.confirm(
-                          `게시물 "${pickI18n(l.display_name)}"을(를) 마켓에서 삭제할까요?\n되돌릴 수 없어요.`,
+                          t("profile.deleteListingConfirm", { name: pickI18n(l.display_name) }),
                         )
                       )
                         deleteListingMut.mutate(l.id);
                     }}
                   >
-                    삭제
+                    {t("delete")}
                   </button>
                 </li>
               ))}
@@ -163,17 +162,15 @@ export function ProfilePage() {
         {/* reset switches */}
         <section className="pp-card">
           <div className="pp-sec-head">
-            <h2>초기화</h2>
+            <h2>{t("profile.resetSection")}</h2>
           </div>
-          <p className="pp-muted">
-            이 계정에 저장된 데이터를 지웁니다. 되돌릴 수 없어요.
-          </p>
+          <p className="pp-muted">{t("profile.resetDesc")}</p>
 
           <div className="pp-reset-row">
             <div className="pp-reset-info">
-              <div className="pp-reset-title">지갑 초기화</div>
+              <div className="pp-reset-title">{t("profile.resetWalletsTitle")}</div>
               <div className="pp-reset-sub">
-                추적 중인 지갑 {walletCount}개를 모두 제거합니다.
+                {t("profile.resetWalletsSub", { count: walletCount })}
               </div>
             </div>
             <button
@@ -183,21 +180,21 @@ export function ProfilePage() {
               onClick={() => {
                 if (
                   window.confirm(
-                    `추적 중인 지갑 ${walletCount}개를 모두 제거할까요?\n되돌릴 수 없어요.`,
+                    t("profile.resetWalletsConfirm", { count: walletCount }),
                   )
                 )
                   resetWalletsMut.mutate();
               }}
             >
-              {resetWalletsMut.isPending ? "초기화 중…" : "지갑 비우기"}
+              {resetWalletsMut.isPending ? t("profile.resetting") : t("profile.resetWalletsBtn")}
             </button>
           </div>
 
           <div className="pp-reset-row">
             <div className="pp-reset-info">
-              <div className="pp-reset-title">정책 초기화</div>
+              <div className="pp-reset-title">{t("profile.resetPoliciesTitle")}</div>
               <div className="pp-reset-sub">
-                내 정책 {policyCount}개 · 패키지 {setCount}개를 모두 삭제합니다.
+                {t("profile.resetPoliciesSub", { policyCount, setCount })}
               </div>
             </div>
             <button
@@ -209,13 +206,13 @@ export function ProfilePage() {
               onClick={() => {
                 if (
                   window.confirm(
-                    `내 정책 ${policyCount}개와 패키지 ${setCount}개를 모두 삭제할까요?\n되돌릴 수 없어요.`,
+                    t("profile.resetPoliciesConfirm", { policyCount, setCount }),
                   )
                 )
                   resetPoliciesMut.mutate();
               }}
             >
-              {resetPoliciesMut.isPending ? "초기화 중…" : "정책 비우기"}
+              {resetPoliciesMut.isPending ? t("profile.resetting") : t("profile.resetPoliciesBtn")}
             </button>
           </div>
         </section>

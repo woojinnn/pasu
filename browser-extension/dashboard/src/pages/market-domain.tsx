@@ -7,7 +7,11 @@
  *
  * SVG icon paths are kept literal (24x24 viewBox, no fill); render with
  * `<DomainGlyph domain="swap" size={16} />`.
+ *
+ * Display names live in the `market` i18n namespace (`domain.<id>` /
+ * `category.<id>`); the lookups below resolve them at call time.
  */
+import { i18n } from "../i18n";
 
 export type DomainKey =
   | "swap" | "perp" | "ammlp" | "bridge"
@@ -61,27 +65,12 @@ export const DOMAIN_ICON: Record<DomainKey, string> = {
   gov:       "M5 21h14M6 21V9M18 21V9M4 9l8-5 8 5M9 13v4M15 13v4",
 };
 
-export const DOMAIN_NAME: Record<DomainKey, { en: string; ko: string }> = {
-  swap:      { en: "Swap & DEX",            ko: "스왑 & DEX" },
-  perp:      { en: "Perps & Derivatives",   ko: "파생/무기한" },
-  lending:   { en: "Lending",               ko: "렌딩" },
-  security:  { en: "Wallet Security Core",  ko: "지갑 보안 기본" },
-  nft:       { en: "NFT",                   ko: "NFT" },
-  airdrop:   { en: "Airdrop & Claim",       ko: "에어드랍 & 클레임" },
-  portfolio: { en: "Portfolio & Self-control", ko: "포트폴리오 & 자기관리" },
-  ammlp:     { en: "AMM Liquidity",         ko: "AMM 유동성" },
-  bridge:    { en: "Bridge",                ko: "브릿지" },
-  sale:      { en: "Launchpad & Sale",      ko: "런치패드 & 세일" },
-  staking:   { en: "Staking & LST",         ko: "스테이킹 & LST" },
-  gov:       { en: "Governance",            ko: "거버넌스" },
-};
-
 export function isDomainKey(s: string | undefined | null): s is DomainKey {
   return !!s && s in DOMAIN_COLOR;
 }
 
 export function domainNameOf(d: string | undefined, locale: "en" | "ko"): string {
-  if (isDomainKey(d)) return DOMAIN_NAME[d][locale];
+  if (isDomainKey(d)) return i18n.t(`market:domain.${d}`, { lng: locale });
   return d ?? "";
 }
 
@@ -178,21 +167,6 @@ export const CATEGORY_ICON: Record<CategoryKey, string> = {
   others:      "M5 12h.01M12 12h.01M19 12h.01",
 };
 
-export const CATEGORY_NAME: Record<CategoryKey, { en: string; ko: string }> = {
-  swap:        { en: "Swap",            ko: "스왑(교환)" },
-  approvals:   { en: "Token Approval",  ko: "토큰 사용 승인" },
-  signing:     { en: "Off-chain Sign",  ko: "오프체인 서명" },
-  transfer:    { en: "Transfer",        ko: "송금·전송" },
-  derivatives: { en: "Perp Trading",    ko: "선물 거래" },
-  perps:       { en: "Perp Account",    ko: "선물 계정·입출금" },
-  liquidity:   { en: "Liquidity",       ko: "유동성 공급" },
-  lending:     { en: "Lending",         ko: "예치·대출" },
-  rewards:     { en: "Airdrop/Rewards", ko: "에어드랍·보상" },
-  governance:  { en: "Governance",      ko: "거버넌스 위임" },
-  intents:     { en: "Blind Signing",   ko: "블라인드 서명" },
-  others:      { en: "Others",          ko: "기타" },
-};
-
 /**
  * slug → category, derived from each policy's manifest `trigger.action.tag`.
  * Covers the current phase1A market seed plus the phase1 fixture set, so it
@@ -272,7 +246,7 @@ export function categoryOf(slug: string | undefined): CategoryKey {
 }
 
 export function categoryNameOf(c: string | undefined, locale: "en" | "ko"): string {
-  if (isCategoryKey(c)) return CATEGORY_NAME[c][locale];
+  if (isCategoryKey(c)) return i18n.t(`market:category.${c}`, { lng: locale });
   return c ?? "";
 }
 

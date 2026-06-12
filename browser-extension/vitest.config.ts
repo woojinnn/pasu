@@ -5,6 +5,12 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     globals: true,
+    // Dashboard modules resolve i18n labels through t() at call time, so the
+    // i18n instance must be initialized before any test runs. The dashboard's
+    // own vitest config sets this, but CI runs the single ROOT config from
+    // browser-extension/ — without this, dashboard tests (nl/manifest/…) see
+    // uninitialized i18n and t() returns undefined.
+    setupFiles: ["dashboard/src/i18n/vitest-setup.ts"],
     coverage: { provider: "v8" },
     // On macOS+iCloud the dep dirs are `node_modules.nosync/` (with a plain
     // `node_modules` symlink) — vitest's default exclude only matches

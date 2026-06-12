@@ -1,4 +1,6 @@
 /** Step 1 — pick wallets and see each wallet's current state (s0). */
+import { useTranslation } from "react-i18next";
+
 import { StateDashboard } from "./StateDashboard";
 import type { SimController } from "./useSimController";
 
@@ -8,17 +10,18 @@ const CHAINS: { id: string; label: string }[] = [
 ];
 
 export function Step1Wallets({ c }: { c: SimController }) {
+  const { t } = useTranslation("simulation");
   return (
     <div className="sw-step">
       <header className="sw-step-head">
-        <h2>① 지갑 선택</h2>
-        <p>시뮬레이션할 지갑을 고르면, 해당 지갑들의 현재 상태(state)를 불러옵니다.</p>
+        <h2>{t("wizard.step1.title")}</h2>
+        <p>{t("wizard.step1.desc")}</p>
       </header>
 
       <div className="sw-cols">
         <aside className="sw-pick">
           <div className="sw-pick-head">
-            <span>지갑</span>
+            <span>{t("wizard.step1.wallets")}</span>
             <select className="sw-chain" value={c.chain} onChange={(e) => c.setChain(e.target.value)}>
               {CHAINS.map((ch) => (
                 <option key={ch.id} value={ch.id}>
@@ -40,7 +43,7 @@ export function Step1Wallets({ c }: { c: SimController }) {
 
         <section className="sw-states">
           {c.selectedStates.length === 0 ? (
-            <div className="sw-empty">왼쪽에서 지갑을 선택하세요.</div>
+            <div className="sw-empty">{t("wizard.step1.empty")}</div>
           ) : (
             c.selectedStates.map((s) => <StateDashboard key={s.address} s={s} />)
           )}

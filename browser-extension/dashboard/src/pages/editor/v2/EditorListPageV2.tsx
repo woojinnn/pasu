@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 
 import { subscribeToBroadcast } from "../../../server-api";
 import {
@@ -45,6 +46,7 @@ interface ToastMsg {
  * 모든 데이터는 ps2:get-overview 한 번으로 읽고, 변이 후 invalidate로 재조회한다.
  */
 export function EditorListPageV2() {
+  const { t } = useTranslation("editor");
   const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
   // 기본 탭 = 적용 현황 (지갑별 워크스페이스). 라이브러리는 ?tab=library.
@@ -81,16 +83,19 @@ export function EditorListPageV2() {
     <>
       <Topbar
         here="Policy Editor"
-        subtitle={defCount === null ? "…" : `정책 ${defCount}개 · 폴더 ${pkgCount}개`}
+        subtitle={
+          defCount === null ? "…" : t("list.subtitle", { defs: defCount, pkgs: pkgCount })
+        }
         right={
           <button type="button" className="ev2-pri" onClick={() => setChooserOpen(true)}>
-            <PlusIcon />새 정책
+            <PlusIcon />
+            {t("list.newPolicy")}
           </button>
         }
       />
 
       <div className="ev2-body">
-        <div className="ev2-pagetabs" role="tablist" aria-label="에디터 영역">
+        <div className="ev2-pagetabs" role="tablist" aria-label={t("list.tablistAria")}>
           <button
             type="button"
             role="tab"
@@ -98,7 +103,7 @@ export function EditorListPageV2() {
             className={`ev2-tab${tab === "apply" ? " on" : ""}`}
             onClick={() => setTab("apply")}
           >
-            지갑별 정책
+            {t("list.tabApply")}
           </button>
           <button
             type="button"
@@ -107,16 +112,12 @@ export function EditorListPageV2() {
             className={`ev2-tab${tab === "library" ? " on" : ""}`}
             onClick={() => setTab("library")}
           >
-            라이브러리
+            {t("list.tabLibrary")}
           </button>
         </div>
 
-        {overviewQ.isLoading && <div className="ev2-status">불러오는 중…</div>}
-        {overviewQ.isError && (
-          <div className="ev2-status">
-            정책 스토어를 읽지 못했어요 — 확장이 설치/활성화되어 있는지 확인해 주세요.
-          </div>
-        )}
+        {overviewQ.isLoading && <div className="ev2-status">{t("common:loading")}</div>}
+        {overviewQ.isError && <div className="ev2-status">{t("list.storeReadError")}</div>}
 
         {snap && tab === "library" && (
           <LibraryTab snap={snap} onToast={pushToast} invalidate={invalidate} />
@@ -138,6 +139,7 @@ function LibraryTab(props: {
   invalidate: () => void;
 }) {
   const { snap, onToast, invalidate } = props;
+  const { t } = useTranslation("editor");
   const navigate = useNavigate();
 
   const [query, setQuery] = useState("");
@@ -158,7 +160,7 @@ function LibraryTab(props: {
       return true;
     } catch (err) {
       console.error(`[v2 library] ${label} failed:`, err);
-      onToast(`${label}에 실패했어요`);
+      onToast(t("actionFailed", { action: label }));
       return false;
     }
   };
@@ -167,39 +169,36 @@ function LibraryTab(props: {
     const n = defUsageCount(snap, d.id);
     const msg =
       n > 0
-        ? `정책 "${d.displayName}"를 삭제할까요?\n${n}개 지갑에서 함께 제거됩니다. 되돌릴 수 없어요.`
-        : `정책 "${d.displayName}"를 삭제할까요?\n되돌릴 수 없어요.`;
+        ? t("list.deleteConfirmUsed", { name: d.displayName, count: n })
+        : t("list.deleteConfirm", { name: d.displayName });
     if (!window.confirm(msg)) return;
-    void run("삭제", () => deleteDef(d.id)).then((ok) => ok && onToast("정책을 삭제했어요"));
+    void run(t("actions.delete"), () => deleteDef(d.id)).then(
+      (ok) => ok && onToast(t("list.deletedToast")),
+    );
   };
 
   const createPackage = () =>
-    void run("폴더 생성", () =>
+    void run(t("actions.createFolder"), () =>
       putPackage({
         id: `pkg::${crypto.randomUUID()}`,
-        displayName: "새 폴더",
+        displayName: t("list.newFolderName"),
         source: "mine",
         updatedAtMs: Date.now(),
       }),
-    ).then((ok) => ok && onToast("폴더를 만들었어요 — 이름을 바꿔보세요"));
+    ).then((ok) => ok && onToast(t("list.folderCreatedToast")));
 
   const renamePackage = (pkg: PackageDef, name: string) => {
     const trimmed = name.trim();
     if (!trimmed || trimmed === pkg.displayName) return;
-    void run("이름 변경", () =>
+    void run(t("actions.rename"), () =>
       putPackage({ ...pkg, displayName: trimmed, updatedAtMs: Date.now() }),
     );
   };
 
   const removePackage = (pkg: PackageDef) => {
-    if (
-      !window.confirm(
-        `폴더 "${pkg.displayName}"를 삭제할까요?\n안의 정책은 '미분류'로 이동해요.`,
-      )
-    )
-      return;
-    void run("폴더 삭제", () => deletePackageApi(pkg.id)).then(
-      (ok) => ok && onToast("폴더를 삭제했어요"),
+    if (!window.confirm(t("list.deleteFolderConfirm", { name: pkg.displayName }))) return;
+    void run(t("actions.deleteFolder"), () => deletePackageApi(pkg.id)).then(
+      (ok) => ok && onToast(t("list.folderDeletedToast")),
     );
   };
 
@@ -209,7 +208,7 @@ function LibraryTab(props: {
     if (!d) return;
     const next = packageId === UNCATEGORIZED_PKG ? undefined : packageId;
     if ((d.defaults.packageId ?? undefined) === next) return;
-    void run("폴더 이동", () =>
+    void run(t("actions.moveFolder"), () =>
       putDef({ ...d, defaults: { ...d.defaults, packageId: next }, updatedAtMs: Date.now() }),
     ).then(
       (ok) =>
@@ -224,7 +223,7 @@ function LibraryTab(props: {
   const publishPackage = async (pkg: PackageDef) => {
     const members = collectPackageMembers(snap.library.defs, pkg.id);
     if (members.length === 0) {
-      onToast("이 패키지에 든 정책이 없어요");
+      onToast(t("list.emptyPackageToast"));
       return;
     }
     try {
@@ -244,7 +243,7 @@ function LibraryTab(props: {
       });
     } catch (err) {
       console.error("[v2 library] publishPackage render failed:", err);
-      onToast("발행 준비에 실패했어요");
+      onToast(t("list.publishPrepFailed"));
     }
   };
 
@@ -256,12 +255,12 @@ function LibraryTab(props: {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="정책 이름 검색…"
+            placeholder={t("list.searchPlaceholder")}
           />
         </div>
         <span className="ev2-spc" />
         <button type="button" className="ev2-sec" onClick={createPackage}>
-          <PlusIcon /> 새 폴더
+          <PlusIcon /> {t("list.newFolder")}
         </button>
       </div>
 
@@ -272,7 +271,7 @@ function LibraryTab(props: {
             className={`ev2-catchip${catFilter === "all" ? " on" : ""}`}
             onClick={() => setCatFilter("all")}
           >
-            모든 카테고리
+            {t("list.allCategories")}
           </button>
           {presentCats.map((c) => (
             <button
@@ -291,8 +290,8 @@ function LibraryTab(props: {
       <div className="ev2-scroll">
         {Object.keys(snap.library.defs).length === 0 ? (
           <div className="ev2-empty">
-            <div className="big">아직 정책 정의가 없습니다</div>
-            <div className="sm">상단 “+ 새 정책” 버튼으로 첫 정의를 만들어 보세요.</div>
+            <div className="big">{t("list.emptyTitle")}</div>
+            <div className="sm">{t("list.emptyHint")}</div>
           </div>
         ) : (
           <LibraryDirectory
@@ -302,14 +301,14 @@ function LibraryTab(props: {
             catFilter={catFilter}
             onOpenDef={(d) => navigate(`/editor/${encodeURIComponent(d.id)}`)}
             onDuplicate={(d) =>
-              void run("복제", () => duplicateDef(d.id)).then(
-                (ok) => ok && onToast("정의를 복제했어요"),
+              void run(t("actions.duplicate"), () => duplicateDef(d.id)).then(
+                (ok) => ok && onToast(t("list.duplicatedToast")),
               )
             }
             onDelete={onDelete}
             onDefaults={setDefaultsFor}
             onToggleDefault={(d, enabled) =>
-              void run("기본 적용 변경", () =>
+              void run(t("actions.changeDefault"), () =>
                 putDef({
                   ...d,
                   defaults: { ...d.defaults, enabled },
@@ -320,8 +319,8 @@ function LibraryTab(props: {
                   ok &&
                   onToast(
                     enabled
-                      ? `${d.displayName} — 새 지갑에 기본 적용돼요`
-                      : `${d.displayName} — 새 지갑 기본 적용을 껐어요`,
+                      ? t("list.defaultOnToast", { name: d.displayName })
+                      : t("list.defaultOffToast", { name: d.displayName }),
                   ),
               )
             }
@@ -332,8 +331,7 @@ function LibraryTab(props: {
           />
         )}
         <div className="ev2-lefthint">
-          정책을 끌어다 폴더에 놓으면 소속이 바뀌어요 — 지갑 적용은 <b>지갑별 정책</b>{" "}
-          탭에서.
+          <Trans t={t} i18nKey="list.dragHint" components={{ b: <b /> }} />
         </div>
       </div>
 
@@ -345,13 +343,13 @@ function LibraryTab(props: {
           packages={Object.values(snap.library.packages)}
           onCancel={() => setDefaultsFor(null)}
           onSave={(enabled, packageId) => {
-            void run("기본값 저장", () =>
+            void run(t("actions.saveDefaults"), () =>
               putDef({
                 ...defaultsFor,
                 defaults: { ...defaultsFor.defaults, enabled, packageId },
                 updatedAtMs: Date.now(),
               }),
-            ).then((ok) => ok && onToast("기본값을 저장했어요"));
+            ).then((ok) => ok && onToast(t("list.defaultsSavedToast")));
             setDefaultsFor(null);
           }}
         />
@@ -368,6 +366,7 @@ function DefDefaultsModal(props: {
   onSave: (enabled: boolean, packageId: string | undefined) => void;
 }) {
   const { def, packages, onCancel, onSave } = props;
+  const { t } = useTranslation("editor");
   const [enabled, setEnabled] = useState(def.defaults.enabled);
   const [packageId, setPackageId] = useState(def.defaults.packageId ?? UNCATEGORIZED_PKG);
 
@@ -375,18 +374,23 @@ function DefDefaultsModal(props: {
     <div className="ptm-bd" role="dialog" aria-modal onClick={onCancel}>
       <div className="ptm" onClick={(e) => e.stopPropagation()}>
         <div className="ptm-h">
-          <div className="ptm-t">기본값 설정</div>
+          <div className="ptm-t">{t("library.defaultsTitle")}</div>
           <div className="ptm-s">
-            <b>{def.displayName}</b> — 앞으로 추가되는 지갑에 어떻게 적용할까요?
+            <Trans
+              t={t}
+              i18nKey="library.defaultsModalDesc"
+              values={{ name: def.displayName }}
+              components={{ b: <b /> }}
+            />
           </div>
         </div>
         <div className="ptm-opts">
           <label className="ptm-field">
             <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-            새 지갑에 기본으로 적용
+            {t("library.applyNewWalletsDefault")}
           </label>
           <label className="ptm-field">
-            소속 폴더
+            {t("library.folderLabel")}
             <select value={packageId} onChange={(e) => setPackageId(e.target.value)}>
               {packages.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -397,14 +401,14 @@ function DefDefaultsModal(props: {
           </label>
           <div className="ptm-row">
             <button type="button" className="ev2-sec" onClick={onCancel}>
-              취소
+              {t("common:cancel")}
             </button>
             <button
               type="button"
               className="ev2-pri"
               onClick={() => onSave(enabled, packageId === UNCATEGORIZED_PKG ? undefined : packageId)}
             >
-              저장
+              {t("common:save")}
             </button>
           </div>
         </div>

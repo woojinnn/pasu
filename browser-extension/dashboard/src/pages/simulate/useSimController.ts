@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { SimData, SimProvider } from "./provider";
 import type {
@@ -108,6 +109,7 @@ export interface SimController {
 }
 
 export function useSimController(provider: SimProvider): SimController {
+  const { t } = useTranslation("simulation");
   // Provider-sourced data: seeded synchronously from `initial()` (fixtures for
   // mock, empty shells for real) and refreshed async via `load()`.
   const init = useMemo<SimData>(() => provider.initial(), [provider]);
@@ -281,14 +283,14 @@ export function useSimController(provider: SimProvider): SimController {
       ...rows,
       {
         id: `tx-${rows.length + 1}-${rows.length}`,
-        label: `트랜잭션 ${rows.length + 1}`,
+        label: t("wizard.txLabel", { n: rows.length + 1 }),
         fromWallet: [...selected][0] ?? "",
         to: "",
         calldata: "",
         value: "0",
       },
     ]);
-  }, [selected]);
+  }, [selected, t]);
   const removeRow = useCallback((id: string) => setTxRowsState((rows) => rows.filter((r) => r.id !== id)), []);
   const updateRow = useCallback(
     (id: string, patch: Partial<TxRow>) =>

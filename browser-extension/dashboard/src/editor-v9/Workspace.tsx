@@ -23,6 +23,7 @@
 import * as Blockly from "blockly";
 import * as En from "blockly/msg/en";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { registerBlocks } from "./blocks/register";
 import { blocksToText, textToBlocks } from "./bridge";
@@ -42,7 +43,7 @@ import { runDiagnosisProbes } from "../server-api/diagnosis";
 import { applyCulprits, clearCulprits } from "./diagnosis-highlight";
 import { SAMPLE_ACTIONS } from "./sample-actions";
 import { chainToDottedPath } from "./mapping/attr-path";
-import { getGloss } from "./gloss";
+import { getGloss, glossLabel } from "./gloss";
 import "./diagnosis-highlight.css";
 
 Blockly.setLocale(En as unknown as Record<string, string>);
@@ -53,6 +54,7 @@ export interface WorkspaceV9Props {
   /** Cedar text fallback seed; consulted only if `initialJson` is null. */
   initialCedarText?: string | null;
   policyName?: string;
+  /** @deprecated Toolbox labels now follow `i18n.language`; prop is ignored. */
   locale?: "ko" | "en";
   /** Hide the bottom "Cedar 코드 가져오기" (paste-to-import) details
    *  panel. The v2 editor exposes a dedicated Cedar tab for editing
@@ -78,11 +80,12 @@ export function WorkspaceV9({
   initialJson,
   initialCedarText,
   policyName = "untitled",
-  locale = "ko",
+  locale,
   hideImport = false,
   hidePreview = false,
   onChange,
 }: WorkspaceV9Props) {
+  const { t, i18n } = useTranslation("blocks");
   const mountRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [cedarText, setCedarText] = useState("");
@@ -101,7 +104,9 @@ export function WorkspaceV9({
   // handler rebuilds it (and re-renders the canvas) on every click.
   const blockIdByNodeRef = useRef<Map<Expr, string>>(new Map());
 
-  const toolbox = useMemo(() => buildToolbox(locale), [locale]);
+  // Rebuilt when the language flips; note the Blockly canvas is injected once
+  // on mount, so a live language switch applies on the next mount/page load.
+  const toolbox = useMemo(() => buildToolbox(), [i18n.language]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -212,11 +217,12 @@ export function WorkspaceV9({
   }, []);
 
   void policyName;
+  void locale; // superseded by i18n.language
 
   const onImportClick = async () => {
     if (!wsRef.current) return;
     if (!importText.trim()) {
-      setImportError("Cedar 코드를 입력하세요");
+      setImportError(t("workspace.importEmpty"));
       return;
     }
     setImporting(true);
@@ -306,13 +312,13 @@ export function WorkspaceV9({
       const policies = workspaceToIR(ws, errs);
       const policy = policies[0] ?? null;
       if (!policy || errs.length > 0) {
-        setSimulateMsg("유효한 정책이 없습니다");
+        setSimulateMsg(t("workspace.noValidPolicy"));
         return;
       }
 
       if (policy.effect !== "forbid") {
         clearCulprits(ws);
-        setSimulateMsg("forbid 정책만 진단할 수 있습니다");
+        setSimulateMsg(t("workspace.forbidOnly"));
         return;
       }
 
@@ -322,14 +328,18 @@ export function WorkspaceV9({
         actionScope.kind === "scopeEq" ? actionScope.entity.id : null;
       const sample = actionId ? SAMPLE_ACTIONS[actionId] : undefined;
       if (!sample) {
-        setSimulateMsg("이 액션의 샘플이 없습니다");
+        setSimulateMsg(t("workspace.noSample"));
         return;
       }
 
       const { probes, diagnosable } = buildProbes(policy);
       if (!diagnosable) {
         const reason = policy.annotations.find((a) => a.name === "reason")?.value;
-        setSimulateMsg(reason ? `진단 불가 — ${reason}` : "이 정책은 진단할 수 없습니다");
+        setSimulateMsg(
+          reason
+            ? t("workspace.notDiagnosableReason", { reason })
+            : t("workspace.notDiagnosable"),
+        );
         clearCulprits(ws);
         return;
       }
@@ -346,7 +356,8 @@ export function WorkspaceV9({
         const node = byPath.get(p);
         if (!node || node.kind !== "binary") return null;
         const leftPath = chainToDottedPath(node.left);
-        const lhs = (leftPath !== null ? getGloss(leftPath)?.ko : undefined) ?? leftPath ?? "?";
+        const lhsGloss = leftPath !== null ? getGloss(leftPath) : undefined;
+        const lhs = (lhsGloss ? glossLabel(lhsGloss) : undefined) ?? leftPath ?? "?";
         const rhs =
           node.right.kind === "lit" ? String(node.right.value) : "?";
         return `${lhs} ${node.op} ${rhs}`;
@@ -354,9 +365,9 @@ export function WorkspaceV9({
       applyCulprits(ws, pathMap, d.culprits, note);
 
       if (d.culprits.length === 0) {
-        setSimulateMsg("이 샘플에서는 거부되지 않습니다 (위반 조건 없음)");
+        setSimulateMsg(t("workspace.noViolation"));
       } else {
-        setSimulateMsg(`위반 조건 ${d.culprits.length}개를 빨간 박스로 표시했습니다`);
+        setSimulateMsg(t("workspace.violations", { count: d.culprits.length }));
       }
     } catch (e) {
       setSimulateMsg(e instanceof Error ? e.message : String(e));
@@ -384,19 +395,19 @@ export function WorkspaceV9({
         gap: 12,
         alignItems: "center",
       }}>
-        <span>Blockly v9 · 좌측 카테고리에서 블록을 끌어다 정책 트리에 붙이세요</span>
+        <span>{t("workspace.hint")}</span>
         {errorCount > 0 && (
           <span style={{ color: "var(--fail-700, #7F4740)" }}>
-            ⚠ {errorCount}개 문제
+            ⚠ {t("workspace.problemCount", { count: errorCount })}
           </span>
         )}
         <button
           onClick={() => void onSimulate()}
           disabled={simulating}
           style={{ marginLeft: "auto", padding: "3px 12px", fontSize: 11 }}
-          title="샘플 액션으로 정책을 평가해 거부 원인 블록을 빨간 박스로 표시합니다"
+          title={t("workspace.simulateTitle")}
         >
-          {simulating ? "시뮬레이션 중…" : "Simulate"}
+          {simulating ? t("workspace.simulating") : "Simulate"}
         </button>
         {simulateMsg && (
           <span style={{ color: "var(--slate-500, #475569)" }}>{simulateMsg}</span>
@@ -420,7 +431,8 @@ export function WorkspaceV9({
       {!hidePreview && (
         <details style={{ background: "var(--fog-200, #fafaf9)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
           <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
-            Cedar 미리보기 ({cedarText.split("\n").length} 줄) {errorCount > 0 && `· ${errorCount}개 문제`}
+            {t("workspace.previewSummary", { lines: cedarText.split("\n").length })}{" "}
+            {errorCount > 0 && `· ${t("workspace.problemCount", { count: errorCount })}`}
           </summary>
           {errors.length > 0 && (
             <ul style={{ margin: 0, padding: "6px 24px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
@@ -431,7 +443,7 @@ export function WorkspaceV9({
           )}
           {bridgeError && (
             <div style={{ padding: "6px 12px", fontSize: 12, color: "var(--fail-700, #7F4740)" }}>
-              Cedar 변환 실패: {bridgeError}
+              {t("workspace.cedarFailed", { error: bridgeError })}
             </div>
           )}
           <pre style={{
@@ -440,7 +452,7 @@ export function WorkspaceV9({
             maxHeight: 200, overflow: "auto",
             background: "var(--fog-100, #fcfcfc)",
           }}>
-            {cedarText || (errorCount > 0 ? "" : "(빈 정책)")}
+            {cedarText || (errorCount > 0 ? "" : t("workspace.emptyPolicy"))}
           </pre>
         </details>
       )}
@@ -453,7 +465,7 @@ export function WorkspaceV9({
           fontSize: 12,
           color: "var(--fail-700, #7F4740)",
         }}>
-          {bridgeError && <div>Cedar 변환 실패: {bridgeError}</div>}
+          {bridgeError && <div>{t("workspace.cedarFailed", { error: bridgeError })}</div>}
           {errors.map((e, i) => (
             <div key={i}>⚠ {e.message}</div>
           ))}
@@ -471,7 +483,7 @@ export function WorkspaceV9({
           }}
         >
           <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12 }}>
-            적용된 정책 (파라미터 채움 완료)
+            {t("workspace.filledSummary")}
           </summary>
           <pre style={{
             margin: 0, padding: 12, fontSize: 12,
@@ -482,19 +494,19 @@ export function WorkspaceV9({
           </pre>
           <div style={{ padding: "6px 12px", display: "flex", gap: 8, alignItems: "center" }}>
             <button onClick={onApplyFilledToCanvas} style={{ padding: "4px 12px", fontSize: 12 }}>
-              결과로 캔버스 교체
+              {t("workspace.applyToCanvas")}
             </button>
             <button
               onClick={() => navigator.clipboard?.writeText(filledText).catch(() => {})}
               style={{ padding: "4px 12px", fontSize: 12 }}
             >
-              복사
+              {t("workspace.copy")}
             </button>
             <button
               onClick={() => { setFilledText(null); setFilledError(null); }}
               style={{ padding: "4px 12px", fontSize: 12 }}
             >
-              닫기
+              {t("workspace.close")}
             </button>
           </div>
           {filledError && (
@@ -508,7 +520,7 @@ export function WorkspaceV9({
       {!hideImport && (
         <details style={{ background: "var(--fog-100, #fcfcfc)", borderTop: "1px solid var(--hairline-soft, #E5E6E3)" }}>
           <summary style={{ padding: "6px 12px", cursor: "pointer", fontSize: 12, color: "var(--slate-500, #475569)" }}>
-            Cedar 코드 가져오기 — 텍스트를 붙여 넣고 블록으로 변환
+            {t("workspace.importSummary")}
           </summary>
           <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
             <textarea
@@ -532,7 +544,7 @@ export function WorkspaceV9({
                 disabled={importing || !importText.trim()}
                 style={{ padding: "4px 12px", fontSize: 12 }}
               >
-                {importing ? "변환 중…" : "불러오기"}
+                {importing ? t("workspace.importing") : t("workspace.import")}
               </button>
               {importError && (
                 <span style={{ color: "var(--fail-700, #7F4740)", fontSize: 12 }}>
@@ -540,7 +552,7 @@ export function WorkspaceV9({
                 </span>
               )}
               <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--slate-500, #475569)" }}>
-                주의: 현재 캔버스가 덮어쓰입니다
+                {t("workspace.importOverwriteWarning")}
               </span>
             </div>
           </div>

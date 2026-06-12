@@ -42,7 +42,7 @@ export function parameterizeModel(model: FormModel): FormModel {
     nodes.map((n) => {
       if (isGroupNode(n)) return { ...n, conds: mapNodes(n.conds) };
       i += 1;
-      const label = n.fieldPath.split(".").pop() ?? `값 ${i}`;
+      const label = n.fieldPath.split(".").pop() ?? `값 ${i}`; // i18n-ok
       return { ...n, param: { name: `v${i}`, label } };
     });
   return { ...model, when: mapNodes(model.when), unless: mapNodes(model.unless) };

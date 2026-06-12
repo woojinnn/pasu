@@ -12,6 +12,7 @@
  */
 
 import * as Blockly from "blockly";
+import { i18n } from "../../i18n";
 import type { Expr, HoleNode } from "../../cedar/blocks";
 import { makeHole } from "../../cedar/blocks";
 import { BLOCK_TYPES } from "../mapping/block-types";
@@ -45,26 +46,24 @@ function promptForMetadata(
   let name = defaultName;
   while (true) {
     const raw = window.prompt(
-      "파라미터 이름 (영문 식별자):",
+      i18n.t("blocks:param.promptName"),
       name,
     );
     if (raw === null) return null;
     name = raw.trim();
     if (!NAME_RE.test(name)) {
-      window.alert("이름은 영문/숫자/_ 조합만 가능합니다 (첫 글자는 영문)");
+      window.alert(i18n.t("blocks:param.nameInvalid"));
       continue;
     }
     if (existingNames.has(name)) {
-      window.alert(`"${name}" 이름이 이미 사용 중입니다`);
+      window.alert(i18n.t("blocks:param.nameTaken", { name }));
       continue;
     }
     break;
   }
-  const label = window.prompt("라벨 (UI 표시명, 선택):", name) ?? "";
-  const type = window.prompt("타입 힌트 (예: address / amount / token, 선택):", "") ?? "";
-  const optional = window.confirm(
-    "이 파라미터를 선택적으로 만들까요?\n(채우지 않아도 기본값으로 동작)",
-  );
+  const label = window.prompt(i18n.t("blocks:param.promptLabel"), name) ?? "";
+  const type = window.prompt(i18n.t("blocks:param.promptType"), "") ?? "";
+  const optional = window.confirm(i18n.t("blocks:param.confirmOptional"));
   return { name, label: label.trim() || undefined, type: type.trim() || undefined, optional };
 }
 
@@ -134,7 +133,7 @@ export function registerMakeParamContextMenu(): void {
     id: "pasu_make_param",
     weight: 0,
     scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
-    displayText: () => "파라미터로 만들기…",
+    displayText: () => i18n.t("blocks:param.menuLabel"),
     preconditionFn: ({ block }) =>
       block && PARAMETERISABLE_TYPES.has(block.type) ? "enabled" : "hidden",
     callback: ({ block }) => {
@@ -143,7 +142,7 @@ export function registerMakeParamContextMenu(): void {
       const errors: string[] = [];
       const expr: Expr = readExprFromBlock(block, errors);
       if (errors.length > 0) {
-        window.alert(`파라미터화 실패: ${errors[0]}`);
+        window.alert(i18n.t("blocks:param.readFailed", { error: errors[0] }));
         return;
       }
       const existing = collectHoleNames(ws);
@@ -158,7 +157,7 @@ export function registerMakeParamContextMenu(): void {
           optional: meta.optional,
         });
       } catch (e) {
-        window.alert(`makeHole 실패: ${e instanceof Error ? e.message : String(e)}`);
+        window.alert(i18n.t("blocks:param.makeHoleFailed", { error: e instanceof Error ? e.message : String(e) }));
         return;
       }
       swapBlockToHole(ws, block as Blockly.BlockSvg, hole);

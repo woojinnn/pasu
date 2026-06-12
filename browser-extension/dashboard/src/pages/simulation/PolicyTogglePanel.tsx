@@ -9,6 +9,8 @@
  * at the cursor.
  */
 
+import { useTranslation } from "react-i18next";
+
 import type { EvaluateActionVerdict, MatchedPolicy } from "./sim-bridge";
 
 /** 시뮬레이터 패널의 최소 정책 모양 — ps2 def를 렌더한 텍스트 묶음. */
@@ -36,6 +38,7 @@ export interface PolicyTogglePanelProps {
 }
 
 export function PolicyTogglePanel(props: PolicyTogglePanelProps) {
+  const { t } = useTranslation("simulation");
   const {
     policies,
     enabledIds,
@@ -54,23 +57,23 @@ export function PolicyTogglePanel(props: PolicyTogglePanelProps) {
   return (
     <div className="sim-card policy-card">
       <div className="card-head">
-        <h3>정책 선택</h3>
-        <span className="meta">시뮬레이션 전용 on/off</span>
+        <h3>{t("historic.policies.title")}</h3>
+        <span className="meta">{t("historic.policies.simOnly")}</span>
       </div>
       <div className="policy-toolbar">
         <span className="meta">
-          {enabledIds.size} / {policies.length} 활성
+          {t("historic.policies.activeCount", { on: enabledIds.size, total: policies.length })}
         </span>
         <button className="btn xs" onClick={enableAll}>
-          전체 ON
+          {t("historic.policies.allOn")}
         </button>
         <button className="btn xs" onClick={disableAll}>
-          전체 OFF
+          {t("historic.policies.allOff")}
         </button>
       </div>
 
       {policies.length === 0 && (
-        <div className="muted-line">설치된 정책이 없습니다.</div>
+        <div className="muted-line">{t("historic.policies.empty")}</div>
       )}
       <ul className="policy-list">
         {policies.map((p) => {

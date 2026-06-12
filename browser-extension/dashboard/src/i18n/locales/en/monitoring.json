@@ -1,0 +1,136 @@
+{
+  "addWallet": "Add wallet +",
+  "sync": {
+    "failedFallback": "Sync failed",
+    "failed": "Sync failed: {{error}}",
+    "justSynced": "Just synced",
+    "thisWallet": "Sync this wallet",
+    "allWallets": "Sync all wallets",
+    "syncing": "Syncing…",
+    "sync": "Sync"
+  },
+  "empty": {
+    "noWallets": "No wallets tracked",
+    "noWalletsDesc": "Add a wallet to see holdings, approvals, and chain breakdown here."
+  },
+  "lens": {
+    "assets": "💰 Asset view",
+    "risk": "🛡 Risk view",
+    "sortRisk": "Sort: risk priority",
+    "sortUsd": "Sort: USD value"
+  },
+  "banner": {
+    "suggest_one": "<b>{{count}} BLOCKED</b> finding detected. Switch to risk view to bring exposed assets to the top.",
+    "suggest_other": "<b>{{count}} BLOCKED</b> findings detected. Switch to risk view to bring exposed assets to the top.",
+    "switch": "Switch to risk view"
+  },
+  "walletSwitch": {
+    "all": "All wallets"
+  },
+  "summary": {
+    "totalAssets": "Total assets",
+    "walletSum_one": "across {{count}} wallet",
+    "walletSum_other": "across {{count}} wallets",
+    "pendingTx": "Pending transactions",
+    "riskSignals": "Risk signals",
+    "unlimited": "Unlimited"
+  },
+  "l2": {
+    "totalVar": "Total VaR · current exposure",
+    "unlimitedApprovals": "Unlimited approvals"
+  },
+  "queue": {
+    "title": "Urgent action queue",
+    "meta_one": "{{count}} item · by priority",
+    "meta_other": "{{count}} items · by priority",
+    "empty": "✓ Nothing urgent to handle — this wallet looks healthy.",
+    "detection": "Detection",
+    "approval": "Approval",
+    "trust": "Trust",
+    "ignore": "Ignore",
+    "revokeHint": "Revoke from the Approvals table below"
+  },
+  "chains": {
+    "title": "Asset breakdown",
+    "noBalance": "No balance"
+  },
+  "walletRatio": {
+    "title": "Asset share by wallet",
+    "drilldown": "Drill down into {{label}}"
+  },
+  "holdings": {
+    "meta": "{{wallets}} wallets · {{tokens}} tokens",
+    "noRiskNote": "✓ No risky assets detected in this view. Sort order matches <b>Asset view</b>.",
+    "empty": "No holdings to show",
+    "noExposure": "No exposure"
+  },
+  "table": {
+    "asset": "Asset",
+    "chain": "Chain",
+    "wallet": "Wallet",
+    "balance": "Balance",
+    "riskOverlay": "Risk overlay",
+    "type": "Type",
+    "amount": "Amount",
+    "risk": "Risk",
+    "actions": "Actions"
+  },
+  "chips": {
+    "expandRest": "Show {{count}} more",
+    "collapse": "Collapse"
+  },
+  "approvals": {
+    "tokenOrCollection": "Token / collection",
+    "empty": "No approvals to show"
+  },
+  "hl": {
+    "meta": "Positions · leverage · open orders · margin",
+    "noAccount": "No Hyperliquid account",
+    "pendingOutflow": "Pending withdrawal {{amount}}",
+    "long": "Long",
+    "short": "Short",
+    "cross": "cross",
+    "isolated": "isolated",
+    "size": "Size",
+    "entryPrice": "Entry",
+    "notional": "Value",
+    "openOrders_one": "{{count}} open order",
+    "openOrders_other": "{{count}} open orders",
+    "buy": "Buy",
+    "sell": "Sell",
+    "trigger": "Trigger",
+    "limit": "limit",
+    "limitPrice": "Limit",
+    "tp": "TP",
+    "sl": "SL",
+    "fullSize": "all",
+    "reduceOnly": "reduce-only",
+    "empty": "No open positions or orders"
+  },
+  "pending": {
+    "title": "Pending orders (off-chain intents · signatures)",
+    "summaryCol": "Summary",
+    "signedAt": "Signed at",
+    "empty": "No pending orders",
+    "kind": {
+      "offchainLimitOrder": "Off-chain order",
+      "perpVenueOrder": "Perp order",
+      "signedPermit2": "Permit2",
+      "signedPermit2Transfer": "Permit2 transfer",
+      "signedEip2612": "EIP-2612"
+    },
+    "summary": {
+      "limitOrder": "Sell max {{sellMax}} → buy min {{buyMin}}",
+      "permit": "Allowance {{amount}} · spender {{spender}}"
+    }
+  },
+  "revoke": {
+    "action": "Revoke",
+    "title": "Revoke ERC-20 approve",
+    "copyJson": "Copy JSON",
+    "desc": "Below is the calldata for the <code>approve(spender, 0)</code> call. You must send it as a transaction from your own wallet (e.g. MetaMask) for the revocation to take effect. The Pasu backend never sends transactions automatically.",
+    "target": "Target",
+    "building": "Building calldata…",
+    "failed": "Failed: {{error}}"
+  }
+}

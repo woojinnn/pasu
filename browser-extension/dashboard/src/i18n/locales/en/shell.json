@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "profile": "Profile",
+    "signOut": "Sign out",
+    "account": "Account",
+    "comingSoon": "Coming soon"
+  },
+  "search": {
+    "placeholder": "Search wallets / policies / dApps / functions",
+    "noMatches": "No matching items",
+    "groupWallets": "Wallets",
+    "groupPolicies": "Policies",
+    "groupVerdicts": "Recent verdicts"
+  },
+  "notifications": {
+    "unresolved_one": "{{count}} unresolved finding",
+    "unresolved_other": "{{count}} unresolved findings",
+    "none": "No notifications"
+  }
+}

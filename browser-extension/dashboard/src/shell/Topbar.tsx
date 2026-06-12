@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   listAuditVerdicts,
@@ -90,6 +91,7 @@ function GlobalSearch({
   placeholder?: string;
   showShortcutHint?: boolean;
 }) {
+  const { t } = useTranslation("shell");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -183,7 +185,7 @@ function GlobalSearch({
         <input
           ref={inputRef}
           type="text"
-          placeholder={placeholder ?? "지갑 / 정책 / dApp / 함수 검색"}
+          placeholder={placeholder ?? t("search.placeholder")}
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
@@ -197,11 +199,11 @@ function GlobalSearch({
       {open && q.trim().length > 0 && (
         <div className="search-pop">
           {total === 0 && (
-            <div className="search-empty">매칭되는 항목이 없습니다</div>
+            <div className="search-empty">{t("search.noMatches")}</div>
           )}
           {walletHits.length > 0 && (
             <div className="search-group">
-              <div className="search-group-head">지갑 · {walletHits.length}</div>
+              <div className="search-group-head">{t("search.groupWallets")} · {walletHits.length}</div>
               {walletHits.slice(0, 5).map((w) => (
                 <button
                   key={w.address}
@@ -221,7 +223,7 @@ function GlobalSearch({
           )}
           {policyHits.length > 0 && (
             <div className="search-group">
-              <div className="search-group-head">정책 · {policyHits.length}</div>
+              <div className="search-group-head">{t("search.groupPolicies")} · {policyHits.length}</div>
               {policyHits.slice(0, 5).map((p) => (
                 <button
                   key={p.id}
@@ -240,7 +242,7 @@ function GlobalSearch({
           )}
           {verdictHits.length > 0 && (
             <div className="search-group">
-              <div className="search-group-head">최근 verdict · {verdictHits.length}</div>
+              <div className="search-group-head">{t("search.groupVerdicts")} · {verdictHits.length}</div>
               {verdictHits.slice(0, 5).map((v) => (
                 <button key={v.id} className="search-item" onClick={() => onPick(`/history`)}>
                   <span className={`search-item-ico verdict ${v.verdict}`}>{v.verdict[0].toUpperCase()}</span>
@@ -262,6 +264,7 @@ function GlobalSearch({
 // ── Notification button (C11) ───────────────────────────────────────────
 
 function NotificationButton() {
+  const { t } = useTranslation("shell");
   const navigate = useNavigate();
   const findingsQ = useQuery({
     queryKey: ["findings", "topbar"],
@@ -273,7 +276,7 @@ function NotificationButton() {
     <button
       className="icon-btn"
       onClick={() => navigate("/history")}
-      title={unread > 0 ? `${unread}건 미해결 finding` : "알림 없음"}
+      title={unread > 0 ? t("notifications.unresolved", { count: unread }) : t("notifications.none")}
       aria-label="notifications"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">

@@ -13,6 +13,7 @@
  * crashing the wizard.
  */
 
+import { i18n } from "../../i18n";
 import { blocksToText } from "../../cedar";
 import type { PolicyIR } from "../../cedar/blocks/ir";
 import { buildProbes, diagnoseFromResult } from "../../cedar/diagnosis";
@@ -109,7 +110,7 @@ function mapPositions(positions: Position[]): PositionView[] {
     const lev = levOf.get(p.asset_index);
     return {
       id: `hl-${p.asset_index}-${i}`,
-      label: p.symbol ?? `자산 #${p.asset_index}`,
+      label: p.symbol ?? i18n.t("simulation:wizard.provider.assetIndex", { index: p.asset_index }),
       protocol: "hyperliquid",
       kind: "perp",
       side: p.is_long ? "long" : "short",
@@ -136,7 +137,7 @@ function tokenLabel(addr: string): string {
 }
 /** Display string for an approval amount — collapses MAX/huge to "무제한". */
 function apprAmount(amount: string | undefined, unlimited: boolean): string {
-  return unlimited ? "무제한" : (amount ?? "—");
+  return unlimited ? i18n.t("simulation:wizard.state.unlimited") : (amount ?? "—");
 }
 
 /** ClassifiedApprovals → ApprovalView[] (Phase 1b). */
@@ -177,9 +178,9 @@ function mapApprovals(ap: ClassifiedApprovals): ApprovalView[] {
       spender: "",
       spenderAddress: a.operator,
       unlimited: true,
-      amount: "전체 컬렉션",
+      amount: i18n.t("simulation:wizard.provider.allCollection"),
       tokenAddress: a.collection.toLowerCase(),
-      scope: "NFT 전체",
+      scope: i18n.t("simulation:wizard.provider.nftAll"),
       risk: (a.risk?.length ?? 0) > 0 ? "high" : "med",
     }),
   );
@@ -396,7 +397,16 @@ export const realProvider: SimProvider = {
     );
 
     const txRows = wallets[0]
-      ? [{ id: "tx-1", label: "트랜잭션 1", fromWallet: wallets[0].address, to: "", calldata: "", value: "0" }]
+      ? [
+          {
+            id: "tx-1",
+            label: i18n.t("simulation:wizard.txLabel", { n: 1 }),
+            fromWallet: wallets[0].address,
+            to: "",
+            calldata: "",
+            value: "0",
+          },
+        ]
       : [];
 
     let policyData = {

@@ -18,6 +18,7 @@ import {
   type StoreSnapshot,
 } from "../server-api/policy-store";
 import { textToBlocks } from "../cedar";
+import { i18n } from "../i18n";
 import { listingToDefs, requiredHolesOf, type ListingMeta } from "./market-install-convert";
 
 export { listingToDefs } from "./market-install-convert";
@@ -198,9 +199,7 @@ async function convertListing(
   locale: "ko" | "en",
 ): Promise<{ meta: ListingMeta; defs: Awaited<ReturnType<typeof listingToDefs>> }> {
   if (!detail.current_version) {
-    throw new Error(
-      locale === "ko" ? "이 listing에는 발행된 버전이 없습니다." : "This listing has no published version.",
-    );
+    throw new Error(i18n.t("market:installError.noPublishedVersion", { lng: locale }));
   }
   const body = await installListing(detail.id, detail.current_version);
   const meta: ListingMeta = {

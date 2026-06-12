@@ -5,6 +5,8 @@
  * step 1 wallets/holdings/positions/approvals, step 2 the per-wallet policy set,
  * and the result step runs decode → evaluate → step for real verdicts + diffs.
  */
+import { useTranslation } from "react-i18next";
+
 import { Topbar } from "../../shell/Topbar";
 
 import { realProvider } from "./real-provider";
@@ -17,11 +19,12 @@ import { useSimController } from "./useSimController";
 import "./simulate.css";
 
 export function SimulateWizardPage() {
+  const { t } = useTranslation("simulation");
   const c = useSimController(realProvider);
 
   return (
     <div className="sw-page">
-      <Topbar here="시뮬레이션" subtitle="4단계" />
+      <Topbar here={t("wizard.title")} subtitle={t("wizard.subtitle")} />
 
       <div className="sw-head">
         <StepNav step={c.step} goTo={c.goTo} />
@@ -36,12 +39,12 @@ export function SimulateWizardPage() {
 
       <footer className="sw-foot">
         <button type="button" className="sw-btn ghost" disabled={c.step === 1} onClick={c.back}>
-          ← 이전
+          {t("wizard.back")}
         </button>
         <div className="sw-foot-spacer" />
         {c.step < 3 && (
           <button type="button" className="sw-btn primary" disabled={!c.canAdvance} onClick={c.next}>
-            다음 →
+            {t("wizard.next")}
           </button>
         )}
         {c.step === 3 && (
@@ -54,12 +57,12 @@ export function SimulateWizardPage() {
               c.next();
             }}
           >
-            {c.running ? "실행 중…" : "시뮬레이션 실행 →"}
+            {c.running ? t("wizard.running") : t("wizard.run")}
           </button>
         )}
         {c.step === 4 && (
           <button type="button" className="sw-btn primary" onClick={() => c.run()} disabled={c.running}>
-            {c.running ? "실행 중…" : "다시 실행"}
+            {c.running ? t("wizard.running") : t("wizard.runAgain")}
           </button>
         )}
       </footer>

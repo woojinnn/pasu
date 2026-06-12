@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import {
   createReview,
@@ -20,7 +21,6 @@ import {
   type CategoryKey,
 } from "./market-domain";
 import { CodeTabs, leadingComment } from "./market-code";
-import { policyCopy } from "./market-copy";
 import { packageCopy } from "./market-package-copy";
 import { MarketInstallModal } from "./MarketInstallModal";
 import { severityFromCedar } from "./editor/policy-meta";
@@ -44,6 +44,7 @@ export function MarketDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ? decodeURIComponent(params.slug) : "";
   const [locale] = useMarketLocale();
+  const { t } = useTranslation("market");
 
   const detailQ = useQuery({
     queryKey: ["market-listing", slug],
@@ -63,16 +64,16 @@ export function MarketDetailPage() {
         showSearch={false}
         right={
           <Link to="/market" className="back-link">
-            ← {locale === "ko" ? "마켓 목록" : "Market"}
+            ← {t("detail.backToMarket")}
           </Link>
         }
       />
 
       <div className="market-detail-wrap">
-        {detailQ.isLoading && <div className="market-status">{locale === "ko" ? "불러오는 중…" : "Loading…"}</div>}
+        {detailQ.isLoading && <div className="market-status">{t("common:loading")}</div>}
         {detailQ.isError && (
           <div className="market-status market-error">
-            {locale === "ko" ? "로드 실패" : "Load failed"}: {(detailQ.error as Error).message}
+            {t("detail.loadFailed")}: {(detailQ.error as Error).message}
           </div>
         )}
 
@@ -114,7 +115,7 @@ function DetailBody({
   installMessage: string | null;
   onInstall: () => void;
 }) {
-  const ko = locale === "ko";
+  const { t } = useTranslation("market");
   const name = pickI18n(detail.display_name, locale) || detail.slug;
   const isSet = detail.kind === "set";
   const members = isSet ? detail.latest_version?.members ?? [] : [];
@@ -141,23 +142,23 @@ function DetailBody({
               )}
             </span>
             {detail.publisher_tier === "verified" && (
-              <span className="mc-tier tier-verified">{ko ? "검증" : "Verified"}</span>
+              <span className="mc-tier tier-verified">{t("detail.verifiedTier")}</span>
             )}
             <span className="md-publisher-dot">·</span>
             <span className="md-publisher-date">
-              {ko ? `${formatYmd(detail.created_at)} 발행` : `Published ${formatYmd(detail.created_at)}`}
+              {t("detail.published", { date: formatYmd(detail.created_at) })}
             </span>
             {detail.updated_at > detail.created_at && (
               <>
                 <span className="md-publisher-dot">·</span>
                 <span className="md-publisher-date">
-                  {ko ? `${formatYmd(detail.updated_at)} 갱신` : `Updated ${formatYmd(detail.updated_at)}`}
+                  {t("detail.updated", { date: formatYmd(detail.updated_at) })}
                 </span>
               </>
             )}
           </div>
           <div className="md-meta">
-            <span>{isSet ? (ko ? "패키지" : "Package") : ko ? "정책" : "Policy"}</span>
+            <span>{isSet ? t("kind.package") : t("kind.policy")}</span>
             {!isSet && cat && <span>{categoryNameOf(cat, locale)}</span>}
             {detail.current_version && <span>v{detail.current_version}</span>}
             <span className="md-installs">
@@ -187,19 +188,13 @@ function DetailBody({
             className={detail.is_installed ? "btn-secondary" : "btn-primary"}
             onClick={onInstall}
             disabled={installing || !detail.current_version}
-            title={
-              detail.is_installed
-                ? ko
-                  ? "이미 받은 listing입니다. 다시 받으면 새 로컬 복사본이 추가됩니다."
-                  : "Already installed. Receiving again adds a fresh local copy."
-                : undefined
-            }
+            title={detail.is_installed ? t("detail.alreadyInstalledTitle") : undefined}
           >
             {installing
-              ? ko ? "받는 중…" : "Installing…"
+              ? t("install.installing")
               : detail.is_installed
-                ? ko ? "설치됨" : "Installed"
-                : ko ? "받기" : "Install"}
+                ? t("install.installed")
+                : t("install.get")}
           </button>
         </div>
       </div>
@@ -211,7 +206,7 @@ function DetailBody({
       )}
       {installError && (
         <div className="publish-error" style={{ marginBottom: 12 }}>
-          {ko ? "받기 실패" : "Install failed"}: {installError}
+          {t("install.failed")}: {installError}
         </div>
       )}
 
@@ -231,7 +226,7 @@ function DetailBody({
 }
 
 function Reviews({ detail, locale }: { detail: ListingDetail; locale: MarketLocale }) {
-  const ko = locale === "ko";
+  const { t } = useTranslation("market");
   const qc = useQueryClient();
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -254,7 +249,7 @@ function Reviews({ detail, locale }: { detail: ListingDetail; locale: MarketLoca
   return (
     <div className="md-section">
       <div className="md-reviews-head">
-        <h2>{ko ? "리뷰" : "Reviews"} ({detail.rating_count})</h2>
+        <h2>{t("reviews.title")} ({detail.rating_count})</h2>
         {detail.rating_count > 0 && avg != null && (
           <span className="md-rating-total">
             <span className="md-rating-star">★</span>
@@ -271,7 +266,7 @@ function Reviews({ detail, locale }: { detail: ListingDetail; locale: MarketLoca
           if (rating > 0 && text.trim()) mut.mutate();
         }}
       >
-        <div className="md-star-pick" role="radiogroup" aria-label={ko ? "별점" : "rating"}>
+        <div className="md-star-pick" role="radiogroup" aria-label={t("reviews.ratingAria")}>
           {[1, 2, 3, 4, 5].map((s) => (
             <button
               type="button"
@@ -290,7 +285,7 @@ function Reviews({ detail, locale }: { detail: ListingDetail; locale: MarketLoca
           className="md-review-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={ko ? "한 줄 리뷰를 남겨보세요" : "Leave a short review"}
+          placeholder={t("reviews.placeholder")}
           maxLength={280}
           autoComplete="off"
           name="market-review"
@@ -300,19 +295,17 @@ function Reviews({ detail, locale }: { detail: ListingDetail; locale: MarketLoca
           className="btn-primary md-review-submit"
           disabled={mut.isPending || rating === 0 || !text.trim()}
         >
-          {mut.isPending ? (ko ? "등록 중…" : "Posting…") : ko ? "등록" : "Post"}
+          {mut.isPending ? t("reviews.posting") : t("reviews.post")}
         </button>
       </form>
       {mut.isError && (
         <div className="publish-error" style={{ marginTop: 8 }}>
-          {ko ? "등록 실패" : "Failed"}: {(mut.error as Error).message}
+          {t("reviews.failed")}: {(mut.error as Error).message}
         </div>
       )}
 
       {detail.recent_reviews.length === 0 ? (
-        <p className="md-reviews-empty">
-          {ko ? "아직 리뷰가 없습니다. 첫 리뷰를 남겨보세요." : "No reviews yet — be the first."}
-        </p>
+        <p className="md-reviews-empty">{t("reviews.empty")}</p>
       ) : (
         <div className="md-reviews">
           {detail.recent_reviews.map((r) => (
@@ -342,12 +335,12 @@ function SetSummary({
   members: SetMember[];
   locale: MarketLocale;
 }) {
-  const ko = locale === "ko";
+  const { t } = useTranslation("market");
   const why = pickI18n(detail.description, locale);
   const copy = packageCopy(detail.slug);
   return (
     <div className="md-summary">
-      <span className="md-summary-eyebrow">{ko ? "이 패키지가 막는 것" : "What this package blocks"}</span>
+      <span className="md-summary-eyebrow">{t("detail.packageBlocks")}</span>
       {(copy?.intro || why) && <p className="md-summary-why">{copy?.intro || why}</p>}
       {copy && copy.blocks.length > 0 && (
         <ul className="md-blocklist">
@@ -364,7 +357,7 @@ function SetSummary({
       )}
       <div className="md-summary-stats">
         <span className="md-stat">
-          <strong>{members.length}</strong> {ko ? "개 정책" : "policies"}
+          <strong>{members.length}</strong> {t("unit.policies")}
         </span>
       </div>
     </div>
@@ -372,7 +365,7 @@ function SetSummary({
 }
 
 function SetDetail({ members, locale }: { members: SetMember[]; locale: MarketLocale }) {
-  const ko = locale === "ko";
+  const { t } = useTranslation("market");
   const counts = new Map<CategoryKey, number>();
   members.forEach((m) => {
     const c = categoryOf(m.slug);
@@ -381,12 +374,8 @@ function SetDetail({ members, locale }: { members: SetMember[]; locale: MarketLo
   const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   return (
     <div className="md-section">
-      <h2>{ko ? "상세 설명" : "Details"}</h2>
-      <p className="md-detail-text">
-        {ko
-          ? `이 패키지는 ${members.length}개 정책으로 아래 행위(action)들을 감시합니다. 정책별 요약·코드는 "포함된 정책"에서 펼쳐 볼 수 있습니다.`
-          : `This package guards the actions below across ${members.length} policies — expand each under "Policies in this package" for its summary and code.`}
-      </p>
+      <h2>{t("detail.details")}</h2>
+      <p className="md-detail-text">{t("detail.packageDetailText", { n: members.length })}</p>
       <div className="md-cat-coverage">
         {entries.map(([c, n]) => (
           <span
@@ -404,11 +393,11 @@ function SetDetail({ members, locale }: { members: SetMember[]; locale: MarketLo
 }
 
 function IncludedPolicies({ members, locale }: { members: SetMember[]; locale: MarketLocale }) {
-  const ko = locale === "ko";
+  const { t } = useTranslation("market");
   return (
     <div className="md-section">
       <h2>
-        {ko ? "포함된 정책" : "Policies in this package"} ({members.length})
+        {t("detail.includedPolicies")} ({members.length})
       </h2>
       <div className="md-members">
         {members.map((m, i) => (
@@ -420,35 +409,38 @@ function IncludedPolicies({ members, locale }: { members: SetMember[]; locale: M
 }
 
 function PolicyDetailBody({ detail, locale }: { detail: ListingDetail; locale: MarketLocale }) {
-  const ko = locale === "ko";
+  const { t, i18n } = useTranslation("market");
   const cedar = detail.latest_version?.cedar_text ?? "";
-  const copy = policyCopy(detail.slug);
-  const summary = copy?.title || pickI18n(detail.description, locale) || (cedar ? leadingComment(cedar) : "");
-  const desc = copy?.what ?? "";
+  const hasCopy = i18n.exists(`market:policy.${detail.slug}.title`);
+  const summary =
+    (hasCopy ? t(`policy.${detail.slug}.title`) : "") ||
+    pickI18n(detail.description, locale) ||
+    (cedar ? leadingComment(cedar) : "");
+  const desc = hasCopy ? t(`policy.${detail.slug}.what`) : "";
   const sev = cedar ? severityFromCedar(cedar) : detail.severity ?? "deny";
   const cat = categoryOf(detail.slug);
   const proto = protocolOf(detail.slug);
   return (
     <>
       <div className="md-summary">
-        <span className="md-summary-eyebrow">{ko ? "이 정책이 막는 것" : "What this blocks"}</span>
+        <span className="md-summary-eyebrow">{t("detail.policyBlocks")}</span>
         {summary && <p className="md-summary-why">{summary}</p>}
         <div className="md-summary-stats">
-          <SeverityBadge sev={sev} locale={locale} />
+          <SeverityBadge sev={sev} />
           <span className="md-stat">{categoryNameOf(cat, locale)}</span>
           {proto && <span className="md-stat">{proto}</span>}
         </div>
       </div>
       {desc && (
         <div className="md-section">
-          <h2>{ko ? "상세 설명" : "Details"}</h2>
+          <h2>{t("detail.details")}</h2>
           <p className="md-detail-text">{desc}</p>
         </div>
       )}
       {cedar && (
         <div className="md-section">
-          <h2>{ko ? "내려받는 코드" : "What you install"}</h2>
-          <CodeTabs cedar={cedar} manifest={detail.latest_version?.manifest} locale={locale} hideComments />
+          <h2>{t("detail.whatYouInstall")}</h2>
+          <CodeTabs cedar={cedar} manifest={detail.latest_version?.manifest} hideComments />
         </div>
       )}
     </>
@@ -456,14 +448,14 @@ function PolicyDetailBody({ detail, locale }: { detail: ListingDetail; locale: M
 }
 
 function MemberRow({ member, locale }: { member: SetMember; locale: MarketLocale }) {
-  const ko = locale === "ko";
+  const { t, i18n } = useTranslation("market");
   const [open, setOpen] = useState(false);
   const sev = severityFromCedar(member.cedar_text);
   const cat = categoryOf(member.slug);
   const proto = protocolOf(member.slug);
-  const copy = policyCopy(member.slug);
-  const oneLine = copy?.title || leadingComment(member.cedar_text);
-  const desc = copy?.what ?? "";
+  const hasCopy = i18n.exists(`market:policy.${member.slug}.title`);
+  const oneLine = (hasCopy ? t(`policy.${member.slug}.title`) : "") || leadingComment(member.cedar_text);
+  const desc = hasCopy ? t(`policy.${member.slug}.what`) : "";
 
   return (
     <div className={`md-member-v2${open ? " is-open" : ""}`}>
@@ -482,20 +474,15 @@ function MemberRow({ member, locale }: { member: SetMember; locale: MarketLocale
           </span>
           {oneLine && <span className="md-member-oneline">{oneLine}</span>}
         </span>
-        <SeverityBadge sev={sev} locale={locale} />
+        <SeverityBadge sev={sev} />
       </button>
       <div className={`md-member-bodywrap${open ? " is-open" : ""}`}>
         <div className="md-member-bodyinner">
           <div className="md-member-body">
             {desc && <p className="md-member-desc">{desc}</p>}
-            <CodeTabs
-              cedar={member.cedar_text}
-              manifest={member.manifest}
-              locale={locale}
-              hideComments
-            />
+            <CodeTabs cedar={member.cedar_text} manifest={member.manifest} hideComments />
             <Link to={`/market/${encodeURIComponent(member.slug)}`} className="md-member-source">
-              {ko ? "이 정책 단독 보기 →" : "View this policy →"}
+              {t("detail.viewPolicyAlone")}
             </Link>
           </div>
         </div>
@@ -504,11 +491,9 @@ function MemberRow({ member, locale }: { member: SetMember; locale: MarketLocale
   );
 }
 
-function SeverityBadge({ sev, locale }: { sev: "deny" | "warn" | "info"; locale: MarketLocale }) {
-  const ko = locale === "ko";
-  const label =
-    sev === "deny" ? (ko ? "차단" : "DENY") : sev === "warn" ? (ko ? "경고" : "WARN") : ko ? "정보" : "INFO";
-  return <span className={`md-sev ${sev}`}>{label}</span>;
+function SeverityBadge({ sev }: { sev: "deny" | "warn" | "info" }) {
+  const { t } = useTranslation("market");
+  return <span className={`md-sev ${sev}`}>{t(`severityBadge.${sev}`)}</span>;
 }
 
 function PackageGlyphLg() {

@@ -17,7 +17,9 @@
  * sizing differ.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import { i18n } from "../../i18n";
 import type { BinaryOp, Expr, PolicyIR } from "../blocks/ir";
 import { isAllOf, setLiteralOperand } from "../diagnosis/membership";
 import { eachChild, enumeratePaths, pathByNode } from "../diagnosis/path";
@@ -26,6 +28,12 @@ import { getGloss } from "../../editor-v9/gloss/paths";
 import { labelForPath } from "../form/field-catalog";
 
 import "./policy-diagram.css";
+
+/** Call-time lookup in the "fields" namespace's `diagram.*` keys — the diagram
+ *  vocabulary (gate labels, operator phrases, control captions). */
+function td(key: string, opts?: Record<string, unknown>): string {
+  return i18n.t(`diagram.${key}`, { ns: "fields", ...opts });
+}
 
 type NodeKind = "root" | "when" | "unless" | "and" | "or" | "not" | "if" | "leaf" | "memberset";
 
@@ -123,7 +131,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
     return {
       path,
       kind: e.op === "&&" ? "and" : "or",
-      title: e.op === "&&" ? "모두 해당" : "하나라도 해당",
+      title: e.op === "&&" ? td("and") : td("or"),
       children: operands.map((c) => exprToNode(c, pathOf)),
     };
   }
@@ -158,7 +166,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
         path: innerPath,
         kind: "memberset",
         title: (fieldPath && labelForPath(fieldPath)) || exprToText(mem.other),
-        detail: "다음 중 어느 것도 아님",
+        detail: td("noneOf"),
         memberset: {
           mode: "any",
           members: mem.set.elements.map((m) => ({ text: exprToText(m), path: pathOf.get(m) ?? "?" })),
@@ -167,18 +175,25 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
       };
     }
     const lp = leafParts(inner);
+    const containsSym = td("opContains");
     return {
       path: innerPath,
       kind: "leaf",
       // No structured detail (e.g. an empty-set placeholder) → mark the
       // negation in the title so the box never reads as the positive form.
-      title: lp.detail ? lp.title : `${lp.title} — 아님`,
-      ...(lp.detail ? { detail: lp.detail.replace(/^포함/, "포함 안 함") } : {}),
+      title: lp.detail ? lp.title : td("notSuffix", { title: lp.title }),
+      ...(lp.detail
+        ? {
+            detail: lp.detail.startsWith(containsSym)
+              ? td("opNotContains") + lp.detail.slice(containsSym.length)
+              : lp.detail,
+          }
+        : {}),
       children: [],
     };
   }
   if (e.kind === "unary" && e.op === "!") {
-    return { path, kind: "not", title: "아니다", children: [exprToNode(e.operand, pathOf)] };
+    return { path, kind: "not", title: td("not"), children: [exprToNode(e.operand, pathOf)] };
   }
   if (e.kind === "if") {
     const branch = (b: Expr, tag: string): DNode => ({
@@ -189,7 +204,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
       path,
       kind: "if",
       title: "IF",
-      children: [branch(e.cond, "조건"), branch(e.then, "then"), branch(e.else, "else")],
+      children: [branch(e.cond, td("ifCond")), branch(e.then, "then"), branch(e.else, "else")],
     };
   }
   // `[..] contains x` / `x in [..]` / `set containsAny [..]` over a LITERAL set →
@@ -205,7 +220,7 @@ function exprToNode(e: Expr, pathOf: Map<Expr, string>): DNode {
         path,
         kind: "memberset",
         title: (fieldPath && labelForPath(fieldPath)) || exprToText(mem.other),
-        detail: isAllOf(e.op) ? "다음 전부 포함" : "다음 중 하나",
+        detail: isAllOf(e.op) ? td("allOf") : td("anyOf"),
         memberset: {
           mode: isAllOf(e.op) ? "all" : "any",
           members: mem.set.elements.map((m) => ({ text: exprToText(m), path: pathOf.get(m) ?? "?" })),
@@ -223,14 +238,14 @@ function buildTree(ir: PolicyIR): DNode {
     // Display wrapper for the clause; its body carries the canonical `c{i}.body`.
     path: `clause${i}`,
     kind: c.kind === "unless" ? "unless" : "when",
-    title: c.kind === "unless" ? "예외" : "발동 조건",
+    title: c.kind === "unless" ? td("unless") : td("when"),
     children: [exprToNode(c.body, pathOf)],
   }));
   // The FORBID/PERMIT head is dropped — the action is shown in the form's
   // trigger, and the effect is implied. A single clause becomes the root; with
   // both when + unless we keep a light neutral junction (no FORBID box).
   if (clauses.length === 0) {
-    return { path: "root", kind: "when", title: "조건 없음 · 항상 적용", children: [] };
+    return { path: "root", kind: "when", title: td("always"), children: [] };
   }
   if (clauses.length === 1) {
     const clause = clauses[0];
@@ -250,14 +265,14 @@ function buildTree(ir: PolicyIR): DNode {
     }
     return clause;
   }
-  return { path: "root", kind: "root", title: "규칙", children: clauses };
+  return { path: "root", kind: "root", title: td("rule"), children: clauses };
 }
 
 /** Rephrase the TOP gate as a sentence opener (lower gates keep the short
  *  모두/하나라도 라벨). Non-gates pass through. */
 function sentenceGate(n: DNode): DNode {
-  if (n.kind === "or") return { ...n, title: "아래 중 하나라도 해당하면" };
-  if (n.kind === "and") return { ...n, title: "아래에 모두 해당하면" };
+  if (n.kind === "or") return { ...n, title: td("sentenceOr") };
+  if (n.kind === "and") return { ...n, title: td("sentenceAnd") };
   return n;
 }
 
@@ -280,7 +295,7 @@ function actualValueText(path: string, ctx: unknown): string | null {
   }
   if (typeof v === "number") return isNanoPath(path) ? String(v / 1e9) : String(v);
   if (typeof v === "string") return v;
-  if (typeof v === "boolean") return v ? "참" : "거짓";
+  if (typeof v === "boolean") return v ? td("true") : td("false");
   return null;
 }
 
@@ -299,7 +314,7 @@ function annotateActuals(root: DNode, ir: PolicyIR, ctx: unknown): void {
       const p = candidates.map(attrPath).find((c) => c !== null) ?? null;
       const v = p ? actualValueText(p, ctx) : null;
       if (v !== null) {
-        const tail = `실제 ${v}`;
+        const tail = td("actual", { v });
         n.detail = n.detail ? `${n.detail} · ${tail}` : tail;
       }
     }
@@ -369,7 +384,7 @@ function valueExprText(rhs: Expr): string {
   const lit = unwrapExtLiteral(rhs);
   if (lit !== null) return lit;
   if (rhs.kind === "lit") {
-    if (rhs.litType === "bool") return rhs.value ? "참" : "거짓";
+    if (rhs.litType === "bool") return rhs.value ? td("true") : td("false");
     if (rhs.litType === "string") return String(rhs.value) === "" ? "" : `"${rhs.value}"`;
     return String(rhs.value);
   }
@@ -394,9 +409,10 @@ function scaledValueText(path: string | null, rhs: Expr): string {
   return valueExprText(rhs);
 }
 
-/** A leaf comparison as plain Korean (field label + op phrase + value), or null
- *  when `e` isn't a humanizable comparison (caller falls back to `exprToText`). */
-function exprToKorean(e: Expr): string | null {
+/** A leaf comparison as a plain-language phrase (field label + op phrase +
+ *  value), or null when `e` isn't a humanizable comparison (caller falls back
+ *  to `exprToText`). */
+function exprToNatural(e: Expr): string | null {
   if (e.kind === "binary") {
     const COMPARE = ["==", "!=", "<", "<=", ">", ">=", "contains", "in"];
     if (!COMPARE.includes(e.op)) return null;
@@ -413,17 +429,30 @@ function exprToKorean(e: Expr): string | null {
   return null;
 }
 
-/** Operator → compact symbol for the leaf's value line. */
-const OP_SYM: Record<string, string> = {
-  "==": "=",
-  "!=": "≠",
-  "<": "<",
-  "<=": "≤",
-  ">": ">",
-  ">=": "≥",
-  contains: "포함",
-  in: "중 하나",
-};
+/** Operator → compact symbol/phrase for the leaf's value line (the word-like
+ *  entries resolve through i18n at call time). */
+function opSym(op: string): string | undefined {
+  switch (op) {
+    case "==":
+      return "=";
+    case "!=":
+      return "≠";
+    case "<":
+      return "<";
+    case "<=":
+      return "≤";
+    case ">":
+      return ">";
+    case ">=":
+      return "≥";
+    case "contains":
+      return td("opContains");
+    case "in":
+      return td("opIn");
+    default:
+      return undefined;
+  }
+}
 
 /** Split a leaf comparison into a two-line card: `title` = field label,
  *  `detail` = operator + value (+ unit). Falls back to a single `title` line
@@ -436,20 +465,22 @@ function leafParts(e: Expr): { title: string; detail?: string } {
   ): { title: string; detail?: string } | null => {
     if (!path) return null;
     // nano 필드는 폼 위젯과 같은 단위(토큰)로 — 원시 nano Long을 보여주지 않는다.
-    const unit = isNanoPath(path)
-      ? " 토큰"
-      : getGloss(path)?.unit?.ko
-        ? ` ${getGloss(path)!.unit!.ko}`
-        : "";
+    const gUnit = getGloss(path)?.unit;
+    const unitText = isNanoPath(path)
+      ? i18n.t("unit.token", { ns: "fields" })
+      : i18n.language === "en"
+        ? gUnit?.en
+        : gUnit?.ko;
+    const unit = unitText ? ` ${unitText}` : "";
     const title = labelForPath(path);
     const emptyStr = rhs.kind === "lit" && rhs.litType === "string" && rhs.value === "";
     if (emptyStr) {
-      return { title, detail: op === "==" ? "비어 있음" : "비어 있지 않음" };
+      return { title, detail: op === "==" ? td("isEmpty") : td("isNotEmpty") };
     }
-    return { title, detail: `${OP_SYM[op] ?? op} ${scaledValueText(path, rhs)}${unit}` };
+    return { title, detail: `${opSym(op) ?? op} ${scaledValueText(path, rhs)}${unit}` };
   };
 
-  if (e.kind === "binary" && OP_SYM[e.op]) {
+  if (e.kind === "binary" && opSym(e.op)) {
     const parts = fromCompare(attrPath(e.left), e.op, e.right);
     if (parts) return parts;
   }
@@ -457,7 +488,7 @@ function leafParts(e: Expr): { title: string; detail?: string } {
     const parts = fromCompare(attrPath(e.args[0]), EXT_TO_OP[e.fn], e.args[1]);
     if (parts) return parts;
   }
-  return { title: exprToKorean(e) ?? exprToText(e) };
+  return { title: exprToNatural(e) ?? exprToText(e) };
 }
 
 /** `decimal("0.05")` / `ip("…")` used as a value → just its inner literal text. */
@@ -577,7 +608,7 @@ function isStacked(n: DNode): boolean {
  *  diagram's 12px font, so width math counts them accordingly. */
 function textUnits(s: string): number {
   let u = 0;
-  for (const ch of s) u += /[ᄀ-ᇿ　-〿一-鿿가-힯＀-￯]/.test(ch) ? 1.8 : 1;
+  for (const ch of s) u += /[ᄀ-ᇿ　-〿一-鿿가-힯＀-￯]/.test(ch) ? 1.8 : 1; // i18n-ok
   return u;
 }
 
@@ -706,12 +737,17 @@ export function PolicyDiagram({
   humanizeLabel,
   actualContext,
 }: PolicyDiagramProps) {
+  // Subscribe to language changes (labels are resolved at call time inside
+  // buildTree/annotateActuals, so the memo must recompute per language).
+  const { i18n: i18nReact } = useTranslation("fields");
+  const lang = i18nReact.language;
   const model = useMemo(() => {
     if (!ir) return null;
     const tree = buildTree(ir);
     if (actualContext !== undefined) annotateActuals(tree, ir, actualContext);
     return layout(tree);
-  }, [ir, actualContext]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ir, actualContext, lang]);
 
   const PAD = compact ? 8 : 16;
   const W = (model?.width ?? 0) + PAD * 2;
@@ -793,7 +829,7 @@ export function PolicyDiagram({
   const humanizeAddrs = humanizeLabel ?? ((s: string) => s);
 
   if (!ir || !model) {
-    return <div className="pdiagram-empty">표시할 정책이 없습니다</div>;
+    return <div className="pdiagram-empty">{td("empty")}</div>;
   }
 
   const hl = new Set(highlightPaths ?? []);
@@ -943,7 +979,7 @@ export function PolicyDiagram({
           width="100%"
           height="100%"
           role="img"
-          aria-label="정책 구조 다이어그램"
+          aria-label={td("ariaLabel")}
         >
           <g transform={view ? `translate(${view.x} ${view.y}) scale(${view.k})` : undefined}>
             {edges}
@@ -951,14 +987,14 @@ export function PolicyDiagram({
           </g>
         </svg>
         <div className="pd-controls">
-          <button type="button" onClick={() => zoomBy(1.25)} aria-label="확대">
+          <button type="button" onClick={() => zoomBy(1.25)} aria-label={td("zoomIn")}>
             ＋
           </button>
-          <button type="button" onClick={() => zoomBy(1 / 1.25)} aria-label="축소">
+          <button type="button" onClick={() => zoomBy(1 / 1.25)} aria-label={td("zoomOut")}>
             −
           </button>
           <button type="button" onClick={fit}>
-            맞춤
+            {td("fit")}
           </button>
         </div>
       </div>
@@ -972,7 +1008,7 @@ export function PolicyDiagram({
         viewBox={`0 0 ${W} ${H}`}
         style={{ width: "100%", maxWidth: W, height: "auto" }}
         role="img"
-        aria-label="정책 구조 다이어그램"
+        aria-label={td("ariaLabel")}
       >
         {edges}
         {nodes}
