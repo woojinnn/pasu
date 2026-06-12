@@ -383,6 +383,46 @@ async fn execute_call_specs(
                     }),
                 }
             }
+            "perp.equity_drawdown_bps" => {
+                match crate::methods::equity_drawdown_bps(state, &spec.params) {
+                    Some(value) => {
+                        tracing::debug!(
+                            call_id = %spec.call_id,
+                            "perp.equity_drawdown_bps: OK"
+                        );
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "perp.equity_drawdown_bps: no synced HL account / no equity \
+                             baseline yet (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
+            "perp.session_fill_stats" => {
+                match crate::methods::session_fill_stats(state, &spec.params) {
+                    Some(value) => {
+                        tracing::debug!(
+                            call_id = %spec.call_id,
+                            "perp.session_fill_stats: OK"
+                        );
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "perp.session_fill_stats: no synced HL account / empty fill \
+                             window (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
             "address.sanctions" => match address_sanctions(&spec.params, sanctions).await {
                 Some(value) => {
                     tracing::debug!(call_id = %spec.call_id, "address.sanctions: OK");
@@ -2059,6 +2099,248 @@ mod tests {
         assert_eq!(
             results.get(&horizon_spec.call_id),
             Some(&serde_json::json!({ "horizonSec": 4000 }))
+        );
+    }
+
+    /// `perp.equity_drawdown_bps` dispatches through `execute_call_specs` over
+    /// a synced HL account: 5% below the day baseline / 8% below the HWM. The
+    /// no-HL-account wallet is skipped with a diagnostic (field left unset →
+    /// the optional call's policy stays dormant).
+    #[tokio::test]
+    async fn equity_drawdown_served_from_hl_account() {
+        use policy_state::primitives::ProtocolRef;
+        use policy_state::{Decimal, EquityAnchor, HlAccount, Position, PositionKind};
+
+        let mut state = WalletState::new(sample_wallet_id());
+        state.positions.push(Position {
+            id: "hyperliquid/account".into(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(HlAccount {
+                perp_account_value_usd: Some(Decimal::new("920")),
+                equity_baseline: Some(EquityAnchor {
+                    value: Decimal::new("968.42"),
+                    anchored_at: Time::from_unix(864_000),
+                    trusted: true,
+                }),
+                equity_hwm: Some(Decimal::new("1000")),
+                ..Default::default()
+            }),
+            primitives_synced_at: Time::from_unix(864_000),
+            primitives_source: DataSource::UserSupplied,
+        });
+
+        let spec = CallSpec {
+            manifest_id: "order-daily-loss-limit-warn".into(),
+            call_id: "order-daily-loss-limit-warn::equity-drawdown".into(),
+            method: "perp.equity_drawdown_bps".into(),
+            params: serde_json::json!({ "chain_id": "hl-mainnet" }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+
+        let (results, _diag) = execute_call_specs(
+            &state,
+            std::slice::from_ref(&spec),
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+        )
+        .await;
+        // day: (968.42-920)/968.42 ≈ 500 bps; peak: (1000-920)/1000 = 800 bps.
+        assert_eq!(
+            results.get(&spec.call_id),
+            Some(&serde_json::json!({
+                "dayDrawdownBps": 500,
+                "peakDrawdownBps": 800,
+                "baselineTrusted": true
+            }))
+        );
+
+        // No synced HL account → served as absent + diagnostic, never a value.
+        let empty = WalletState::new(sample_wallet_id());
+        let (results, diag) = execute_call_specs(
+            &empty,
+            std::slice::from_ref(&spec),
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+        )
+        .await;
+        assert!(!results.contains_key(&spec.call_id));
+        assert!(
+            diag.iter()
+                .any(|d| d.message.contains("perp.equity_drawdown_bps")),
+            "diagnostic names the method: {diag:?}"
+        );
+    }
+
+    /// WIRING (full public entry + identity): the request's `wallet_id` is
+    /// what selects the state a `perp.*` method reads. Seed the MASTER's
+    /// wallet with HL anchors; an `EvaluateRequest` carrying the master
+    /// `wallet_id` serves the drawdown, while the same request keyed by a
+    /// different wallet (the venue submitter sentinel, pre-SW-prereq behavior)
+    /// loads an empty state and leaves the field unset. This is the server
+    /// half of the extension's `walletAddress` override.
+    #[tokio::test]
+    async fn evaluate_loads_state_by_wallet_id_for_perp_methods() {
+        use policy_state::primitives::ProtocolRef;
+        use policy_state::{Decimal, EquityAnchor, HlAccount, Position, PositionKind};
+
+        let master_id = WalletId::new(
+            Address::from_str("0x676fa5b94067c2be14bc025df6c5c80dedf49a54").unwrap(),
+            [ChainId::ethereum_mainnet()],
+        );
+        let mut master_state = WalletState::new(master_id.clone());
+        master_state.positions.push(Position {
+            id: "hyperliquid/account".into(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(HlAccount {
+                perp_account_value_usd: Some(Decimal::new("950")),
+                equity_baseline: Some(EquityAnchor {
+                    value: Decimal::new("1000"),
+                    anchored_at: Time::from_unix(864_000),
+                    trusted: true,
+                }),
+                equity_hwm: Some(Decimal::new("1000")),
+                ..Default::default()
+            }),
+            primitives_synced_at: Time::from_unix(864_000),
+            primitives_source: DataSource::UserSupplied,
+        });
+        let store = InMemoryWalletStore::new();
+        store.seed(master_state);
+
+        let spec = CallSpec {
+            manifest_id: "order-daily-loss-limit-warn".into(),
+            call_id: "order-daily-loss-limit-warn::equity-drawdown".into(),
+            method: "perp.equity_drawdown_bps".into(),
+            params: serde_json::json!({ "chain_id": "hl-mainnet" }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+
+        // (a) wallet_id = master → the method reads the seeded HL account.
+        let mut req = empty_envelope_request();
+        req.wallet_id = master_id;
+        req.call_specs.push(spec.clone());
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results.get(&spec.call_id),
+            Some(&serde_json::json!({
+                "dayDrawdownBps": 500,
+                "peakDrawdownBps": 500,
+                "baselineTrusted": true
+            }))
+        );
+
+        // (b) wallet_id = a different wallet (e.g. the submitter sentinel) →
+        // empty state loads → field unset (dormant), never a fabricated value.
+        let mut req = empty_envelope_request(); // sample_wallet_id = 0x…a01c
+        req.call_specs.push(spec.clone());
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
+        assert!(!resp.policy_request.results.contains_key(&spec.call_id));
+        assert!(resp
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("perp.equity_drawdown_bps")));
+    }
+
+    /// `perp.session_fill_stats` dispatches through `execute_call_specs` over
+    /// a synced fill window; an empty window is skipped with a diagnostic.
+    #[tokio::test]
+    async fn session_fill_stats_served_from_fill_window() {
+        use policy_state::primitives::ProtocolRef;
+        use policy_state::{Decimal, HlAccount, HlFillSummary, Position, PositionKind};
+
+        let day_start_ms: u64 = 20_615 * 86_400 * 1000;
+        let fill = |tid: u64, time: u64, pnl: &str| HlFillSummary {
+            tid,
+            time,
+            coin: "BTC".to_owned(),
+            closed_pnl: Decimal::new(pnl),
+            px: Decimal::new("60000"),
+            sz: Decimal::new("0.1"),
+        };
+        let mut state = WalletState::new(sample_wallet_id());
+        state.positions.push(Position {
+            id: "hyperliquid/account".into(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(HlAccount {
+                fill_window: vec![
+                    fill(3, day_start_ms + 3000, "-1.0"),
+                    fill(2, day_start_ms + 2000, "-2.0"),
+                    fill(1, day_start_ms + 1000, "5.0"),
+                ],
+                ..Default::default()
+            }),
+            primitives_synced_at: Time::from_unix(864_000),
+            primitives_source: DataSource::UserSupplied,
+        });
+
+        let spec = CallSpec {
+            manifest_id: "order-loss-streak-cooldown-warn".into(),
+            call_id: "order-loss-streak-cooldown-warn::session-fill-stats".into(),
+            method: "perp.session_fill_stats".into(),
+            params: serde_json::json!({
+                "chain_id": "hl-mainnet",
+                "now": 20_615 * 86_400 + 3_600
+            }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+
+        let (results, _diag) = execute_call_specs(
+            &state,
+            std::slice::from_ref(&spec),
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+        )
+        .await;
+        assert_eq!(
+            results.get(&spec.call_id),
+            Some(&serde_json::json!({
+                "lossStreak": 2,
+                "lossesToday": 2,
+                "tradesToday": 3,
+                "realizedPnlTodayUsd": 2
+            }))
+        );
+
+        // Empty window → absent + diagnostic (dormant, not zeros).
+        let empty = WalletState::new(sample_wallet_id());
+        let (results, diag) = execute_call_specs(
+            &empty,
+            std::slice::from_ref(&spec),
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+        )
+        .await;
+        assert!(!results.contains_key(&spec.call_id));
+        assert!(
+            diag.iter()
+                .any(|d| d.message.contains("perp.session_fill_stats")),
+            "diagnostic names the method: {diag:?}"
         );
     }
 }

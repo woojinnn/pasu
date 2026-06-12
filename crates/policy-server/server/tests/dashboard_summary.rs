@@ -180,6 +180,7 @@ async fn seed_state_with_holding_and_hyperliquid(multi_user: &MultiUserStore, us
             borrow_lend: None,
             leverage_settings: Vec::new(),
             agents: Vec::new(),
+            ..HlAccount::default()
         }),
         primitives_synced_at: Time::from_unix(1_730_000_000),
         primitives_source: DataSource::VenueApi {

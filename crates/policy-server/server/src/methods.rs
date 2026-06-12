@@ -9,7 +9,21 @@ use serde_json::{json, Value};
 
 use policy_state::pending::{AssetCommitment, PendingKind, PendingStatus};
 use policy_state::primitives::U256;
-use policy_state::WalletState;
+use policy_state::{HlAccount, PositionKind, WalletState};
+
+/// The reserved HL account position id — mirrors the reducer's
+/// `effect/hyperliquid_core/common.rs::HL_ACCOUNT_ID` (which is `pub(super)`
+/// there, so the literal is repeated rather than imported).
+const HL_ACCOUNT_ID: &str = "hyperliquid/account";
+
+/// The wallet's synced Hyperliquid account, when the sync layer has produced
+/// one. Mirrors the reducer's (non-public) `find_hl_account`.
+fn find_hl_account(state: &WalletState) -> Option<&HlAccount> {
+    state.positions.iter().find_map(|p| match &p.kind {
+        PositionKind::HyperliquidAccount(a) if p.id == HL_ACCOUNT_ID => Some(a),
+        _ => None,
+    })
+}
 
 /// Lowercase hex address from a param that is either a bare address string or an
 /// object carrying an `address` field. Mirrors `handler::asset_address`.
@@ -155,6 +169,168 @@ pub(crate) fn validity_horizon_sec(_state: &WalletState, params: &Value) -> Opti
         .unwrap_or_else(unix_now);
     let horizon = (valid_until - now).max(0);
     Some(json!({ "horizonSec": horizon }))
+}
+
+/// `perp.equity_drawdown_bps`: the synced HL account's equity drawdown from
+/// today's day-start baseline (`dayDrawdownBps`) and from its high-water mark
+/// (`peakDrawdownBps`), in basis points, plus whether the baseline is a true
+/// day-open anchor (`baselineTrusted`). Backs the daily-loss / max-drawdown
+/// circuit-breaker policies — measured exactly the way prop-firm rulebooks
+/// measure it: on EQUITY (unrealized `PnL` included), from a day-start anchor.
+///
+/// Pure read over the loaded `WalletState`; the anchors are rolled by the sync
+/// layer (`HlAccount::roll_equity_anchors`), never here. Returns `None`
+/// (fail-open) when there is no synced HL account, no current equity, no
+/// baseline yet, or a stored decimal doesn't parse. NOTE: the loaded state
+/// must be the HL MASTER's wallet — the extension passes the resolved master
+/// as the venue `wallet_id`; an unregistered/sentinel wallet loads empty and
+/// lands here as `None` (the policy stays dormant).
+pub(crate) fn equity_drawdown_bps(state: &WalletState, params: &Value) -> Option<Value> {
+    let _chain = params.get("chain_id").and_then(Value::as_str)?;
+    let hl = find_hl_account(state)?;
+    let raw: f64 = hl.perp_account_value_usd.as_ref()?.as_str().parse().ok()?;
+    // Flow-neutral equity: net out the cumulative non-funding capital flow so a
+    // deposit/withdrawal does not read as profit/drawdown. The anchors are rolled
+    // on this same flow-neutral basis by the sync layer, so `current` must match.
+    let flow: f64 = hl
+        .cumulative_net_flow
+        .as_str()
+        .parse::<f64>()
+        .ok()
+        .filter(|f| f.is_finite())
+        .unwrap_or(0.0);
+    let current = raw - flow;
+    let baseline = hl.equity_baseline.as_ref()?;
+    let baseline_f: f64 = baseline.value.as_str().parse().ok()?;
+    if !(current.is_finite() && baseline_f.is_finite()) || baseline_f <= 0.0 {
+        return None;
+    }
+
+    let day = drawdown_bps(baseline_f, current);
+    // HWM is rolled together with the baseline, so it is present whenever the
+    // baseline is; the day-value fallback only covers a hand-edited blob.
+    let peak = hl
+        .equity_hwm
+        .as_ref()
+        .and_then(|h| h.as_str().parse::<f64>().ok())
+        .filter(|h| h.is_finite() && *h > 0.0)
+        .map_or(day, |h| drawdown_bps(h, current));
+
+    Some(json!({
+        "dayDrawdownBps": day,
+        "peakDrawdownBps": peak,
+        "baselineTrusted": baseline.trusted,
+    }))
+}
+
+/// Drawdown of `current` below `anchor` in basis points, clamped to ≥ 0 — an
+/// account in profit reads 0, never a negative "gain" a `>=` cap would
+/// misread. f64 per the bps precedent (`oracle_steth_peg_status_bps`).
+#[allow(clippy::cast_possible_truncation)] // bounded to [0, 1e6] before the cast
+fn drawdown_bps(anchor: f64, current: f64) -> i64 {
+    (((anchor - current) / anchor * 10_000.0).clamp(0.0, 1_000_000.0)).round() as i64
+}
+
+/// `perp.session_fill_stats`: behavioral session aggregates over the synced HL
+/// fill window. Four outputs, all UTC-day scoped (reset at midnight, like the
+/// equity day-baseline):
+/// - `lossStreak` — most-recent run of consecutive losing TRADES TODAY,
+/// - `lossesToday` — count of losing trades today (cumulative, not consecutive),
+/// - `tradesToday` — all fills since UTC day-start (frequency; spot included),
+/// - `realizedPnlTodayUsd` — signed rounded USD sum of today's realized `PnL`.
+///
+/// Backs the cooldown / daily-loss-count / daily-realized-loss / overtrading
+/// warn policies.
+///
+/// `lossStreak`/`lossesToday` count only MEANINGFUL trades: a close whose
+/// `|closedPnl| >= min_loss` (manifest param `min_loss_usd`, default $1).
+/// Sub-band "scratch" closes — and pure opens (`"0.0"`) — are INVISIBLE: they
+/// neither count as a loss nor reset the streak. A win of `>= +min_loss` is the
+/// first non-loss newest-first and ENDS the streak. `tradesToday`/realized are
+/// size-agnostic (no band). Params: `chain_id`, optional `now` (unix SECONDS;
+/// tests override), optional `min_loss_usd`.
+///
+/// Returns `None` (fail-open) when there is no synced HL account or the fill
+/// window is EMPTY — "never polled" and "no fills in 24h" are indistinguishable
+/// there, but both produce the same verdicts (0 trades / 0 streak fire
+/// nothing), so no information is lost by staying dormant.
+pub(crate) fn session_fill_stats(state: &WalletState, params: &Value) -> Option<Value> {
+    let _chain = params.get("chain_id").and_then(Value::as_str)?;
+    let now = params
+        .get("now")
+        .and_then(Value::as_i64)
+        .unwrap_or_else(unix_now);
+    let min_loss = min_loss_usd(params);
+    let hl = find_hl_account(state)?;
+    if hl.fill_window.is_empty() {
+        return None;
+    }
+
+    // UTC day-start in fill time units (ms). `now` is seconds.
+    let day_start_ms = (now / 86_400) * 86_400 * 1000;
+
+    // The window is stored newest-first, but sort defensively — the streak is
+    // order-sensitive and the blob could predate that guarantee.
+    let mut fills: Vec<_> = hl.fill_window.iter().collect();
+    fills.sort_by_key(|f| std::cmp::Reverse(f.time));
+
+    let pnl_of = |f: &policy_state::HlFillSummary| f.closed_pnl.as_str().parse::<f64>().ok();
+    let is_today =
+        |f: &policy_state::HlFillSummary| i64::try_from(f.time).is_ok_and(|t| t >= day_start_ms);
+
+    // `tradesToday` + `realizedPnlTodayUsd`: ALL of today's fills. Trade frequency
+    // and the realized total are size-agnostic — the `min_loss` band does NOT
+    // apply here. (`aggregateByTime` upstream already collapses partial fills of
+    // one order into one trade row.)
+    let trades_today = fills.iter().filter(|f| is_today(f)).count();
+    let realized_today: f64 = fills
+        .iter()
+        .filter(|f| is_today(f))
+        .filter_map(|f| pnl_of(f))
+        .sum();
+
+    // `lossStreak` + `lossesToday`: TODAY's MEANINGFUL trades only (|PnL| >=
+    // min_loss), newest-first. Sub-band scratches (incl. opens at 0.0) are
+    // invisible; a `>= +min_loss` win ends the streak. Calendar-day scoped, so a
+    // streak does not span UTC midnight (accepted; honest-limit in the spec).
+    let meaningful_today: Vec<f64> = fills
+        .iter()
+        .filter(|f| is_today(f))
+        .filter_map(|f| pnl_of(f))
+        .filter(|p| p.abs() >= min_loss)
+        .collect();
+    let loss_streak = meaningful_today.iter().take_while(|p| **p < 0.0).count();
+    let losses_today = meaningful_today.iter().filter(|p| **p < 0.0).count();
+
+    Some(json!({
+        "lossStreak": loss_streak,
+        "lossesToday": losses_today,
+        "tradesToday": trades_today,
+        "realizedPnlTodayUsd": round_usd(realized_today),
+    }))
+}
+
+/// Minimum `|realized PnL|` (USD) for a closed trade to count toward the loss
+/// streak / daily loss count — sub-threshold "scratch" trades are invisible
+/// (neither extend nor reset the streak). Per-policy configurable via the
+/// manifest `policy_rpc` literal param `min_loss_usd` (string or number);
+/// default `$1`. Non-finite / non-positive → `$1`.
+fn min_loss_usd(params: &Value) -> f64 {
+    params
+        .get("min_loss_usd")
+        .and_then(|v| {
+            v.as_str()
+                .and_then(|s| s.parse::<f64>().ok())
+                .or_else(|| v.as_f64())
+        })
+        .filter(|x| x.is_finite() && *x > 0.0)
+        .unwrap_or(1.0)
+}
+
+/// Round a USD float to a whole-dollar `i64` (the Cedar-comparable grain).
+#[allow(clippy::cast_possible_truncation)] // clamped before the cast
+fn round_usd(v: f64) -> i64 {
+    v.round().clamp(-1e15, 1e15) as i64
 }
 
 /// Current unix time in seconds (wall clock).
@@ -525,5 +701,336 @@ mod tests {
     fn horizon_missing_valid_until_is_none() {
         let st = state(vec![], vec![]);
         assert!(super::validity_horizon_sec(&st, &serde_json::json!({ "now": 1000 })).is_none());
+    }
+
+    // --- perp.equity_drawdown_bps ---
+
+    use policy_state::primitives::{Decimal, ProtocolRef};
+    use policy_state::{EquityAnchor, HlAccount, Position, PositionKind};
+
+    /// A `WalletState` carrying a synced HL account with the given equity and
+    /// (optionally) anchors. Mirrors the sync layer's reserved position shape.
+    fn hl_state(
+        equity: Option<&str>,
+        baseline: Option<(&str, bool)>,
+        hwm: Option<&str>,
+    ) -> WalletState {
+        hl_state_flow(equity, baseline, hwm, "0")
+    }
+
+    /// `hl_state` with a non-zero `cumulative_net_flow` (signed USD): the running
+    /// non-funding capital flow the drawdown method nets out of raw equity.
+    fn hl_state_flow(
+        equity: Option<&str>,
+        baseline: Option<(&str, bool)>,
+        hwm: Option<&str>,
+        flow: &str,
+    ) -> WalletState {
+        let mut s = state(vec![], vec![]);
+        s.positions.push(Position {
+            id: "hyperliquid/account".into(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(HlAccount {
+                perp_account_value_usd: equity.map(Decimal::new),
+                equity_baseline: baseline.map(|(v, trusted)| EquityAnchor {
+                    value: Decimal::new(v),
+                    anchored_at: Time::from_unix(864_000),
+                    trusted,
+                }),
+                equity_hwm: hwm.map(Decimal::new),
+                cumulative_net_flow: Decimal::new(flow),
+                ..Default::default()
+            }),
+            primitives_synced_at: Time::from_unix(864_000),
+            primitives_source: DataSource::UserSupplied,
+        });
+        s
+    }
+
+    fn drawdown(st: &WalletState) -> Option<Value> {
+        super::equity_drawdown_bps(st, &serde_json::json!({ "chain_id": "hl-mainnet" }))
+    }
+
+    #[test]
+    fn five_pct_daily_loss_reads_500_bps() {
+        let st = hl_state(Some("950"), Some(("1000", true)), Some("1000"));
+        let v = drawdown(&st).expect("served");
+        assert_eq!(v["dayDrawdownBps"], 500);
+        assert_eq!(v["peakDrawdownBps"], 500);
+        assert_eq!(v["baselineTrusted"], true);
+    }
+
+    #[test]
+    fn peak_drawdown_measures_from_hwm_not_baseline() {
+        // Day: (940-920)/940 ≈ 213 bps; peak: (1000-920)/1000 = 800 bps.
+        let st = hl_state(Some("920"), Some(("940", false)), Some("1000"));
+        let v = drawdown(&st).expect("served");
+        assert_eq!(v["dayDrawdownBps"], 213);
+        assert_eq!(v["peakDrawdownBps"], 800);
+        assert_eq!(v["baselineTrusted"], false);
+    }
+
+    #[test]
+    fn account_in_profit_reads_zero_not_negative() {
+        let st = hl_state(Some("1100"), Some(("1000", true)), Some("1100"));
+        let v = drawdown(&st).expect("served");
+        assert_eq!(v["dayDrawdownBps"], 0);
+        assert_eq!(v["peakDrawdownBps"], 0);
+    }
+
+    #[test]
+    fn no_baseline_is_none() {
+        // Watch started this request — no anchor yet → fail-open, not 0.
+        let st = hl_state(Some("950"), None, Some("1000"));
+        assert!(drawdown(&st).is_none());
+    }
+
+    #[test]
+    fn withdrawal_does_not_read_as_drawdown() {
+        // Withdrew $200: raw equity 800, cumulative flow −200 → flow-neutral 1000.
+        // Anchors are already on the flow-neutral scale, so drawdown must be 0 —
+        // a pure capital withdrawal is not a trading loss.
+        let st = hl_state_flow(Some("800"), Some(("1000", true)), Some("1000"), "-200");
+        let v = drawdown(&st).expect("served");
+        assert_eq!(v["dayDrawdownBps"], 0, "a withdrawal is not a daily loss");
+        assert_eq!(v["peakDrawdownBps"], 0, "a withdrawal is not a drawdown");
+    }
+
+    #[test]
+    fn real_loss_after_withdrawal_is_still_measured() {
+        // Withdrew $200 (flow −200) AND lost on trades: raw 760 → flow-neutral
+        // 960, against the 1000 peak = (1000−960)/1000 = 400 bps. The withdrawal
+        // is netted out; the genuine loss is not.
+        let st = hl_state_flow(Some("760"), Some(("1000", true)), Some("1000"), "-200");
+        let v = drawdown(&st).expect("served");
+        assert_eq!(v["peakDrawdownBps"], 400);
+        assert_eq!(v["dayDrawdownBps"], 400);
+    }
+
+    #[test]
+    fn deposit_does_not_mask_real_drawdown() {
+        // Down to 500 on a 1000 peak (real 50% drawdown), then DEPOSITED 500 to
+        // refill: raw equity 1000, flow +500 → flow-neutral 500. The breaker must
+        // still see (1000−500)/1000 = 5000 bps — a top-up cannot reset it.
+        let st = hl_state_flow(Some("1000"), Some(("1000", true)), Some("1000"), "500");
+        let v = drawdown(&st).expect("served");
+        assert_eq!(
+            v["peakDrawdownBps"], 5000,
+            "deposit must not erase the drawdown"
+        );
+    }
+
+    #[test]
+    fn no_hl_account_is_none() {
+        let st = state(vec![], vec![]);
+        assert!(drawdown(&st).is_none());
+    }
+
+    #[test]
+    fn zero_or_garbage_baseline_is_none() {
+        assert!(drawdown(&hl_state(Some("950"), Some(("0", true)), None)).is_none());
+        assert!(drawdown(&hl_state(Some("950"), Some(("nope", true)), None)).is_none());
+    }
+
+    #[test]
+    fn equity_drawdown_missing_chain_id_is_none() {
+        let st = hl_state(Some("950"), Some(("1000", true)), Some("1000"));
+        assert!(super::equity_drawdown_bps(&st, &serde_json::json!({})).is_none());
+    }
+
+    // --- perp.session_fill_stats ---
+
+    use policy_state::HlFillSummary;
+
+    /// Day-start used by the fill tests: NOW is 01:00 UTC into day 20615.
+    const DAY_START_MS: u64 = 20_615 * 86_400 * 1000;
+    const NOW_SECS: i64 = 20_615 * 86_400 + 3_600;
+
+    fn fill(tid: u64, time: u64, pnl: &str) -> HlFillSummary {
+        HlFillSummary {
+            tid,
+            time,
+            coin: "BTC".to_owned(),
+            closed_pnl: Decimal::new(pnl),
+            px: Decimal::new("60000"),
+            sz: Decimal::new("0.1"),
+        }
+    }
+
+    fn fills_state(window: Vec<HlFillSummary>) -> WalletState {
+        let mut s = state(vec![], vec![]);
+        s.positions.push(Position {
+            id: "hyperliquid/account".into(),
+            protocol: ProtocolRef::new("hyperliquid"),
+            chain: None,
+            kind: PositionKind::HyperliquidAccount(HlAccount {
+                fill_window: window,
+                ..Default::default()
+            }),
+            primitives_synced_at: Time::from_unix(864_000),
+            primitives_source: DataSource::UserSupplied,
+        });
+        s
+    }
+
+    fn stats(st: &WalletState) -> Option<Value> {
+        super::session_fill_stats(
+            st,
+            &serde_json::json!({ "chain_id": "hl-mainnet", "now": NOW_SECS }),
+        )
+    }
+
+    #[test]
+    fn three_consecutive_meaningful_losses_read_streak_3() {
+        // Newest → oldest: loss, loss, loss, PROFIT (breaks), loss. Every
+        // |PnL| >= $1 so the default band keeps them all.
+        let st = fills_state(vec![
+            fill(5, DAY_START_MS + 5000, "-1.0"),
+            fill(4, DAY_START_MS + 4000, "-2.5"),
+            fill(3, DAY_START_MS + 3000, "-1.5"),
+            fill(2, DAY_START_MS + 2000, "3.0"),
+            fill(1, DAY_START_MS + 1000, "-9.0"),
+        ]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["lossStreak"], 3); // -1.0 -2.5 -1.5 then +3.0 ends it
+        assert_eq!(v["lossesToday"], 4); // all four negatives (cumulative)
+        assert_eq!(v["tradesToday"], 5);
+        // -1.0 -2.5 -1.5 +3.0 -9.0 = -11.0.
+        assert_eq!(v["realizedPnlTodayUsd"], -11);
+    }
+
+    #[test]
+    fn sub_dollar_scratch_closes_are_invisible_to_streak() {
+        // A +$0.40 scratch win and a -$0.10 scratch loss sit among real losses;
+        // the $1 band drops both → the streak is the run of >= $1 losses, and a
+        // tiny win does NOT reset it.
+        let st = fills_state(vec![
+            fill(5, DAY_START_MS + 5000, "-2.0"),
+            fill(4, DAY_START_MS + 4000, "0.4"), // scratch win < $1 → invisible
+            fill(3, DAY_START_MS + 3000, "-3.0"),
+            fill(2, DAY_START_MS + 2000, "-0.1"), // scratch loss < $1 → invisible
+            fill(1, DAY_START_MS + 1000, "-4.0"),
+        ]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["lossStreak"], 3); // -2.0 -3.0 -4.0 (scratches skipped)
+        assert_eq!(v["lossesToday"], 3); // -0.1 is not a meaningful loss
+        assert_eq!(v["tradesToday"], 5); // scratches still count as activity
+    }
+
+    #[test]
+    fn a_meaningful_win_resets_the_streak() {
+        // A >= $1 win newest-first ends the streak even with older losses.
+        let st = fills_state(vec![
+            fill(3, DAY_START_MS + 3000, "5.0"),
+            fill(2, DAY_START_MS + 2000, "-2.0"),
+            fill(1, DAY_START_MS + 1000, "-3.0"),
+        ]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["lossStreak"], 0); // newest is a >= $1 win
+        assert_eq!(v["lossesToday"], 2); // both losses still counted
+    }
+
+    #[test]
+    fn min_loss_usd_param_raises_the_band() {
+        // min_loss_usd = 25: only the -$30 close clears the band.
+        let st = fills_state(vec![
+            fill(3, DAY_START_MS + 3000, "-10.0"),
+            fill(2, DAY_START_MS + 2000, "-20.0"),
+            fill(1, DAY_START_MS + 1000, "-30.0"),
+        ]);
+        let v = super::session_fill_stats(
+            &st,
+            &serde_json::json!({ "chain_id": "hl-mainnet", "now": NOW_SECS, "min_loss_usd": "25" }),
+        )
+        .expect("served");
+        assert_eq!(v["lossStreak"], 1); // only -30 is meaningful at $25
+        assert_eq!(v["lossesToday"], 1);
+        assert_eq!(v["tradesToday"], 3); // band doesn't affect frequency
+                                         // Default ($1) band sees all three.
+        let d = stats(&st).expect("served");
+        assert_eq!(d["lossStreak"], 3);
+        assert_eq!(d["lossesToday"], 3);
+    }
+
+    #[test]
+    fn pure_opens_neither_extend_nor_break_the_streak() {
+        // Newest → oldest: OPEN (0.0), loss, OPEN, loss → streak 2.
+        let st = fills_state(vec![
+            fill(4, DAY_START_MS + 4000, "0.0"),
+            fill(3, DAY_START_MS + 3000, "-1.0"),
+            fill(2, DAY_START_MS + 2000, "0.0"),
+            fill(1, DAY_START_MS + 1000, "-2.0"),
+        ]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["lossStreak"], 2);
+        assert_eq!(v["lossesToday"], 2);
+        assert_eq!(v["tradesToday"], 4); // opens still count as activity
+    }
+
+    #[test]
+    fn streak_and_losses_are_today_scoped() {
+        // A loss today preceded by a loss YESTERDAY. Today-scope means the streak
+        // and loss-count see only today's run — no cross-midnight span.
+        let st = fills_state(vec![
+            fill(2, DAY_START_MS + 1000, "-1.0"),
+            fill(1, DAY_START_MS - 1000, "-2.0"), // yesterday
+        ]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["tradesToday"], 1);
+        assert_eq!(v["realizedPnlTodayUsd"], -1);
+        assert_eq!(v["lossStreak"], 1); // today only — yesterday excluded
+        assert_eq!(v["lossesToday"], 1);
+    }
+
+    #[test]
+    fn fill_at_exact_day_start_counts_as_today() {
+        // Pins the `>=` boundary: a fill at exactly UTC midnight is TODAY.
+        let st = fills_state(vec![fill(1, DAY_START_MS, "-1.0")]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["tradesToday"], 1);
+        assert_eq!(v["realizedPnlTodayUsd"], -1);
+        assert_eq!(v["lossStreak"], 1);
+        assert_eq!(v["lossesToday"], 1);
+    }
+
+    #[test]
+    fn garbage_hwm_falls_back_to_day_drawdown_for_peak() {
+        // A corrupt stored HWM must not kill the method — the peak axis falls
+        // back to the day value (the baseline still parsed).
+        let st = hl_state(Some("950"), Some(("1000", true)), Some("not-a-number"));
+        let v = drawdown(&st).expect("served");
+        assert_eq!(v["dayDrawdownBps"], 500);
+        assert_eq!(v["peakDrawdownBps"], 500); // fallback = day axis
+    }
+
+    #[test]
+    fn unsorted_window_is_handled() {
+        // Oldest-first storage (pre-guarantee blob) must not corrupt the streak.
+        let st = fills_state(vec![
+            fill(1, DAY_START_MS + 1000, "5.0"),
+            fill(2, DAY_START_MS + 2000, "-1.0"),
+        ]);
+        let v = stats(&st).expect("served");
+        assert_eq!(v["lossStreak"], 1); // newest is the loss
+        assert_eq!(v["lossesToday"], 1);
+    }
+
+    #[test]
+    fn empty_window_is_none() {
+        // Never-polled and no-fills look identical — both stay dormant, which
+        // yields the same verdicts as serving zeros.
+        assert!(stats(&fills_state(vec![])).is_none());
+    }
+
+    #[test]
+    fn fill_stats_no_hl_account_is_none() {
+        assert!(stats(&state(vec![], vec![])).is_none());
+    }
+
+    #[test]
+    fn fill_stats_missing_chain_id_is_none() {
+        let st = fills_state(vec![fill(1, DAY_START_MS + 1000, "-1.0")]);
+        assert!(super::session_fill_stats(&st, &serde_json::json!({ "now": NOW_SECS })).is_none());
     }
 }

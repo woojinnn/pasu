@@ -547,7 +547,7 @@ impl Orchestrator {
         };
         let user = state.wallet_id.address;
         let (core, fresh, errors) = hl.fetch_hl_core("", &user, now).await;
-        upsert_hyperliquid_merge(state, |a| a.merge_core(core, fresh), now);
+        apply_hl_core(state, core, fresh, now);
         Ok(HyperliquidAccountReport {
             account_updated: true,
             errors,
@@ -568,7 +568,23 @@ impl Orchestrator {
             });
         };
         let user = state.wallet_id.address;
-        let (lt, fresh, errors) = hl.fetch_hl_longtail("", &user).await;
+        // Incremental ledger reconciliation: fetch only flows newer than the
+        // cursor we last folded into `cumulative_net_flow`, so a re-fetched
+        // overlapping window never double-counts (the merge ADDs the delta).
+        let cursor = state.positions.iter().find_map(|p| match &p.kind {
+            PositionKind::HyperliquidAccount(a) => Some(a.ledger_cursor_ms),
+            _ => None,
+        });
+        // FIRST reconciliation (no cursor yet): count flows from NOW, not from the
+        // account's entire deposit history. The equity anchors are watch-start
+        // equity, so `cumulative_net_flow` must measure flows only from watch-start
+        // onward — else `adjusted = raw − all_time_flow` would be meaningless.
+        let now_ms = now.as_unix().saturating_mul(1000);
+        let ledger_since_ms = match cursor {
+            Some(c) if c > 0 => c,
+            _ => now_ms,
+        };
+        let (lt, fresh, errors) = hl.fetch_hl_longtail("", &user, now, ledger_since_ms).await;
         upsert_hyperliquid_merge(state, |a| a.merge_longtail(lt, fresh), now);
         Ok(HyperliquidAccountReport {
             account_updated: true,
@@ -1194,6 +1210,29 @@ pub(crate) fn upsert_intent_orders(state: &mut WalletState, orders: &[PendingTx]
             state.pending.push(pending.clone());
         }
     }
+}
+
+/// Apply a fetched **core** snapshot: field-scoped merge + (only when the
+/// clearinghouse domain is authoritative this cycle) roll the equity anchors
+/// (`equity_baseline` / `equity_hwm`) that the drawdown circuit-breaker
+/// methods (`perp.equity_drawdown_bps`) read. A failed clearinghouse poll
+/// must move NEITHER the merged fields NOR the anchors.
+fn apply_hl_core(
+    state: &mut WalletState,
+    core: policy_state::HlAccount,
+    fresh: policy_state::CoreFresh,
+    now: Time,
+) {
+    upsert_hyperliquid_merge(
+        state,
+        |a| {
+            a.merge_core(core, fresh);
+            if fresh.clearinghouse {
+                a.roll_equity_anchors(now);
+            }
+        },
+        now,
+    );
 }
 
 /// Load-or-create the HL account position, apply `f` (a field-scoped merge), and
@@ -1844,6 +1883,58 @@ priority = 1
             panic!("not an HL account");
         };
         assert_eq!(acct.perp_usdc, Some(Decimal::new("9"))); // last core, preserved across long-tail
+    }
+
+    #[test]
+    fn apply_hl_core_rolls_anchors_only_on_fresh_clearinghouse() {
+        use policy_state::{CoreFresh, Decimal, HlAccount, WalletId};
+
+        let mut state =
+            WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+
+        // (1) fresh clearinghouse with equity → anchors roll.
+        let core = HlAccount {
+            perp_account_value_usd: Some(Decimal::new("1000")),
+            ..Default::default()
+        };
+        let fresh = CoreFresh {
+            clearinghouse: true,
+            ..Default::default()
+        };
+        apply_hl_core(&mut state, core, fresh, Time::from_unix(864_000 + 3_600));
+        let acct = |state: &WalletState| -> policy_state::HlAccount {
+            let pos = state
+                .positions
+                .iter()
+                .find(|p| p.id == HL_ACCOUNT_ID)
+                .unwrap();
+            let PositionKind::HyperliquidAccount(a) = &pos.kind else {
+                panic!("not an HL account");
+            };
+            a.clone()
+        };
+        let a = acct(&state);
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1000")));
+        assert_eq!(
+            a.equity_baseline.as_ref().map(|b| b.value.clone()),
+            Some(Decimal::new("1000"))
+        );
+
+        // (2) a FAILED clearinghouse poll (all-false mask) must move neither
+        // the merged fields nor the anchors — even though the (default) core
+        // snapshot carries no equity.
+        apply_hl_core(
+            &mut state,
+            HlAccount::default(),
+            CoreFresh::default(),
+            Time::from_unix(864_000 + 7_200),
+        );
+        let a = acct(&state);
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1000"))); // preserved
+        assert_eq!(
+            a.equity_baseline.as_ref().map(|b| b.value.clone()),
+            Some(Decimal::new("1000"))
+        );
     }
 
     #[tokio::test]

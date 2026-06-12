@@ -307,6 +307,7 @@ mod tests {
             borrow_lend: None,
             leverage_settings: Vec::new(),
             agents: Vec::new(),
+            ..HlAccount::default()
         });
 
         assert_eq!(fmt6(hyperliquid_assets_usd(&state)), "374.450000");

@@ -15,8 +15,8 @@ use serde_json::{json, Value};
 
 use policy_state::position::{
     CoreFresh, HlAccount, HlAgentApproval, HlBorrowLendAccount, HlBorrowLendBalance,
-    HlBorrowLendTokenState, HlLeverageSetting, HlOpenOrder, HlPosition, HlSpotBalance,
-    HlStakingAccount, HlStakingDelegation, HlVaultEquity, LongtailFresh,
+    HlBorrowLendTokenState, HlFillSummary, HlLeverageSetting, HlOpenOrder, HlPosition,
+    HlSpotBalance, HlStakingAccount, HlStakingDelegation, HlVaultEquity, LongtailFresh,
 };
 use policy_state::primitives::Time;
 use policy_state::{Address, DataSource, Decimal, MarketRef, VenueRef, U256};
@@ -199,20 +199,37 @@ impl HyperliquidFetcher {
         (account, fresh, errors)
     }
 
-    /// Best-effort **long-tail** fetch (staking / vaults / borrow-lend / agents).
-    /// Returns `(account, fresh, errors)`; `fresh` tells the caller which long-tail
-    /// domains to overwrite vs preserve.
+    /// Best-effort **long-tail** fetch (staking / vaults / borrow-lend / agents
+    /// / fills). Returns `(account, fresh, errors)`; `fresh` tells the caller
+    /// which long-tail domains to overwrite vs preserve. `now` bounds the fill
+    /// recency window.
     pub async fn fetch_hl_longtail(
         &self,
         endpoint: &str,
         user: &Address,
+        now: Time,
+        ledger_since_ms: u64,
     ) -> (HlAccount, LongtailFresh, Vec<String>) {
         let staking = self.fetch_delegator_summary(endpoint, user).await;
         let delegations = self.fetch_delegations(endpoint, user).await;
         let vaults = self.fetch_user_vault_equities(endpoint, user).await;
         let borrow = self.fetch_borrow_lend_user_state(endpoint, user).await;
         let agents = self.fetch_agents(endpoint, user).await;
-        assemble_longtail(staking, delegations, vaults, borrow, agents)
+        let fills = self.fetch_user_fills(endpoint, user).await;
+        let ledger = self
+            .fetch_user_non_funding_ledger(endpoint, user, ledger_since_ms)
+            .await;
+        assemble_longtail(
+            staking,
+            delegations,
+            vaults,
+            borrow,
+            agents,
+            fills,
+            ledger,
+            ledger_since_ms,
+            now,
+        )
     }
 
     pub async fn fetch_clearinghouse_state(
@@ -273,6 +290,25 @@ impl HyperliquidFetcher {
         .await
     }
 
+    /// The account's most-recent fills (venue caps the response at the 2000
+    /// MOST RECENT — newest fills are always present, which is exactly the
+    /// loss-streak input; only the far tail of a hyper-active day truncates).
+    ///
+    /// `aggregateByTime: true` collapses the partial fills of ONE crossing order
+    /// into a single row (summed `closedPnl`/`sz`) so the behavioral stats count
+    /// TRADES, not executions — a losing exit that swept three book levels reads
+    /// as one loss, not three. (HONEST LIMIT: a resting order filled across
+    /// multiple blocks is not aggregated; the `min_loss_usd` band in the consuming
+    /// method absorbs the residual small slices.)
+    pub async fn fetch_user_fills(
+        &self,
+        endpoint: &str,
+        user: &Address,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(endpoint, user_fills_request_body(user))
+            .await
+    }
+
     pub async fn fetch_spot_clearinghouse_state(
         &self,
         endpoint: &str,
@@ -281,6 +317,28 @@ impl HyperliquidFetcher {
         self.fetch_info(
             endpoint,
             json!({ "type": "spotClearinghouseState", "user": hl_user(user) }),
+        )
+        .await
+    }
+
+    /// Non-funding ledger updates (deposits / withdrawals / perp↔spot &
+    /// vault transfers) at or after `since_ms`. Used to net capital flows out of
+    /// the equity drawdown so a deposit/withdrawal is not read as profit/loss.
+    /// `startTime` is inclusive on HL, so the cursor uses a strict `>` filter to
+    /// avoid re-folding the boundary entry.
+    pub async fn fetch_user_non_funding_ledger(
+        &self,
+        endpoint: &str,
+        user: &Address,
+        since_ms: u64,
+    ) -> Result<Value, SyncError> {
+        self.fetch_info(
+            endpoint,
+            json!({
+                "type": "userNonFundingLedgerUpdates",
+                "user": hl_user(user),
+                "startTime": since_ms,
+            }),
         )
         .await
     }
@@ -577,12 +635,19 @@ pub(crate) fn assemble_core(
 /// failed/unparseable one is recorded and left unmarked. Returns
 /// `(account, fresh, errors)` where `account` carries only the long-tail fields
 /// and `fresh` marks the ones that succeeded (caller merges via `merge_longtail`).
+// One fetch result per long-tail domain (plus the ledger cursor + clock) — a
+// per-domain parameter list is the natural shape; bundling would only obscure it.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn assemble_longtail(
     staking_summary: Result<Value, SyncError>,
     delegations: Result<Value, SyncError>,
     vault_equities: Result<Value, SyncError>,
     borrow_lend: Result<Value, SyncError>,
     agents: Result<Value, SyncError>,
+    fills: Result<Value, SyncError>,
+    ledger: Result<Value, SyncError>,
+    ledger_since_ms: u64,
+    now: Time,
 ) -> (HlAccount, LongtailFresh, Vec<String>) {
     let mut errors = Vec::new();
     let mut fresh = LongtailFresh::default();
@@ -635,7 +700,145 @@ pub(crate) fn assemble_longtail(
         },
         Err(e) => errors.push(format!("agents: {e}")),
     }
+    match fills {
+        Ok(v) => match parse_hl_fills(&v, now) {
+            Ok(fw) => {
+                acct.fill_window = fw;
+                fresh.fills = true;
+            }
+            Err(e) => errors.push(format!("fills parse: {e}")),
+        },
+        Err(e) => errors.push(format!("fills: {e}")),
+    }
+    match ledger {
+        Ok(v) => match parse_ledger_net_flow(&v, ledger_since_ms) {
+            Ok((delta, new_cursor)) => {
+                // The assembled account carries the per-poll DELTA (merge ADDs it)
+                // and the advanced cursor; `merge_longtail` folds both in.
+                acct.cumulative_net_flow = Decimal::new(format!("{delta}"));
+                acct.ledger_cursor_ms = new_cursor;
+                fresh.ledger = true;
+            }
+            Err(e) => errors.push(format!("ledger parse: {e}")),
+        },
+        Err(e) => errors.push(format!("ledger: {e}")),
+    }
     (acct, fresh, errors)
+}
+
+/// Recency window the fill stats consider (24h, in milliseconds — HL fill
+/// times are unix ms).
+const FILL_WINDOW_MS: u64 = 86_400_000;
+/// Max fills persisted per wallet — bounds the JSONB blob. 500 is ~33× the
+/// overtrading warn threshold, so the cap cannot flip a verdict anywhere near
+/// the threshold; and because `userFills` returns the MOST RECENT fills, the
+/// newest (the loss-streak input) are always kept.
+const FILL_WINDOW_CAP: usize = 500;
+
+/// Parse a `userFills` response into the bounded fill window: keep fills
+/// inside the recency window, newest first, capped. Field shapes per the live
+/// wire: `time` unix-ms number, `tid` number, `coin` string, `closedPnl` /
+/// `px` / `sz` decimal strings.
+fn parse_hl_fills(fills: &Value, now: Time) -> Result<Vec<HlFillSummary>, SyncError> {
+    let mut out = Vec::new();
+    let Some(items) = fills.as_array() else {
+        return Ok(out);
+    };
+    let now_ms = now.as_unix().saturating_mul(1000);
+    let cutoff = now_ms.saturating_sub(FILL_WINDOW_MS);
+    for item in items {
+        let time = value_at(item, &["time"])
+            .and_then(Value::as_u64)
+            .ok_or_else(|| sync_error("fill missing time"))?;
+        if time < cutoff {
+            continue;
+        }
+        out.push(HlFillSummary {
+            tid: value_at(item, &["tid"])
+                .and_then(Value::as_u64)
+                .ok_or_else(|| sync_error("fill missing tid"))?,
+            time,
+            coin: string_at(item, &["coin"])?,
+            closed_pnl: decimal_at(item, &["closedPnl"])?,
+            px: decimal_at(item, &["px"])?,
+            sz: decimal_at(item, &["sz"])?,
+        });
+    }
+    out.sort_by_key(|f| std::cmp::Reverse(f.time));
+    out.truncate(FILL_WINDOW_CAP);
+    Ok(out)
+}
+
+/// Reduce a `userNonFundingLedgerUpdates` response to the **net capital flow
+/// (USD) that moved the PERP `accountValue`** for entries strictly newer than
+/// `cursor_ms`, plus the new cursor (the newest entry time seen — advanced even
+/// for ignored types so a window is never reprocessed).
+///
+/// Mapping (⚠ verify against live ledger before relying on the vault arms):
+/// - `accountClassTransfer {toPerp}` — the direct perp↔spot mover: `+usdc` into
+///   perp, `−usdc` out. **High confidence.**
+/// - `vaultDeposit` / `vaultWithdrawal` — USDC moved perp→vault (`−`) / back
+///   (`+`); vault equity is tracked separately, so it leaves perp `accountValue`.
+/// - `deposit` / `withdraw` — these land in / leave **spot**; the perp impact
+///   surfaces later as an `accountClassTransfer`, so counting them here would
+///   double-count. Ignored. Unknown types are ignored (no silent mis-adjust).
+///
+/// Conservative direction: when in doubt we UNDER-adjust (leave a flow
+/// uncounted), which can only cause a transient over-read (a warn), never hide a
+/// real drawdown.
+fn parse_ledger_net_flow(ledger: &Value, cursor_ms: u64) -> Result<(f64, u64), SyncError> {
+    let Some(items) = ledger.as_array() else {
+        return Ok((0.0, cursor_ms));
+    };
+    let mut net = 0.0_f64;
+    let mut max_time = cursor_ms;
+    for item in items {
+        let time = value_at(item, &["time"])
+            .and_then(Value::as_u64)
+            .ok_or_else(|| sync_error("ledger entry missing time"))?;
+        if time <= cursor_ms {
+            continue; // already folded into the running total
+        }
+        max_time = max_time.max(time);
+        let Some(delta) = value_at(item, &["delta"]) else {
+            continue;
+        };
+        let Some(kind) = value_at(delta, &["type"]).and_then(Value::as_str) else {
+            continue;
+        };
+        let usdc = ledger_usdc(delta);
+        net += match kind {
+            "accountClassTransfer" => {
+                let to_perp = value_at(delta, &["toPerp"])
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                if to_perp {
+                    usdc
+                } else {
+                    -usdc
+                }
+            }
+            "vaultDeposit" => -usdc,
+            "vaultWithdrawal" => usdc,
+            // spot-level / unknown → no perp accountValue impact here.
+            _ => 0.0,
+        };
+    }
+    Ok((net, max_time))
+}
+
+/// Read a ledger delta's `usdc` amount as `f64`, tolerating string or number
+/// encodings. Missing/unparseable → `0.0` (the entry contributes nothing).
+fn ledger_usdc(delta: &Value) -> f64 {
+    match value_at(delta, &["usdc"]) {
+        Some(Value::String(s)) => s
+            .parse::<f64>()
+            .ok()
+            .filter(|f| f.is_finite())
+            .unwrap_or(0.0),
+        Some(Value::Number(n)) => n.as_f64().filter(|f| f.is_finite()).unwrap_or(0.0),
+        _ => 0.0,
+    }
 }
 
 pub(crate) fn parse_account_snapshot(
@@ -669,6 +872,10 @@ pub(crate) fn parse_account_snapshot(
         borrow_lend: None,
         leverage_settings,
         agents,
+        // Anchors (equity_baseline / equity_hwm) are NOT part of a fetched
+        // snapshot — they are server-owned history rolled by the sync
+        // orchestrator and live only on the persisted account.
+        ..HlAccount::default()
     })
 }
 
@@ -1397,6 +1604,15 @@ fn hl_user(user: &Address) -> String {
     format!("{user:#x}")
 }
 
+/// Request body for the `userFills` info call. `aggregateByTime: true` is
+/// load-bearing — it collapses the partial fills of one crossing order into a
+/// single trade row so the behavioral stats count trades, not executions (see
+/// [`HlInfoFetcher::fetch_user_fills`]). Extracted so a regression test can pin
+/// the flag.
+fn user_fills_request_body(user: &Address) -> Value {
+    json!({ "type": "userFills", "user": hl_user(user), "aggregateByTime": true })
+}
+
 fn hl_coin(market_symbol: &str, dex: Option<&str>) -> String {
     let coin = strip_quote_suffix(market_symbol);
     if coin.contains(':') {
@@ -1636,11 +1852,141 @@ mod tests {
             Ok(vaults),
             Ok(borrow),
             agents_err,
+            Ok(serde_json::json!([])),
+            Ok(serde_json::json!([])),
+            0,
+            Time::from_unix(1_781_187_200),
         );
         assert!(lt.agents.is_empty()); // failed → left empty
         assert!(!fresh.agents); // NOT fresh → caller preserves prior agents
         assert!(fresh.vault_equities); // vaults parsed OK → fresh
+        assert!(fresh.fills); // empty fill list still parses → fresh
+        assert!(fresh.ledger); // empty ledger still parses → fresh
         assert!(errors.iter().any(|e| e.contains("agents")));
+    }
+
+    #[test]
+    fn parse_ledger_net_flow_maps_perp_affecting_types_after_cursor() {
+        let ledger = serde_json::json!([
+            // Before the cursor → already folded in, ignored.
+            { "time": 1_000_u64, "hash": "0xa",
+              "delta": { "type": "accountClassTransfer", "usdc": "100.0", "toPerp": true } },
+            // Spot-level deposit → does NOT move perp accountValue → ignored.
+            { "time": 2_000_u64, "hash": "0xb",
+              "delta": { "type": "deposit", "usdc": "500.0" } },
+            // Perp → spot transfer → −50.
+            { "time": 3_000_u64, "hash": "0xc",
+              "delta": { "type": "accountClassTransfer", "usdc": "50.0", "toPerp": false } },
+            // Vault deposit (perp → vault) → −30.
+            { "time": 4_000_u64, "hash": "0xd",
+              "delta": { "type": "vaultDeposit", "vault": "0x9", "usdc": "30.0" } },
+            // Unknown type → ignored (no silent mis-adjust), but advances cursor.
+            { "time": 5_000_u64, "hash": "0xe",
+              "delta": { "type": "someFutureType", "usdc": "999.0" } },
+        ]);
+        let (delta, cursor) = parse_ledger_net_flow(&ledger, 1_500).unwrap();
+        // After cursor 1500: deposit(0) + transfer(−50) + vaultDeposit(−30) = −80.
+        assert!((delta - (-80.0)).abs() < 1e-9, "delta = {delta}");
+        // Cursor advances to the newest entry seen, even the ignored one.
+        assert_eq!(cursor, 5_000);
+    }
+
+    #[test]
+    fn parse_ledger_net_flow_empty_or_nonarray_is_noop() {
+        assert_eq!(
+            parse_ledger_net_flow(&serde_json::json!([]), 42).unwrap(),
+            (0.0, 42)
+        );
+        assert_eq!(
+            parse_ledger_net_flow(&serde_json::json!({}), 42).unwrap(),
+            (0.0, 42)
+        );
+    }
+
+    #[test]
+    fn parse_ledger_first_poll_excludes_history() {
+        // The orchestrator passes cursor = now_ms on the FIRST reconciliation, so
+        // the account's entire pre-watch deposit/withdrawal history is excluded
+        // (delta 0) and the cursor does not regress below now — `cumulative_net_flow`
+        // counts flows only from watch-start, matching the watch-start equity anchor.
+        let now_ms = 1_781_000_000_000_u64;
+        let ledger = serde_json::json!([
+            { "time": 1_000_u64, "hash": "0x1",
+              "delta": { "type": "accountClassTransfer", "usdc": "9999.0", "toPerp": true } },
+            { "time": 2_000_u64, "hash": "0x2",
+              "delta": { "type": "withdraw", "usdc": "5000.0" } },
+        ]);
+        let (delta, cursor) = parse_ledger_net_flow(&ledger, now_ms).unwrap();
+        assert!(
+            delta.abs() < 1e-9,
+            "pre-watch history must not be summed: {delta}"
+        );
+        assert_eq!(cursor, now_ms, "cursor must not regress below now");
+    }
+
+    #[test]
+    fn parse_ledger_net_flow_vault_withdrawal_adds_back() {
+        let ledger = serde_json::json!([
+            { "time": 9_000_u64, "hash": "0xf",
+              "delta": { "type": "vaultWithdrawal", "vault": "0x9", "usdc": "30.0" } },
+        ]);
+        let (delta, cursor) = parse_ledger_net_flow(&ledger, 0).unwrap();
+        assert!(
+            (delta - 30.0).abs() < 1e-9,
+            "vault withdrawal returns to perp: {delta}"
+        );
+        assert_eq!(cursor, 9_000);
+    }
+
+    #[test]
+    fn parse_hl_fills_windows_sorts_and_caps() {
+        // Real `userFills` wire shape (live capture): time unix-ms NUMBER,
+        // tid/oid numbers, decimals as strings.
+        let now = Time::from_unix(1_781_200_000);
+        let now_ms: u64 = 1_781_200_000 * 1000;
+        let fill = |tid: u64, time: u64, pnl: &str| {
+            serde_json::json!({
+                "coin": "GMX", "px": "5.4112", "sz": "3.65", "side": "B",
+                "time": time, "startPosition": "-721.06", "dir": "Close Short",
+                "closedPnl": pnl, "hash": "0xdead", "oid": 465_798_979_984_u64,
+                "crossed": true, "fee": "0.0", "tid": tid, "feeToken": "USDC",
+                "twapId": null
+            })
+        };
+        // One stale (beyond 24h), two in-window out of order.
+        let resp = serde_json::json!([
+            fill(1, now_ms - FILL_WINDOW_MS - 1, "0.0"),
+            fill(2, now_ms - 1000, "-1.5"),
+            fill(3, now_ms - 5000, "2.0"),
+        ]);
+        let out = parse_hl_fills(&resp, now).expect("parses");
+        // Stale dropped; newest first.
+        assert_eq!(out.iter().map(|f| f.tid).collect::<Vec<_>>(), vec![2, 3]);
+        assert_eq!(out[0].closed_pnl, policy_state::Decimal::new("-1.5"));
+        assert_eq!(out[0].coin, "GMX");
+
+        // Cap: 600 in-window fills truncate to the newest 500.
+        let many: Vec<Value> = (0..600).map(|i| fill(i, now_ms - i * 10, "0.0")).collect();
+        let out = parse_hl_fills(&Value::Array(many), now).expect("parses");
+        assert_eq!(out.len(), FILL_WINDOW_CAP);
+        assert_eq!(out[0].tid, 0); // newest kept
+    }
+
+    #[test]
+    fn parse_hl_fills_missing_tid_is_an_error() {
+        let resp = serde_json::json!([{ "coin": "GMX", "time": 1_781_187_103_047_u64,
+            "closedPnl": "0.0", "px": "1", "sz": "1" }]);
+        assert!(parse_hl_fills(&resp, Time::from_unix(1_781_200_000)).is_err());
+    }
+
+    #[test]
+    fn user_fills_request_sets_aggregate_by_time() {
+        // Pin the load-bearing flag: collapsing one order's partial fills into a
+        // single trade row is what keeps the loss streak counting trades, not
+        // executions. A silent drop would re-inflate the streak.
+        let body = user_fills_request_body(&Address::from([0x11; 20]));
+        assert_eq!(body["type"], "userFills");
+        assert_eq!(body["aggregateByTime"], true);
     }
 
     /// Live HL fetch for a real address. Set `HL_LIVE_ADDR` and run with
@@ -1677,11 +2023,21 @@ mod tests {
         println!("leverage_settings: {}", core.leverage_settings.len());
         println!("core errors: {errors:?}");
 
-        let (lt, lfresh, lerrors) = f.fetch_hl_longtail("", &user).await;
-        println!(
-            "=== LONG-TAIL  fresh{{staking:{} vault:{} borrow_lend:{} agents:{}}} ===",
-            lfresh.staking, lfresh.vault_equities, lfresh.borrow_lend, lfresh.agents
+        let live_now = Time::from_unix(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_secs(),
         );
+        let (lt, lfresh, lerrors) = f.fetch_hl_longtail("", &user, live_now, 0).await;
+        println!(
+            "=== LONG-TAIL  fresh{{staking:{} vault:{} borrow_lend:{} agents:{} fills:{} ledger:{}}} ===",
+            lfresh.staking, lfresh.vault_equities, lfresh.borrow_lend, lfresh.agents, lfresh.fills, lfresh.ledger
+        );
+        println!("fill_window ({}):", lt.fill_window.len());
+        for fw in lt.fill_window.iter().take(5) {
+            println!("  {fw:?}");
+        }
         println!("staking: {:?}", lt.staking);
         println!(
             "vault_equities ({}): {:?}",

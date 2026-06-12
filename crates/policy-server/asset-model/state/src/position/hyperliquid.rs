@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 
-use crate::primitives::{Address, Decimal};
+use crate::primitives::{Address, Decimal, Time};
 
 /// A wallet's entire Hyperliquid L1 account state.
 ///
@@ -58,6 +58,48 @@ pub struct HlAccount {
     pub leverage_settings: Vec<HlLeverageSetting>,
     /// Delegated agent (API) wallets.
     pub agents: Vec<HlAgentApproval>,
+    /// Today's day-start equity anchor for the daily-loss circuit breaker
+    /// (`perp.equity_drawdown_bps`). Owned by [`Self::roll_equity_anchors`];
+    /// the merge fns never touch it (anchor history must survive a failed
+    /// poll). `None` until the first fresh equity observation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub equity_baseline: Option<EquityAnchor>,
+    /// Running high-water mark of `perp_account_value_usd` across all syncs,
+    /// for the trailing max-drawdown circuit breaker. Same ownership rules as
+    /// `equity_baseline`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[tsify(optional)]
+    pub equity_hwm: Option<Decimal>,
+    /// Bounded window of the account's most-recent fills (newest first) from
+    /// `userFills`, for the behavioral session stats (`perp.session_fill_stats`:
+    /// loss streak / trades today / realized `PnL`). Refreshed wholesale on the
+    /// long-tail sync — each poll re-fetches the full window, so no
+    /// cross-poll dedup is needed. Empty = never polled OR no fills in the
+    /// window (the method treats both as "cannot serve").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fill_window: Vec<HlFillSummary>,
+    /// Cumulative **non-funding capital flow** (USD, signed: deposits/transfers
+    /// IN `+`, withdrawals/transfers OUT `−`) into the perp account since
+    /// tracking started. Subtracted from raw equity by [`Self::roll_equity_anchors`]
+    /// and `perp.equity_drawdown_bps` so a deposit/withdrawal does not read as
+    /// profit/drawdown — the drawdown reflects trading P&L only (funding stays
+    /// in equity, correctly counted as a cost). Server-owned, accumulated by the
+    /// long-tail ledger sync; the merge fns ADD the per-poll delta and never
+    /// wipe it (same survive-a-failed-poll rule as the anchors).
+    #[serde(default = "zero_decimal")]
+    pub cumulative_net_flow: Decimal,
+    /// High-water `time` (unix ms) of the last `userNonFundingLedgerUpdates`
+    /// entry folded into `cumulative_net_flow` — the dedup cursor so a re-fetched
+    /// overlapping window never double-counts a flow. `0` = no ledger polled yet.
+    #[serde(default)]
+    pub ledger_cursor_ms: u64,
+}
+
+/// Serde default for `cumulative_net_flow` — `Decimal` has no `Default` (an empty
+/// string is not a valid zero), so a legacy blob lacking the field reads as `"0"`.
+fn zero_decimal() -> Decimal {
+    Decimal::new("0")
 }
 
 impl Default for HlAccount {
@@ -74,8 +116,55 @@ impl Default for HlAccount {
             borrow_lend: None,
             leverage_settings: Vec::new(),
             agents: Vec::new(),
+            equity_baseline: None,
+            equity_hwm: None,
+            fill_window: Vec::new(),
+            cumulative_net_flow: Decimal::new("0"),
+            ledger_cursor_ms: 0,
         }
     }
+}
+
+/// One fill from the HL `userFills` feed, reduced to the session-stat fields.
+///
+/// `coin` is kept as the RAW venue symbol (perp name like `"BTC"` or a spot
+/// pair like `"PURR/USDC"`/`"@107"`) — no asset-index resolution, so the
+/// window never depends on the meta universe.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct HlFillSummary {
+    /// Venue-unique fill id (`tid`).
+    pub tid: u64,
+    /// Fill time, unix **milliseconds** (HL native).
+    pub time: u64,
+    /// Raw venue symbol (`coin`).
+    pub coin: String,
+    /// Signed realized `PnL` of this fill (`closedPnl`, USD); `"0.0"` on a
+    /// pure open.
+    pub closed_pnl: Decimal,
+    /// Fill price (`px`).
+    pub px: Decimal,
+    /// Fill size in base units (`sz`).
+    pub sz: Decimal,
+}
+
+/// A point-in-time equity anchor for drawdown measurement.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub struct EquityAnchor {
+    /// Account equity (`marginSummary.accountValue`, unrealized `PnL`
+    /// included) at the moment the anchor was taken.
+    pub value: Decimal,
+    /// When the anchor was taken (sync wall clock, UTC seconds).
+    pub anchored_at: Time,
+    /// `true` when the anchor approximates a true UTC day-open: the previous
+    /// baseline was from the immediately-preceding UTC day, so we were watching
+    /// across the rollover and the first tick of today (~15s cadence) took the
+    /// anchor. `false` = watch started mid-day (anchor is watch-start equity).
+    /// Residual corner: an outage that spans midnight and resumes intra-day
+    /// still labels `true` while anchoring at the resume time — accepted; this
+    /// is an honesty label, not a safety gate.
+    pub trusted: bool,
 }
 
 /// Which **core** domains in a freshly fetched snapshot are authoritative.
@@ -96,7 +185,7 @@ pub struct CoreFresh {
 
 /// Which **long-tail** domains are authoritative this cycle. Same
 /// preserve-on-miss semantics as [`CoreFresh`] (see [`HlAccount::merge_longtail`]).
-// Four independent domain flags: a per-domain freshness mask is the natural
+// Independent domain flags: a per-domain freshness mask is the natural
 // representation here, so the >3-bools lint does not apply.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -109,6 +198,12 @@ pub struct LongtailFresh {
     pub borrow_lend: bool,
     /// `agents` (delegated agent wallets).
     pub agents: bool,
+    /// `fill_window` (`userFills`).
+    pub fills: bool,
+    /// `cumulative_net_flow` + `ledger_cursor_ms` (`userNonFundingLedgerUpdates`).
+    /// When set, `merge_longtail` ADDS the carried per-poll flow delta and
+    /// advances the cursor (unlike the other domains, which replace wholesale).
+    pub ledger: bool,
 }
 
 impl HlAccount {
@@ -131,6 +226,74 @@ impl HlAccount {
         }
     }
 
+    /// Roll the equity anchors (day baseline + high-water mark) after a FRESH
+    /// clearinghouse observation landed in `perp_account_value_usd`. Call only
+    /// when the clearinghouse domain was authoritative this cycle — a stale or
+    /// failed poll must not move the anchors.
+    ///
+    /// - HWM: monotone max of every observed equity (trailing max-drawdown).
+    /// - Baseline: (re-)anchored on the first observation of each UTC day —
+    ///   exactly where prop-firm daily-loss limits anchor (equity, day-start).
+    ///
+    /// Ordering parses the `Decimal` strings as `f64` — fine for comparison
+    /// (a misorder needs values within ~1e-15 relative); the STORED value is
+    /// always the exact venue string. The derived `Ord` on `Decimal` is
+    /// lexicographic and must NOT be used here.
+    pub fn roll_equity_anchors(&mut self, now: Time) {
+        let Some(raw) = self.perp_account_value_usd.clone() else {
+            return;
+        };
+        let Ok(raw_f) = raw.as_str().parse::<f64>() else {
+            return;
+        };
+        if !raw_f.is_finite() {
+            return;
+        }
+        // Flow-neutral equity: subtract the cumulative non-funding capital flow so
+        // a deposit/withdrawal does not read as profit/drawdown — the drawdown must
+        // reflect trading P&L only (funding stays in equity, correctly a cost).
+        // `Decimal` has no arithmetic, so go through f64; but keep the EXACT venue
+        // string when there is no flow (the common case + every flow-free test) and
+        // only re-format when an adjustment is actually applied.
+        let flow_f = self
+            .cumulative_net_flow
+            .as_str()
+            .parse::<f64>()
+            .unwrap_or(0.0);
+        let (cur_f, current) = if flow_f == 0.0 || !flow_f.is_finite() {
+            (raw_f, raw)
+        } else {
+            let adjusted = raw_f - flow_f;
+            (adjusted, Decimal::new(format!("{adjusted}")))
+        };
+
+        // HWM: monotone max. An unparseable stored HWM (corrupt blob) heals to
+        // the current observation rather than wedging forever.
+        let hwm_f = self
+            .equity_hwm
+            .as_ref()
+            .and_then(|h| h.as_str().parse::<f64>().ok());
+        if hwm_f.is_none_or(|h| cur_f > h) {
+            self.equity_hwm = Some(current.clone());
+        }
+
+        // Day baseline: first observation of each UTC day re-anchors.
+        let today = utc_day(now);
+        let prev_day = self
+            .equity_baseline
+            .as_ref()
+            .map(|b| utc_day(b.anchored_at));
+        if prev_day != Some(today) {
+            self.equity_baseline = Some(EquityAnchor {
+                value: current,
+                anchored_at: now,
+                // Trusted ⇔ we held yesterday's baseline, i.e. we were watching
+                // across the rollover (see `EquityAnchor::trusted` docs).
+                trusted: prev_day.is_some_and(|d| d + 1 == today),
+            });
+        }
+    }
+
     /// Merge freshly fetched **long-tail** fields, overwriting only the domains
     /// marked fresh in `which` and preserving the rest. Core fields and
     /// `pending_outflow` are never touched.
@@ -147,7 +310,36 @@ impl HlAccount {
         if which.agents {
             self.agents = lt.agents;
         }
+        if which.fills {
+            // Wholesale replace: every poll re-fetches the full recency
+            // window, so the fetched vec IS the new window (no union/prune).
+            self.fill_window = lt.fill_window;
+        }
+        if which.ledger {
+            // ACCUMULATE (unlike the other domains): `lt.cumulative_net_flow`
+            // carries the per-poll delta of flows newer than our cursor, so we
+            // add it onto the running total and advance the cursor. `Decimal`
+            // has no arithmetic → sum via f64 (USD cents are well within f64).
+            let acc = self
+                .cumulative_net_flow
+                .as_str()
+                .parse::<f64>()
+                .unwrap_or(0.0);
+            let delta = lt
+                .cumulative_net_flow
+                .as_str()
+                .parse::<f64>()
+                .unwrap_or(0.0);
+            self.cumulative_net_flow = Decimal::new(format!("{}", acc + delta));
+            self.ledger_cursor_ms = lt.ledger_cursor_ms;
+        }
     }
+}
+
+/// UTC day index (days since the epoch) — the rollover boundary for the daily
+/// equity baseline.
+const fn utc_day(t: Time) -> u64 {
+    t.as_unix() / 86_400
 }
 
 /// A filled Hyperliquid perp position.
@@ -430,6 +622,267 @@ mod merge_tests {
         );
         assert!(persisted.staking.is_some()); // fresh staking written in
     }
+
+    fn fill(tid: u64) -> HlFillSummary {
+        HlFillSummary {
+            tid,
+            time: 1_781_187_103_047,
+            coin: "BTC".to_owned(),
+            closed_pnl: Decimal::new("-1.5"),
+            px: Decimal::new("60000"),
+            sz: Decimal::new("0.1"),
+        }
+    }
+
+    #[test]
+    fn merge_longtail_replaces_fill_window_only_when_fresh() {
+        let mut persisted = acct("1");
+        persisted.fill_window = vec![fill(1), fill(2)];
+
+        // Failed fills poll (mask false) → window preserved.
+        persisted.merge_longtail(HlAccount::default(), LongtailFresh::default());
+        assert_eq!(persisted.fill_window.len(), 2);
+
+        // Fresh poll → wholesale replace (even shrinking is authoritative —
+        // the fetched vec IS the full recency window).
+        let lt = HlAccount {
+            fill_window: vec![fill(3)],
+            ..Default::default()
+        };
+        persisted.merge_longtail(
+            lt,
+            LongtailFresh {
+                fills: true,
+                ..Default::default()
+            },
+        );
+        assert_eq!(persisted.fill_window.len(), 1);
+        assert_eq!(persisted.fill_window[0].tid, 3);
+    }
+
+    #[test]
+    fn merge_longtail_accumulates_ledger_flow_and_advances_cursor() {
+        let mut persisted = HlAccount {
+            cumulative_net_flow: Decimal::new("-200"),
+            ledger_cursor_ms: 1_000,
+            ..Default::default()
+        };
+        // Fresh ledger poll carries the per-poll DELTA (−50) and the new cursor.
+        let lt = HlAccount {
+            cumulative_net_flow: Decimal::new("-50"),
+            ledger_cursor_ms: 2_000,
+            ..Default::default()
+        };
+        persisted.merge_longtail(
+            lt,
+            LongtailFresh {
+                ledger: true,
+                ..Default::default()
+            },
+        );
+        // Delta is ADDED (not replaced): −200 + −50 = −250.
+        assert_eq!(persisted.cumulative_net_flow, Decimal::new("-250"));
+        assert_eq!(persisted.ledger_cursor_ms, 2_000);
+    }
+
+    #[test]
+    fn merge_longtail_preserves_ledger_when_not_fresh() {
+        let mut persisted = HlAccount {
+            cumulative_net_flow: Decimal::new("-200"),
+            ledger_cursor_ms: 1_000,
+            ..Default::default()
+        };
+        // Failed ledger poll (mask false) → flow + cursor preserved, never wiped.
+        persisted.merge_longtail(
+            HlAccount {
+                cumulative_net_flow: Decimal::new("999"),
+                ledger_cursor_ms: 9_999,
+                ..Default::default()
+            },
+            LongtailFresh::default(),
+        );
+        assert_eq!(persisted.cumulative_net_flow, Decimal::new("-200"));
+        assert_eq!(persisted.ledger_cursor_ms, 1_000);
+    }
+}
+
+#[cfg(test)]
+mod anchor_tests {
+    use super::*;
+
+    const DAY: u64 = 86_400;
+
+    fn acct_with_equity(equity: &str) -> HlAccount {
+        HlAccount {
+            perp_account_value_usd: Some(Decimal::new(equity)),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn first_observation_anchors_untrusted_and_seeds_hwm() {
+        // Mid-day watch start: the anchor is watch-start equity, NOT day-open.
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        let b = a.equity_baseline.as_ref().expect("baseline set");
+        assert_eq!(b.value, Decimal::new("1000"));
+        assert!(!b.trusted, "first-ever anchor is mid-day → untrusted");
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1000")));
+    }
+
+    #[test]
+    fn same_day_keeps_baseline_and_raises_hwm_monotonically() {
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        // Later the same day: equity pumps → HWM up, baseline UNCHANGED.
+        a.perp_account_value_usd = Some(Decimal::new("1200"));
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 7200));
+        assert_eq!(
+            a.equity_baseline.as_ref().unwrap().value,
+            Decimal::new("1000")
+        );
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1200")));
+        // Then dumps → HWM must NOT come down.
+        a.perp_account_value_usd = Some(Decimal::new("900"));
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 10_800));
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1200")));
+        assert_eq!(
+            a.equity_baseline.as_ref().unwrap().value,
+            Decimal::new("1000")
+        );
+    }
+
+    #[test]
+    fn hwm_comparison_is_numeric_not_lexicographic() {
+        // "1200" > "999" numerically but "1200" < "999" as strings — the
+        // derived (lexicographic) Ord on Decimal must not be what rolls HWM.
+        let mut a = acct_with_equity("999");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY));
+        a.perp_account_value_usd = Some(Decimal::new("1200"));
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 60));
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1200")));
+    }
+
+    #[test]
+    fn next_day_rollover_reanchors_trusted() {
+        // Watching across the UTC rollover: yesterday's baseline exists →
+        // today's first tick is ≈ day-open → trusted.
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        a.perp_account_value_usd = Some(Decimal::new("950"));
+        a.roll_equity_anchors(Time::from_unix(11 * DAY + 15));
+        let b = a.equity_baseline.as_ref().unwrap();
+        assert_eq!(b.value, Decimal::new("950"));
+        assert!(b.trusted, "previous baseline from yesterday → trusted");
+        // HWM survives the rollover (trailing, not daily).
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1000")));
+    }
+
+    #[test]
+    fn multi_day_gap_reanchors_untrusted() {
+        // Server (or registration) was dark all of yesterday: the anchor is
+        // NOT a day-open observation.
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        a.perp_account_value_usd = Some(Decimal::new("800"));
+        a.roll_equity_anchors(Time::from_unix(12 * DAY + 15));
+        let b = a.equity_baseline.as_ref().unwrap();
+        assert_eq!(b.value, Decimal::new("800"));
+        assert!(!b.trusted, "gap spanned a full day → untrusted");
+    }
+
+    #[test]
+    fn no_equity_is_a_noop() {
+        let mut a = HlAccount::default();
+        a.roll_equity_anchors(Time::from_unix(10 * DAY));
+        assert!(a.equity_baseline.is_none());
+        assert!(a.equity_hwm.is_none());
+    }
+
+    #[test]
+    fn unparseable_equity_is_a_noop() {
+        let mut a = acct_with_equity("not-a-number");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY));
+        assert!(a.equity_baseline.is_none());
+        assert!(a.equity_hwm.is_none());
+    }
+
+    #[test]
+    fn legacy_json_without_anchor_fields_deserializes_to_none() {
+        // Backward compat with persisted JSONB blobs written before the
+        // anchor fields existed.
+        let legacy = serde_json::json!({
+            "pending_outflow": "0",
+            "positions": [],
+            "open_orders": [],
+            "leverage_settings": [],
+            "agents": []
+        });
+        let acct: HlAccount = serde_json::from_value(legacy).expect("legacy blob");
+        assert!(acct.equity_baseline.is_none());
+        assert!(acct.equity_hwm.is_none());
+        // Flow-reconciliation fields are also serde-default on a legacy blob.
+        assert_eq!(acct.cumulative_net_flow, Decimal::new("0"));
+        assert_eq!(acct.ledger_cursor_ms, 0);
+    }
+
+    #[test]
+    fn deposit_does_not_inflate_hwm() {
+        // Anchor at equity 1000 (no flow yet) → HWM 1000.
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1000")));
+        // Deposit $500: raw equity jumps to 1500 and the ledger sync records a
+        // +500 cumulative flow. Flow-neutral equity is 1500 − 500 = 1000, so the
+        // HWM must NOT rise — a deposit is not a trading gain (and must not be
+        // allowed to erase a real drawdown / reset the circuit breaker).
+        a.perp_account_value_usd = Some(Decimal::new("1500"));
+        a.cumulative_net_flow = Decimal::new("500");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 7200));
+        assert_eq!(
+            a.equity_hwm,
+            Some(Decimal::new("1000")),
+            "deposit must not raise HWM"
+        );
+    }
+
+    #[test]
+    fn withdrawal_baseline_reanchors_on_flow_neutral_equity() {
+        // Day 10 baseline at 1000 (no flow).
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        // Next day, after a $200 withdrawal: raw equity 800, ledger flow −200.
+        // The day-start baseline must re-anchor on flow-neutral equity
+        // (800 − (−200) = 1000), NOT raw 800 — else the withdrawal reads as a
+        // 20% daily loss.
+        a.perp_account_value_usd = Some(Decimal::new("800"));
+        a.cumulative_net_flow = Decimal::new("-200");
+        a.roll_equity_anchors(Time::from_unix(11 * DAY + 60));
+        assert_eq!(
+            a.equity_baseline.as_ref().unwrap().value,
+            Decimal::new("1000"),
+            "baseline anchors on flow-neutral equity, not raw post-withdrawal 800"
+        );
+    }
+
+    #[test]
+    fn flow_neutral_still_captures_real_trading_loss() {
+        // After a $200 withdrawal (flow −200), a genuine trading loss must still
+        // register. Raw 250 with flow −200 → flow-neutral 450; against a 1000
+        // peak that is a real 55% drawdown the breaker should see.
+        let mut a = acct_with_equity("1000");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 3600));
+        a.perp_account_value_usd = Some(Decimal::new("250"));
+        a.cumulative_net_flow = Decimal::new("-200");
+        a.roll_equity_anchors(Time::from_unix(10 * DAY + 7200));
+        // HWM stays at the flow-neutral peak 1000 (450 < 1000, no new high).
+        assert_eq!(a.equity_hwm, Some(Decimal::new("1000")));
+        // Baseline (same day) unchanged at 1000.
+        assert_eq!(
+            a.equity_baseline.as_ref().unwrap().value,
+            Decimal::new("1000")
+        );
+    }
 }
 
 #[cfg(test)]
@@ -512,6 +965,22 @@ mod tests {
                 agent_address: Address::from([0x11; 20]),
                 agent_name: None,
             }],
+            equity_baseline: Some(EquityAnchor {
+                value: Decimal::new("1000.5"),
+                anchored_at: Time::from_unix(1_735_430_400),
+                trusted: true,
+            }),
+            equity_hwm: Some(Decimal::new("1100.25")),
+            fill_window: vec![HlFillSummary {
+                tid: 533_471_271_655_943,
+                time: 1_781_187_103_047,
+                coin: "GMX".to_owned(),
+                closed_pnl: Decimal::new("0.080665"),
+                px: Decimal::new("5.4112"),
+                sz: Decimal::new("3.65"),
+            }],
+            cumulative_net_flow: Decimal::new("-150.5"),
+            ledger_cursor_ms: 1_781_187_103_047,
         };
         let json = serde_json::to_string(&acct).unwrap();
         // Fractional size preserved (the whole reason HlAccount is Decimal-native).
@@ -536,5 +1005,7 @@ mod tests {
         assert!(acct.borrow_lend.is_none());
         assert!(acct.leverage_settings.is_empty());
         assert!(acct.agents.is_empty());
+        assert_eq!(acct.cumulative_net_flow, Decimal::new("0"));
+        assert_eq!(acct.ledger_cursor_ms, 0);
     }
 }
