@@ -14,7 +14,7 @@ import {
   type Ps2Request,
 } from "./policy-store/api";
 import { decideMessage } from "./orchestrator";
-import { refreshBadge } from "./mascot-badge";
+import { markBadgeSeen, refreshBadge } from "./mascot-badge";
 import { reportExecutionOutcome } from "./execution-report";
 import {
   ensureDefaultV3BundlesInstalled,
@@ -289,6 +289,10 @@ interface PasuDeleteWalletRequest {
 interface WeeklySummaryRequest {
   type: "PASU_WEEKLY_SUMMARY";
 }
+/** ② 마스코트 배지 — 팝업 열림 = 알람 확인. 발바닥/카운트를 초기화한다. */
+interface BadgeSeenRequest {
+  type: "PASU_BADGE_SEEN";
+}
 /** apps/web Editor + Simulation pages route Cedar through the
  *  service worker rather than bundling wasm themselves. Three
  *  request variants map 1-1 to the new exports in
@@ -416,6 +420,7 @@ type PopupRequest =
   | PasuUpdateWalletRequest
   | PasuDeleteWalletRequest
   | WeeklySummaryRequest
+  | BadgeSeenRequest
   | CedarValidateRequest
   | CedarTestRequest
   | CedarSimulateRequest
@@ -611,6 +616,19 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: { kind: "weekly_summary_failed", message: String(err) },
+          }),
+        );
+      return true;
+    }
+
+    // ② 마스코트 배지 — 팝업이 열리면 보냄. 알람 확인 처리(발바닥 초기화).
+    if (req.type === "PASU_BADGE_SEEN") {
+      void markBadgeSeen()
+        .then(() => sendResponse({ ok: true, data: null }))
+        .catch((err: unknown) =>
+          sendResponse({
+            ok: false,
+            error: { kind: "badge_seen_failed", message: String(err) },
           }),
         );
       return true;
