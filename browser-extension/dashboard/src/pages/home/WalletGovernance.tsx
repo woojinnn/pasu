@@ -511,16 +511,16 @@ function PolicyRow({
   policy,
   open,
   onToggle,
+  onToggleEnabled,
   onToggleParam,
   onPublish,
-  onToggleEnabled,
 }: {
   policy: PolicyVM;
   open: boolean;
   onToggle: () => void;
+  onToggleEnabled: (on: boolean) => void;
   onToggleParam: (holeName: string, on: boolean) => void;
   onPublish: () => void;
-  onToggleEnabled: (on: boolean) => void;
 }) {
   const hasParams = policy.params.length > 0;
   const onN = policy.params.filter((p) => p.on).length;
@@ -530,9 +530,25 @@ function PolicyRow({
         <span className={`pol2-chev${hasParams ? "" : " empty"}`}>{hasParams && <Chevron />}</span>
         <span className={`pr-dot ${policy.severity}`} />
         <span className="pol2-name">{policy.name}</span>
+        {/* 실제 적용 표시등 — 패키지 on AND 정책 o 일 때만 '적용중' */}
+        <span className={`pol2-state${policy.effective ? " on" : ""}`}>
+          {policy.effective ? "적용중" : "꺼짐"}
+        </span>
+        {/* 정책별 o/x — 패키지를 켰을 때 이 정책을 포함(o)/제외(x) */}
+        <button
+          type="button"
+          className={`pol2-ox${policy.enabled ? " on" : ""}`}
+          title={policy.enabled ? "이 정책 제외하기 — 패키지를 켜도 꺼둠" : "이 정책 포함하기 — 패키지를 켜면 적용"}
+          aria-label={policy.enabled ? "정책 제외" : "정책 포함"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleEnabled(!policy.enabled);
+          }}
+        >
+          {policy.enabled ? "○" : "✕"}
+        </button>
         <button className="pol2-edit" type="button" title="마켓에 게시" onClick={(e) => { e.stopPropagation(); onPublish(); }}><Upload /></button>
         <Link className="pol2-edit" title="Editor에서 열기" to={`/editor/${encodeURIComponent(policy.defId)}`} onClick={(e) => e.stopPropagation()}><Edit /></Link>
-        <Switch checked={policy.enabled} onChange={onToggleEnabled} className="pol2-sw" small />
       </div>
       {hasParams && (
         <div className="pol2-body" style={{ height: open ? "auto" : 0 }}>

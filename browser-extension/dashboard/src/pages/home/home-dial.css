@@ -313,6 +313,49 @@ button.pol2-edit { border: 0; background: none; cursor: pointer; padding: 0; }
 .pol2-edit svg { width: 14px; height: 14px; }
 .pol2-sw { flex-shrink: 0; }
 
+/* 실제 적용 상태 표시등 (effective = 패키지 on ∧ 정책 o) */
+.pol2-state {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fog-200);
+  color: var(--slate-400);
+}
+.pol2-state.on {
+  background: var(--pass-50, #f0fdf4);
+  color: var(--pass-600, #16a34a);
+}
+
+/* 정책별 o/x 포함 토글 (binding.enabled) */
+.pol2-ox {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--slate-400);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+.pol2-ox.on {
+  border-color: var(--pass-300, #86efac);
+  background: var(--pass-50, #f0fdf4);
+  color: var(--pass-600, #16a34a);
+}
+.pol2-ox:hover { border-color: var(--slate-400); }
+/* 제외(x)로 행이 dim 돼도 토글은 또렷하게 — 다시 켤 수 있게 */
+.pol2.off .pol2-ox { opacity: 1; }
+
 /* parameters (collapsible inside a policy) */
 .pol2-body { overflow: hidden; height: 0; background: var(--fog-100); }
 .pol2-inner { min-height: 0; }
