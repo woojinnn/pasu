@@ -220,6 +220,15 @@ fn scenarios(now: i64) -> Vec<(&'static str, &'static str, HlAccount)> {
 #[tokio::test]
 #[ignore = "long-running browser-e2e seed+serve scaffold; requires TEST_DATABASE_URL"]
 async fn serve_seeded_for_browser() {
+    // CI runs `--ignored` tests; this one blocks forever (serves on 8788), so it
+    // must NO-OP unless explicitly invoked for a local browser session. Without
+    // the opt-in env var it returns immediately — keeping the CI ignored-suite
+    // (and `--test-threads=1` serialization) from hanging.
+    if std::env::var("BROWSER_E2E_SERVE").is_err() {
+        eprintln!("serve_seeded_for_browser: set BROWSER_E2E_SERVE=1 to run (no-op in CI)");
+        return;
+    }
+
     std::env::set_var("JWT_SECRET", TEST_SECRET);
     let now = now_unix();
 
