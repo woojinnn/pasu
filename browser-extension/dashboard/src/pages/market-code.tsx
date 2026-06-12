@@ -7,6 +7,8 @@
  */
 import { useState } from "react";
 
+import { ListingConditionTree } from "./editor/PublishPreviewTree";
+
 type Tok = { cls: string | null; text: string };
 type Rule = { re: RegExp; cls: string | ((m: string) => string | null) };
 
@@ -89,8 +91,9 @@ export function CodeView({ code, lang }: { code: string; lang: "cedar" | "json" 
 }
 
 /**
- * Tabbed viewer: `policy.cedar` + `manifest.json`. Surfaces the exact bytes a
- * user installs. `manifest` is the parsed object (pretty-printed here).
+ * Tabbed viewer: 조건(읽기 전용 트리, 빈칸 표시) + `policy.cedar` +
+ * `manifest.json`. Cedar 원문에서 빈칸(hole)은 제로주소/0 플레이스홀더로만
+ * 보이므로, 기본 탭은 x_pasu_holes를 배지로 보여주는 조건 트리다.
  */
 export function CodeTabs({
   cedar,
@@ -108,9 +111,11 @@ export function CodeTabs({
   const shownCedar = cedar ? (hideComments ? stripCedarComments(cedar) : cedar) : null;
   const manifestStr =
     manifest != null ? JSON.stringify(manifest, null, 2) : null;
-  const [tab, setTab] = useState<"cedar" | "manifest">(shownCedar ? "cedar" : "manifest");
+  const [tab, setTab] = useState<"tree" | "cedar" | "manifest">(
+    shownCedar ? "tree" : "manifest",
+  );
   const [copied, setCopied] = useState(false);
-  const active = tab === "cedar" ? shownCedar ?? "" : manifestStr ?? "";
+  const active = tab === "manifest" ? manifestStr ?? "" : shownCedar ?? "";
 
   const copy = () => {
     try {
@@ -125,6 +130,15 @@ export function CodeTabs({
   return (
     <div className="codetabs">
       <div className="codetabs-bar">
+        {shownCedar && (
+          <button
+            type="button"
+            className={tab === "tree" ? "is-active" : ""}
+            onClick={() => setTab("tree")}
+          >
+            {locale === "ko" ? "조건" : "Conditions"}
+          </button>
+        )}
         {shownCedar && (
           <button
             type="button"
@@ -147,6 +161,11 @@ export function CodeTabs({
           {copied ? (locale === "ko" ? "복사됨" : "Copied") : locale === "ko" ? "복사" : "Copy"}
         </button>
       </div>
+      {tab === "tree" && cedar && (
+        <div className="codetabs-tree">
+          <ListingConditionTree cedarText={cedar} manifest={manifest} />
+        </div>
+      )}
       {tab === "cedar" && shownCedar && <CodeView code={shownCedar} lang="cedar" />}
       {tab === "manifest" && manifestStr && <CodeView code={manifestStr} lang="json" />}
     </div>

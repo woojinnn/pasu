@@ -1855,6 +1855,10 @@
 .pub-tree-hole .tag { font-weight: 700; color: var(--warn-800, #92400e); font-size: 11px; }
 .pub-tree-hole.public { border-color: #fca5a5; background: var(--fail-100, #fee2e2); }
 .pub-tree-hole.public .tag { color: #b91c1c; }
+/* 마켓 상세: 설치자가 채울 빈칸 — 정보 톤, 클릭 아님 */
+.pub-tree-hole.asis { cursor: default; font-family: inherit; font-size: 12px; }
+.codetabs-tree { background: var(--surface, #fff); }
+.codetabs-tree .pub-tree, .codetabs-tree .pub-tree-muted { border-top: 0; }
 
 /* address keep-public — 공개는 경고 톤으로 분명히 */
 .pub-numtoggle button.on.public { background: #dc2626; }
