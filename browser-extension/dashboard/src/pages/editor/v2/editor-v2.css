@@ -1108,6 +1108,23 @@
   width: 14px;
   height: 14px;
 }
+/* 저장 "빨간불" — 값 시트 형식오류 시. 누르면 변경 전으로 되돌림. */
+.ev2-pri.invalid {
+  background: var(--fail-600, #dc2626);
+  border-color: var(--fail-600, #dc2626);
+  box-shadow: 0 0 0 3px var(--fail-100, #fee2e2);
+}
+.ev2-pri.invalid::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.ev2-pri.invalid:hover {
+  background: var(--fail-700, #b91c1c);
+}
 
 /* ════════════ DETAIL VIEW (Phase 3) ════════════ */
 .ev2-detail-body {
@@ -1119,7 +1136,9 @@
 }
 .ev2-detail {
   flex: 1;
-  min-height: 0;
+  /* 바깥 패널이 콘텐츠 높이에 쪼그라들지 않고 화면을 채우도록 — 상단 앱바/탭
+   * 여백을 빼고 뷰포트 높이만큼 최소 높이를 준다. */
+  min-height: calc(100vh - 150px);
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -1332,6 +1351,15 @@
   flex-shrink: 0;
   margin-top: 1px;
   color: var(--fail-700);
+}
+/* 형식오류 → 되돌림 안내 (오류 아님, 경고 톤) */
+.ev2-err-banner.warn {
+  background: var(--warn-50, #fffbeb);
+  border-color: var(--warn-200, #fde68a);
+  color: var(--warn-800, #92400e);
+}
+.ev2-err-banner.warn svg {
+  color: var(--warn-600, #d97706);
 }
 
 .ev2-detail-tabbody {

@@ -272,6 +272,13 @@ function EditorBody({
   // with a fresh `initialModel`.
   const [formEntry, setFormEntry] = useState<FormEntry | null>(null);
   const [formKey, setFormKey] = useState(0);
+  // 값 시트(바인딩) 유효성 + "형식오류 → 변경 전으로 되돌리기" 배선.
+  const [formValidity, setFormValidity] = useState<{ valid: boolean; error: string | null }>({
+    valid: true,
+    error: null,
+  });
+  const [resetToken, setResetToken] = useState(0);
+  const [revertNotice, setRevertNotice] = useState<string | null>(null);
 
   // Reseed when the parent swaps to a different policy id.
   useEffect(() => {
@@ -281,6 +288,8 @@ function EditorBody({
     setTab(defaultTab(policy.method));
     setManifestOverride(null);
     setFormEntry(null);
+    setFormValidity({ valid: true, error: null });
+    setRevertNotice(null);
   }, [policy.id]);
 
   const fromMarket = policy.source === "market";
@@ -769,8 +778,26 @@ function EditorBody({
           )}
           <button
             type="button"
-            className="ev2-pri"
-            onClick={() => saveMut.mutate()}
+            className={`ev2-pri${bindingCtx && !formValidity.valid ? " invalid" : ""}`}
+            title={
+              bindingCtx && !formValidity.valid
+                ? "형식이 맞지 않아요 — 누르면 변경 전 상태로 되돌립니다"
+                : undefined
+            }
+            onClick={() => {
+              // 값 시트에서 형식이 안 맞으면: 저장하지 않고 안내 + 변경 전으로 복원.
+              if (bindingCtx && !formValidity.valid) {
+                setRevertNotice(
+                  `형식이 맞지 않아 저장하지 않고 변경 전 상태로 되돌렸어요${
+                    formValidity.error ? ` (${formValidity.error})` : ""
+                  }.`,
+                );
+                setResetToken((t) => t + 1);
+                return;
+              }
+              setRevertNotice(null);
+              saveMut.mutate();
+            }}
             disabled={saveMut.isPending || !cedarText.trim()}
           >
             {saveMut.isPending ? "저장 중…" : "저장"}
@@ -782,6 +809,12 @@ function EditorBody({
         <div className="ev2-err-banner">
           <WarnIcon />
           {String(saveMut.error || finishMut.error || deleteMut.error || "")}
+        </div>
+      )}
+      {revertNotice && (
+        <div className="ev2-err-banner warn">
+          <WarnIcon />
+          {revertNotice}
         </div>
       )}
 
@@ -806,6 +839,8 @@ function EditorBody({
               initialModel={formEntry.model}
               initialManifest={policy.manifest}
               valuesOnly={!!bindingCtx}
+              onValidity={setFormValidity}
+              resetToken={resetToken}
               onChange={({ cedarText: c, ir: nextIr, model, manifest, manifestOverridden }) => {
                 setCedarText(c);
                 setIr(nextIr);
