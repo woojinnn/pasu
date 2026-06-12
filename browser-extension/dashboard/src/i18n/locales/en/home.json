@@ -31,7 +31,7 @@
   },
   "folder": {
     "policies": "policies",
-    "publishTitle": "Publish this folder to the market",
+    "publishTitle": "Publish this package to the market",
     "uncategorized": "Uncategorized"
   },
   "policy": {

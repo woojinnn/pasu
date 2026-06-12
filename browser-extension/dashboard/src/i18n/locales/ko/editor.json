@@ -20,7 +20,8 @@
     "deletePolicy": "정책 삭제",
     "saveAlias": "별칭 저장",
     "toggle": "토글",
-    "remove": "제거"
+    "remove": "제거",
+    "renameFolder": "폴더 이름 변경"
   },
   "time": {
     "minutesAgo": "{{count}}분 전",
@@ -173,25 +174,23 @@
     "nameLabel": "정책 이름",
     "namePlaceholder": "예: 3달러 초과 스왑 시 차단",
     "walletOptTitle": "지갑 전용 정책",
-    "walletOptDesc": "선택한 지갑에만 존재해요 — 라이브러리에는 보이지 않아요.",
+    "walletOptDesc": "선택한 지갑의 전용 폴더에만 존재해요 — 라이브러리에는 보이지 않고, 적용은 저장 후 패키지에 끌어다 놓으면 돼요.",
     "noWalletsSuffix": " (등록된 지갑이 없어요)",
     "libOptTitle": "라이브러리 정책",
     "libOptDesc": "지갑 간 공유되는 템플릿으로 저장돼요 — 지갑별 정책에서 언제든 적용할 수 있어요.",
     "title2Wallet": "어느 지갑에 적용할까요?",
     "title2Library": "라이브러리 설정",
-    "sub2Wallet": "선택한 지갑에만 저장돼요. 패키지는 지갑마다 따로 골라요.",
+    "sub2Wallet": "선택한 지갑의 전용 폴더에 저장돼요(정리용) — 적용은 지갑별 정책에서 패키지에 끌어다 놓으면 돼요.",
     "sub2Library": "라이브러리에 템플릿으로 저장돼요.",
-    "pkgLabel": "패키지",
-    "newPackageOption": "+ 새 패키지…",
-    "newPackagePlaceholder": "새 패키지 이름",
-    "bulkLabel": "모든 지갑에 새 패키지를 만들어 넣기",
-    "bulkCollision": "같은 이름의 패키지가 이미 있는 지갑은 그 패키지에 넣어요: {{wallets}}",
+    "bulkLabel": "모든 지갑에 같은 이름의 새 폴더 만들기",
+    "bulkCollision": "같은 이름의 폴더가 이미 있는 지갑은 그 폴더에 넣어요: {{wallets}}",
     "folder": "폴더",
     "newFolderOption": "+ 새 폴더…",
     "newFolderPlaceholder": "새 폴더 이름",
     "applyAllNow": "지금 모든 지갑에 적용 ({{count}}개)",
     "applyToNew": "앞으로 추가되는 지갑에도 기본 적용",
-    "back": "← 이전"
+    "back": "← 이전",
+    "folderLabel": "폴더"
   },
   "wallet": {
     "noWalletsTitle": "등록된 지갑이 없습니다",
@@ -225,7 +224,16 @@
     "toggleOnTitle": "이 정책 켜기 (포함)",
     "toggleOffAria": "정책 끄기",
     "toggleOnAria": "정책 켜기",
-    "removeBindingTitle": "이 패키지에서 제거"
+    "removeBindingTitle": "이 패키지에서 제거",
+    "newFolderTitle": "새 폴더",
+    "renameFolderTitle": "폴더 이름 변경",
+    "deleteFolderTitle": "폴더 삭제 (안의 정책은 미분류로)",
+    "newFolderName": "새 폴더",
+    "folderCreatedToast": "폴더를 만들었어요 — 이름을 바꿔보세요",
+    "folderNamePrompt": "폴더 이름",
+    "deleteFolderConfirm": "\"{{name}}\" 폴더를 삭제할까요?\n안의 정책은 미분류로 이동해요(삭제되지 않아요).",
+    "folderDeletedToast": "폴더를 삭제했어요 — 정책은 미분류로 옮겼어요",
+    "defRowTitle": "클릭해서 템플릿 편집 · 끌어서 패키지에 적용 / 전용 폴더로 이동"
   },
   "detail": {
     "backToList": "← 목록",

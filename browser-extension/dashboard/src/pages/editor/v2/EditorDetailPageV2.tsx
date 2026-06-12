@@ -11,16 +11,15 @@ import {
   getOverview,
   putDef,
   putPackage,
-  putWalletPackage,
+  putWalletFolder,
   updateBinding,
-  UNCATEGORIZED_PKG,
   type Binding,
   type PolicyDef,
   type StoreSnapshot,
 } from "../../../server-api/policy-store";
 import { listWallets } from "../../../server-api/wallets";
 import { buildDefPayload } from "./save-def";
-import { SaveScopeModal, type SaveScopeChoice } from "./SaveScopeModal";
+import { SaveScopeModal, WALLET_FOLDER_UNCAT, type SaveScopeChoice } from "./SaveScopeModal";
 import { defUsageCount } from "./wallet-policies-derive";
 import {
   canonicalizeModel,
@@ -527,47 +526,46 @@ function EditorBody({
     mutationFn: async (choice: SaveScopeChoice): Promise<string> => {
       if (!scopeAsk) throw new Error(t("detail.internalNoPrepared"));
 
-      // 지갑 전용 경로: 패키지는 지갑 소속이라 주소마다 따로 결정한다 —
-      // {newName}은 find-or-create(같은 이름이 이미 있으면 그 패키지 재사용).
+      // 지갑 전용 경로(모델 A): 지갑마다 **독립 def 사본**을 만들어 그 지갑의
+      // 전용 폴더에 앵커한다. 바인딩(적용)은 만들지 않는다 — 적용은 지갑별
+      // 정책에서 패키지에 끌어다 놓는 동선. {newName} 폴더는 find-or-create.
       if (choice.scope.kind === "wallets") {
-        const pkgByAddr: Record<string, string> = {};
+        let lastId = "";
         for (const address of choice.scope.addresses) {
-          const pick = choice.walletPackages?.[address] ?? { id: UNCATEGORIZED_PKG };
-          if ("id" in pick) {
-            pkgByAddr[address] = pick.id;
-            continue;
+          const addr = address.toLowerCase();
+          const pick = choice.walletFolders?.[address] ?? { id: WALLET_FOLDER_UNCAT };
+          let folderId: string | undefined;
+          if ("newName" in pick) {
+            const existing = Object.values(
+              snap?.wallets.byAddress[addr]?.folders ?? {},
+            ).find((f) => f.displayName === pick.newName);
+            if (existing) {
+              folderId = existing.id;
+            } else {
+              folderId = `fold::${crypto.randomUUID()}`;
+              await putWalletFolder({
+                address: addr,
+                folder: { id: folderId, displayName: pick.newName },
+              });
+            }
+          } else if (pick.id !== WALLET_FOLDER_UNCAT) {
+            folderId = pick.id;
           }
-          const existing = Object.values(
-            snap?.wallets.byAddress[address]?.packages ?? {},
-          ).find((p) => p.displayName === pick.newName);
-          if (existing) {
-            pkgByAddr[address] = existing.id;
-            continue;
-          }
-          const pkgId = `pkg::${crypto.randomUUID()}`;
-          await putWalletPackage({ address, pkg: { id: pkgId, displayName: pick.newName } });
-          pkgByAddr[address] = pkgId;
-        }
-        const { def } = buildDefPayload({
-          existing: null,
-          displayName: choice.name || name.trim() || "untitled",
-          cat: policy.cat,
-          ir: scopeAsk.ir,
-          manifest: scopeAsk.manifest,
-          scope: choice.scope,
-          packageId: null, // 주소별로 다르므로 bindPlan 대신 직접 바인딩
-          applyToNewWallets: false,
-          walletOnly: true,
-        });
-        await putDef(def);
-        for (const address of choice.scope.addresses) {
-          await bindDef({
-            defId: def.id,
-            packageId: pkgByAddr[address] ?? UNCATEGORIZED_PKG,
-            addresses: [address],
+          const { def } = buildDefPayload({
+            existing: null,
+            displayName: choice.name || name.trim() || "untitled",
+            cat: policy.cat,
+            ir: scopeAsk.ir,
+            manifest: scopeAsk.manifest,
+            scope: choice.scope,
+            packageId: null,
+            applyToNewWallets: false,
+            walletOnly: { homeWallet: addr, ...(folderId ? { walletFolderId: folderId } : {}) },
           });
+          await putDef(def);
+          lastId = def.id;
         }
-        return def.id;
+        return lastId;
       }
 
       // 라이브러리 경로.
@@ -616,8 +614,8 @@ function EditorBody({
     ]);
     return [...addrs].sort().map((address) => ({
       address,
-      packages: Object.values(snap?.wallets.byAddress[address]?.packages ?? {})
-        .map((p) => ({ id: p.id, displayName: p.displayName }))
+      folders: Object.values(snap?.wallets.byAddress[address]?.folders ?? {})
+        .map((f) => ({ id: f.id, displayName: f.displayName }))
         .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko")),
     }));
   }, [walletsQ.data, snap]);

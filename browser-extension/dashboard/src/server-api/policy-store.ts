@@ -19,6 +19,7 @@ export type {
   PackageDef,
   PolicyDef,
   StoreSnapshot,
+  WalletFolder,
   WalletPolicyState,
 } from "../../../sdk/policy-store-types";
 export { isEffectiveOn, UNCATEGORIZED_PKG } from "../../../sdk/policy-store-types";
@@ -64,6 +65,16 @@ export const putWalletPackage = (opts: {
   address: string;
   pkg: { id: string; displayName: string };
 }) => sendToExtension<null>({ type: "ps2:put-wallet-package", ...opts });
+
+/** 지갑 전용 폴더(템플릿 정리 축) 생성/이름변경 — 패키지(인스턴스 묶음)와 별개. */
+export const putWalletFolder = (opts: {
+  address: string;
+  folder: { id: string; displayName: string };
+}) => sendToExtension<null>({ type: "ps2:put-wallet-folder", ...opts });
+
+/** 지갑 전용 폴더 삭제 — 멤버 템플릿은 그 지갑의 미분류로. */
+export const removeWalletFolder = (opts: { address: string; folderId: string }) =>
+  sendToExtension<null>({ type: "ps2:remove-wallet-folder", ...opts });
 
 export const copyBindings = (opts: { fromAddress: string; toAddress: string; bindingIds: string[] }) =>
   sendToExtension<null>({ type: "ps2:copy-bindings", ...opts });

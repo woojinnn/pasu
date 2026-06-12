@@ -20,7 +20,8 @@
     "deletePolicy": "Delete policy",
     "saveAlias": "Save alias",
     "toggle": "Toggle",
-    "remove": "Remove"
+    "remove": "Remove",
+    "renameFolder": "Rename folder"
   },
   "time": {
     "minutesAgo_one": "{{count}} minute ago",
@@ -178,25 +179,23 @@
     "nameLabel": "Policy name",
     "namePlaceholder": "e.g. Block swaps over $3",
     "walletOptTitle": "Wallet-only policy",
-    "walletOptDesc": "Exists only on the selected wallets — not shown in the library.",
+    "walletOptDesc": "Lives only in the selected wallets' dedicated folders — it won't appear in the library; to apply it, drag it into a package after saving.",
     "noWalletsSuffix": " (no registered wallets)",
     "libOptTitle": "Library policy",
     "libOptDesc": "Saved as a template shared across wallets — apply it any time from wallet policies.",
     "title2Wallet": "Which wallets should it apply to?",
     "title2Library": "Library settings",
-    "sub2Wallet": "Saved only to the selected wallets. Pick a package per wallet.",
+    "sub2Wallet": "Saved into the selected wallets' dedicated folders (for organizing) — to apply, drag it into a package from the per-wallet policies view.",
     "sub2Library": "Saved to the library as a template.",
-    "pkgLabel": "Package",
-    "newPackageOption": "+ New package…",
-    "newPackagePlaceholder": "New package name",
-    "bulkLabel": "Create the same new package in every wallet",
-    "bulkCollision": "Wallets that already have a package with that name will reuse it: {{wallets}}",
+    "bulkLabel": "Create a new folder with the same name in every wallet",
+    "bulkCollision": "Wallets that already have a folder with this name will use it: {{wallets}}",
     "folder": "Folder",
     "newFolderOption": "+ New folder…",
     "newFolderPlaceholder": "New folder name",
     "applyAllNow": "Apply to all wallets now ({{count}})",
     "applyToNew": "Also apply to wallets added later by default",
-    "back": "← Back"
+    "back": "← Back",
+    "folderLabel": "Folder"
   },
   "wallet": {
     "noWalletsTitle": "No registered wallets",
@@ -230,7 +229,16 @@
     "toggleOnTitle": "Turn this policy on (include)",
     "toggleOffAria": "Turn policy off",
     "toggleOnAria": "Turn policy on",
-    "removeBindingTitle": "Remove from this package"
+    "removeBindingTitle": "Remove from this package",
+    "newFolderTitle": "New folder",
+    "renameFolderTitle": "Rename folder",
+    "deleteFolderTitle": "Delete folder (its policies move to Uncategorized)",
+    "newFolderName": "New folder",
+    "folderCreatedToast": "Folder created — give it a name",
+    "folderNamePrompt": "Folder name",
+    "deleteFolderConfirm": "Delete the folder \"{{name}}\"?\nIts policies move to Uncategorized (they are not deleted).",
+    "folderDeletedToast": "Folder deleted — its policies moved to Uncategorized",
+    "defRowTitle": "Click to edit the template · drag to apply to a package / move to a dedicated folder"
   },
   "detail": {
     "backToList": "← List",

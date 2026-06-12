@@ -20,9 +20,15 @@ export interface HoleSpec {
 
 export interface PolicyDef {
   id: string; // "def::<slug>"
-  /** 지갑 전용 정책 — 라이브러리 카탈로그에 노출하지 않는다. 바인딩된 지갑의
-   *  트리에서만 보이고, 마지막 바인딩이 사라지면 함께 정리된다. */
+  /** 지갑 전용 정책 — 라이브러리 카탈로그에 노출하지 않는다. homeWallet
+   *  지갑의 "지갑 전용 폴더" 트리에서만 보인다(바인딩 유무와 무관). */
   hidden?: boolean | undefined;
+  /** hidden def의 앵커 지갑(소문자 주소). hidden이면 항상 있어야 한다 —
+   *  normalize가 바인딩에서 추론하거나, 추론 불가면 hidden을 해제한다. */
+  homeWallet?: string | undefined;
+  /** homeWallet 지갑의 전용 폴더 id ("fold::<uuid>"). undefined = 그 지갑의
+   *  미분류(가상 폴더). 라이브러리 폴더(defaults.packageId)와 별개 축. */
+  walletFolderId?: string | undefined;
   displayName: string;
   cat?: string;
   memo?: string;
@@ -64,12 +70,22 @@ export interface WalletPackage {
   updatedAtMs: number;
 }
 
+/** 지갑 전용 폴더 — 이 지갑에서만 보이는 **템플릿(def)** 묶음. 인스턴스를
+ *  묶는 패키지와 별개 축: 폴더=정리, 패키지=적용. */
+export interface WalletFolder {
+  id: string; // "fold::<uuid>"
+  displayName: string;
+  updatedAtMs: number;
+}
+
 export interface WalletPolicyState {
   bindings: Record<string, Binding>;
   /** 이 지갑의 패키지들. binding.packageId는 여기(또는 미분류)를 가리킨다. */
   packages: Record<string, WalletPackage>;
   /** 패키지 토글. 키가 없으면 true(켜짐) 취급. */
   packageEnabled: Record<string, boolean>;
+  /** 이 지갑의 전용 폴더들. hidden def의 walletFolderId가 여기를 가리킨다. */
+  folders?: Record<string, WalletFolder>;
 }
 
 export interface LibraryDoc {
