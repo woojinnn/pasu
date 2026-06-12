@@ -23,6 +23,11 @@
 .ev2-left {
   width: 296px;
   flex-shrink: 0;
+  /* 오른쪽 정책 목록이 길어져도 왼쪽 패키지 패널은 내용 높이만큼만 — 같이
+   * 늘어나지 않게 위쪽에 고정(끈적이게)한다. */
+  align-self: flex-start;
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -712,7 +717,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 0 18px;
+  padding: 0 20px 18px;
 }
 
 /* table */
@@ -2468,6 +2473,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* 초광폭 화면에서 정책 리스트가 끝없이 늘어나지 않도록 편안한 컬럼 폭으로 */
+  max-width: 1000px;
 }
 .ld-folder {
   border: 1px solid var(--hairline);
@@ -2655,7 +2662,7 @@
   color: var(--slate-300);
 }
 .wt-pkg {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -2683,6 +2690,8 @@
   width: 100%;
 }
 .wt-alias {
+  /* 패키지명 바로 옆(왼쪽 묶음)에 두고, 이후 아이콘들은 오른쪽으로 민다. */
+  margin-right: auto;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -2706,6 +2715,7 @@
   color: var(--slate-300);
 }
 .wt-alias-input {
+  margin-right: auto;
   font: inherit;
   font-size: 12px;
   padding: 2px 7px;
@@ -2727,6 +2737,46 @@
 }
 .wt-binding-main.clickable:hover {
   background: var(--fog-100);
+}
+
+/* 바인딩 on/off — home과 동일한 o/x 토글 */
+.ev2-ox {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--slate-400);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+.ev2-ox.on {
+  border-color: var(--pass-300, #86efac);
+  background: var(--pass-50, #f0fdf4);
+  color: var(--pass-600, #16a34a);
+}
+.ev2-ox:hover {
+  border-color: var(--slate-400);
+}
+
+/* 정책(def) 행의 동작 — 뼈대 수정 / 정책 삭제 */
+.ld-def-acts {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.ld-def:hover .ld-def-acts {
+  opacity: 1;
 }
 
 /* 지갑별 정책 우측: 전용/공유 대섹션 */
