@@ -335,7 +335,7 @@ function WalletPanel({
   const toggleFolder = (id: string) => setOpenFolders((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const togglePolicy = (id: string) => setOpenPolicies((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  // 지갑 폴더 게시 — 멤버는 화면에 보이는 그대로(이 지갑의 바인딩, defId 중복
+  // 지갑 패키지 게시 — 멤버는 화면에 보이는 그대로(이 지갑의 바인딩, defId 중복
   // 제거, on/off 무관). 에디터의 라이브러리 폴더 발행과 같은 PublishSource 모양.
   const publishFolder = async (f: FolderVM) => {
     const defs = [
@@ -358,7 +358,7 @@ function WalletPanel({
         members,
       });
     } catch (err) {
-      console.error("[Pasu] 폴더 게시 준비 실패", err);
+      console.error("[Pasu] 패키지 게시 준비 실패", err);
     }
   };
 
@@ -480,7 +480,7 @@ function FolderRow({
           <button
             className="pk-pub"
             type="button"
-            title="이 폴더를 마켓에 게시"
+            title="이 패키지를 마켓에 게시"
             onClick={(e) => { e.stopPropagation(); onPublishFolder(); }}
           >
             <Upload />
