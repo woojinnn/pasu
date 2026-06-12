@@ -177,15 +177,20 @@ export function updateBinding(
   });
 }
 
-/** 지갑 전용(hidden) def는 마지막 바인딩이 사라지면 함께 정리한다 — 라이브러리
- *  카탈로그에 안 보이는 def가 유령으로 남지 않도록. */
+/** 지갑 전용(hidden) def는 마지막 바인딩이 사라지면 라이브러리(미분류)로
+ *  승격한다 — 전에는 삭제(GC)했는데, 사용자 입장에선 패키지에서 뺐을 뿐인데
+ *  정책이 소리 없이 사라지는 동작이었다. 승격하면 라이브러리 트리에 남아
+ *  다시 적용하거나 명시적으로 삭제할 수 있다. */
 function pruneHiddenDefs(d: StoreSnapshot): void {
   const bound = new Set<string>();
   for (const w of Object.values(d.wallets.byAddress)) {
     for (const b of Object.values(w.bindings)) bound.add(b.defId);
   }
   for (const def of Object.values(d.library.defs)) {
-    if (def.hidden && !bound.has(def.id)) delete d.library.defs[def.id];
+    if (def.hidden && !bound.has(def.id)) {
+      def.hidden = false;
+      def.updatedAtMs = Date.now();
+    }
   }
 }
 

@@ -144,6 +144,25 @@ when { (((context.slippageBp)) >= 150) };`;
       expect(extractHoles(cedar).find((h) => h.kind === "number")?.display).toBe("150");
     });
 
+    it("중첩 경로의 내부 괄호 — ((context.custom).inputUsd).greaterThan (wasm 실측 모양)", () => {
+      // wasm est_json_to_policy_text 라운드트립 실측: getAttr마다 수신자가
+      // 괄호로 감싸인다. path는 점 표기로 정규화돼 나와야 gloss/폼 leaf와 맞는다.
+      const cedar = `@id("new-form-test")
+forbid(principal, action, resource)
+when { ((context.custom).inputUsd).greaterThan(decimal("3.0")) };`;
+      const num = extractHoles(cedar).find((h) => h.kind === "number");
+      expect(num?.path).toBe("context.custom.inputUsd");
+      expect(num?.display).toBe("3.0");
+    });
+
+    it("중첩 경로의 내부 괄호 — 주소 비교", () => {
+      const cedar = `@id("p")
+forbid(principal, action, resource)
+when { (((context.custom).counterparty) == "0xA1c4000000000000000000000000000000007e29") };`;
+      const addr = extractHoles(cedar).find((h) => h.kind === "address");
+      expect(addr?.path).toBe("context.custom.counterparty");
+    });
+
     it("리터럴 == (path)", () => {
       const cedar = `@id("p")
 forbid(principal, action, resource)

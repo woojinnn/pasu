@@ -39,12 +39,19 @@ export interface PublishHole {
 }
 
 const ADDR = `0x[0-9a-fA-F]{40}`;
-const PATH = `(?:principal|resource|context|action)(?:\\.[A-Za-z_]\\w*)+`;
-// wasm EST→text 렌더러는 피연산자를 괄호로 감싼다 — `(context.x) == "0x…"`,
-// `((context.y)).greaterThan(decimal("3.0"))`. 패턴은 토큰 사이의 닫는/여는
-// 괄호를 허용해야 폼으로 만든(렌더된) 정책에서도 칸을 찾는다.
+// wasm EST→text 렌더러는 getAttr마다 수신자를 괄호로 감싼다 — 중첩 경로는
+// `((context.custom).inputUsd)` 모양(실측: est_json_to_policy_text 라운드트립).
+// 그래서 경로 패턴은 세그먼트 사이의 괄호를 허용하고, 캡처값은 normPath로
+// 점 표기로 정규화해 gloss/폼 leaf의 fieldPath와 맞춘다.
+const PATH = `\\(*(?:principal|resource|context|action)(?:\\)*\\.[A-Za-z_]\\w*)+`;
+// 토큰 사이의 닫는/여는 괄호 — `(context.x) == "0x…"` 같은 피연산자 래핑.
 const CL = `[\\s)]*`; // 토큰 뒤: 공백/닫는 괄호
 const OP = `[\\s(]*`; // 토큰 앞: 공백/여는 괄호
+
+/** 렌더된 경로의 괄호를 벗긴 점 표기 — `((context.custom).inputUsd)` → `context.custom.inputUsd`. */
+function normPath(raw: string): string {
+  return raw.replace(/[()]/g, "");
+}
 
 /**
  * 보편 센티널 주소 — 게시자의 개인 값이 아니므로 비식별 대상이 아니다.
@@ -118,7 +125,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
   for (const m of cedarText.matchAll(setContains)) {
     const raw = m[1];
     const count = (raw.match(new RegExp(ADDR, "g")) ?? []).length;
-    const path = m[2];
+    const path = normPath(m[2]);
     push({
       kind: "address",
       path,
@@ -134,7 +141,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
   // (집합 필드 ∋ 주소 리터럴). notContains는 `!( … )`로 감싸일 뿐이라 같이 잡힌다.
   const attrContainsAddr = new RegExp(`(${PATH})${CL}\\.contains\\(${OP}("${ADDR}")\\s*\\)`, "g");
   for (const m of cedarText.matchAll(attrContainsAddr)) {
-    const path = m[1];
+    const path = normPath(m[1]);
     const raw = m[2];
     push({
       kind: "address",
@@ -153,7 +160,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
     "g",
   );
   for (const m of cedarText.matchAll(pathToAddr)) {
-    const path = m[1];
+    const path = normPath(m[1]);
     const raw = m[2];
     const count = (raw.match(new RegExp(ADDR, "g")) ?? []).length;
     push({
@@ -171,7 +178,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
   const addrToPath = new RegExp(`("${ADDR}")${CL}(?:==|!=)${OP}(${PATH})`, "g");
   for (const m of cedarText.matchAll(addrToPath)) {
     const raw = m[1];
-    const path = m[2];
+    const path = normPath(m[2]);
     push({
       kind: "address",
       path,
@@ -189,7 +196,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
     "g",
   );
   for (const m of cedarText.matchAll(pathToNum)) {
-    const path = m[1];
+    const path = normPath(m[1]);
     const raw = m[3];
     const numMatch = raw.match(/[0-9]+(?:\.[0-9]+)?/);
     const num = numMatch ? numMatch[0] : raw;
@@ -211,7 +218,7 @@ export function extractHoles(cedarText: string): PublishHole[] {
     "g",
   );
   for (const m of cedarText.matchAll(pathDecimalMethod)) {
-    const path = m[1];
+    const path = normPath(m[1]);
     const raw = m[2];
     const numMatch = raw.match(/[0-9]+(?:\.[0-9]+)?/);
     push({
