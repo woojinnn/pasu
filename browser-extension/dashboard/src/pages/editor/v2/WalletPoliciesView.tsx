@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +7,6 @@ import {
   bindDef,
   getOverview,
   isEffectiveOn,
-  provisionWallets,
   removeBinding,
   putWalletPackage,
   removeWalletPackage,
@@ -20,6 +19,7 @@ import {
   type WalletPolicyState,
 } from "../../../server-api/policy-store";
 import { listWallets } from "../../../server-api/wallets";
+import { useProvisionWallets } from "../../use-provision-wallets";
 import { deriveWalletRows, packageDisplayOn } from "./wallet-policies-derive";
 import { DRAG_DEF_MIME } from "./LibraryDirectory";
 import { catKey, catLabel, catStyle } from "./categories";
@@ -39,19 +39,12 @@ export function WalletPoliciesView(props: { onToast: (text: string) => void }) {
   const overviewQ = useQuery({ queryKey: ["ps2-overview"], queryFn: getOverview });
   const invalidate = () => void qc.invalidateQueries({ queryKey: ["ps2-overview"] });
 
-  // 서버 지갑이 ps2 스토어에 아직 없으면 프로비저닝(멱등).
-  const provisioned = useRef(false);
-  useEffect(() => {
-    if (provisioned.current || !walletsQ.data || !overviewQ.data) return;
-    const known = overviewQ.data.wallets.byAddress;
-    const missing = walletsQ.data.map((w) => w.address.toLowerCase()).filter((a) => !known[a]);
-    provisioned.current = true;
-    if (missing.length === 0) return;
-    void provisionWallets(missing)
-      .then(invalidate)
-      .catch((err) => console.warn("[v2 apply] provisioning failed:", err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletsQ.data, overviewQ.data]);
+  // 서버 지갑이 ps2 스토어에 아직 없으면 프로비저닝(멱등) — 홈과 공용 훅.
+  useProvisionWallets(
+    walletsQ.data ? walletsQ.data.map((w) => w.address) : null,
+    overviewQ.data ?? null,
+    invalidate,
+  );
 
   const snap = overviewQ.data ?? null;
 

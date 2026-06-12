@@ -9,6 +9,7 @@ import {
   type VerdictDto,
 } from "../server-api";
 import { getOverview } from "../server-api/policy-store";
+import { useProvisionWallets } from "./use-provision-wallets";
 
 import { AddWalletModal } from "../components/AddWalletModal";
 import { RenameWalletModal } from "../components/RenameWalletModal";
@@ -42,6 +43,14 @@ export function HomePage() {
   }, [qc]);
 
   const summaryWallets = summaryQ.data?.wallets ?? [];
+
+  // 첫 로그인 직후: 서버 지갑이 ps2에 아직 없으면 기본 패키지가 안 보인다 —
+  // 에디터처럼 홈도 마운트 시 프로비저닝한다(멱등).
+  useProvisionWallets(
+    summaryQ.isSuccess ? summaryWallets.map((w) => w.address) : null,
+    overviewQ.data ?? null,
+    () => void qc.invalidateQueries({ queryKey: ["ps2-overview"] }),
+  );
 
   // per-wallet 24h verdicts → card tone
   const verdictQs = useQueries({

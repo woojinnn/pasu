@@ -209,13 +209,16 @@ export function EditorDetailPageV2() {
                 navigate("/editor"); // 지갑별 정책(기본 탭)으로 복귀
                 return;
               }
+              if (isNew) {
+                // 새 정책 저장 완료 → "+ 새 정책"을 눌렀던 목록으로 복귀.
+                // (상세에 머무르지 않는다 — 저장이 끝났다는 감각 + 다음 작업 동선)
+                navigate("/editor", { replace: true });
+                return;
+              }
               if (savedId !== id) {
                 navigate(`/editor/${encodeURIComponent(savedId)}`, {
                   replace: true,
                 });
-              } else if (isNew) {
-                // Drop the navigation seed so a reload doesn't re-enter new mode.
-                navigate(`/editor/${encodeURIComponent(id)}`, { replace: true });
               }
             }}
             onDeleted={() => {
