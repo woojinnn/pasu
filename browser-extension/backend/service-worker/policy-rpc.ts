@@ -19,6 +19,15 @@ export interface ServerEvalContext {
   readonly action: unknown;
   readonly meta: unknown;
   readonly tx: { readonly chain_id: string; readonly from: string; readonly to: string };
+  /**
+   * Wallet identity the server loads state for, when it differs from
+   * `tx.from`. The venue-order path sets this to the resolved HL master:
+   * its `tx.from` is the submitter SENTINEL, and a server-state method
+   * (`perp.*`) run against the sentinel reads an empty wallet and stays
+   * dormant. Absent → `tx.from` (tx / typed-sig paths, where `from` is the
+   * real signer).
+   */
+  readonly walletAddress?: string;
 }
 
 /**
@@ -48,7 +57,7 @@ async function serveEnrichmentViaEvaluate(
   // method / params / outputs / optional) — forward the remote subset verbatim.
   const callSpecs = planned.filter((c) => remoteCallIds.has(c.call_id));
   const response = await serverEvaluate({
-    wallet_id: { address: ctx.tx.from, chains: [ctx.tx.chain_id] },
+    wallet_id: { address: ctx.walletAddress ?? ctx.tx.from, chains: [ctx.tx.chain_id] },
     envelopes: [{ meta: ctx.meta, body: ctx.action } as Record<string, unknown>],
     eval_context: {
       // Field names + enum variants must match the server's `EvalContext`

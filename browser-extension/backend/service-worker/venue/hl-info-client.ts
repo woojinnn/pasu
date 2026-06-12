@@ -173,7 +173,10 @@ export class HlInfoClient {
   constructor(private readonly options: HlInfoClientOptions = {}) {}
 
   private base(): string {
-    return this.options.baseUrl ?? HL_INFO_MAINNET;
+    // Test override (chrome.storage `pasu_hl_info_base`) wins so the venue
+    // enrichment can be pointed at a local stub; otherwise ctor option, then
+    // mainnet. The override is a module global (set at SW boot / on change).
+    return runtimeInfoBase ?? this.options.baseUrl ?? HL_INFO_MAINNET;
   }
 
   /** POST a `/info` query, returning the parsed JSON or `null` on any failure. */
@@ -438,6 +441,34 @@ function extractClearinghouseState(parsed: unknown): ClearinghouseState {
     }
   }
   return out;
+}
+
+/**
+ * TEST-ONLY runtime override of the venue `/info` base URL, read from
+ * `chrome.storage.local["pasu_hl_info_base"]` (mirrors the `pasu_server_url`
+ * pattern in `pasu-auth/client.ts`). Points the order-enrichment fetches at a
+ * local stub so the B-plane (enrichment-driven) policy cases can be tested at
+ * exact thresholds instead of depending on drifting live HL accounts.
+ * DEFAULT-OFF + prod-safe: the key never exists in production → mainnet.
+ */
+let runtimeInfoBase: string | null = null;
+const INFO_BASE_KEY = "pasu_hl_info_base";
+if (typeof chrome !== "undefined" && chrome.storage?.local) {
+  void chrome.storage.local.get(INFO_BASE_KEY).then((r) => {
+    const v = (r as Record<string, unknown>)[INFO_BASE_KEY];
+    if (typeof v === "string" && v) runtimeInfoBase = v;
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes[INFO_BASE_KEY]) {
+      const v = changes[INFO_BASE_KEY].newValue;
+      runtimeInfoBase = typeof v === "string" && v ? v : null;
+    }
+  });
+}
+
+/** Current /info base: test override (chrome.storage) > ctor option > mainnet. */
+export function currentInfoBaseOverride(): string | null {
+  return runtimeInfoBase;
 }
 
 let singleton: HlInfoClient | null = null;

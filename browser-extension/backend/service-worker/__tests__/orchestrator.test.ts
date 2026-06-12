@@ -823,6 +823,48 @@ describe("orchestrator", () => {
       await decideMessage(venueMessage("venue-nomaster-1"), { onAwaitingUser: vi.fn() });
       expect(mocks.resolveBundlesForWallet).toHaveBeenCalledWith("u-test", SUBMITTER_SENTINEL);
     });
+
+    // SW prereq for HL server-state methods (`perp.*`): the server loads
+    // wallet state by the dispatch ctx identity. The venue `tx.from` is the
+    // SENTINEL, so the resolved master must ride along as `walletAddress` —
+    // otherwise the server reads an empty wallet and every stateful policy
+    // stays dormant. The eval `tx` context itself stays sentinel-keyed.
+    const plannedServerCall = {
+      manifest_id: "order-daily-loss-limit-warn",
+      call_id: "order-daily-loss-limit-warn::equity-drawdown",
+      method: "perp.equity_drawdown_bps",
+      params: { chain_id: "hl-mainnet" },
+      outputs: [],
+      optional: true,
+    };
+
+    it("passes the resolved master as walletAddress in the dispatch ctx", async () => {
+      mocks.planActionRpcV2.mockResolvedValueOnce([plannedServerCall]);
+      await decideMessage(venueMessage("venue-dispatch-master-1", MASTER), {
+        onAwaitingUser: vi.fn(),
+      });
+      expect(mocks.dispatchCallsV2).toHaveBeenCalledTimes(1);
+      const ctx = mocks.dispatchCallsV2.mock.calls[0][2] as {
+        tx: { from: string };
+        walletAddress?: string;
+      };
+      expect(ctx.walletAddress).toBe(MASTER);
+      // Only the server state-load identity changes; eval tx stays sentinel.
+      expect(ctx.tx.from).toBe(SUBMITTER_SENTINEL);
+    });
+
+    it("omits walletAddress from the dispatch ctx when no master is resolvable", async () => {
+      mocks.planActionRpcV2.mockResolvedValueOnce([plannedServerCall]);
+      await decideMessage(venueMessage("venue-dispatch-nomaster-1"), {
+        onAwaitingUser: vi.fn(),
+      });
+      expect(mocks.dispatchCallsV2).toHaveBeenCalledTimes(1);
+      const ctx = mocks.dispatchCallsV2.mock.calls[0][2] as Record<string, unknown>;
+      // Absent key (not `undefined`) — the fallback to tx.from happens inside
+      // serveEnrichmentViaEvaluate, and an explicit-undefined would violate
+      // exactOptionalPropertyTypes.
+      expect("walletAddress" in ctx).toBe(false);
+    });
   });
 
   // ── Typed-data signature verdict path (typedSignatureLifecycle) ──────────

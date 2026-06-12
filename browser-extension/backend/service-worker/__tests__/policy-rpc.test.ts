@@ -3,6 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchCallsV2, formatAuditMatched } from "../policy-rpc";
 import type { PlannedCallV2Dto } from "../wasm-bridge.types";
 
+// pasu-auth is imported LAZILY inside the authenticated dispatch path only —
+// these factories intercept the dynamic imports. Existing signed-out tests
+// (ctx omitted) never reach `hasServerSession`, so the mocks are inert there.
+const authMocks = vi.hoisted(() => ({
+  getAccessToken: vi.fn<() => Promise<string | null>>(async () => "jwt"),
+  serverEvaluate: vi.fn<
+    (req: unknown) => Promise<{ policyRequest: Record<string, unknown> }>
+  >(async () => ({ policyRequest: { results: {} } })),
+}));
+vi.mock("../pasu-auth/tokenStore", () => ({
+  getAccessToken: authMocks.getAccessToken,
+}));
+vi.mock("../pasu-auth/client", () => ({
+  evaluate: authMocks.serverEvaluate,
+}));
+
 describe("formatAuditMatched", () => {
   // D9 surfacing: when WASM returns a `Verdict::Fail` whose first
   // matched entry has `policy_id == "__system__"`, the audit-log
@@ -208,6 +224,62 @@ describe("dispatchCallsV2", () => {
     expect(results).toEqual({
       "m::nano": { nano: 1_000_000_000 },
       "large-swap-usd-warning::total-input-usd": { usd: "12.00" },
+    });
+  });
+
+  // ── SW prereq — authenticated /evaluate path: wallet_id identity ─────────
+  // The server loads wallet state by `wallet_id.address`. A venue order's
+  // `tx.from` is the HL submitter SENTINEL, so the resolved master must be
+  // able to override it — otherwise every HL server-state method reads an
+  // empty wallet and stays dormant.
+  describe("authenticated /evaluate wallet identity", () => {
+    const ctxBase = {
+      action: { domain: "perp", action: "place_order" },
+      meta: { submitter: "0x000000000000000000000000000000000000a01c" },
+      tx: {
+        chain_id: "hl-mainnet",
+        from: "0x000000000000000000000000000000000000a01c",
+        to: "0x0000000000000000000000000000000000000000",
+      },
+    } as const;
+    const MASTER = "0x676fa5b94067c2be14bc025df6c5c80dedf49a54";
+
+    it("sends ctx.walletAddress (resolved venue master) as wallet_id.address", async () => {
+      const call = plannedRemote();
+      authMocks.serverEvaluate.mockResolvedValueOnce({
+        policyRequest: {
+          results: { [call.call_id]: { dayDrawdownBps: 500 } },
+        },
+      });
+
+      const results = await dispatchCallsV2([call], "http://127.0.0.1:8787", {
+        ...ctxBase,
+        walletAddress: MASTER,
+      });
+
+      expect(authMocks.serverEvaluate).toHaveBeenCalledTimes(1);
+      const req = authMocks.serverEvaluate.mock.calls[0][0] as {
+        wallet_id: { address: string; chains: readonly string[] };
+      };
+      expect(req.wallet_id.address).toBe(MASTER);
+      expect(req.wallet_id.chains).toEqual(["hl-mainnet"]);
+      // Signed-in → served via /evaluate, never the /v1/rpc fallback.
+      expect(fetch).not.toHaveBeenCalled();
+      expect(results).toEqual({ [call.call_id]: { dayDrawdownBps: 500 } });
+    });
+
+    it("falls back to ctx.tx.from when walletAddress is absent", async () => {
+      const call = plannedRemote();
+      authMocks.serverEvaluate.mockResolvedValueOnce({
+        policyRequest: { results: {} },
+      });
+
+      await dispatchCallsV2([call], "http://127.0.0.1:8787", ctxBase);
+
+      const req = authMocks.serverEvaluate.mock.calls[0][0] as {
+        wallet_id: { address: string };
+      };
+      expect(req.wallet_id.address).toBe(ctxBase.tx.from);
     });
   });
 });

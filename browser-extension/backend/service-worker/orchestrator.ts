@@ -359,6 +359,40 @@ async function decideInner(
   }
 }
 
+/**
+ * TEST-ONLY verdict tap. When `chrome.storage.local["pasu_e2e_tap"]` is set,
+ * writes one row per venue verdict keyed by requestId — captured at
+ * decision-time (before any warn modal), so a high-volume policy e2e can read
+ * every verdict uniformly. Additive, default-off, prod no-op.
+ */
+async function tapVenueVerdict(
+  requestId: string,
+  master: string | null,
+  verdict: VerdictDto,
+): Promise<void> {
+  try {
+    const flag = (await Browser.storage.local.get("pasu_e2e_tap")) as Record<
+      string,
+      unknown
+    >;
+    if (!flag["pasu_e2e_tap"]) return;
+    // Key by the resolved MASTER (the e2e gives each case a unique synthetic
+    // master), not requestId — identical order bodies (differing only by
+    // vaultAddress) hash to the SAME requestId, which would clobber the row.
+    await Browser.storage.local.set({
+      [`pasu:e2e-tap:${master ?? requestId}`]: {
+        master: master ?? null,
+        requestId,
+        kind: verdict.kind,
+        matched: verdict.matched?.map((m) => m.policy_id) ?? [],
+        ts: Date.now(),
+      },
+    });
+  } catch {
+    /* best-effort test instrumentation — never affects the verdict */
+  }
+}
+
 async function appendAudit(
   message: Message,
   type: PendingRequest["type"],
@@ -857,9 +891,20 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       account_leverage,
       order_enrichment,
     });
+    // Server state-load identity: the eval `tx.from` is the submitter
+    // SENTINEL, but a server-state method (`perp.*`) must read the MASTER's
+    // synced wallet — pass the resolved master as the dispatch identity
+    // override. No master → omit the key (server falls back to tx.from →
+    // empty wallet → methods return nothing → stateful policies dormant,
+    // never blocking).
     const results =
       planned.length > 0
-        ? await dispatchCallsV2(planned, policyRpcUrl, { action, meta, tx })
+        ? await dispatchCallsV2(planned, policyRpcUrl, {
+            action,
+            meta,
+            tx,
+            ...(master !== null ? { walletAddress: master } : {}),
+          })
         : {};
     const verdict = await evaluateActionV2({
       action,
@@ -878,6 +923,13 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       account_leverage,
       matched: verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
     });
+    // TEST-ONLY verdict tap (storage flag `pasu_e2e_tap`): record this venue
+    // verdict at decision-time — BEFORE the warn modal blocks `decideMessage` —
+    // so a high-volume e2e reads every verdict (pass/warn/fail) uniformly from
+    // storage without driving the modal. Additive + default-off (no key in
+    // prod → no-op). Per-requestId key avoids a read-modify-write race across
+    // concurrent (non-actor-locked) venue orders.
+    await tapVenueVerdict(message.requestId, master, verdict);
     // DENY → capture the exact diagnosis context so the dashboard can re-run
     // "which clause blocked this" against the real context (Option B). Mirrors
     // the EVM path in `evaluateActionRpcV2`; without it an HL deny would only
