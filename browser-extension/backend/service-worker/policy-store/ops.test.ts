@@ -211,33 +211,58 @@ describe("지갑 패키지 분리", () => {
 });
 
 describe("지갑 전용 정책 (hidden def)", () => {
-  it("마지막 바인딩 제거 시 def는 삭제되지 않고 라이브러리로 승격된다", async () => {
-    await putDef("u", { ...def("def::w"), hidden: true });
-    await bind("u", { defId: "def::w", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
-    const bid = Object.keys((await readStore("u")).wallets.byAddress["0xa1"].bindings)[0];
-    await removeBinding("u", { address: "0xa1", bindingId: bid });
-    const s = await readStore("u");
-    expect(s.library.defs["def::w"]).toBeDefined();
-    expect(s.library.defs["def::w"].hidden).not.toBe(true);
-  });
-
-  it("지갑 패키지 제거로 바인딩이 사라져도 승격", async () => {
+  it("패키지에서 빼면 같은 지갑의 미분류로 이동한다 (params/별칭 보존)", async () => {
     await putDef("u", { ...def("def::w"), hidden: true });
     await putWalletPackage("u", { address: "0xa1", pkg: { id: "pkg::wp", displayName: "P" } });
     await bind("u", { defId: "def::w", packageId: "pkg::wp", addresses: ["0xa1"] });
-    await removePackageFromWallet("u", { address: "0xa1", packageId: "pkg::wp" });
+    const bid = Object.keys((await readStore("u")).wallets.byAddress["0xa1"].bindings)[0];
+    await updateBinding("u", { address: "0xa1", bindingId: bid, patch: { alias: "내 이름" } });
+
+    await removeBinding("u", { address: "0xa1", bindingId: bid });
+
     const s = await readStore("u");
+    const b = s.wallets.byAddress["0xa1"].bindings[bid];
+    expect(b).toBeDefined();
+    expect(b.packageId).toBe(UNCATEGORIZED_PKG);
+    expect(b.alias).toBe("내 이름");
+    expect(s.library.defs["def::w"].hidden).toBe(true);
+  });
+
+  it("미분류에서 또 빼면 그때 라이브러리로 승격된다 (소리 없는 삭제 없음)", async () => {
+    await putDef("u", { ...def("def::w"), hidden: true });
+    await bind("u", { defId: "def::w", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1"] });
+    const bid = Object.keys((await readStore("u")).wallets.byAddress["0xa1"].bindings)[0];
+
+    await removeBinding("u", { address: "0xa1", bindingId: bid });
+
+    const s = await readStore("u");
+    expect(s.wallets.byAddress["0xa1"].bindings[bid]).toBeUndefined();
     expect(s.library.defs["def::w"]).toBeDefined();
     expect(s.library.defs["def::w"].hidden).not.toBe(true);
   });
 
-  it("다른 지갑에 바인딩이 남아 있으면 hidden 유지", async () => {
+  it("지갑 패키지 제거 시 안의 hidden 정책은 미분류로 이동한다", async () => {
+    await putDef("u", { ...def("def::w"), hidden: true });
+    await putWalletPackage("u", { address: "0xa1", pkg: { id: "pkg::wp", displayName: "P" } });
+    await bind("u", { defId: "def::w", packageId: "pkg::wp", addresses: ["0xa1"] });
+
+    await removePackageFromWallet("u", { address: "0xa1", packageId: "pkg::wp" });
+
+    const s = await readStore("u");
+    const moved = Object.values(s.wallets.byAddress["0xa1"].bindings).find((b) => b.defId === "def::w");
+    expect(moved?.packageId).toBe(UNCATEGORIZED_PKG);
+    expect(s.library.defs["def::w"].hidden).toBe(true);
+  });
+
+  it("다른 지갑에 바인딩이 남아 있으면 그냥 이 지갑에서만 빠진다", async () => {
     await putDef("u", { ...def("def::w"), hidden: true });
     await bind("u", { defId: "def::w", packageId: UNCATEGORIZED_PKG, addresses: ["0xa1", "0xb2"] });
     const bid = Object.keys((await readStore("u")).wallets.byAddress["0xa1"].bindings)[0];
+
     await removeBinding("u", { address: "0xa1", bindingId: bid });
+
     const s = await readStore("u");
-    expect(s.library.defs["def::w"]).toBeDefined();
+    expect(s.wallets.byAddress["0xa1"].bindings[bid]).toBeUndefined();
     expect(s.library.defs["def::w"].hidden).toBe(true);
   });
 });

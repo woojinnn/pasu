@@ -35,6 +35,8 @@ export interface PolicyVM {
   defId: string;
   name: string;
   severity: Severity;
+  /** 바인딩 자체 토글(binding.enabled) — 패키지 게이트와 별개. */
+  enabled: boolean;
   params: ParamVM[];
 }
 
@@ -86,6 +88,7 @@ function policyVM(snap: StoreSnapshot, b: Binding): PolicyVM {
     defId: b.defId,
     name: b.alias ?? def?.displayName ?? b.defId,
     severity: severityOf(def, b.defId),
+    enabled: b.enabled !== false,
     params,
   };
 }

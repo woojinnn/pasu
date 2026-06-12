@@ -433,6 +433,9 @@ function WalletPanel({
               }
               onPublishFolder={() => void publishFolder(f)}
               onPublishPolicy={(p) => void publishPolicy(p)}
+              onToggleEnabled={(p, on) =>
+                paramMut.mutate({ address: wallet.address, bindingId: p.bindingId, patch: { enabled: on } })
+              }
             />
           ))}
         </div>
@@ -453,6 +456,7 @@ function FolderRow({
   onToggleParam,
   onPublishFolder,
   onPublishPolicy,
+  onToggleEnabled,
 }: {
   folder: FolderVM;
   open: boolean;
@@ -463,6 +467,7 @@ function FolderRow({
   onToggleParam: (p: PolicyVM, holeName: string, on: boolean) => void;
   onPublishFolder: () => void;
   onPublishPolicy: (p: PolicyVM) => void;
+  onToggleEnabled: (p: PolicyVM, on: boolean) => void;
 }) {
   return (
     <div className={`pk-folder${open ? "" : " collapsed"}${folder.on ? "" : " off"}`}>
@@ -493,6 +498,7 @@ function FolderRow({
               onToggle={() => onTogglePolicy(p.bindingId)}
               onToggleParam={(holeName, on) => onToggleParam(p, holeName, on)}
               onPublish={() => onPublishPolicy(p)}
+              onToggleEnabled={(on) => onToggleEnabled(p, on)}
             />
           ))}
         </div>
@@ -507,23 +513,26 @@ function PolicyRow({
   onToggle,
   onToggleParam,
   onPublish,
+  onToggleEnabled,
 }: {
   policy: PolicyVM;
   open: boolean;
   onToggle: () => void;
   onToggleParam: (holeName: string, on: boolean) => void;
   onPublish: () => void;
+  onToggleEnabled: (on: boolean) => void;
 }) {
   const hasParams = policy.params.length > 0;
   const onN = policy.params.filter((p) => p.on).length;
   return (
-    <div className={`pol2${open ? " expanded" : ""}`}>
+    <div className={`pol2${open ? " expanded" : ""}${policy.enabled ? "" : " off"}`}>
       <div className="pol2-head" onClick={() => hasParams && onToggle()}>
         <span className={`pol2-chev${hasParams ? "" : " empty"}`}>{hasParams && <Chevron />}</span>
         <span className={`pr-dot ${policy.severity}`} />
         <span className="pol2-name">{policy.name}</span>
         <button className="pol2-edit" type="button" title="마켓에 게시" onClick={(e) => { e.stopPropagation(); onPublish(); }}><Upload /></button>
         <Link className="pol2-edit" title="Editor에서 열기" to={`/editor/${encodeURIComponent(policy.defId)}`} onClick={(e) => e.stopPropagation()}><Edit /></Link>
+        <Switch checked={policy.enabled} onChange={onToggleEnabled} className="pol2-sw" small />
       </div>
       {hasParams && (
         <div className="pol2-body" style={{ height: open ? "auto" : 0 }}>
