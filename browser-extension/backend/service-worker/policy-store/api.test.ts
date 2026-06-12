@@ -51,9 +51,15 @@ describe("ps2 message API", () => {
     expect(isPs2Request({})).toBe(false);
   });
 
-  it("get-wallet-state returns an empty state for unknown wallets", async () => {
-    const out = await handlePs2Request({ type: "ps2:get-wallet-state", address: "0xNOPE" });
-    expect(out).toEqual({ bindings: {}, packages: {}, packageEnabled: {} });
+  it("get-wallet-state는 처음 보는 지갑을 자동 프로비저닝한다 (popup 첫 화면 보호)", async () => {
+    // 기본 켜짐 def가 있으면 첫 조회에서 기본 정책이 깔린 상태로 돌아온다 —
+    // 대시보드 훅 없이 popup이 먼저 열려도 "보호 꺼짐"이 아니게.
+    await handlePs2Request({ type: "ps2:put-def", def: def("def::auto") });
+    const out = (await handlePs2Request({
+      type: "ps2:get-wallet-state",
+      address: "0xNOPE",
+    })) as { bindings: Record<string, { defId: string }> };
+    expect(Object.values(out.bindings).some((b) => b.defId === "def::auto")).toBe(true);
   });
 
   it("put-def → bind → get-overview round-trip", async () => {

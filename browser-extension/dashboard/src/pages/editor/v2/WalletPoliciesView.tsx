@@ -7,6 +7,7 @@ import {
   bindDef,
   getOverview,
   isEffectiveOn,
+  putDef,
   putWalletFolder,
   removeBinding,
   removeWalletFolder,
@@ -295,12 +296,13 @@ function WalletWorkspace(props: {
       return n;
     });
 
-  // 지갑 전용 폴더 목록: 이름순, 미분류(멤버 있을 때만)는 맨 뒤.
+  // 지갑 전용 폴더 목록: 이름순, 미분류는 맨 뒤 — 멤버가 있거나, 폴더가 있어
+  // "미분류로 되돌리는" 드롭 대상이 필요할 때 보인다.
   const ownFolderIds = useMemo(() => {
     const ids = Object.values(wallet.folders ?? {})
       .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko"))
       .map((f) => f.id);
-    if (walletOnlyByFolder.has("__uncat__")) ids.push("__uncat__");
+    if (walletOnlyByFolder.has("__uncat__") || ids.length > 0) ids.push("__uncat__");
     return ids;
   }, [wallet, walletOnlyByFolder]);
 
@@ -319,6 +321,19 @@ function WalletWorkspace(props: {
     void run("폴더 이름 변경", () =>
       putWalletFolder({ address, folder: { id: folderId, displayName: name } }),
     );
+  };
+
+  // 지갑 전용 템플릿의 폴더 간 드래그 이동. folderId null = 미분류.
+  const [folderDropTarget, setFolderDropTarget] = useState<string | null>(null);
+  const moveDefToWalletFolder = (defId: string, folderId: string | null) => {
+    const d = snap.library.defs[defId];
+    // 라이브러리 정책을 지갑 폴더에 떨어뜨리는 건 의미가 없다 — 전용 템플릿만.
+    if (!d || d.hidden !== true || d.homeWallet !== address.toLowerCase()) return;
+    if ((d.walletFolderId ?? null) === folderId) return;
+    const folderName = folderId ? (wallet.folders?.[folderId]?.displayName ?? folderId) : "미분류";
+    void run("폴더 이동", () =>
+      putDef({ ...d, walletFolderId: folderId ?? undefined, updatedAtMs: Date.now() }),
+    ).then((ok) => ok && onToast(`${d.displayName} → ${folderName}`));
   };
 
   const deleteWalletFolderUi = (folderId: string) => {
@@ -387,13 +402,45 @@ function WalletWorkspace(props: {
     folder: { id: string; displayName: string },
     defs: PolicyDef[],
     bindingFilter: ((b: Binding) => boolean) | null,
-    opts?: { actions?: React.ReactNode; showEmpty?: boolean },
+    opts?: {
+      actions?: React.ReactNode;
+      showEmpty?: boolean;
+      /** 지갑 전용 폴더의 드롭 대상 id — null=미분류, undefined=드롭 비활성. */
+      dropFolderId?: string | null;
+    },
   ) => {
     if (defs.length === 0 && !opts?.showEmpty) return null;
     const open = !collapsed.has(folder.id);
+    const droppable = opts?.dropFolderId !== undefined;
     return (
       <div key={folder.id} className="ld-folder">
-        <div className="ld-folderhead" onClick={() => toggleFolder(folder.id)}>
+        <div
+          className={`ld-folderhead${droppable && folderDropTarget === folder.id ? " droptarget" : ""}`}
+          onClick={() => toggleFolder(folder.id)}
+          onDragOver={
+            droppable
+              ? (e) => {
+                  if (e.dataTransfer.types.includes(DRAG_DEF_MIME)) {
+                    e.preventDefault();
+                    setFolderDropTarget(folder.id);
+                  }
+                }
+              : undefined
+          }
+          onDragLeave={
+            droppable ? () => setFolderDropTarget((t) => (t === folder.id ? null : t)) : undefined
+          }
+          onDrop={
+            droppable
+              ? (e) => {
+                  e.preventDefault();
+                  setFolderDropTarget(null);
+                  const defId = e.dataTransfer.getData(DRAG_DEF_MIME);
+                  if (defId) moveDefToWalletFolder(defId, opts?.dropFolderId ?? null);
+                }
+              : undefined
+          }
+        >
           <span className={`ld-caret${open ? " open" : ""}`}>
             <CaretRightIcon />
           </span>
@@ -420,6 +467,8 @@ function WalletWorkspace(props: {
                   <div
                     className="ld-def"
                     draggable
+                    title="클릭해서 템플릿 편집 · 끌어서 패키지에 적용 / 전용 폴더로 이동"
+                    onClick={() => navigate(`/editor/${encodeURIComponent(d.id)}`)}
                     onDragStart={(e) => {
                       e.dataTransfer.setData(DRAG_DEF_MIME, d.id);
                       e.dataTransfer.effectAllowed = "copy";
@@ -632,7 +681,8 @@ function WalletWorkspace(props: {
                     defs,
                     null,
                     {
-                      showEmpty: !isUncat && scope === "all",
+                      showEmpty: scope === "all",
+                      dropFolderId: isUncat ? null : fid,
                       actions: isUncat ? undefined : (
                         <>
                           <button

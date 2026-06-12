@@ -2493,6 +2493,12 @@
   gap: 4px;
   margin-left: auto;
 }
+/* 지갑 전용 폴더 헤더에 템플릿을 드래그해 폴더 이동 */
+.ld-folderhead.droptarget {
+  background: var(--sage-100, #eaf3ee);
+  outline: 1.5px dashed var(--sage-500, #4c7a5e);
+  outline-offset: -1.5px;
+}
 .ld-folderhead:hover .acts {
   display: inline-flex;
 }

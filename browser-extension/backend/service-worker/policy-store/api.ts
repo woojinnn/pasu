@@ -83,8 +83,16 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
       return { library: s.library, rev: s.rev };
     }
     case "ps2:get-wallet-state": {
-      const s = await readStore(uid);
-      return s.wallets.byAddress[req.address.toLowerCase()] ?? { bindings: {}, packages: {}, packageEnabled: {} };
+      const addr = req.address.toLowerCase();
+      let s = await readStore(uid);
+      if (!s.wallets.byAddress[addr]) {
+        // 처음 보는 지갑 = 아직 프로비저닝 전(첫 설치/첫 로그인). 여기서
+        // 기본 정책을 깔아줘야 popup이 첫 화면부터 "보호 꺼짐"이 아니게
+        // 된다 — 대시보드만 프로비저닝하던 구멍의 SW측 봉합.
+        await provisionWallets(uid, [addr]);
+        s = await readStore(uid);
+      }
+      return s.wallets.byAddress[addr] ?? { bindings: {}, packages: {}, packageEnabled: {} };
     }
     case "ps2:get-overview": {
       // 계정 전체 뷰(지갑×패키지 매트릭스)용 스냅샷.
