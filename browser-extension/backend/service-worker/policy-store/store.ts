@@ -35,6 +35,7 @@ export async function readStore(uid: string): Promise<StoreSnapshot> {
     rev: (got[revKey(uid)] as number | undefined) ?? 0,
   };
   normalizeWallets(snap);
+  normalizeHiddenDefs(snap);
   return snap;
 }
 
@@ -68,6 +69,32 @@ function normalizeWallets(s: StoreSnapshot): void {
         displayName: s.library.packages[b.packageId]?.displayName ?? b.packageId,
         updatedAtMs: 0,
       };
+    }
+  }
+}
+
+/** 모델 A 마이그레이션(읽기 시 정규화, 멱등·추론 전용): 지갑 전용(hidden)
+ *  def의 homeWallet이 없으면 첫 바인딩의 지갑으로 추론하고, walletFolderId가
+ *  존재하지 않는 폴더를 가리키면 미분류(undefined)로 돌린다. hidden 해제
+ *  (라이브러리 승격)는 여기서 하지 않는다 — "방금 만들었고 아직 바인딩 전"인
+ *  def를 다음 읽기가 승격해버리는 레이스가 생긴다. 앵커를 잃은 def의 승격은
+ *  mutation 시점의 pruneHiddenDefs(ops)가 맡는다. */
+function normalizeHiddenDefs(s: StoreSnapshot): void {
+  for (const def of Object.values(s.library.defs)) {
+    if (def.hidden !== true) continue;
+    if (!def.homeWallet) {
+      outer: for (const [addr, w] of Object.entries(s.wallets.byAddress)) {
+        for (const b of Object.values(w.bindings)) {
+          if (b.defId === def.id) {
+            def.homeWallet = addr;
+            break outer;
+          }
+        }
+      }
+    }
+    if (def.homeWallet && def.walletFolderId) {
+      const w = s.wallets.byAddress[def.homeWallet];
+      if (!w?.folders?.[def.walletFolderId]) def.walletFolderId = undefined;
     }
   }
 }

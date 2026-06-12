@@ -10,6 +10,9 @@ import {
   type SetMember,
 } from "../../server-api";
 import { severityFromCedar } from "./policy-meta";
+import { textToBlocks } from "../../cedar";
+import { computeShippedHoles, manifestWithHoles } from "./publish-holes";
+import { PublishPreviewTree } from "./PublishPreviewTree";
 import {
   addressFieldRefs,
   extractHoles,
@@ -71,8 +74,10 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  // Number-hole keys the author chose to KEEP (추천값 남기기). Default = all blanked.
-  const [keptNumbers, setKeptNumbers] = useState<Set<string>>(new Set());
+  // Hole keys the author chose to KEEP public (주소 공개 / 숫자 추천값 남기기).
+  // Default = all blanked. 주소를 남기는 건 "특정 주소로 거래되면 차단"처럼
+  // 주소가 정책의 본질인 경우 — 공개한 값은 마켓에 그대로 노출된다.
+  const [kept, setKept] = useState<Set<string>>(new Set());
 
   const rules = useMemo<PublishRule[]>(() => {
     if (!source) return [];
@@ -109,20 +114,21 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
     () => rules.flatMap((r) => r.holes.filter((h) => h.kind === "number")),
     [rules],
   );
-  const addressCount = useMemo(
-    () =>
-      rules.reduce(
-        (n, r) => n + r.holes.filter((h) => h.kind === "address").length + r.refs.length,
-        0,
-      ),
+  const addressHoles = useMemo(
+    () => rules.flatMap((r) => r.holes.filter((h) => h.kind === "address")),
     [rules],
   );
+  const keptNumCount = numberHoles.filter((h) => kept.has(h.key)).length;
+  const keptAddrCount = addressHoles.filter((h) => kept.has(h.key)).length;
+  // 비식별로 나가는 주소 칸 = 안 남긴 주소 hole. 런타임 비교(refs)는 가릴
+  // 값 자체가 없으므로 "비움" 카운트에 넣지 않는다(안내 행으로만 표시).
+  const blankedAddrCount = addressHoles.length - keptAddrCount;
 
   const reset = () => {
     setStep(1);
     setName("");
     setDescription("");
-    setKeptNumbers(new Set());
+    setKept(new Set());
   };
   const close = () => {
     reset();
@@ -130,7 +136,7 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
   };
 
   const toggleKeep = (key: string) =>
-    setKeptNumbers((prev) => {
+    setKept((prev) => {
       const n = new Set(prev);
       if (n.has(key)) n.delete(key);
       else n.add(key);
@@ -149,9 +155,16 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
         ? { en: description.trim(), ko: description.trim() }
         : undefined;
 
+      // 블랭킹이 적용된 hole(공개로 남기지 않은 칸 전부)의 위치 기반 param
+      // 이름을 계산해 manifest에 동봉 — 설치자가 어느 칸을 채워야 하는지의
+      // 유일한 출처다 (redacted 텍스트엔 hole 흔적이 없다). 공개로 남긴 칸은
+      // hole이 아니므로 여기서 빠지고, 설치 게이트도 적용되지 않는다.
+      const blankedOf = (r: PublishRule) => r.holes.filter((h) => !kept.has(h.key));
+
       if (source.kind === "policy") {
         const r = rules[0];
-        const cedar = r ? redactCedar(r.cedarText, r.holes, keptNumbers) : source.cedarText;
+        const cedar = r ? redactCedar(r.cedarText, r.holes, kept) : source.cedarText;
+        const shipped = r ? await computeShippedHoles(cedar, blankedOf(r), textToBlocks) : null;
         const body: CreateListingBody = {
           slug,
           kind: "policy",
@@ -163,19 +176,24 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
             : "warn") as MarketSeverity,
           version: SEMVER,
           cedar_text: cedar,
-          manifest: source.manifest,
+          manifest: manifestWithHoles(source.manifest, shipped, r?.ruleId ?? slug),
           policy_tree: source.policyTree ?? undefined,
         };
         await createListing(body);
         return { slug, kind: "policy" };
       }
 
-      const members: SetMember[] = rules.map((r) => ({
-        slug: r.ruleId,
-        display_name: r.title,
-        cedar_text: redactCedar(r.cedarText, r.holes, keptNumbers),
-        manifest: r.manifest,
-      }));
+      const members: SetMember[] = [];
+      for (const r of rules) {
+        const cedar = redactCedar(r.cedarText, r.holes, kept);
+        const shipped = await computeShippedHoles(cedar, blankedOf(r), textToBlocks);
+        members.push({
+          slug: r.ruleId,
+          display_name: r.title,
+          cedar_text: cedar,
+          manifest: manifestWithHoles(r.manifest, shipped, r.ruleId),
+        });
+      }
       if (members.length === 0) throw new Error("발행할 멤버 정책이 없습니다.");
       const body: CreateListingBody = {
         slug,
@@ -227,9 +245,10 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
           {step === 1 ? (
             <Step1
               rules={rules}
-              addressCount={addressCount}
+              blankedAddrCount={blankedAddrCount}
+              keptAddrCount={keptAddrCount}
               numberCount={numberHoles.length}
-              keptNumbers={keptNumbers}
+              kept={kept}
               onToggleKeep={toggleKeep}
               loading={loadingMembers}
             />
@@ -240,8 +259,9 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
               description={description}
               onDescription={setDescription}
               ruleCount={rules.length}
-              addressCount={addressCount}
-              keptCount={keptNumbers.size}
+              blankedAddrCount={blankedAddrCount}
+              keptAddrCount={keptAddrCount}
+              keptNumCount={keptNumCount}
               numberCount={numberHoles.length}
             />
           )}
@@ -254,7 +274,15 @@ export function PublishModal({ open, onClose, source }: PublishModalProps) {
         <footer className="pub-foot">
           {step === 1 ? (
             <>
-              <span className="pub-foot-note">주소류는 항상 비워집니다 · 우회 불가</span>
+              {keptAddrCount > 0 ? (
+                <span className="pub-foot-note warn">
+                  주소 {keptAddrCount}칸이 마켓에 공개로 올라갑니다
+                </span>
+              ) : (
+                <span className="pub-foot-note">
+                  주소류는 기본 비워집니다 · 칸별로 공개 선택 가능
+                </span>
+              )}
               <button type="button" className="pub-btn ghost" onClick={close}>
                 취소
               </button>
@@ -317,13 +345,23 @@ function Stepper({ step }: { step: 1 | 2 }) {
 /* ── step 1: de-identification ─────────────────────────────────────── */
 function Step1(props: {
   rules: PublishRule[];
-  addressCount: number;
+  blankedAddrCount: number;
+  keptAddrCount: number;
   numberCount: number;
-  keptNumbers: Set<string>;
+  kept: Set<string>;
   onToggleKeep: (key: string) => void;
   loading: boolean;
 }) {
-  const { rules, addressCount, numberCount, keptNumbers, onToggleKeep, loading } = props;
+  const { rules, blankedAddrCount, keptAddrCount, numberCount, kept, onToggleKeep, loading } =
+    props;
+  const [openTrees, setOpenTrees] = useState<Set<string>>(new Set());
+  const toggleTree = (ruleId: string) =>
+    setOpenTrees((prev) => {
+      const n = new Set(prev);
+      if (n.has(ruleId)) n.delete(ruleId);
+      else n.add(ruleId);
+      return n;
+    });
   if (loading) return <div className="pub-muted">멤버 정책 불러오는 중…</div>;
 
   return (
@@ -331,19 +369,23 @@ function Step1(props: {
       <div className="pub-info">
         <LockIcon />
         <div>
-          <b>개인정보 자동 비식별 (강제)</b>
+          <b>개인정보 자동 비식별 (기본)</b>
           <div>
-            주소류 식별자(지갑·수취인·위임 대상·allowlist)는{" "}
-            <b>무조건 파라미터 구멍으로 비워서</b> 올라갑니다. 담는 사람이 자기 값을
-            채웁니다. 끌 수 없습니다.
+            주소류 식별자(지갑·수취인·위임 대상·allowlist)는 기본으로{" "}
+            <b>파라미터 구멍으로 비워서</b> 올라가고, 담는 사람이 자기 값을 채웁니다.
+            주소가 정책의 본질이면(예: 특정 주소로 보내면 차단) 칸별로{" "}
+            <b>값 공개</b>를 선택할 수 있어요 — 공개한 값은 마켓에 그대로 노출됩니다.
           </div>
         </div>
       </div>
 
       <div className="pub-chips">
         <span className="pub-chip">
-          <SearchIcon /> 주소류 (비움 고정) · {addressCount}
+          <SearchIcon /> 주소류 (기본 비움) · {blankedAddrCount}
         </span>
+        {keptAddrCount > 0 && (
+          <span className="pub-chip warn"># 주소 공개 · {keptAddrCount}</span>
+        )}
         <span className="pub-chip">
           # 숫자 임계값 (선택) · {numberCount}
         </span>
@@ -356,7 +398,23 @@ function Step1(props: {
               <span className="pub-rule-dot" />
               <span className="pub-rule-title">{r.title}</span>
               <span className="pub-rule-id">{r.ruleId}</span>
+              <button
+                type="button"
+                className={`pub-tree-toggle${openTrees.has(r.ruleId) ? " on" : ""}`}
+                onClick={() => toggleTree(r.ruleId)}
+              >
+                조건 보기
+              </button>
             </div>
+
+            {openTrees.has(r.ruleId) && (
+              <PublishPreviewTree
+                cedarText={r.cedarText}
+                holes={r.holes}
+                kept={kept}
+                onToggleKeep={onToggleKeep}
+              />
+            )}
 
             {r.refs.map((ref) => (
               <div key={ref.path} className="pub-field">
@@ -366,30 +424,62 @@ function Step1(props: {
                     {ref.label} <code>{ref.path}</code>
                   </div>
                   <div className="pub-field-val">
-                    <span className="redacted">런타임 값</span>
-                    <span className="arrow">→</span>
-                    <span className="param">{ref.paramName}</span>
+                    <span className="pub-runtime">
+                      런타임 값끼리 비교해요 — 텍스트에 가릴 개인 값이 없어요
+                    </span>
                   </div>
                 </div>
-                <span className="pub-blanked"><LockIcon /> 비워짐</span>
+                <span className="pub-blanked">개인값 없음</span>
               </div>
             ))}
 
             {r.holes.map((h) =>
               h.kind === "address" ? (
-                <div key={h.key} className="pub-field">
+                <div key={h.key} className={`pub-field${kept.has(h.key) ? " kept" : ""}`}>
                   <span className="pub-field-ic addr"><SearchIcon /></span>
                   <div className="pub-field-main">
                     <div className="pub-field-label">
                       {h.label} <code>{h.path}</code>
                     </div>
                     <div className="pub-field-val">
-                      <span className="redacted">{h.display}</span>
-                      <span className="arrow">→</span>
-                      <span className="param">{h.paramName}</span>
+                      {kept.has(h.key) ? (
+                        <>
+                          <span>{h.display}</span>
+                          <span className="arrow">→</span>
+                          <span className="param public">마켓에 공개</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="redacted">{h.display}</span>
+                          <span className="arrow">→</span>
+                          <span className="param">{h.paramName}</span>
+                        </>
+                      )}
                     </div>
+                    {(h.addrCount ?? 0) > 1 && (
+                      <div className="pub-field-sub mono" title={addrsOf(h.raw).join("\n")}>
+                        {addrsOf(h.raw).map(shortAddr).join(" · ")}
+                      </div>
+                    )}
                   </div>
-                  <span className="pub-blanked"><LockIcon /> 비워짐</span>
+                  <div className="pub-numtoggle pub-addrtoggle">
+                    <button
+                      type="button"
+                      className={!kept.has(h.key) ? "on" : ""}
+                      onClick={() => kept.has(h.key) && onToggleKeep(h.key)}
+                    >
+                      비우기
+                      <small>{h.paramName}</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={kept.has(h.key) ? "on public" : ""}
+                      onClick={() => !kept.has(h.key) && onToggleKeep(h.key)}
+                    >
+                      값 공개
+                      <small>{h.display}</small>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div key={h.key} className="pub-field">
@@ -405,16 +495,16 @@ function Step1(props: {
                   <div className="pub-numtoggle">
                     <button
                       type="button"
-                      className={!keptNumbers.has(h.key) ? "on" : ""}
-                      onClick={() => keptNumbers.has(h.key) && onToggleKeep(h.key)}
+                      className={!kept.has(h.key) ? "on" : ""}
+                      onClick={() => kept.has(h.key) && onToggleKeep(h.key)}
                     >
                       비우기
                       <small>{h.paramName}</small>
                     </button>
                     <button
                       type="button"
-                      className={keptNumbers.has(h.key) ? "on" : ""}
-                      onClick={() => !keptNumbers.has(h.key) && onToggleKeep(h.key)}
+                      className={kept.has(h.key) ? "on" : ""}
+                      onClick={() => !kept.has(h.key) && onToggleKeep(h.key)}
                     >
                       추천값 남기기
                       <small>{h.display}{h.unit ?? ""}</small>
@@ -441,8 +531,9 @@ function Step2(props: {
   description: string;
   onDescription: (v: string) => void;
   ruleCount: number;
-  addressCount: number;
-  keptCount: number;
+  blankedAddrCount: number;
+  keptAddrCount: number;
+  keptNumCount: number;
   numberCount: number;
 }) {
   const {
@@ -451,8 +542,9 @@ function Step2(props: {
     description,
     onDescription,
     ruleCount,
-    addressCount,
-    keptCount,
+    blankedAddrCount,
+    keptAddrCount,
+    keptNumCount,
     numberCount,
   } = props;
   return (
@@ -483,12 +575,18 @@ function Step2(props: {
         </div>
         <div className="pub-summary-row">
           <span>주소 구멍(비식별)</span>
-          <b>{addressCount}</b>
+          <b>{blankedAddrCount}</b>
         </div>
+        {keptAddrCount > 0 && (
+          <div className="pub-summary-row warn">
+            <span>주소 공개</span>
+            <b>{keptAddrCount}</b>
+          </div>
+        )}
         <div className="pub-summary-row">
           <span>추천값 남김</span>
           <b>
-            {keptCount} / {numberCount}
+            {keptNumCount} / {numberCount}
           </b>
         </div>
       </div>
@@ -504,6 +602,14 @@ function Step2(props: {
 function ruleIdOf(cedarText: string): string {
   const m = cedarText.match(/@id\(\s*"([^"]+)"\s*\)/);
   return m ? m[1] : "";
+}
+
+function addrsOf(raw: string): string[] {
+  return raw.match(/0x[0-9a-fA-F]{40}/g) ?? [];
+}
+
+function shortAddr(a: string): string {
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
 /* ── icons ─────────────────────────────────────────────────────────── */

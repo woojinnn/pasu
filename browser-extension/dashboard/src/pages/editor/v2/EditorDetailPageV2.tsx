@@ -10,16 +10,15 @@ import {
   getOverview,
   putDef,
   putPackage,
-  putWalletPackage,
+  putWalletFolder,
   updateBinding,
-  UNCATEGORIZED_PKG,
   type Binding,
   type PolicyDef,
   type StoreSnapshot,
 } from "../../../server-api/policy-store";
 import { listWallets } from "../../../server-api/wallets";
 import { buildDefPayload } from "./save-def";
-import { SaveScopeModal, type SaveScopeChoice } from "./SaveScopeModal";
+import { SaveScopeModal, WALLET_FOLDER_UNCAT, type SaveScopeChoice } from "./SaveScopeModal";
 import { defUsageCount } from "./wallet-policies-derive";
 import {
   canonicalizeModel,
@@ -209,13 +208,16 @@ export function EditorDetailPageV2() {
                 navigate("/editor"); // 지갑별 정책(기본 탭)으로 복귀
                 return;
               }
+              if (isNew) {
+                // 새 정책 저장 완료 → "+ 새 정책"을 눌렀던 목록으로 복귀.
+                // (상세에 머무르지 않는다 — 저장이 끝났다는 감각 + 다음 작업 동선)
+                navigate("/editor", { replace: true });
+                return;
+              }
               if (savedId !== id) {
                 navigate(`/editor/${encodeURIComponent(savedId)}`, {
                   replace: true,
                 });
-              } else if (isNew) {
-                // Drop the navigation seed so a reload doesn't re-enter new mode.
-                navigate(`/editor/${encodeURIComponent(id)}`, { replace: true });
               }
             }}
             onDeleted={() => {
@@ -269,6 +271,13 @@ function EditorBody({
   // with a fresh `initialModel`.
   const [formEntry, setFormEntry] = useState<FormEntry | null>(null);
   const [formKey, setFormKey] = useState(0);
+  // 값 시트(바인딩) 유효성 + "형식오류 → 변경 전으로 되돌리기" 배선.
+  const [formValidity, setFormValidity] = useState<{ valid: boolean; error: string | null }>({
+    valid: true,
+    error: null,
+  });
+  const [resetToken, setResetToken] = useState(0);
+  const [revertNotice, setRevertNotice] = useState<string | null>(null);
 
   // Reseed when the parent swaps to a different policy id.
   useEffect(() => {
@@ -278,6 +287,8 @@ function EditorBody({
     setTab(defaultTab(policy.method));
     setManifestOverride(null);
     setFormEntry(null);
+    setFormValidity({ valid: true, error: null });
+    setRevertNotice(null);
   }, [policy.id]);
 
   const fromMarket = policy.source === "market";
@@ -418,11 +429,20 @@ function EditorBody({
     }
 
     // def가 아직 파라미터화 전이면 canonical 파라미터 형태로 1회 승격(의미 불변).
+    // 지갑 전용(hidden) def의 이름 변경은 별칭이 아니라 def 자체에 저장한다 —
+    // 이 지갑에만 존재하는 정책의 유일한 이름이고, 그래야 지갑별 정책 목록과
+    // 게시 모달에도 그 이름이 보인다. 공유 def만 바인딩 별칭을 쓴다.
+    const renameDef = alias !== undefined && def.hidden === true;
     const pIr = formToIr(parameterizeModel(canonicalizeModel(defModel)));
-    if (def.holes.length === 0 || JSON.stringify(def.skeleton.ir) !== JSON.stringify(pIr)) {
+    if (
+      renameDef ||
+      def.holes.length === 0 ||
+      JSON.stringify(def.skeleton.ir) !== JSON.stringify(pIr)
+    ) {
       const { holes, paramDefaults } = holesFromIr(pIr);
       await putDef({
         ...def,
+        ...(renameDef ? { displayName: aliasInput } : {}),
         skeleton: { ...def.skeleton, ir: pIr },
         holes,
         defaults: { ...def.defaults, params: paramDefaults },
@@ -432,10 +452,15 @@ function EditorBody({
 
     // 값 오버라이드: 템플릿 기본값과 같아진 항목은 자연히 빠진다(기본값 상속).
     const params = diffParamValues(defModel, editedModel);
+    const aliasPatch = renameDef
+      ? {} // 이름은 def로 갔다 — 별칭은 만들지 않는다(기존 별칭은 같은 값이라 무해)
+      : alias !== (ctx.binding.alias ?? undefined)
+        ? { alias }
+        : {};
     await updateBinding({
       address: ctx.address,
       bindingId: ctx.binding.id,
-      patch: { params, ...(alias !== (ctx.binding.alias ?? undefined) ? { alias } : {}) },
+      patch: { params, ...aliasPatch },
     });
     return def.id;
   };
@@ -495,47 +520,46 @@ function EditorBody({
     mutationFn: async (choice: SaveScopeChoice): Promise<string> => {
       if (!scopeAsk) throw new Error("내부 오류: 저장 준비가 비어 있어요");
 
-      // 지갑 전용 경로: 패키지는 지갑 소속이라 주소마다 따로 결정한다 —
-      // {newName}은 find-or-create(같은 이름이 이미 있으면 그 패키지 재사용).
+      // 지갑 전용 경로(모델 A): 지갑마다 **독립 def 사본**을 만들어 그 지갑의
+      // 전용 폴더에 앵커한다. 바인딩(적용)은 만들지 않는다 — 적용은 지갑별
+      // 정책에서 패키지에 끌어다 놓는 동선. {newName} 폴더는 find-or-create.
       if (choice.scope.kind === "wallets") {
-        const pkgByAddr: Record<string, string> = {};
+        let lastId = "";
         for (const address of choice.scope.addresses) {
-          const pick = choice.walletPackages?.[address] ?? { id: UNCATEGORIZED_PKG };
-          if ("id" in pick) {
-            pkgByAddr[address] = pick.id;
-            continue;
+          const addr = address.toLowerCase();
+          const pick = choice.walletFolders?.[address] ?? { id: WALLET_FOLDER_UNCAT };
+          let folderId: string | undefined;
+          if ("newName" in pick) {
+            const existing = Object.values(
+              snap?.wallets.byAddress[addr]?.folders ?? {},
+            ).find((f) => f.displayName === pick.newName);
+            if (existing) {
+              folderId = existing.id;
+            } else {
+              folderId = `fold::${crypto.randomUUID()}`;
+              await putWalletFolder({
+                address: addr,
+                folder: { id: folderId, displayName: pick.newName },
+              });
+            }
+          } else if (pick.id !== WALLET_FOLDER_UNCAT) {
+            folderId = pick.id;
           }
-          const existing = Object.values(
-            snap?.wallets.byAddress[address]?.packages ?? {},
-          ).find((p) => p.displayName === pick.newName);
-          if (existing) {
-            pkgByAddr[address] = existing.id;
-            continue;
-          }
-          const pkgId = `pkg::${crypto.randomUUID()}`;
-          await putWalletPackage({ address, pkg: { id: pkgId, displayName: pick.newName } });
-          pkgByAddr[address] = pkgId;
-        }
-        const { def } = buildDefPayload({
-          existing: null,
-          displayName: name.trim() || "untitled",
-          cat: policy.cat,
-          ir: scopeAsk.ir,
-          manifest: scopeAsk.manifest,
-          scope: choice.scope,
-          packageId: null, // 주소별로 다르므로 bindPlan 대신 직접 바인딩
-          applyToNewWallets: false,
-          walletOnly: true,
-        });
-        await putDef(def);
-        for (const address of choice.scope.addresses) {
-          await bindDef({
-            defId: def.id,
-            packageId: pkgByAddr[address] ?? UNCATEGORIZED_PKG,
-            addresses: [address],
+          const { def } = buildDefPayload({
+            existing: null,
+            displayName: choice.name || name.trim() || "untitled",
+            cat: policy.cat,
+            ir: scopeAsk.ir,
+            manifest: scopeAsk.manifest,
+            scope: choice.scope,
+            packageId: null,
+            applyToNewWallets: false,
+            walletOnly: { homeWallet: addr, ...(folderId ? { walletFolderId: folderId } : {}) },
           });
+          await putDef(def);
+          lastId = def.id;
         }
-        return def.id;
+        return lastId;
       }
 
       // 라이브러리 경로.
@@ -551,7 +575,7 @@ function EditorBody({
       }
       const { def, bindPlan } = buildDefPayload({
         existing: null,
-        displayName: name.trim() || "untitled",
+        displayName: choice.name || name.trim() || "untitled",
         cat: policy.cat,
         ir: scopeAsk.ir,
         manifest: scopeAsk.manifest,
@@ -584,8 +608,8 @@ function EditorBody({
     ]);
     return [...addrs].sort().map((address) => ({
       address,
-      packages: Object.values(snap?.wallets.byAddress[address]?.packages ?? {})
-        .map((p) => ({ id: p.id, displayName: p.displayName }))
+      folders: Object.values(snap?.wallets.byAddress[address]?.folders ?? {})
+        .map((f) => ({ id: f.id, displayName: f.displayName }))
         .sort((a, b) => a.displayName.localeCompare(b.displayName, "ko")),
     }));
   }, [walletsQ.data, snap]);
@@ -752,8 +776,26 @@ function EditorBody({
           )}
           <button
             type="button"
-            className="ev2-pri"
-            onClick={() => saveMut.mutate()}
+            className={`ev2-pri${bindingCtx && !formValidity.valid ? " invalid" : ""}`}
+            title={
+              bindingCtx && !formValidity.valid
+                ? "형식이 맞지 않아요 — 누르면 변경 전 상태로 되돌립니다"
+                : undefined
+            }
+            onClick={() => {
+              // 값 시트에서 형식이 안 맞으면: 저장하지 않고 안내 + 변경 전으로 복원.
+              if (bindingCtx && !formValidity.valid) {
+                setRevertNotice(
+                  `형식이 맞지 않아 저장하지 않고 변경 전 상태로 되돌렸어요${
+                    formValidity.error ? ` (${formValidity.error})` : ""
+                  }.`,
+                );
+                setResetToken((t) => t + 1);
+                return;
+              }
+              setRevertNotice(null);
+              saveMut.mutate();
+            }}
             disabled={saveMut.isPending || !cedarText.trim()}
           >
             {saveMut.isPending ? "저장 중…" : "저장"}
@@ -765,6 +807,12 @@ function EditorBody({
         <div className="ev2-err-banner">
           <WarnIcon />
           {String(saveMut.error || finishMut.error || deleteMut.error || "")}
+        </div>
+      )}
+      {revertNotice && (
+        <div className="ev2-err-banner warn">
+          <WarnIcon />
+          {revertNotice}
         </div>
       )}
 
@@ -789,6 +837,8 @@ function EditorBody({
               initialModel={formEntry.model}
               initialManifest={policy.manifest}
               valuesOnly={!!bindingCtx}
+              onValidity={setFormValidity}
+              resetToken={resetToken}
               onChange={({ cedarText: c, ir: nextIr, model, manifest, manifestOverridden }) => {
                 setCedarText(c);
                 setIr(nextIr);

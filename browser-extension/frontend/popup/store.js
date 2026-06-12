@@ -57,6 +57,20 @@
     });
   }
 
+  // 콜드부팅 방어: popup이 SW를 막 깨운 직후에는 부팅 시퀀스(스토리지
+  // 마이그레이션·wasm·번들 설치)가 ps2 응답을 5초 넘게 잡아둘 수 있다.
+  // 첫 호출이 실패하면 잠깐 기다렸다 한 번 더 — 두 번째는 여유 있게.
+  // (이게 없으면 catch 폴백이 "빈 라이브러리"를 그대로 그려서, 한 번씩
+  // 정책이 하나도 안 뜨는 popup이 된다.)
+  async function sendRetry(type, extra) {
+    try {
+      return await send(type, extra);
+    } catch (e) {
+      await new Promise((r) => setTimeout(r, 1200));
+      return send(type, extra, 12000);
+    }
+  }
+
   /* ---------- 동적 정책/패키지 (catalog 에서 채워짐) ---------- */
   // popup.js 가 `S.POLICIES[id].title` / `S.PACKAGES` 를 동기적으로 읽으므로,
   // loadState() 가 catalog 를 받아 아래 객체를 in-place 로 갱신한다.
@@ -229,7 +243,7 @@
     // 원인이었다. 서버에 없으면 popup 에도 없다.
     let summaries = [];
     try {
-      summaries = (await send("pasu-list-wallet-summaries")) || [];
+      summaries = (await sendRetry("pasu-list-wallet-summaries")) || [];
     } catch (e) {
       // summary 실패 시 주소만이라도 (label 없이)
       try {
@@ -254,7 +268,7 @@
     // ps2 라이브러리 — 패키지 카드/베이스라인 목록의 원천. 실패 시 빈 라이브러리.
     let lib = { defs: {}, packages: {} };
     try {
-      const r = await send("ps2:get-library");
+      const r = await sendRetry("ps2:get-library");
       lib = (r && r.library) || lib;
     } catch (e) {
       /* SW 미부팅 등 — 빈 카드로 폴백 */
@@ -273,7 +287,7 @@
     // 활성 주소의 진짜 per-wallet 상태(ps2) — enabled 캐시는 표시용.
     let walletState = null;
     try {
-      walletState = await send("ps2:get-wallet-state", { address: active });
+      walletState = await sendRetry("ps2:get-wallet-state", { address: active });
     } catch (e) {
       /* 폴백: 빈 상태 */
     }
@@ -284,7 +298,7 @@
 
   /** 활성 지갑 재조회(토글/지갑 전환 후) — enabled bindingId 배열 반환. */
   async function refreshActivePolicies(address) {
-    const walletState = await send("ps2:get-wallet-state", { address });
+    const walletState = await sendRetry("ps2:get-wallet-state", { address });
     return rebuildFromPs2(LIBRARY || { defs: {}, packages: {} }, walletState);
   }
 

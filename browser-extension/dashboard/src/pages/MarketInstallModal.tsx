@@ -6,8 +6,11 @@ import { getListing, pickI18n, type ListingSummary } from "../server-api";
 import { getOverview, UNCATEGORIZED_PKG } from "../server-api/policy-store";
 import { listWallets } from "../server-api/wallets";
 import {
+  holeInputToValue,
   installListingV2,
   installListingWalletOnlyV2,
+  requiredHoleInputs,
+  type InstallParams,
   type WalletPkgPick,
 } from "./market-install-v2";
 import type { MarketLocale } from "./market-locale";
@@ -62,6 +65,30 @@ export function MarketInstallModal({
   const name = pickI18n(listing.display_name, locale) || listing.slug;
   const memberCount = detailQ.data?.latest_version?.members?.length ?? 0;
 
+  // 게시 때 블랭킹된 required hole — 채워야 설치(바인딩)가 가능하다.
+  const holesQ = useQuery({
+    queryKey: ["market-required-holes", listing.slug, snap?.rev ?? -1],
+    queryFn: () => requiredHoleInputs(detailQ.data!, locale, snap),
+    enabled: !!detailQ.data && !!snap,
+  });
+  const holeReqs = holesQ.data ?? [];
+  /** defId → hole 이름 → 입력 문자열. */
+  const [holeVals, setHoleVals] = useState<Record<string, Record<string, string>>>({});
+  const setHoleVal = (defId: string, name: string, v: string) =>
+    setHoleVals((m) => ({ ...m, [defId]: { ...(m[defId] ?? {}), [name]: v } }));
+  /** 전부 유효하게 채워졌으면 HoleValue로 변환, 아니면 null. */
+  const filledParams = useMemo<InstallParams | null>(() => {
+    const out: InstallParams = {};
+    for (const req of holeReqs) {
+      for (const h of req.holes) {
+        const v = holeInputToValue(h.type, holeVals[req.defId]?.[h.name] ?? "");
+        if (v === null) return null;
+        (out[req.defId] ??= {})[h.name] = v;
+      }
+    }
+    return out;
+  }, [holeReqs, holeVals]);
+
   const [kind, setKind] = useState<"wallet" | "library" | null>(null);
   // 지갑 경로 — 지갑별 패키지 선택 + 일괄 새 패키지.
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -102,12 +129,15 @@ export function MarketInstallModal({
           addresses: [...picked],
           walletPackages,
           snap: snap!,
+          params: filledParams ?? {},
         });
       }
       return installListingV2(detailQ.data!, locale, {
         scope: applyToAllNow ? { kind: "all" } : { kind: "library-only" },
         applyToNewWallets,
         packageId: isSet ? null : packageId === UNCATEGORIZED_PKG ? null : packageId,
+        params: filledParams ?? {},
+        snap,
       });
     },
     onSuccess: async () => {
@@ -118,11 +148,14 @@ export function MarketInstallModal({
   });
 
   const invalid =
-    kind === "wallet" &&
-    (picked.size === 0 ||
-      (bulk
-        ? !bulkName.trim()
-        : [...picked].some((a) => pkgOf(a) === "__new__" && !(walletNewName[a] ?? "").trim())));
+    // required hole이 전부 유효하게 채워지기 전엔 설치 불가 (SW 가드와 동일 기준).
+    filledParams === null ||
+    holesQ.isLoading ||
+    (kind === "wallet" &&
+      (picked.size === 0 ||
+        (bulk
+          ? !bulkName.trim()
+          : [...picked].some((a) => pkgOf(a) === "__new__" && !(walletNewName[a] ?? "").trim()))));
 
   const togglePick = (a: string) =>
     setPicked((prev) => {
@@ -331,6 +364,73 @@ export function MarketInstallModal({
                 </>
               )}
             </div>
+
+            {holeReqs.length > 0 && (
+              <div className="im-holes">
+                <div className="im-holes-head">
+                  {ko
+                    ? "게시자가 비워 둔 칸이 있어요 — 채워야 적용돼요"
+                    : "This listing has blanks to fill before it can apply"}
+                </div>
+                {holeReqs.map((req) => (
+                  <div key={req.defId} className="im-holes-def">
+                    {holeReqs.length > 1 && <div className="im-holes-defname">{req.defName}</div>}
+                    {req.holes.map((h) => {
+                      const raw = holeVals[req.defId]?.[h.name] ?? "";
+                      const bad = raw.trim() !== "" && holeInputToValue(h.type, raw) === null;
+                      return (
+                        <label key={h.name} className="im-field im-hole">
+                          <span className="im-hole-label">{h.label}</span>
+                          {h.type === "addressSet" ? (
+                            <textarea
+                              value={raw}
+                              rows={2}
+                              onChange={(e) => setHoleVal(req.defId, h.name, e.target.value)}
+                              placeholder={
+                                ko ? "0x… 주소 (쉼표/줄바꿈으로 여러 개)" : "0x… (comma/newline separated)"
+                              }
+                            />
+                          ) : (
+                            <input
+                              value={raw}
+                              onChange={(e) => setHoleVal(req.defId, h.name, e.target.value)}
+                              placeholder={
+                                h.type === "address"
+                                  ? "0x…"
+                                  : h.type === "decimal"
+                                    ? ko
+                                      ? "예: 3.0"
+                                      : "e.g. 3.0"
+                                    : h.type === "long"
+                                      ? ko
+                                        ? "숫자"
+                                        : "number"
+                                      : ""
+                              }
+                            />
+                          )}
+                          {bad && (
+                            <span className="im-hole-err">
+                              {h.type === "address" || h.type === "addressSet"
+                                ? ko
+                                  ? "0x로 시작하는 40자리 주소여야 해요"
+                                  : "Must be a 0x… address"
+                                : h.type === "decimal"
+                                  ? ko
+                                    ? "소수점 형식이어야 해요 (예: 3.0)"
+                                    : "Decimal format (e.g. 3.0)"
+                                  : ko
+                                    ? "형식이 맞지 않아요"
+                                    : "Invalid format"}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {mut.isError && <div className="publish-error">{(mut.error as Error).message}</div>}
             <div className="im-actions">

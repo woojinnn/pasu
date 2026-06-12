@@ -12,18 +12,19 @@
  * the subset (deep nesting, if/then/else, …) the editor hands off to the Block
  * tab.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { blocksToText } from "../../../cedar";
 import type { PolicyIR } from "../../../cedar/blocks/ir";
 import { pathByNode } from "../../../cedar/diagnosis/path";
-import { naturalCondition } from "../../../cedar/nl";
+import { naturalCondition, withJosa } from "../../../cedar/nl";
 import { useAddressBook, shortAddress, type AddressEntry } from "../../../hooks/useAddressBook";
 import { PolicyDiagram } from "../../../cedar/diagram/PolicyDiagram";
 import { AddressInput, AddressSetInput } from "./AddressPicker";
 import {
   emptyFormModel,
   fieldsForTrigger,
+  findInvalidModelDecimals,
   flattenSituations,
   formToIrWithMap,
   isGroupNode,
@@ -56,6 +57,7 @@ import { CustomFieldModal } from "./CustomFieldModal";
 import { FieldCombobox } from "./FieldCombobox";
 
 import "./policy-form.css";
+import "./policy-value-sheet.css";
 
 export interface PolicyFormPaneProps {
   initialModel?: FormModel | null;
@@ -76,6 +78,11 @@ export interface PolicyFormPaneProps {
     manifest: unknown;
     manifestOverridden: boolean;
   }) => void;
+  /** 유효성 변화 보고 — Cedar 변환 실패나 형식 오류(잘못된 decimal 등)를
+   *  부모(저장 버튼)가 알 수 있게 한다. 값 시트에서 "빨간불 + 되돌리기"에 쓰임. */
+  onValidity?: (v: { valid: boolean; error: string | null }) => void;
+  /** 이 토큰이 바뀌면 시트를 연 시점의 값으로 되돌린다(저장 시 형식오류 → 복원). */
+  resetToken?: number;
 }
 
 const OP_LABEL: Record<FormOp, string> = {
@@ -93,6 +100,33 @@ const OP_LABEL: Record<FormOp, string> = {
 
 /** Ops that compare two scalars — these can take a field-vs-field RHS. */
 const SCALAR_OPS = new Set<FormOp>(["==", "!=", "<", "<=", ">", ">="]);
+
+/** 값 시트(문장형)에서 한 조건을 "주어 [값] 서술어"로 읽을 때 값 뒤에 붙는 말.
+ *  "~면"으로 끝나 그리고/또는 연결어와 마지막 "→ 차단"으로 자연스럽게 이어진다. */
+const SUFFIX_KO: Record<FormOp, string> = {
+  "==": "와 같으면",
+  "!=": "와 다르면",
+  "<": "보다 작으면",
+  "<=": "이하이면",
+  ">": "보다 크면",
+  ">=": "이상이면",
+  contains: "을 포함하면",
+  notContains: "을 포함하지 않으면",
+  in: "중 하나이면",
+  notIn: "중 어느 것도 아니면",
+};
+
+/** 트리 안에서 특정 leaf(동일 참조)의 값만 교체 — 시트는 값만 편집하므로
+ *  구조(트리거·필드·연산자·중첩)는 그대로 두고 RHS 값만 갈아끼운다. */
+function replaceLeafValue(nodes: FormNode[], target: FormCondition, value: FormValue): FormNode[] {
+  return nodes.map((n) =>
+    isGroupNode(n)
+      ? { ...n, conds: replaceLeafValue(n.conds, target, value) }
+      : n === target
+        ? { ...n, value }
+        : n,
+  );
+}
 
 /** Well-known comparison target offered alongside the catalog fields. */
 const PRINCIPAL_ADDRESS: FieldOption = {
@@ -242,7 +276,7 @@ interface EditorSelection {
   registerRow: (n: FormNode, el: HTMLElement | null) => void;
 }
 
-export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = false, onChange }: PolicyFormPaneProps) {
+export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = false, onChange, onValidity, resetToken }: PolicyFormPaneProps) {
   const [model, setModel] = useState<FormModel>(() =>
     initialModel
       ? {
@@ -252,6 +286,10 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
         }
       : emptyFormModel(),
   );
+  // 값 시트(valuesOnly)의 "되돌리기" 기준 — 이 화면을 연 시점의 모델.
+  const openModelRef = useRef<FormModel | null>(null);
+  if (openModelRef.current === null) openModelRef.current = model;
+
   // We no longer display the Cedar text (the right pane shows the diagram), but
   // we still build it to push up via onChange and to surface conversion errors.
   const [cedarError, setCedarError] = useState<string | null>(null);
@@ -385,6 +423,30 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
   );
   const manifestErrors = gen.errors;
   const valid = !cedarError && manifestErrors.length === 0;
+
+  // 값 시트 유효성: Cedar 변환 실패 + 잘못된 decimal 형식. 부모(저장 버튼)에
+  // 보고해 "빨간불 + 되돌리기"에 쓴다.
+  const badDecimals = useMemo(() => findInvalidModelDecimals(model), [model]);
+  const badDecimalSet = useMemo(() => new Set(badDecimals), [badDecimals]);
+  const sheetError =
+    cedarError ??
+    (badDecimals.length
+      ? `소수 형식이 잘못됐어요: ${badDecimals.map((v) => `"${v}"`).join(", ")} — 숫자로, 소수점 아래 최대 4자리 (예: 3 → 3.0)`
+      : null);
+  const onValidityRef = useRef(onValidity);
+  onValidityRef.current = onValidity;
+  useEffect(() => {
+    onValidityRef.current?.({ valid: !sheetError, error: sheetError });
+  }, [sheetError]);
+
+  // 부모가 resetToken을 올리면 시트를 연 시점의 값으로 되돌린다.
+  const resetRef = useRef(resetToken);
+  useEffect(() => {
+    if (resetToken === undefined || resetToken === resetRef.current) return;
+    resetRef.current = resetToken;
+    if (openModelRef.current) setModel(openModelRef.current);
+  }, [resetToken]);
+
   const [manifestOpen, setManifestOpen] = useState(false);
   // Manual manifest override. `null` = use the auto-generated manifest.
   const [manifestText, setManifestText] = useState<string | null>(null);
@@ -458,6 +520,38 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
       setUserFields({});
       return { ...m, trigger: next, when: [], unless: [] };
     });
+
+  // 지갑 인스턴스(값만) 편집 — 빌더 대신 문장형 "빈칸 채우기" 시트를 띄운다.
+  // 구조는 읽기전용으로 보여주고, 파라미터(RHS 값)만 인라인으로 편집한다.
+  if (valuesOnly) {
+    const open = openModelRef.current;
+    const dirty = !!open && (open.when !== model.when || open.unless !== model.unless);
+    return (
+      <ValueSheet
+        model={model}
+        ir={ir}
+        ctx={ctx}
+        triggerLabel={triggerText}
+        triggerAny={trig.kind === "any"}
+        severity={model.severity}
+        reason={model.reason}
+        dirty={dirty}
+        error={sheetError}
+        badDecimals={badDecimalSet}
+        humanizeLabel={humanizeAddrs}
+        onValue={(target, value) =>
+          setModel((m) => ({
+            ...m,
+            when: replaceLeafValue(m.when, target, value),
+            unless: replaceLeafValue(m.unless, target, value),
+          }))
+        }
+        onRevert={() => {
+          if (open) setModel(open);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="pf-pane">
@@ -635,6 +729,189 @@ export function PolicyFormPane({ initialModel, initialManifest, valuesOnly = fal
           onClose={() => setFieldModalOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ── 값 시트 (문장형 "빈칸 채우기") — 지갑 인스턴스의 파라미터만 편집 ─────────
+//
+// 정책을 한 문장으로 읽어주고(이 거래에서 … 면 → 차단), 편집 가능한 곳은
+// 강조된 빈칸(RHS 값)뿐. 트리거·필드·연산자·심각도·사유는 읽기전용 텍스트로
+// 보여 빌더(PolicyFormPane)와 확실히 구분된다.
+
+function ValueSheet({
+  model,
+  ir,
+  ctx,
+  triggerLabel,
+  triggerAny,
+  severity,
+  reason,
+  dirty,
+  error,
+  badDecimals,
+  humanizeLabel,
+  onValue,
+  onRevert,
+}: {
+  model: FormModel;
+  ir: PolicyIR;
+  ctx: EditorCtx;
+  triggerLabel: string;
+  triggerAny: boolean;
+  severity: FormModel["severity"];
+  reason: string;
+  dirty: boolean;
+  /** 전체 유효성 메시지(없으면 정상). 상단 배너로 보여준다. */
+  error: string | null;
+  /** 형식이 잘못된 decimal 값들 — 해당 칸을 빨갛게 표시. */
+  badDecimals: Set<string>;
+  humanizeLabel: (text: string) => string;
+  onValue: (target: FormCondition, value: FormValue) => void;
+  onRevert: () => void;
+}) {
+  const renderLeaf = (cond: FormCondition): ReactNode => {
+    const field = ctx.fieldByPath.get(cond.fieldPath);
+    const subject = field?.label ?? cond.fieldPath ?? "값";
+    // RHS는 값이든 "다른 필드(예: 내 지갑 주소)"든 전부 파라미터다 — 빌더처럼
+    // 값/필드 토글 + 편집을 그대로 제공한다(저장은 이미 field 참조도 지원).
+    const rhsOptions = compatibleRhsFields(ctx.rhsFields, field);
+    const canField = SCALAR_OPS.has(cond.op) && rhsOptions.length > 0;
+    const fieldMode = cond.value.kind === "field";
+    const invalid = cond.value.kind === "decimal" && badDecimals.has(cond.value.value);
+    return (
+      <span className="pv-line">
+        <span className="pv-subj">{withJosa(subject, "이", "가")}</span>
+        {fieldMode ? (
+          <span className="pv-blank field">
+            <FieldCombobox
+              value={cond.value.kind === "field" ? cond.value.path : ""}
+              fields={rhsOptions}
+              onChange={(p) => onValue(cond, { kind: "field", path: p })}
+            />
+          </span>
+        ) : (
+          <span className={`pv-blank${invalid ? " invalid" : ""}`}>
+            <ValueInput value={cond.value} field={field} invalid={invalid} onChange={(v) => onValue(cond, v)} />
+          </span>
+        )}
+        {canField && (
+          <button
+            type="button"
+            className="pv-mode"
+            onClick={() =>
+              onValue(
+                cond,
+                fieldMode
+                  ? defaultValueOfKind(valueKindFor(field, cond.op))
+                  : { kind: "field", path: rhsOptions[0]?.path ?? "principal.address" },
+              )
+            }
+            title={fieldMode ? "고정 값(주소·숫자)으로 바꾸기" : "다른 필드와 비교"}
+          >
+            {fieldMode ? "값으로" : "필드로"}
+          </button>
+        )}
+        <span className="pv-word">{SUFFIX_KO[cond.op]}</span>
+      </span>
+    );
+  };
+
+  // nodes를 "그리고"(or=false)/"또는"(or=true)로 잇고, 묶음을 만나면 패리티를
+  // 뒤집어 재귀 — 빌더의 카드/묶음(AND/OR by nesting)과 같은 규칙.
+  const renderNodes = (nodes: FormNode[], or: boolean): ReactNode =>
+    nodes.map((n, i) => (
+      <Fragment key={i}>
+        {i > 0 && <span className="pv-conn">{or ? "또는" : "그리고"}</span>}
+        {isGroupNode(n) ? (
+          <span className="pv-group">{renderNodes(n.conds, !or)}</span>
+        ) : (
+          renderLeaf(n)
+        )}
+      </Fragment>
+    ));
+
+  const renderSituations = (nodes: FormNode[], sm = false): ReactNode => {
+    const runs = situationsOf(nodes);
+    return runs.map((run, si) => (
+      <Fragment key={si}>
+        {si > 0 && (
+          <div className={`pv-or-div${sm ? " sm" : ""}`}>
+            <span>또는</span>
+          </div>
+        )}
+        <div className={`pv-flow${sm ? " sm" : ""}`}>{renderNodes(run, false)}</div>
+      </Fragment>
+    ));
+  };
+
+  const whenRuns = situationsOf(model.when);
+  const hasUnless = situationsOf(model.unless).length > 0;
+
+  return (
+    <div className="pv-sheet">
+      {error && (
+        <div className="pv-error" role="alert">
+          <span className="pv-error-ic">⚠</span>
+          <span>{error}</span>
+        </div>
+      )}
+      <div className="pv-main">
+      <div className="pv-card">
+        <div className="pv-top">
+          <span className="pv-top-lk">이 지갑에서</span>
+          <b className={`pv-trigchip${triggerAny ? " any" : ""}`}>
+            {triggerAny ? "모든 거래" : triggerLabel}
+          </b>
+          <span className="pv-top-lk">{triggerAny ? "마다" : "거래에서"}</span>
+          <span className="pv-spacer" />
+          <span className="pv-ro-pill">뼈대 · 읽기전용</span>
+        </div>
+
+        <div className="pv-when">
+          {whenRuns.length === 0 ? (
+            <div className="pv-empty">조건이 없어 이 거래는 항상 적용돼요.</div>
+          ) : (
+            renderSituations(model.when)
+          )}
+        </div>
+
+        <div className={`pv-verb ${severity}`}>
+          <span className="pv-arrow">→</span>
+          <span className="pv-verb-act">
+            {severity === "deny" ? "🚫 차단" : severity === "warn" ? "⚠ 경고" : "ℹ 정보"}
+          </span>
+          {reason && <span className="pv-reason">'{reason}'</span>}
+        </div>
+
+        {hasUnless && (
+          <div className="pv-unless">
+            <span className="pv-unless-lk">단, 다음이면 적용하지 않아요</span>
+            {renderSituations(model.unless, true)}
+          </div>
+        )}
+      </div>
+
+      <div className="pv-diagram-card">
+        <div className="pv-diagram-head">
+          정책 흐름도
+          <span className="pv-ro-pill">읽기전용</span>
+        </div>
+        <div className="pv-diagram-body">
+          <PolicyDiagram ir={ir} interactive humanizeLabel={humanizeLabel} />
+        </div>
+      </div>
+      </div>
+
+      <div className="pv-foot">
+        <span className="pv-foot-note">
+          값만 바꿀 수 있어요 · 구조·트리거·심각도는 라이브러리 정책에서 수정해요.
+        </span>
+        <span className="pv-spacer" />
+        <button type="button" className="pv-revert" onClick={onRevert} disabled={!dirty}>
+          되돌리기
+        </button>
+      </div>
     </div>
   );
 }
@@ -1256,10 +1533,13 @@ function condChip(cond: FormCondition, ctx: EditorCtx): string {
 function ValueInput({
   value,
   field,
+  invalid,
   onChange,
 }: {
   value: FormValue;
   field: FieldOption | undefined;
+  /** 형식 오류 표시(빨간 테두리) — 값 시트에서 잘못된 decimal 등에 쓰임. */
+  invalid?: boolean;
   onChange: (v: FormValue) => void;
 }) {
   const unit = field?.unit;
@@ -1297,7 +1577,7 @@ function ValueInput({
       return (
         <span className="pf-val-wrap">
           <input
-            className="pf-val num"
+            className={`pf-val num${invalid ? " invalid" : ""}`}
             value={value.value}
             onChange={(e) => onChange({ kind: "decimal", value: e.target.value })}
             onBlur={(e) => {

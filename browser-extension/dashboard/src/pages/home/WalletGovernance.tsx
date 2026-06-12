@@ -17,8 +17,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   setPackageEnabled,
   updateBinding,
+  type PolicyDef,
   type StoreSnapshot,
 } from "../../server-api/policy-store";
+import { blocksToText } from "../../cedar";
+import type { PolicyIR } from "../../cedar/blocks";
+import { PublishModal, type PublishSource } from "../editor/PublishModal";
 import {
   appliedCount,
   buildFolders,
@@ -57,6 +61,9 @@ const Folder = () => (
 );
 const Shield = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 4 6v5c0 5 3.5 7.5 8 9 4.5-1.5 8-4 8-9V6Z" /></svg>
+);
+const Upload = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V4m0 0-4 4m4-4 4 4" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
 );
 const Edit = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
@@ -319,6 +326,7 @@ function WalletPanel({
 
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [openPolicies, setOpenPolicies] = useState<Set<string>>(new Set());
+  const [publishSrc, setPublishSrc] = useState<PublishSource | null>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["ps2-overview"] });
   const pkgMut = useMutation({ mutationFn: setPackageEnabled, onSettled: invalidate });
@@ -326,6 +334,49 @@ function WalletPanel({
 
   const toggleFolder = (id: string) => setOpenFolders((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const togglePolicy = (id: string) => setOpenPolicies((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // 지갑 패키지 게시 — 멤버는 화면에 보이는 그대로(이 지갑의 바인딩, defId 중복
+  // 제거, on/off 무관). 에디터의 라이브러리 폴더 발행과 같은 PublishSource 모양.
+  const publishFolder = async (f: FolderVM) => {
+    const defs = [
+      ...new Map(f.policies.map((p) => [p.defId, snap?.library.defs[p.defId]])).values(),
+    ].filter((d): d is PolicyDef => !!d);
+    if (defs.length === 0) return;
+    try {
+      const members = await Promise.all(
+        defs.map(async (d) => ({
+          slug: d.id.replace(/^def::/, ""),
+          title: d.displayName,
+          cedarText: await blocksToText(d.skeleton.ir as PolicyIR),
+          manifest: d.skeleton.manifest,
+        })),
+      );
+      setPublishSrc({
+        kind: "package",
+        suggestedDisplayName: f.name,
+        suggestedSlug: f.packageId.replace(/^pkg::/, ""),
+        members,
+      });
+    } catch (err) {
+      console.error("[Pasu] 패키지 게시 준비 실패", err);
+    }
+  };
+
+  const publishPolicy = async (p: PolicyVM) => {
+    const d = snap?.library.defs[p.defId];
+    if (!d) return;
+    try {
+      setPublishSrc({
+        kind: "policy",
+        cedarText: await blocksToText(d.skeleton.ir as PolicyIR),
+        manifest: d.skeleton.manifest,
+        suggestedDisplayName: d.displayName,
+        suggestedSlug: d.id.replace(/^def::/, ""),
+      });
+    } catch (err) {
+      console.error("[Pasu] 정책 게시 준비 실패", err);
+    }
+  };
 
   return (
     <div className="dp-fade">
@@ -380,10 +431,17 @@ function WalletPanel({
                   patch: { params: toggledParams(snap?.wallets.byAddress[wallet.address.toLowerCase()]?.bindings[p.bindingId]?.params, holeName, on) },
                 })
               }
+              onPublishFolder={() => void publishFolder(f)}
+              onPublishPolicy={(p) => void publishPolicy(p)}
+              onToggleEnabled={(p, on) =>
+                paramMut.mutate({ address: wallet.address, bindingId: p.bindingId, patch: { enabled: on } })
+              }
             />
           ))}
         </div>
       )}
+
+      <PublishModal open={publishSrc !== null} source={publishSrc} onClose={() => setPublishSrc(null)} />
     </div>
   );
 }
@@ -396,6 +454,9 @@ function FolderRow({
   onTogglePolicy,
   onTogglePackage,
   onToggleParam,
+  onPublishFolder,
+  onPublishPolicy,
+  onToggleEnabled,
 }: {
   folder: FolderVM;
   open: boolean;
@@ -404,6 +465,9 @@ function FolderRow({
   onTogglePolicy: (id: string) => void;
   onTogglePackage: (on: boolean) => void;
   onToggleParam: (p: PolicyVM, holeName: string, on: boolean) => void;
+  onPublishFolder: () => void;
+  onPublishPolicy: (p: PolicyVM) => void;
+  onToggleEnabled: (p: PolicyVM, on: boolean) => void;
 }) {
   return (
     <div className={`pk-folder${open ? "" : " collapsed"}${folder.on ? "" : " off"}`}>
@@ -412,6 +476,16 @@ function FolderRow({
         <span className="pk-folder-ic"><Folder /></span>
         <span className="pk-folder-name">{folder.name}</span>
         <span className="pk-folder-count"><b>{folder.policies.length}</b> 정책</span>
+        {folder.policies.length > 0 && (
+          <button
+            className="pk-pub"
+            type="button"
+            title="이 패키지를 마켓에 게시"
+            onClick={(e) => { e.stopPropagation(); onPublishFolder(); }}
+          >
+            <Upload />
+          </button>
+        )}
         <Switch checked={folder.on} onChange={onTogglePackage} className="pk-sw" />
       </div>
       <div className="pk-folder-body" style={{ height: open ? "auto" : 0 }}>
@@ -423,6 +497,8 @@ function FolderRow({
               open={openPolicies.has(p.bindingId)}
               onToggle={() => onTogglePolicy(p.bindingId)}
               onToggleParam={(holeName, on) => onToggleParam(p, holeName, on)}
+              onPublish={() => onPublishPolicy(p)}
+              onToggleEnabled={(on) => onToggleEnabled(p, on)}
             />
           ))}
         </div>
@@ -435,21 +511,43 @@ function PolicyRow({
   policy,
   open,
   onToggle,
+  onToggleEnabled,
   onToggleParam,
+  onPublish,
 }: {
   policy: PolicyVM;
   open: boolean;
   onToggle: () => void;
+  onToggleEnabled: (on: boolean) => void;
   onToggleParam: (holeName: string, on: boolean) => void;
+  onPublish: () => void;
 }) {
   const hasParams = policy.params.length > 0;
   const onN = policy.params.filter((p) => p.on).length;
   return (
-    <div className={`pol2${open ? " expanded" : ""}`}>
+    <div className={`pol2${open ? " expanded" : ""}${policy.enabled ? "" : " off"}`}>
       <div className="pol2-head" onClick={() => hasParams && onToggle()}>
         <span className={`pol2-chev${hasParams ? "" : " empty"}`}>{hasParams && <Chevron />}</span>
         <span className={`pr-dot ${policy.severity}`} />
         <span className="pol2-name">{policy.name}</span>
+        {/* 실제 적용 표시등 — 패키지 on AND 정책 o 일 때만 '적용중' */}
+        <span className={`pol2-state${policy.effective ? " on" : ""}`}>
+          {policy.effective ? "적용중" : "꺼짐"}
+        </span>
+        {/* 정책별 o/x — 패키지를 켰을 때 이 정책을 포함(o)/제외(x) */}
+        <button
+          type="button"
+          className={`pol2-ox${policy.enabled ? " on" : ""}`}
+          title={policy.enabled ? "이 정책 제외하기 — 패키지를 켜도 꺼둠" : "이 정책 포함하기 — 패키지를 켜면 적용"}
+          aria-label={policy.enabled ? "정책 제외" : "정책 포함"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleEnabled(!policy.enabled);
+          }}
+        >
+          {policy.enabled ? "○" : "✕"}
+        </button>
+        <button className="pol2-edit" type="button" title="마켓에 게시" onClick={(e) => { e.stopPropagation(); onPublish(); }}><Upload /></button>
         <Link className="pol2-edit" title="Editor에서 열기" to={`/editor/${encodeURIComponent(policy.defId)}`} onClick={(e) => e.stopPropagation()}><Edit /></Link>
       </div>
       {hasParams && (

@@ -65,8 +65,8 @@ export function buildDefPayload(opts: {
   scope: SaveScope | null; // 기존 def 저장이면 null
   packageId: string | null; // 〃
   applyToNewWallets: boolean | null; // 〃
-  /** scope=wallets — 지갑 전용 정책(라이브러리 비노출, 폴더 무관). */
-  walletOnly?: boolean;
+  /** 지갑 전용 정책(라이브러리 비노출) — homeWallet 지갑의 전용 폴더에 앵커. */
+  walletOnly?: { homeWallet: string; walletFolderId?: string };
 }): { def: PolicyDef; bindPlan: BindPlan | null } {
   const skeleton = { ir: opts.ir, manifest: opts.manifest };
   const { holes, paramDefaults } = holesFromIr(opts.ir as PolicyIR);
@@ -86,7 +86,13 @@ export function buildDefPayload(opts: {
   }
   const def: PolicyDef = {
     id: `def::${crypto.randomUUID()}`,
-    ...(opts.walletOnly ? { hidden: true } : {}),
+    ...(opts.walletOnly
+      ? {
+          hidden: true,
+          homeWallet: opts.walletOnly.homeWallet.toLowerCase(),
+          walletFolderId: opts.walletOnly.walletFolderId,
+        }
+      : {}),
     displayName: opts.displayName,
     cat: opts.cat,
     skeleton,

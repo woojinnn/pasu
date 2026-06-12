@@ -5,7 +5,13 @@ import "./styles.css";
 // (asset/resource) 룰이 .wasm 에만 걸려 있어 `import x from "*.png"` 를 못 쓴다.
 // 핸드오프 권장 대안대로 에셋을 public/picture/ 에 두고(CopyPlugin 이 dist 로
 // 복사) 런타임 확장 URL 로 참조한다.
-const markNavy = Browser.runtime.getURL("picture/pasu-mark-navy.png");
+const markWhite = Browser.runtime.getURL("picture/pasu-mark-white.png");
+// 가드 = 상태별 마스코트(캐논 GuardFace = STATE_MARTEN[kind]) — 인터셉트·②배지·⑤토스트와 동일한 담비 변신.
+const STATE_MARTEN: Record<string, string> = {
+  pass: Browser.runtime.getURL("picture/state-safe.png"),
+  warn: Browser.runtime.getURL("picture/state-warn.png"),
+  fail: Browser.runtime.getURL("picture/state-fail.png"),
+};
 
 interface MatchedPolicy {
   policy_id: string;
@@ -129,7 +135,7 @@ function render(): void {
   // ── top bar (navy) ──
   const mk = document.createElement("img");
   mk.className = "mk";
-  mk.src = markNavy;
+  mk.src = markWhite;
   mk.alt = "";
   const net = el("span", { class: "net" }, [
     (() => {
@@ -147,7 +153,7 @@ function render(): void {
 
   // ── guard hero ──
   const face = document.createElement("img");
-  face.src = markNavy;
+  face.src = STATE_MARTEN[kind] ?? STATE_MARTEN.pass;
   face.alt = "";
   const guard = el("div", { class: `guard ${kind}` }, [
     el("div", { class: "ring" }),

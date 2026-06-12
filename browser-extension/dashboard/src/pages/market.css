@@ -1783,6 +1783,11 @@
 }
 .pub-field-sub { font-size: 11.5px; color: var(--slate-500); margin-top: 3px; }
 .pub-field-sub b { color: var(--slate-700); }
+.pub-field-sub.mono { font-family: var(--ff-mono); font-size: 11px; word-break: break-all; }
+/* 토글이 어느 칸의 선택인지 — 행 단위 hover/kept 강조 */
+.pub-field:hover { background: var(--fog-100, #f7f8fa); }
+.pub-field.kept { background: var(--fail-100, #fee2e2); }
+.pub-field-val .pub-runtime { color: var(--slate-400); font-size: 12px; }
 .pub-blanked {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
   font-size: 11.5px; font-weight: 600; color: var(--slate-500);
@@ -1802,6 +1807,65 @@
 .pub-numtoggle button small { font-family: var(--ff-mono); font-size: 10px; opacity: 0.8; font-weight: 500; }
 .pub-numtoggle button + button { border-left: 1px solid var(--hairline); }
 .pub-numtoggle button.on { background: var(--slate-800); color: #fff; }
+
+/* publish preview tree — 게시 전 조건 트리 미리보기 */
+.pub-tree-toggle {
+  margin-left: auto; flex-shrink: 0;
+  border: 1px solid var(--hairline); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--slate-500);
+  font-size: 11px; font-weight: 600; padding: 3px 10px; cursor: pointer;
+}
+.pub-tree-toggle.on, .pub-tree-toggle:hover { background: var(--fog-200); color: var(--slate-700); }
+.pub-tree {
+  border-top: 1px solid var(--hairline-soft, var(--fog-300));
+  padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--fog-100, #f8f9fb);
+}
+.pub-tree-muted {
+  border-top: 1px solid var(--hairline-soft, var(--fog-300));
+  padding: 10px 14px; font-size: 12px; color: var(--slate-400);
+}
+.pub-tree-sec { display: flex; gap: 10px; align-items: baseline; }
+.pub-tree-sech {
+  flex-shrink: 0; width: 52px; font-size: 11px; font-weight: 700; color: var(--slate-400);
+}
+.pub-tree-trigger { font-size: 12.5px; font-weight: 600; color: var(--slate-700); }
+.pub-tree-list { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+.pub-tree-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12.5px; }
+.pub-tree-joiner {
+  font-size: 10.5px; font-weight: 700; color: var(--slate-400);
+  border: 1px solid var(--hairline); border-radius: var(--r-pill); padding: 1px 7px;
+}
+.pub-tree-field { color: var(--slate-700); font-weight: 600; }
+.pub-tree-field code { font-family: var(--ff-mono); font-size: 10.5px; color: var(--slate-400); font-weight: 400; margin-left: 4px; }
+.pub-tree-op { color: var(--slate-500); }
+.pub-tree-val { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-600); }
+.pub-tree-grouprow { display: flex; flex-direction: column; gap: 5px; }
+.pub-tree-group {
+  border-left: 2px solid var(--hairline); margin-left: 6px; padding-left: 10px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.pub-tree-hole {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--warn-300, #fcd34d); border-radius: 7px;
+  background: var(--warn-100, #fef3c7); padding: 2px 8px; cursor: pointer;
+  font-family: var(--ff-mono); font-size: 12px; color: var(--slate-700);
+}
+.pub-tree-hole .strike { text-decoration: line-through; color: var(--slate-400); }
+.pub-tree-hole .tag { font-weight: 700; color: var(--warn-800, #92400e); font-size: 11px; }
+.pub-tree-hole.public { border-color: #fca5a5; background: var(--fail-100, #fee2e2); }
+.pub-tree-hole.public .tag { color: #b91c1c; }
+/* 마켓 상세: 설치자가 채울 빈칸 — 정보 톤, 클릭 아님 */
+.pub-tree-hole.asis { cursor: default; font-family: inherit; font-size: 12px; }
+.codetabs-tree { background: var(--surface, #fff); }
+.codetabs-tree .pub-tree, .codetabs-tree .pub-tree-muted { border-top: 0; }
+
+/* address keep-public — 공개는 경고 톤으로 분명히 */
+.pub-numtoggle button.on.public { background: #dc2626; }
+.pub-field-val .param.public { color: #dc2626; font-weight: 700; }
+.pub-chip.warn { border-color: #fca5a5; color: #b91c1c; background: var(--fail-100, #fee2e2); }
+.pub-foot-note.warn { color: #b91c1c; font-weight: 700; }
+.pub-summary-row.warn span, .pub-summary-row.warn b { color: #b91c1c; }
 
 /* step 2 */
 .pub-l { font-size: 12.5px; font-weight: 700; color: var(--slate-700); margin-top: 4px; }
@@ -1854,3 +1918,28 @@
 .pub-btn.publish { background: var(--pass-500); color: #fff; }
 .pub-btn.publish:hover { background: var(--pass-600, var(--pass-700)); }
 .pub-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── 설치 모달: required hole 채우기 ─────────────────────────────── */
+.im-holes {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--warn-300, #f5c97b);
+  background: var(--warn-50, #fdf6e7);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.im-holes-head { font-size: 13px; font-weight: 600; }
+.im-holes-defname { font-size: 12px; font-weight: 600; opacity: 0.75; margin-top: 4px; }
+.im-hole { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.im-hole-label { font-size: 12px; font-weight: 500; }
+.im-hole input,
+.im-hole textarea {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--slate-300, #cbd5e1);
+  border-radius: 8px;
+}
+.im-hole-err { font-size: 11px; color: var(--fail-600, #b3261e); }

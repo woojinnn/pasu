@@ -35,6 +35,10 @@ export interface PolicyVM {
   defId: string;
   name: string;
   severity: Severity;
+  /** 정책별 o/x — 패키지를 켤 때 이 정책을 포함(o)할지 제외(x)할지 (binding.enabled). */
+  enabled: boolean;
+  /** 실제 적용 여부 — 패키지 on AND 정책 o. on/off 표시등에 쓴다. */
+  effective: boolean;
   params: ParamVM[];
 }
 
@@ -66,7 +70,7 @@ function holeDisplay(v: HoleValue | undefined): string {
   return String(v);
 }
 
-function policyVM(snap: StoreSnapshot, b: Binding): PolicyVM {
+function policyVM(snap: StoreSnapshot, b: Binding, packageOn: boolean): PolicyVM {
   const def = snap.library.defs[b.defId];
   const values: Record<string, HoleValue> = { ...(def?.defaults.params ?? {}), ...(b.params ?? {}) };
   const params: ParamVM[] = (def?.holes ?? []).map((h) => {
@@ -86,6 +90,8 @@ function policyVM(snap: StoreSnapshot, b: Binding): PolicyVM {
     defId: b.defId,
     name: b.alias ?? def?.displayName ?? b.defId,
     severity: severityOf(def, b.defId),
+    enabled: b.enabled !== false,
+    effective: packageOn && b.enabled !== false,
     params,
   };
 }
@@ -115,15 +121,18 @@ export function buildFolders(snap: StoreSnapshot, address: string): FolderVM[] {
   return ids
     .map((pid): FolderVM => {
       const bindings = (byPkg.get(pid) ?? []).sort((a, b) => {
+        // 제외(x = enabled false)된 정책은 항상 최하단으로.
+        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
         const an = snap.library.defs[a.defId]?.displayName ?? a.defId;
         const bn = snap.library.defs[b.defId]?.displayName ?? b.defId;
         return an.localeCompare(bn, "ko");
       });
+      const on = ws.packageEnabled[pid] ?? true;
       return {
         packageId: pid,
         name: ws.packages[pid]?.displayName ?? (pid === UNCATEGORIZED_PKG ? "미분류" : pid),
-        on: ws.packageEnabled[pid] ?? true,
-        policies: bindings.map((b) => policyVM(snap, b)),
+        on,
+        policies: bindings.map((b) => policyVM(snap, b, on)),
       };
     })
     .filter((f) => f.policies.length > 0);

@@ -2,6 +2,7 @@
 import { mutate } from "./store";
 import {
   UNCATEGORIZED_PKG,
+  missingRequiredHoles,
   type Binding,
   type HoleValue,
   type PackageDef,
@@ -11,6 +12,22 @@ import {
 } from "./types";
 
 const newBindingId = () => `bind::${crypto.randomUUID()}`;
+
+/** 마켓 게시 때 블랭킹된 required hole이 안 채워진 def는 지갑에 바인딩
+ *  (패키지 적용)할 수 없다 — 플레이스홀더(제로주소/0)로 평가되면 조용히
+ *  무용지물이거나(양성 비교) 모든 거래에 오발화한다(부정 비교). */
+function assertHolesFilled(
+  def: PolicyDef | undefined,
+  params: Record<string, HoleValue> | undefined,
+): void {
+  if (!def) return;
+  const missing = missingRequiredHoles(def, params);
+  if (missing.length > 0) {
+    throw new Error(
+      `정책 "${def.displayName}"의 빈칸(${missing.join(", ")})을 채워야 적용할 수 있어요`,
+    );
+  }
+}
 
 function walletAt(draft: StoreSnapshot, address: string): WalletPolicyState {
   const addr = address.toLowerCase();
@@ -114,6 +131,40 @@ export function removePackageFromWallet(
   });
 }
 
+/** 지갑 전용 폴더 생성/이름변경 — 템플릿(def) 정리 축. 패키지(인스턴스 묶음)
+ *  와 별개. */
+export function putWalletFolder(
+  uid: string,
+  opts: { address: string; folder: { id: string; displayName: string } },
+): Promise<void> {
+  return mutate(uid, (d) => {
+    const w = walletAt(d, opts.address);
+    (w.folders ??= {})[opts.folder.id] = {
+      id: opts.folder.id,
+      displayName: opts.folder.displayName,
+      updatedAtMs: Date.now(),
+    };
+  });
+}
+
+/** 지갑 전용 폴더 삭제 — 멤버 def는 그 지갑의 미분류로(템플릿은 안 지워진다). */
+export function removeWalletFolder(
+  uid: string,
+  opts: { address: string; folderId: string },
+): Promise<void> {
+  return mutate(uid, (d) => {
+    const addr = opts.address.toLowerCase();
+    const w = d.wallets.byAddress[addr];
+    if (w?.folders) delete w.folders[opts.folderId];
+    for (const def of Object.values(d.library.defs)) {
+      if (def.hidden === true && def.homeWallet === addr && def.walletFolderId === opts.folderId) {
+        def.walletFolderId = undefined;
+        def.updatedAtMs = Date.now();
+      }
+    }
+  });
+}
+
 export function bind(
   uid: string,
   opts: {
@@ -126,6 +177,7 @@ export function bind(
   },
 ): Promise<void> {
   return mutate(uid, (d) => {
+    assertHolesFilled(d.library.defs[opts.defId], opts.params);
     for (const address of opts.addresses) {
       const w = walletAt(d, address);
       ensureWalletPackage(d, w, opts.packageId);
@@ -151,19 +203,25 @@ export function updateBinding(
     const w = d.wallets.byAddress[opts.address.toLowerCase()];
     const b = w?.bindings[opts.bindingId];
     if (!b) throw new Error(`바인딩이 없습니다: ${opts.bindingId}`);
+    // params를 갈아끼우는 패치는 required hole을 다시 비울 수 있다.
+    if ("params" in opts.patch) {
+      assertHolesFilled(d.library.defs[b.defId], opts.patch.params);
+    }
     Object.assign(b, opts.patch, { updatedAtMs: Date.now() });
   });
 }
 
-/** 지갑 전용(hidden) def는 마지막 바인딩이 사라지면 함께 정리한다 — 라이브러리
- *  카탈로그에 안 보이는 def가 유령으로 남지 않도록. */
+/** 모델 A: 지갑 전용(hidden) def는 homeWallet 폴더에 **앵커**된다 — 인스턴스
+ *  (바인딩) 삭제는 템플릿에 영향이 없다. 이 안전망은 앵커 지갑 자체가 사라진
+ *  (지갑 삭제 등) def만 라이브러리(미분류)로 승격해 데이터 손실을 막는다. */
 function pruneHiddenDefs(d: StoreSnapshot): void {
-  const bound = new Set<string>();
-  for (const w of Object.values(d.wallets.byAddress)) {
-    for (const b of Object.values(w.bindings)) bound.add(b.defId);
-  }
   for (const def of Object.values(d.library.defs)) {
-    if (def.hidden && !bound.has(def.id)) delete d.library.defs[def.id];
+    if (def.hidden !== true) continue;
+    if (def.homeWallet && d.wallets.byAddress[def.homeWallet]) continue;
+    def.hidden = false;
+    def.homeWallet = undefined;
+    def.walletFolderId = undefined;
+    def.updatedAtMs = Date.now();
   }
 }
 
@@ -251,6 +309,9 @@ export function installMarket(
     }
 
     if (opts.scope.kind === "library-only") return;
+    // 바인딩이 생기는 설치는 required hole(비식별 블랭킹 칸)이 채워져 있어야
+    // 한다 — 채움값은 defaults.params(클라이언트가 병합) 또는 opts.params.
+    for (const def of opts.defs) assertHolesFilled(def, opts.params?.[def.id]);
     const addresses =
       opts.scope.kind === "all" ? Object.keys(d.wallets.byAddress) : opts.scope.addresses.map((a) => a.toLowerCase());
     for (const address of addresses) {
@@ -282,6 +343,11 @@ export function provisionWallets(uid: string, addresses: string[]): Promise<void
       const w = walletAt(d, addr);
       for (const def of Object.values(d.library.defs)) {
         if (!def.defaults.enabled) continue;
+        // 지갑 전용 템플릿은 다른 지갑에 자동 적용되지 않는다.
+        if (def.hidden === true) continue;
+        // 자동 경로라 throw 대신 스킵 — 빈칸이 남은 def는 새 지갑에 적용하지
+        // 않는다(채우면 그때 수동 적용).
+        if (missingRequiredHoles(def).length > 0) continue;
         const b: Binding = {
           id: newBindingId(),
           defId: def.id,

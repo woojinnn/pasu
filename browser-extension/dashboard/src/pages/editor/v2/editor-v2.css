@@ -23,6 +23,11 @@
 .ev2-left {
   width: 296px;
   flex-shrink: 0;
+  /* 오른쪽 정책 목록이 길어져도 왼쪽 패키지 패널은 내용 높이만큼만 — 같이
+   * 늘어나지 않게 위쪽에 고정(끈적이게)한다. */
+  align-self: flex-start;
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -712,7 +717,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 0 18px;
+  padding: 0 20px 18px;
 }
 
 /* table */
@@ -1108,6 +1113,23 @@
   width: 14px;
   height: 14px;
 }
+/* 저장 "빨간불" — 값 시트 형식오류 시. 누르면 변경 전으로 되돌림. */
+.ev2-pri.invalid {
+  background: var(--fail-600, #dc2626);
+  border-color: var(--fail-600, #dc2626);
+  box-shadow: 0 0 0 3px var(--fail-100, #fee2e2);
+}
+.ev2-pri.invalid::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.ev2-pri.invalid:hover {
+  background: var(--fail-700, #b91c1c);
+}
 
 /* ════════════ DETAIL VIEW (Phase 3) ════════════ */
 .ev2-detail-body {
@@ -1119,7 +1141,9 @@
 }
 .ev2-detail {
   flex: 1;
-  min-height: 0;
+  /* 바깥 패널이 콘텐츠 높이에 쪼그라들지 않고 화면을 채우도록 — 상단 앱바/탭
+   * 여백을 빼고 뷰포트 높이만큼 최소 높이를 준다. */
+  min-height: calc(100vh - 150px);
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -1332,6 +1356,15 @@
   flex-shrink: 0;
   margin-top: 1px;
   color: var(--fail-700);
+}
+/* 형식오류 → 되돌림 안내 (오류 아님, 경고 톤) */
+.ev2-err-banner.warn {
+  background: var(--warn-50, #fffbeb);
+  border-color: var(--warn-200, #fde68a);
+  color: var(--warn-800, #92400e);
+}
+.ev2-err-banner.warn svg {
+  color: var(--warn-600, #d97706);
 }
 
 .ev2-detail-tabbody {
@@ -2300,6 +2333,32 @@
   font-size: 11px;
 }
 
+/* 첫 저장 모달의 정책 이름 입력 */
+.ssm-name {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 12px;
+}
+.ssm-name span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--slate-600);
+}
+.ssm-name input {
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--slate-900);
+}
+.ssm-name input:focus {
+  outline: none;
+  border-color: var(--sage-400, var(--sage-300));
+}
+
 .ssm-wallets {
   display: flex;
   flex-direction: column;
@@ -2414,6 +2473,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* 초광폭 화면에서 정책 리스트가 끝없이 늘어나지 않도록 편안한 컬럼 폭으로 */
+  max-width: 1000px;
 }
 .ld-folder {
   border: 1px solid var(--hairline);
@@ -2467,6 +2528,12 @@
   gap: 4px;
   margin-left: auto;
 }
+/* 지갑 전용 폴더 헤더에 템플릿을 드래그해 폴더 이동 */
+.ld-folderhead.droptarget {
+  background: var(--sage-100, #eaf3ee);
+  outline: 1.5px dashed var(--sage-500, #4c7a5e);
+  outline-offset: -1.5px;
+}
 .ld-folderhead:hover .acts {
   display: inline-flex;
 }
@@ -2492,6 +2559,11 @@
 }
 .ld-def:hover {
   background: var(--fog-100);
+}
+/* 지갑 뷰의 정책 행 게시 버튼 — BindingRow의 액션들처럼 항상 보인다
+ * (hover 전용으로 숨기면 동선 자체를 발견하지 못한다) */
+.ld-def .wt-pub {
+  margin-left: auto;
 }
 .ld-cat {
   width: 8px;
@@ -2596,7 +2668,7 @@
   color: var(--slate-300);
 }
 .wt-pkg {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -2624,6 +2696,8 @@
   width: 100%;
 }
 .wt-alias {
+  /* 패키지명 바로 옆(왼쪽 묶음)에 두고, 이후 아이콘들은 오른쪽으로 민다. */
+  margin-right: auto;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -2647,6 +2721,7 @@
   color: var(--slate-300);
 }
 .wt-alias-input {
+  margin-right: auto;
   font: inherit;
   font-size: 12px;
   padding: 2px 7px;
@@ -2668,6 +2743,46 @@
 }
 .wt-binding-main.clickable:hover {
   background: var(--fog-100);
+}
+
+/* 바인딩 on/off — home과 동일한 o/x 토글 */
+.ev2-ox {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--slate-400);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+.ev2-ox.on {
+  border-color: var(--pass-300, #86efac);
+  background: var(--pass-50, #f0fdf4);
+  color: var(--pass-600, #16a34a);
+}
+.ev2-ox:hover {
+  border-color: var(--slate-400);
+}
+
+/* 정책(def) 행의 동작 — 뼈대 수정 / 정책 삭제 */
+.ld-def-acts {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.ld-def:hover .ld-def-acts {
+  opacity: 1;
 }
 
 /* 지갑별 정책 우측: 전용/공유 대섹션 */

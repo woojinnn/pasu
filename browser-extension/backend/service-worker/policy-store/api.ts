@@ -11,9 +11,11 @@ import {
   provisionWallets,
   putDef,
   putPackage,
+  putWalletFolder,
   putWalletPackage,
   removeBinding,
   removePackageFromWallet,
+  removeWalletFolder,
   setPackageEnabled,
   updateBinding,
   type MarketInstallScope,
@@ -49,6 +51,8 @@ export type Ps2Request =
   | { type: "ps2:remove-binding"; address: string; bindingId: string }
   | { type: "ps2:remove-wallet-package"; address: string; packageId: string }
   | { type: "ps2:put-wallet-package"; address: string; pkg: { id: string; displayName: string } }
+  | { type: "ps2:put-wallet-folder"; address: string; folder: { id: string; displayName: string } }
+  | { type: "ps2:remove-wallet-folder"; address: string; folderId: string }
   | { type: "ps2:copy-bindings"; fromAddress: string; toAddress: string; bindingIds: string[] }
   | { type: "ps2:set-package-enabled"; address: string; packageId: string; enabled: boolean }
   | { type: "ps2:provision-wallets"; addresses: string[] }
@@ -79,8 +83,16 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
       return { library: s.library, rev: s.rev };
     }
     case "ps2:get-wallet-state": {
-      const s = await readStore(uid);
-      return s.wallets.byAddress[req.address.toLowerCase()] ?? { bindings: {}, packages: {}, packageEnabled: {} };
+      const addr = req.address.toLowerCase();
+      let s = await readStore(uid);
+      if (!s.wallets.byAddress[addr]) {
+        // 처음 보는 지갑 = 아직 프로비저닝 전(첫 설치/첫 로그인). 여기서
+        // 기본 정책을 깔아줘야 popup이 첫 화면부터 "보호 꺼짐"이 아니게
+        // 된다 — 대시보드만 프로비저닝하던 구멍의 SW측 봉합.
+        await provisionWallets(uid, [addr]);
+        s = await readStore(uid);
+      }
+      return s.wallets.byAddress[addr] ?? { bindings: {}, packages: {}, packageEnabled: {} };
     }
     case "ps2:get-overview": {
       // 계정 전체 뷰(지갑×패키지 매트릭스)용 스냅샷.
@@ -106,6 +118,10 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
       return removePackageFromWallet(uid, req);
     case "ps2:put-wallet-package":
       return putWalletPackage(uid, req);
+    case "ps2:put-wallet-folder":
+      return putWalletFolder(uid, req);
+    case "ps2:remove-wallet-folder":
+      return removeWalletFolder(uid, req);
     case "ps2:copy-bindings":
       return copyBindings(uid, req);
     case "ps2:set-package-enabled":
