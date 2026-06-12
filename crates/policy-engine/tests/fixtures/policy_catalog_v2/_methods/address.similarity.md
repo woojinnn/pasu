@@ -26,7 +26,7 @@ Address-poisoning(주소 오염) 공격은 공격자가 **피해자의 알려진
 `address.similarity` 는 `candidate` 를 사용자의 known-counterparty 집합과 대조해 **lookalike 충돌
 여부 1건(`poisonCollision: Bool`)** 을 enrich 한다. 1차 소비자는 카탈로그 정책
 `transfer-address-poisoning` (action `transfer`, severity `warn`) 으로, `poisonCollision == true`
-인 ERC-20 전송을 `warn` 시킨다. Pasu 의 no-simulation 모델과 일관되게 이 메서드는 트랜잭션
+인 ERC-20 전송을 `warn` 시킨다. Dambi 의 no-simulation 모델과 일관되게 이 메서드는 트랜잭션
 트레이스가 아니라 **로컬 집합 비교 1건** 이다 (네트워크 fetch 조차 없다 — 아래 data source 참조).
 
 ## interface

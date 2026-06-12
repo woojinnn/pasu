@@ -1,6 +1,6 @@
 //! `MarketplaceAction` — NFT-marketplace orders (Seaport).
 //!
-//! Three sub-actions cover the two user surfaces Pasu must analyze:
+//! Three sub-actions cover the two user surfaces Dambi must analyze:
 //! - [`SignOrderAction`] — off-chain EIP-712 order signature (the maker lists /
 //!   offers; the key drainer surface — signing away NFTs for ~0 or, via
 //!   `*_criteria` items, ANY NFT in a collection).

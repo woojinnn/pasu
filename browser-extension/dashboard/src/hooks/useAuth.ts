@@ -57,7 +57,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function logCurrentUserSyncFailure(err: unknown): void {
   console.warn(
-    "[Pasu] sync current user to extension failed:",
+    "[Dambi] sync current user to extension failed:",
     err instanceof Error ? err.message : String(err),
   );
 }
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "pasu_jwt") void refresh();
+      if (e.key === "dambi_jwt") void refresh();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // then mirror it into localStorage and re-resolve /auth/me. The dashboard
     // page itself never navigates away.
     setLoading(true);
-    void sendToSw("pasu-auth-sign-in")
+    void sendToSw("dambi-auth-sign-in")
       .then(() => syncTokensFromExtensionStorage())
       .then(() => refresh())
       .catch((e) => {
@@ -165,8 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void clearExtensionTokens()
         .catch(() => {})
         .then(() =>
-          sendToSw("pasu-auth-sign-out").catch((err) =>
-            console.warn("[Pasu] SW sign-out failed:", err instanceof Error ? err.message : err),
+          sendToSw("dambi-auth-sign-out").catch((err) =>
+            console.warn("[Dambi] SW sign-out failed:", err instanceof Error ? err.message : err),
           ),
         )
         .finally(finish);

@@ -17,7 +17,7 @@ const wasmMocks = vi.hoisted(() => ({
 vi.mock("webextension-polyfill", () => ({
   default: {
     runtime: {
-      getURL: vi.fn((path: string) => `chrome-extension://pasu/${path}`),
+      getURL: vi.fn((path: string) => `chrome-extension://dambi/${path}`),
     },
   },
 }));

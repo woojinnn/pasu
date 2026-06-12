@@ -86,7 +86,7 @@ const mocks = vi.hoisted(() => {
     listManaged: vi.fn(async () => []),
     browser: {
       runtime: {
-        getURL: (p: string) => `chrome-extension://pasu/${p}`,
+        getURL: (p: string) => `chrome-extension://dambi/${p}`,
         sendMessage: vi.fn(async () => undefined),
         onMessage: {
           addListener: vi.fn((listener: (m: unknown) => void) => {

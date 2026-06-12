@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: STK-02 (unstake withdrawal
+// dambi default v2 policy — explorer id: STK-02 (unstake withdrawal
 // cooldown heads-up).
 //
 // STATE-DERIVED, not an action-field. Unstaking decodes as Core::Unknown (no

@@ -16,11 +16,11 @@ export default defineConfig({
     alias: {
       "@lib": path.resolve(__dirname, "backend/lib"),
       "@background": path.resolve(__dirname, "backend/service-worker"),
-      // Dashboard tests resolve `@pasu/sdk` the same way the dashboard
+      // Dashboard tests resolve `@dambi/sdk` the same way the dashboard
       // Vite build does (see `dashboard/vite.config.ts`). Keeping the
       // alias here lets `dashboard/**/*.test.tsx` files run under the
       // single root vitest config.
-      "@pasu/sdk": path.resolve(__dirname, "sdk/extension-client.ts"),
+      "@dambi/sdk": path.resolve(__dirname, "sdk/extension-client.ts"),
     },
   },
 });

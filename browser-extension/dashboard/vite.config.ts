@@ -7,12 +7,12 @@ export function resolveServerUrlEnv(mode: string, dashboardDir: string = __dirna
   const dashboardEnv = loadEnv(mode, dashboardDir, "");
   const rootEnv = mode === "production" ? loadEnv(mode, extensionRoot, "") : {};
   return (
-    process.env.PASU_SERVER_URL ||
-    process.env.VITE_PASU_SERVER_URL ||
-    dashboardEnv.PASU_SERVER_URL ||
-    dashboardEnv.VITE_PASU_SERVER_URL ||
-    rootEnv.PASU_SERVER_URL ||
-    rootEnv.VITE_PASU_SERVER_URL ||
+    process.env.DAMBI_SERVER_URL ||
+    process.env.VITE_DAMBI_SERVER_URL ||
+    dashboardEnv.DAMBI_SERVER_URL ||
+    dashboardEnv.VITE_DAMBI_SERVER_URL ||
+    rootEnv.DAMBI_SERVER_URL ||
+    rootEnv.VITE_DAMBI_SERVER_URL ||
     ""
   );
 }
@@ -36,20 +36,20 @@ export function resolveServerUrlEnv(mode: string, dashboardDir: string = __dirna
 // webpack config has `clean: true`, which would wipe the vite output.
 export default defineConfig(({ mode }) => {
   // Server base URL is UNIFIED with the webpack (service-worker) build:
-  // both read `PASU_SERVER_URL`, so a single env var switches the whole
+  // both read `DAMBI_SERVER_URL`, so a single env var switches the whole
   // extension (dashboard + service worker) between local/test and prod —
-  //   PASU_SERVER_URL=https://pasu-policy.duckdns.org yarn build:ext
+  //   DAMBI_SERVER_URL=https://dambi-policy.duckdns.org yarn build:ext
   // `loadEnv(mode, dir, "")` reads .env files + process.env with no prefix
-  // filter; legacy `VITE_PASU_SERVER_URL` is still honored as a fallback.
+  // filter; legacy `VITE_DAMBI_SERVER_URL` is still honored as a fallback.
   const serverUrl = resolveServerUrlEnv(mode);
 
   return {
     plugins: [react()],
     base: "./",
     // Feed the unified server URL to the dashboard client (client.ts reads
-    // `import.meta.env.VITE_PASU_SERVER_URL`).
+    // `import.meta.env.VITE_DAMBI_SERVER_URL`).
     define: {
-      "import.meta.env.VITE_PASU_SERVER_URL": JSON.stringify(serverUrl),
+      "import.meta.env.VITE_DAMBI_SERVER_URL": JSON.stringify(serverUrl),
     },
     build: {
       outDir: path.resolve(__dirname, "../dist/chrome"),
@@ -80,7 +80,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        "@pasu/sdk": path.resolve(__dirname, "../sdk/extension-client.ts"),
+        "@dambi/sdk": path.resolve(__dirname, "../sdk/extension-client.ts"),
       },
     },
   };

@@ -51,10 +51,10 @@ import {
 } from "./hl-exchange-parse";
 
 const FETCH_INSTALL_STATE = Symbol.for(
-  "__pasu_fetch_hook_install_state__",
+  "__dambi_fetch_hook_install_state__",
 );
 /** Per-XHR-instance metadata captured at `open()` for use in `send()`. */
-const XHR_META = Symbol.for("__pasu_xhr_meta__");
+const XHR_META = Symbol.for("__dambi_xhr_meta__");
 
 type WritableStream = WindowPostMessageStream & { write(data: unknown): void };
 
@@ -84,9 +84,9 @@ function install(): void {
     // error. Harmless in production.
     try {
       const ww = window as unknown as Record<string, unknown>;
-      ww.__pasu_intercepts__ =
-        ((ww.__pasu_intercepts__ as number) ?? 0) + 1;
-      ww.__pasu_last_verdict__ = { url, venue, allowed, at: Date.now() };
+      ww.__dambi_intercepts__ =
+        ((ww.__dambi_intercepts__ as number) ?? 0) + 1;
+      ww.__dambi_last_verdict__ = { url, venue, allowed, at: Date.now() };
     } catch {
       /* ignore */
     }
@@ -99,14 +99,14 @@ function install(): void {
   ): void {
     // Devtools: the in-page parsed result (one entry per guarded leg), visible
     // in the PAGE console on the venue site + queryable from a probe via
-    // `window.__pasu_last_parse__`. (The fully-normalized ActionBody is
+    // `window.__dambi_last_parse__`. (The fully-normalized ActionBody is
     // logged SW-side; this is the wire-level parse the page actually produced.)
     const actions = payloads.map((p) => ({ ...p.hlAction }));
     // eslint-disable-next-line no-console
-    console.info("[Pasu] HL /exchange parsed (in-page):", { url, venue, actions });
+    console.info("[Dambi] HL /exchange parsed (in-page):", { url, venue, actions });
     try {
       const ww = window as unknown as Record<string, unknown>;
-      ww.__pasu_last_parse__ = { url, venue, actions, at: Date.now() };
+      ww.__dambi_last_parse__ = { url, venue, actions, at: Date.now() };
     } catch {
       /* ignore */
     }
@@ -303,8 +303,8 @@ function install(): void {
               if (decision.payloads) logInPageParse(url, venue, decision.payloads);
               throw new Error(
                 decision.reason === "unreadable_body"
-                  ? "Pasu: venue order blocked (unreadable body)"
-                  : "Pasu: venue order blocked by policy",
+                  ? "Dambi: venue order blocked (unreadable body)"
+                  : "Dambi: venue order blocked by policy",
               );
             }
             if (decision.kind === "allow") {
@@ -316,7 +316,7 @@ function install(): void {
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.message.startsWith("Pasu:")) {
+        if (err instanceof Error && err.message.startsWith("Dambi:")) {
           throw err; // the block — must propagate
         }
         // Fail-CLOSED (D6): a venue-order POST whose evaluation FAULTED (bridge
@@ -332,18 +332,18 @@ function install(): void {
               : (input as Request)?.url ?? "";
         if (matchVenue(url)) {
           console.error(
-            "[Pasu] fetch-hook fault on a venue request — blocking (fail-closed)",
+            "[Dambi] fetch-hook fault on a venue request — blocking (fail-closed)",
             err,
           );
-          throw new Error("Pasu: venue order blocked (fail-closed)");
+          throw new Error("Dambi: venue order blocked (fail-closed)");
         }
-        console.warn("[Pasu] fetch-hook non-fatal error", err);
+        console.warn("[Dambi] fetch-hook non-fatal error", err);
       }
       // HL 오더: 캐치 → 실제 엔드포인트 재전송 직전까지의 총 처리 시간.
       // (deny 는 위에서 throw 되어 여기 도달하지 않는다 — forward 되는 건만 측정.)
       if (venueT0 !== null) {
         console.info(
-          `[Pasu] HL order gate ${(performance.now() - venueT0).toFixed(1)}ms (catch→forward)`,
+          `[Dambi] HL order gate ${(performance.now() - venueT0).toFixed(1)}ms (catch→forward)`,
           { venue: venueLabel, order: allowedPayloads != null },
         );
       }
@@ -441,7 +441,7 @@ function install(): void {
           // order through — matches the fetch path + the SW lifecycle's
           // deny-closed contract.
           console.error(
-            "[Pasu] xhr-hook fault — blocking (fail-closed)",
+            "[Dambi] xhr-hook fault — blocking (fail-closed)",
             err,
           );
           decision = { kind: "deny", reason: "policy", payloads: null };
@@ -490,7 +490,7 @@ try {
   // actually executed in the page realm, independent of install success.
   (
     window as unknown as Record<PropertyKey, unknown>
-  ).__pasu_fetch_hook_loaded__ = true;
+  ).__dambi_fetch_hook_loaded__ = true;
 } catch {
   /* no window (SW/node) — ignore */
 }
@@ -501,10 +501,10 @@ try {
   try {
     (
       window as unknown as Record<PropertyKey, unknown>
-    ).__pasu_fetch_hook_error__ =
+    ).__dambi_fetch_hook_error__ =
       err instanceof Error ? err.message : String(err);
   } catch {
     /* ignore */
   }
-  console.error("[Pasu] fetch-hook install failed", err);
+  console.error("[Dambi] fetch-hook install failed", err);
 }

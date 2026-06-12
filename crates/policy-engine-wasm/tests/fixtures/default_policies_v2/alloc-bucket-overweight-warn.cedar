@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: B1 / ALLOC (allocation band).
+// dambi default v2 policy — explorer id: B1 / ALLOC (allocation band).
 // SAME fold fact `portfolio.group_pct`, group_axis=category: warn when buying
 // into a category bucket that is already over its target allocation band. The
 // "band max" is user config (target-allocation state is a later enrichment).

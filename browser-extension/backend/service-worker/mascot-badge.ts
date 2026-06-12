@@ -2,7 +2,7 @@
  * 마스코트 상태 배지 — 노랑목담비가 safe → warn → fail 로 변신.
  *
  * 정책 엔진의 실제 verdict 기록(verdict-storage)을 단일 소스로, **미확인**
- * fail/warn 만 집계한다. "확인" = 팝업 열기(PASU_BADGE_SEEN → markBadgeSeen):
+ * fail/warn 만 집계한다. "확인" = 팝업 열기(DAMBI_BADGE_SEEN → markBadgeSeen):
  * 그 시각 이전 verdict 는 집계에서 빠지고 배지는 safe 로 복귀한다. 24시간
  * 롤링 윈도우는 하한 — 확인하지 않아도 하루 지난 알람은 흘려보낸다.
  *
@@ -77,7 +77,7 @@ export async function markBadgeSeen(): Promise<void> {
       [SEEN_KEY]: Math.floor(Date.now() / 1000),
     });
   } catch (err) {
-    console.warn("[Pasu] mascot badge: seen 기록 실패", err);
+    console.warn("[Dambi] mascot badge: seen 기록 실패", err);
   }
   await refreshBadge();
 }
@@ -101,17 +101,17 @@ export async function refreshBadge(): Promise<void> {
     fail = counts.fail ?? 0;
     warn = counts.warn ?? 0;
   } catch (err) {
-    console.warn("[Pasu] mascot badge: countVerdicts failed", err);
+    console.warn("[Dambi] mascot badge: countVerdicts failed", err);
   }
 
   let state: MascotState = "safe";
-  let title = "Pasu — 보호 중";
+  let title = "Dambi — 보호 중";
   if (fail > 0) {
     state = "fail";
-    title = `Pasu — 오늘 차단 ${fail}건`;
+    title = `Dambi — 오늘 차단 ${fail}건`;
   } else if (warn > 0) {
     state = "warn";
-    title = `Pasu — 검토 권장 ${warn}건`;
+    title = `Dambi — 검토 권장 ${warn}건`;
   }
 
   // 모두 best-effort: 한 호출이 실패해도 나머지는 시도한다.

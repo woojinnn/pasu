@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-08 (withdraw silently turns off
+// dambi default v2 policy — explorer id: AAVE-08 (withdraw silently turns off
 // collateral and drops HF below the floor).
 //
 // STATE / REDUCER fact — REUSES the existing `position.health_factor_after`

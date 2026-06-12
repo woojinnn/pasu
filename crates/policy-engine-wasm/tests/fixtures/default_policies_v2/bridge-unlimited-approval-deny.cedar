@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-03 (unlimited / over-balance
+// dambi default v2 policy — explorer id: BRG-03 (unlimited / over-balance
 // ERC20 approval to a bridge contract — only a finite, ~bridge-amount approval
 // is acceptable).
 //

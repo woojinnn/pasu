@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: PERP-06 (switching margin mode from
+// dambi default v2 policy — explorer id: PERP-06 (switching margin mode from
 // isolated to cross).
 //
 // Cross margin pools all positions against one collateral balance, so one bad

@@ -90,7 +90,7 @@ describe("mascot-badge", () => {
     expect(Object.keys(imageData!)).toEqual(["16", "32", "48", "128"]);
     expect(mocks.browser.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
     expect(mocks.browser.action.setTitle).toHaveBeenCalledWith({
-      title: "Pasu — 오늘 차단 2건",
+      title: "Dambi — 오늘 차단 2건",
     });
     // base(사이즈별) + paw 에셋을 절대 URL 로 fetch 했는지
     const fetched = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(
@@ -113,7 +113,7 @@ describe("mascot-badge", () => {
     }
     expect(mocks.browser.action.setBadgeText).toHaveBeenCalledWith({ text: "" });
     expect(mocks.browser.action.setTitle).toHaveBeenCalledWith({
-      title: "Pasu — 보호 중",
+      title: "Dambi — 보호 중",
     });
   });
 
@@ -154,7 +154,7 @@ describe("mascot-badge", () => {
     const { imageData } = mocks.browser.action.setIcon.mock.calls[0]![0];
     expect(Object.keys(imageData!)).toHaveLength(4);
     expect(mocks.browser.action.setTitle).toHaveBeenCalledWith({
-      title: "Pasu — 검토 권장 3건",
+      title: "Dambi — 검토 권장 3건",
     });
     const fetched = (fetch as ReturnType<typeof vi.fn>).mock.calls.map(
       (c) => c[0] as string,

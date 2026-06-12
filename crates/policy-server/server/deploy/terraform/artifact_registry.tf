@@ -1,6 +1,6 @@
-resource "google_artifact_registry_repository" "pasu" {
+resource "google_artifact_registry_repository" "dambi" {
   location      = var.region
-  repository_id = "pasu"
+  repository_id = "dambi"
   format        = "DOCKER"
-  description   = "pasu policy-server container images"
+  description   = "dambi policy-server container images"
 }

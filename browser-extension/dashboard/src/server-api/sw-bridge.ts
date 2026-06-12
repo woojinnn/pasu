@@ -16,7 +16,7 @@ import { isExtensionContext } from "../env";
 interface SwResponseEnvelope<T> {
   ok: boolean;
   data?: T;
-  /** Present on `pasu-auth-sign-in` so the dashboard can mirror
+  /** Present on `dambi-auth-sign-in` so the dashboard can mirror
    * the access token into localStorage. The popup ignores it. */
   tokens?: { access: string; refresh: string | null };
   error?: { kind: string; message: string };

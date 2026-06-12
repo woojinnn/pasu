@@ -16,7 +16,7 @@ status: existing (in method-catalog.json)
 누구에겐 먼지, 누구에겐 전 재산이다. 이 method 는 `amount / balanceOf(owner)` 를 basis points
 (1 bp = 0.01%) 로 환산해 **portfolio-relative magnitude** 라는 정적 디코드 불가능한 fact 를
 제공한다. 이 fact 가 있어야 `transfer-fraction-of-holdings` 정책이 "잔고의 절반 초과를 옮기는
-전송" (`holdingsBp > 5000`) 을 warn 으로 잡을 수 있다. Pasu 의 no-simulation 모델과 일관되게
+전송" (`holdingsBp > 5000`) 을 warn 으로 잡을 수 있다. Dambi 의 no-simulation 모델과 일관되게
 이것은 transaction trace 가 아니라 **단일 잔고 read + 순수 산술** 이다.
 
 ## interface

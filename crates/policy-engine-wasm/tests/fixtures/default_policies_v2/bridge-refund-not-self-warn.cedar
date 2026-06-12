@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-12 (bridge refund / recovery
+// dambi default v2 policy — explorer id: BRG-12 (bridge refund / recovery
 // address is not the user's own wallet).
 //
 // On a failed fill or unreceivable destination, funds return to the bridge's

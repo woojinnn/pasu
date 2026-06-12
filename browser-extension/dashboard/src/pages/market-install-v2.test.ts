@@ -59,10 +59,10 @@ describe("listingToDefs", () => {
     ).rejects.toThrow(/x/);
   });
 
-  it("form-compatible listing → holed skeleton + required holes from x_pasu_holes, placeholder excluded from defaults", async () => {
+  it("form-compatible listing → holed skeleton + required holes from x_dambi_holes, placeholder excluded from defaults", async () => {
     // redact 직후 모양의 리스팅: 주소는 제로주소 플레이스홀더, 숫자는 추천값 유지.
     const model: FormModel = {
-      trigger: { kind: "actionEq", entityType: "Pasu::Action", id: "swap" },
+      trigger: { kind: "actionEq", entityType: "Dambi::Action", id: "swap" },
       when: [
         {
           joiner: "and",

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-11 (CCTP mintRecipient /
+// dambi default v2 policy — explorer id: BRG-11 (CCTP mintRecipient /
 // destinationCaller cannot receive at the destination — self-lock).
 //
 // CCTP burns USDC at the source and mints to `mintRecipient` at the

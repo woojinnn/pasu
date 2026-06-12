@@ -3,8 +3,8 @@ resource "random_password" "db" {
   special = false # alphanumeric → safe inside a postgres:// URL without escaping
 }
 
-resource "google_sql_database_instance" "pasu" {
-  name                = "pasu-pg"
+resource "google_sql_database_instance" "dambi" {
+  name                = "dambi-pg"
   database_version    = "POSTGRES_16"
   region              = var.region
   deletion_protection = false
@@ -30,13 +30,13 @@ resource "google_sql_database_instance" "pasu" {
   }
 }
 
-resource "google_sql_database" "pasu" {
-  name     = "pasu"
-  instance = google_sql_database_instance.pasu.name
+resource "google_sql_database" "dambi" {
+  name     = "dambi"
+  instance = google_sql_database_instance.dambi.name
 }
 
-resource "google_sql_user" "pasu" {
-  name     = "pasu"
-  instance = google_sql_database_instance.pasu.name
+resource "google_sql_user" "dambi" {
+  name     = "dambi"
+  instance = google_sql_database_instance.dambi.name
   password = random_password.db.result
 }

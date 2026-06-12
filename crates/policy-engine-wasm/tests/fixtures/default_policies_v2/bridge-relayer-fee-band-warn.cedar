@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-09 (intent-bridge output is
+// dambi default v2 policy — explorer id: BRG-09 (intent-bridge output is
 // haircut by an out-of-band relayer fee).
 //
 // On intent bridges (Across) the received amount is set not by slippage but by

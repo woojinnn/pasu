@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AIR-09 (claimAndStake / claimAndLock
+// dambi default v2 policy — explorer id: AIR-09 (claimAndStake / claimAndLock
 // — tokens are locked into staking/vesting the moment they are claimed).
 //
 // PURE ACTION-FIELD introspection (no enrichment). The user intends only to

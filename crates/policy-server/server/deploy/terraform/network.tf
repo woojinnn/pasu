@@ -1,10 +1,10 @@
 resource "google_compute_network" "vpc" {
-  name                    = "pasu-vpc"
+  name                    = "dambi-vpc"
   auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "subnet" {
-  name                     = "pasu-subnet"
+  name                     = "dambi-subnet"
   region                   = var.region
   network                  = google_compute_network.vpc.id
   ip_cidr_range            = "10.10.0.0/20"
@@ -24,7 +24,7 @@ resource "google_compute_subnetwork" "subnet" {
 # Reserved internal range Google carves Cloud SQL + Memorystore private IPs from.
 # A /16 is generous so both services fit without CIDR pressure.
 resource "google_compute_global_address" "psa_range" {
-  name          = "pasu-psa-range"
+  name          = "dambi-psa-range"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16

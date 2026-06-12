@@ -4,7 +4,7 @@
  *
  *   - {@link PublishPreviewTree} (게시 모달): 비식별 칸(extractHoles)을
  *     배지로 표시, 클릭 = 비우기/공개 토글(Step1 행 토글과 같은 kept 상태).
- *   - {@link ListingConditionTree} (마켓 상세): manifest `x_pasu_holes`의
+ *   - {@link ListingConditionTree} (마켓 상세): manifest `x_dambi_holes`의
  *     빈칸을 "설치할 때 채워요" 배지로 표시 — Cedar 원문의 제로주소/0
  *     플레이스홀더만 봐서는 뭐가 빈칸인지 알 수 없는 문제의 해법.
  *
@@ -239,7 +239,7 @@ function toParameterized(m: FormModel): FormModel {
 }
 
 /**
- * 마켓 상세용: 설치자가 채울 빈칸(manifest `x_pasu_holes`)을 트리 위에 표시.
+ * 마켓 상세용: 설치자가 채울 빈칸(manifest `x_dambi_holes`)을 트리 위에 표시.
  * 게시·설치와 같은 위치 기반 param 이름(v1..vN) 파이프라인으로 leaf를 찾으므로
  * 번호가 일치한다. Cedar의 제로주소/0 플레이스홀더 대신 "설치할 때 채워요"로.
  */

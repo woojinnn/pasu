@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: NFT-04 (setApprovalForAll to an
+// dambi default v2 policy — explorer id: NFT-04 (setApprovalForAll to an
 // off-allowlist conduit/operator; the NFT-marketplace instance of GEN-02).
 //
 // `setApprovalForAll(operator, true)` is the on-chain precondition that makes a

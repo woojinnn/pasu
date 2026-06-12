@@ -9,12 +9,12 @@
 
 import { isTypedSignature, type Message } from "@lib/types";
 
-import type { IngestPermitReq } from "./pasu-auth/client";
+import type { IngestPermitReq } from "./dambi-auth/client";
 
 /** True when a signed-in server session token is present (lazy polyfill load). */
 async function permitReportIsAuthed(): Promise<boolean> {
   try {
-    const { getAccessToken } = await import("./pasu-auth/tokenStore");
+    const { getAccessToken } = await import("./dambi-auth/tokenStore");
     return (await getAccessToken()) != null;
   } catch {
     return false;
@@ -187,14 +187,14 @@ export async function reportPermitIfApplicable(
   if (!(await permitReportIsAuthed())) return;
 
   try {
-    const { ingestPermit } = await import("./pasu-auth/client");
+    const { ingestPermit } = await import("./dambi-auth/client");
     for (const req of reqs) {
       try {
         await ingestPermit(address, req);
       } catch (err) {
         // Best-effort: a single permit's ingest failure must not abort the rest
         // or surface to the signing flow.
-        console.warn("[Pasu] permit ingest failed (swallowed)", {
+        console.warn("[Dambi] permit ingest failed (swallowed)", {
           requestId: message.requestId,
           kind: req.kind,
           err: err instanceof Error ? err.message : String(err),
@@ -203,7 +203,7 @@ export async function reportPermitIfApplicable(
     }
   } catch (err) {
     // Importing the client (browser-only polyfill) can throw in odd contexts.
-    console.warn("[Pasu] permit report skipped (client load failed)", {
+    console.warn("[Dambi] permit report skipped (client load failed)", {
       err: err instanceof Error ? err.message : String(err),
     });
   }

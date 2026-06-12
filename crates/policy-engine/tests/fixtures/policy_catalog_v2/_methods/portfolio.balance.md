@@ -21,7 +21,7 @@ actor(`from`) 가 **특정 토큰을 on-chain 으로 얼마나 보유**하는지
 
 `portfolio.input_fraction_bps` 와의 차이: 후자는 잔고를 **분모로만 써서 비율(bps)** 로 환원해 내보낸다.
 이 메서드는 **잔고 raw 값 자체** 를 그대로 내보낸다 — 정책이 `amount == balance`(전량) 또는
-`balance == "0x0"`(미보유) 같은 **정확한 동등 비교**를 하기 때문이다(아래 표현형 주의). Pasu 의
+`balance == "0x0"`(미보유) 같은 **정확한 동등 비교**를 하기 때문이다(아래 표현형 주의). Dambi 의
 no-simulation 모델과 일관되게 이것은 transaction trace 가 아니라 **단일 view read** 다.
 
 ## interface
@@ -257,7 +257,7 @@ native 경로: `eth_getBalance(owner,"latest")` (calldata 없음, multicall3 불
 
 ## primary-source references
 
-- Pasu enrichment wire 계약 / projection 제약 / non-swap selector note:
+- Dambi enrichment wire 계약 / projection 제약 / non-swap selector note:
   `browser-extension/backend/service-worker/POLICY_RPC_METHODS.md` (§1, §2, §3a, §5) — repo 내부 1차.
 - 메서드 카탈로그 엔트리(params/returns scalar/from/origin): `schema/method-catalog.json`
   `methods["portfolio.balance"]`.

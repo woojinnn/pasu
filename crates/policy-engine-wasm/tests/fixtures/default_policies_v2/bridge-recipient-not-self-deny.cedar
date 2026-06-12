@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-01 (bridge sends to a
+// dambi default v2 policy — explorer id: BRG-01 (bridge sends to a
 // recipient that is not the user's own wallet).
 //
 // Address-poisoning is the single highest-loss path in bridging ($68M WBTC in

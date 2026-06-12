@@ -21,7 +21,7 @@ function forwardBypassed(data: any): void {
     sendToPortAndDisregard(port, data);
   } catch (err) {
     console.error(
-      "[Pasu] cannot reach service worker (extension reloaded?) — " +
+      "[Dambi] cannot reach service worker (extension reloaded?) — " +
         "policy evaluation skipped. Reload this tab.",
       err,
     );

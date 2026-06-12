@@ -55,9 +55,9 @@
 |---|---|---|
 | GCP 프로젝트 ID | `server/deploy/terraform/terraform.tfvars` | `policy-engine-498313` → **당신 프로젝트 ID** |
 | 리전(지역) | 같은 파일 | `asia-northeast3`(서울) → 원하면 변경 |
-| Terraform 상태 버킷 | `server/deploy/terraform/backend.tf` | `policy-engine-498313-pasu-tfstate` → **`<당신프로젝트>-pasu-tfstate`** (전 세계에서 유일해야 함) |
+| Terraform 상태 버킷 | `server/deploy/terraform/backend.tf` | `policy-engine-498313-dambi-tfstate` → **`<당신프로젝트>-dambi-tfstate`** (전 세계에서 유일해야 함) |
 | 이미지 경로 | `server/deploy/helm/policy-server/values-gke.yaml`, `values-m3.yaml` | `asia-northeast3-docker.pkg.dev/policy-engine-498313/...` → 당신 리전/프로젝트로 |
-| 도메인(HTTPS용) | `values-m3.yaml`의 `ingress.host` | `pasu-policy.duckdns.org` → 당신 도메인 |
+| 도메인(HTTPS용) | `values-m3.yaml`의 `ingress.host` | `dambi-policy.duckdns.org` → 당신 도메인 |
 | CI/CD 설정 | `.github/workflows/policy-server-deploy.yml`의 `env:` | 위와 동일하게 |
 
 > 💡 프로젝트 ID는 [console.cloud.google.com](https://console.cloud.google.com) 상단 프로젝트 선택기에서 확인.
@@ -94,9 +94,9 @@ gke-gcloud-auth-plugin --version   # 버전이 나오면 OK
 ### 방법 A — `cargo run` (가장 가벼움, 추천)
 **1) Postgres + Redis를 Docker로**
 ```bash
-docker run -d --name pasu-pg    -p 5432:5432 \
-  -e POSTGRES_USER=pasu -e POSTGRES_PASSWORD=pasu -e POSTGRES_DB=pasu postgres:16
-docker run -d --name pasu-redis -p 6379:6379 redis:7
+docker run -d --name dambi-pg    -p 5432:5432 \
+  -e POSTGRES_USER=dambi -e POSTGRES_PASSWORD=dambi -e POSTGRES_DB=dambi postgres:16
+docker run -d --name dambi-redis -p 6379:6379 redis:7
 ```
 
 **2) `.env.local` 만들기** (예시 복사 후 채우기)
@@ -105,7 +105,7 @@ cp .env.local.example .env.local
 ```
 `.env.local`에서 최소 이것만 채우면 됨:
 ```
-DATABASE_URL=postgres://pasu:pasu@127.0.0.1:5432/pasu
+DATABASE_URL=postgres://dambi:dambi@127.0.0.1:5432/dambi
 REDIS_URL=redis://127.0.0.1:6379
 JWT_SECRET=<`openssl rand -hex 32` 결과>
 # 구글 로그인까지 테스트 안 하면 GOOGLE_* 는 placeholder여도 서버는 뜸
@@ -131,13 +131,13 @@ set -a; source .env.local; set +a
 cargo run -p policy-server --bin sync_worker
 ```
 
-**6) 정리**: `docker rm -f pasu-pg pasu-redis`
+**6) 정리**: `docker rm -f dambi-pg dambi-redis`
 
 ### 테스트 스위트 실행
 ```bash
-docker run -d --name pasu-pg-test -p 5433:5432 \
-  -e POSTGRES_USER=pasu -e POSTGRES_PASSWORD=pasu -e POSTGRES_DB=pasu_test postgres:16
-TEST_DATABASE_URL=postgres://pasu:pasu@127.0.0.1:5433/pasu_test \
+docker run -d --name dambi-pg-test -p 5433:5432 \
+  -e POSTGRES_USER=dambi -e POSTGRES_PASSWORD=dambi -e POSTGRES_DB=dambi_test postgres:16
+TEST_DATABASE_URL=postgres://dambi:dambi@127.0.0.1:5433/dambi_test \
   cargo test -p policy-server -p policy-db -p policy-sync
 ```
 
@@ -167,9 +167,9 @@ gcloud services enable \
   iam.googleapis.com cloudresourcemanager.googleapis.com --project=$PROJECT_ID
 
 # (4) Terraform 상태를 저장할 버킷 (이름은 전 세계 유일해야 함)
-gcloud storage buckets create gs://${PROJECT_ID}-pasu-tfstate \
+gcloud storage buckets create gs://${PROJECT_ID}-dambi-tfstate \
   --location=$REGION --uniform-bucket-level-access --project=$PROJECT_ID
-gcloud storage buckets update gs://${PROJECT_ID}-pasu-tfstate --versioning
+gcloud storage buckets update gs://${PROJECT_ID}-dambi-tfstate --versioning
 ```
 > ⚠️ API 켠 직후 1~2분은 "서비스 네트워킹"이 덜 퍼져서 첫 `apply`가 한 번 실패할 수 있어요. 그땐 **그냥 `terraform apply` 다시** 하면 됩니다(아래 4단계 참고).
 
@@ -182,7 +182,7 @@ cd crates/policy-server/server/deploy/terraform
 
 # (1) terraform.tfvars 와 backend.tf 를 당신 값으로 수정 (1번 표 참고)
 #     terraform.tfvars:  project_id = "<당신 프로젝트>"
-#     backend.tf:        bucket     = "<당신프로젝트>-pasu-tfstate"
+#     backend.tf:        bucket     = "<당신프로젝트>-dambi-tfstate"
 
 terraform init        # 백엔드(버킷) 연결 + 플러그인 다운로드
 terraform plan -out=tf.plan
@@ -211,7 +211,7 @@ terraform output -raw ingress_ip            # (HTTPS용) 글로벌 고정 IP
 cd <레포 최상위>
 gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
 TAG=$(git rev-parse --short HEAD)
-IMG="${REGION}-docker.pkg.dev/${PROJECT_ID}/pasu/pasu-policy-server:${TAG}"
+IMG="${REGION}-docker.pkg.dev/${PROJECT_ID}/dambi/dambi-policy-server:${TAG}"
 
 # ⚠️ Mac(애플 실리콘)이면 --platform linux/amd64 필수! (GKE는 amd64)
 docker buildx build --platform linux/amd64 \
@@ -224,7 +224,7 @@ docker buildx build --platform linux/amd64 \
 
 ```bash
 # (1) 클러스터에 kubectl 연결
-gcloud container clusters get-credentials pasu-autopilot --region $REGION --project $PROJECT_ID
+gcloud container clusters get-credentials dambi-autopilot --region $REGION --project $PROJECT_ID
 
 # (2) 네임스페이스 + 시크릿 생성
 #     DB/Redis 주소는 Terraform output에서 가져옴. GOOGLE_* 는 임시 placeholder로도 OK(로그인 안 쓸 때).
@@ -233,8 +233,8 @@ DB_URL=$(terraform output -raw database_url)
 REDIS_URL=$(terraform output -raw redis_url)
 cd <레포 최상위>
 
-kubectl create namespace pasu
-kubectl -n pasu create secret generic policy-server-secrets \
+kubectl create namespace dambi
+kubectl -n dambi create secret generic policy-server-secrets \
   --from-literal=DATABASE_URL="$DB_URL" \
   --from-literal=REDIS_URL="$REDIS_URL" \
   --from-literal=JWT_SECRET="$(openssl rand -hex 32)" \
@@ -244,13 +244,13 @@ kubectl -n pasu create secret generic policy-server-secrets \
 
 # (3) Helm으로 배포 (임시 LoadBalancer = 공인 IP + HTTP)
 TAG=$(git rev-parse --short HEAD)
-helm upgrade --install pasu crates/policy-server/server/deploy/helm/policy-server \
-  -n pasu -f crates/policy-server/server/deploy/helm/policy-server/values-gke.yaml \
+helm upgrade --install dambi crates/policy-server/server/deploy/helm/policy-server \
+  -n dambi -f crates/policy-server/server/deploy/helm/policy-server/values-gke.yaml \
   --set image.tag="$TAG"
 
 # (4) 외부 IP 확인 → 접속
-kubectl -n pasu get svc pasu-policy-server-api -w   # EXTERNAL-IP 나오면 Ctrl-C
-LB=$(kubectl -n pasu get svc pasu-policy-server-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+kubectl -n dambi get svc dambi-policy-server-api -w   # EXTERNAL-IP 나오면 Ctrl-C
+LB=$(kubectl -n dambi get svc dambi-policy-server-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 curl http://$LB/health   # ok 나오면 성공
 ```
 > 이 IP는 **재배포하면 바뀝니다**(임시용). 고정 주소 + HTTPS + 로그인은 7번에서.
@@ -282,9 +282,9 @@ dig +short $DOMAIN    # INGRESS_IP 가 나오면 OK
 #   그리고 Client ID / Secret 을 복사해 둠
 
 # (4) 시크릿을 실제 값으로 갱신 (로그인용)
-kubectl -n pasu create secret generic policy-server-secrets \
+kubectl -n dambi create secret generic policy-server-secrets \
   --from-literal=DATABASE_URL="$DB_URL" --from-literal=REDIS_URL="$REDIS_URL" \
-  --from-literal=JWT_SECRET="$(kubectl -n pasu get secret policy-server-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d)" \
+  --from-literal=JWT_SECRET="$(kubectl -n dambi get secret policy-server-secrets -o jsonpath='{.data.JWT_SECRET}' | base64 -d)" \
   --from-literal=GOOGLE_CLIENT_ID="<당신 client id>" \
   --from-literal=GOOGLE_CLIENT_SECRET="<당신 client secret>" \
   --from-literal=GOOGLE_REDIRECT_URI="https://${DOMAIN}/auth/google/callback" \
@@ -292,13 +292,13 @@ kubectl -n pasu create secret generic policy-server-secrets \
 
 # (5) HTTPS용 values-m3 로 재배포
 TAG=$(git rev-parse --short HEAD)
-helm upgrade --install pasu crates/policy-server/server/deploy/helm/policy-server \
-  -n pasu -f crates/policy-server/server/deploy/helm/policy-server/values-m3.yaml \
+helm upgrade --install dambi crates/policy-server/server/deploy/helm/policy-server \
+  -n dambi -f crates/policy-server/server/deploy/helm/policy-server/values-m3.yaml \
   --set image.tag="$TAG"
-kubectl -n pasu rollout restart deploy/pasu-policy-server-api   # 새 시크릿 반영
+kubectl -n dambi rollout restart deploy/dambi-policy-server-api   # 새 시크릿 반영
 
 # (6) 인증서가 발급될 때까지 대기 (15~60분). Active 되면 HTTPS 켜짐.
-kubectl -n pasu get managedcertificate -w   # certificateStatus 가 Active 되면 Ctrl-C
+kubectl -n dambi get managedcertificate -w   # certificateStatus 가 Active 되면 Ctrl-C
 curl https://$DOMAIN/health   # 200 이면 성공
 ```
 > ⚠️ 인증서가 `FAILED_NOT_VISIBLE`면 = DNS가 아직 그 IP를 안 가리키는 것. `dig +short $DOMAIN` 다시 확인.
@@ -317,14 +317,14 @@ curl https://$DOMAIN/health   # 200 이면 성공
 
 ```bash
 export PROJECT_ID=<당신 프로젝트>
-export REPO="<GitHub오너>/<레포이름>"     # 예: woojinnn/pasu
+export REPO="<GitHub오너>/<레포이름>"     # 예: woojinnn/dambi
 
 # WIF에 필요한 API
 gcloud services enable iamcredentials.googleapis.com sts.googleapis.com --project=$PROJECT_ID
 
 # (1) 배포용 서비스 계정
-gcloud iam service-accounts create pasu-deployer --display-name="pasu CI deployer" --project=$PROJECT_ID
-DEPLOY_SA="pasu-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
+gcloud iam service-accounts create dambi-deployer --display-name="dambi CI deployer" --project=$PROJECT_ID
+DEPLOY_SA="dambi-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # (2) 권한: 이미지 push + GKE 배포
 gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$DEPLOY_SA" --role="roles/artifactregistry.writer"
@@ -350,7 +350,7 @@ echo "GCP_DEPLOY_SA = $DEPLOY_SA"
 gcloud iam workload-identity-pools providers describe github-provider \
   --location=global --workload-identity-pool=github-pool --project=$PROJECT_ID --format="value(name)"
 # 위 두 값을 GitHub 레포 → Settings → Secrets and variables → Actions 에 등록:
-#   GCP_DEPLOY_SA      = pasu-deployer@<PROJECT>.iam.gserviceaccount.com
+#   GCP_DEPLOY_SA      = dambi-deployer@<PROJECT>.iam.gserviceaccount.com
 #   GCP_WIF_PROVIDER   = (마지막 명령 출력값, projects/.../providers/github-provider)
 ```
 워크플로 맨 위 `env:`(PROJECT_ID/REGION/...)도 당신 값으로 바꾸세요.
@@ -373,9 +373,9 @@ gcloud iam workload-identity-pools providers describe github-provider \
 
 **검증** (롤아웃 거는 동안 다른 터미널에서):
 ```bash
-while true; do curl -s -o /dev/null -w "%{http_code} " https://pasu-policy.duckdns.org/readyz; sleep 1; done
+while true; do curl -s -o /dev/null -w "%{http_code} " https://dambi-policy.duckdns.org/readyz; sleep 1; done
 # 전부 200이면 무중단 OK. 새 pod에 preStop 박혔는지:
-kubectl -n pasu get pod -l app.kubernetes.io/component=api \
+kubectl -n dambi get pod -l app.kubernetes.io/component=api \
   -o jsonpath='{.items[0].spec.containers[0].lifecycle.preStop}'; echo
 ```
 
@@ -394,8 +394,8 @@ kubectl -n pasu get pod -l app.kubernetes.io/component=api \
 ### 끄기 (과금 정지)
 ```bash
 # (1) 앱 내리기 → 로드밸런서/외부 IP도 같이 해제됨
-helm uninstall pasu -n pasu
-kubectl delete namespace pasu
+helm uninstall dambi -n dambi
+kubectl delete namespace dambi
 
 # (2) 클라우드 자원 전부 삭제
 cd crates/policy-server/server/deploy/terraform

@@ -1,5 +1,5 @@
 resource "google_container_cluster" "autopilot" {
-  name             = "pasu-autopilot"
+  name             = "dambi-autopilot"
   location         = var.region
   enable_autopilot = true
 

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AIR-08 (claim recipient is a
+// dambi default v2 policy — explorer id: AIR-08 (claim recipient is a
 // contract rather than my own EOA — a possible drainer relay/proxy).
 //
 // METHOD-BACKED external/oracle read (Aggregator type 9; sv = LI). EOA-vs-

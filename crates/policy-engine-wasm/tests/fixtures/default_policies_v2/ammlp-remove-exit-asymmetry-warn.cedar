@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AMMLP-2 (remove_liquidity locks in
+// dambi default v2 policy — explorer id: AMMLP-2 (remove_liquidity locks in
 // in-the-loss IL).
 //
 // Burning a concentrated (V3/V4) position while price has drifted hard to one

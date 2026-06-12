@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AIR-01 (airdrop claim whose
+// dambi default v2 policy — explorer id: AIR-01 (airdrop claim whose
 // recipient is an address other than mine — eligibility is mine but the tokens
 // go to the attacker).
 //

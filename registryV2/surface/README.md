@@ -12,7 +12,7 @@ checklist into a **build-enforced invariant**.
 A prose checklist can be skipped with no signal. During the Morpho dogfood the
 agent authored adapters for the "easy" lending verbs (supply/withdraw/borrow/
 repay) and silently dropped `setAuthorization` — the permission-delegation
-primitive, which is ScopeBall's entire reason to exist. Nothing failed; the miss
+primitive, which is Dambi's entire reason to exist. Nothing failed; the miss
 was invisible until a human reviewer caught it.
 
 This gate makes that class of omission a **build failure**, the same way

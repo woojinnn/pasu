@@ -137,7 +137,7 @@ export async function handlePs2Request(req: Ps2Request): Promise<unknown> {
   }
 }
 
-/** 지갑 동기화 프로비저닝 훅 — pasu-list-wallets 응답 직전에 호출된다.
+/** 지갑 동기화 프로비저닝 훅 — dambi-list-wallets 응답 직전에 호출된다.
  *  로그인 상태에서만(서버 지갑 목록이 있을 때만) 의미가 있다. */
 export async function provisionFromWalletSync(addresses: string[]): Promise<void> {
   const uid = await getCurrentUserId();

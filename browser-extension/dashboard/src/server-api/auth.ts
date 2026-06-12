@@ -28,7 +28,7 @@ import { sendToExtension, ExtensionBridgeTimeout } from "./extension-bridge";
  *
  * The dashboard authenticates via the policy-server's `/auth/google` flow,
  * which writes tokens into page `localStorage` (see `client.ts`).
- * The SW reads tokens from `chrome.storage.local` (`pasu-auth/tokenStore`).
+ * The SW reads tokens from `chrome.storage.local` (`dambi-auth/tokenStore`).
  * Without this bridge the two stores stay out of sync — `recordSimulationOnServer`
  * returns silently at its `hasToken` guard and the HistoryPage's state-diff
  * panel never gets populated.
@@ -41,13 +41,13 @@ import { sendToExtension, ExtensionBridgeTimeout } from "./extension-bridge";
 async function syncTokensToSw(access: string, refresh: string | null): Promise<void> {
   try {
     await sendToExtension({
-      type: "pasu-auth-sync-tokens",
+      type: "dambi-auth-sync-tokens",
       access,
       refresh,
     });
   } catch (err) {
     if (err instanceof ExtensionBridgeTimeout) return; // extension not installed
-    console.warn("[Pasu] sync tokens to SW failed:", err);
+    console.warn("[Dambi] sync tokens to SW failed:", err);
   }
 }
 

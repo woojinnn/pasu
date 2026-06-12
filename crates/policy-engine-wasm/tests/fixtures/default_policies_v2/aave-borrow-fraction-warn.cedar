@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-07 (one borrow consumes too
+// dambi default v2 policy — explorer id: AAVE-07 (one borrow consumes too
 // large a share of remaining borrow capacity).
 //
 // DERIVED fact (NOT pure action-field). 'Never borrow more than half your

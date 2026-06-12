@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: H2 / VALUE (belief-based exclusion).
+// dambi default v2 policy — explorer id: H2 / VALUE (belief-based exclusion).
 // Personal-trading (values screening) family.
 //
 // Rule: deny acquiring an interest-bearing (riba) token for a user whose profile

@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Pasu Simulation API
+  title: Dambi Simulation API
   description: |
-    Backend for the Pasu wallet simulator. Cedar policy installation,
+    Backend for the Dambi wallet simulator. Cedar policy installation,
     policy evaluation, verdict history, audit views, and finding feeds are
     browser-extension local state. Public routes (`/health`, `/docs`,
     `/openapi.yaml`, `/auth/*`)

@@ -15,7 +15,7 @@
 //!     load state by `wallet_id.address` → `execute_call_specs`).
 //!
 //! Run (Postgres on :5433, schema pre-applied):
-//!   TEST_DATABASE_URL=postgres://scopeball:scopeball@127.0.0.1:5433/scopeball \
+//!   TEST_DATABASE_URL=postgres://dambi:dambi@127.0.0.1:5433/dambi \
 //!     cargo test -p policy-server --test perp_server_state_e2e -- --ignored --nocapture
 
 use std::str::FromStr;

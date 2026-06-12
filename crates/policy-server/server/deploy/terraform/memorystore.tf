@@ -1,5 +1,5 @@
-resource "google_redis_instance" "pasu" {
-  name               = "pasu-redis"
+resource "google_redis_instance" "dambi" {
+  name               = "dambi-redis"
   tier               = "BASIC"
   memory_size_gb     = var.redis_memory_gb
   region             = var.region

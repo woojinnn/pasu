@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: NFT-05 (unlimited / over-cap WETH
+// dambi default v2 policy — explorer id: NFT-05 (unlimited / over-cap WETH
 // approval granted to a bidding conduit; the NFT-bid instance of GEN-01).
 //
 // Bidding on NFTs requires pre-approving WETH to the marketplace conduit. An

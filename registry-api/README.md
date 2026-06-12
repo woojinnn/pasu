@@ -1,7 +1,7 @@
 # registry-api
 
-ScopeBall private adapter-registry 앞단의 **caching authenticated reverse-proxy**.
-비공개 GCS 버킷 (`scopeball-registry-seoul`, `asia-northeast3`) 을 Cloud Run 서비스
+Dambi private adapter-registry 앞단의 **caching authenticated reverse-proxy**.
+비공개 GCS 버킷 (`dambi-registry-seoul`, `asia-northeast3`) 을 Cloud Run 서비스
 계정 권한으로 읽어 익스텐션에 중계한다. 익스텐션은 이 서비스 URL 을
 `REGISTRY_BASE_URL` 로 가리킨다.
 
@@ -47,8 +47,8 @@ npm run build && npm start          # 실제 버킷 대상 실행은 ADC 필요
 ## Docker / Cloud Run
 
 ```bash
-docker build -f Dockerfile -t scopeball-registry-api .
-gcloud builds submit . --tag <REGION>-docker.pkg.dev/<PROJECT>/scopeball/registry-api:v1
+docker build -f Dockerfile -t dambi-registry-api .
+gcloud builds submit . --tag <REGION>-docker.pkg.dev/<PROJECT>/dambi/registry-api:v1
 ```
 
 ## 환경변수

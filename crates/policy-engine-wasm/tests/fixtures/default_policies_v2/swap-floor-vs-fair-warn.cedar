@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-04 (contract floor much worse
+// dambi default v2 policy — explorer id: UNI-04 (contract floor much worse
 // than the on-screen quote).
 //
 // A malicious dApp shows a good quote but embeds a far harsher `minAmountOut`

@@ -21,7 +21,7 @@ describe("webpack env mode helpers", () => {
 
     expect(resolveServerUrl({})).toBe("http://127.0.0.1:8788");
     expect(
-      resolveServerUrl({ PASU_SERVER_URL: "https://pasu-policy.example.test" }),
-    ).toBe("https://pasu-policy.example.test");
+      resolveServerUrl({ DAMBI_SERVER_URL: "https://dambi-policy.example.test" }),
+    ).toBe("https://dambi-policy.example.test");
   });
 });

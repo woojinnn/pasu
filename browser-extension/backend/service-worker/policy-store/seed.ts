@@ -52,7 +52,7 @@ export async function ensureSeeded(uid: string): Promise<void> {
       });
     } catch (err) {
       // 손상 항목은 건너뜀 (best-effort) — 나머지 builtin 보호는 유지
-      console.warn(`[Pasu] builtin 정책 시드 실패 — 건너뜀: ${b.id}`, err);
+      console.warn(`[Dambi] builtin 정책 시드 실패 — 건너뜀: ${b.id}`, err);
     }
   }
 

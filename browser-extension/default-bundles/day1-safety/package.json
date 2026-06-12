@@ -6,7 +6,7 @@
   "audience": "트레이딩/Web3 입문자 — 지갑을 처음 설치하고 첫 승인·송금·스왑을 하는 사람",
   "description": "모든 지갑 사용자가 반드시 마주치는 3가지 순간(승인/서명, 송금, 스왑)에서 가장 흔하고 가장 치명적인 사고만 막는 최소 필수 5종. 5개 중 4개는 외부 의존 없이 순수 Cedar로 즉시 동작하고, 무제한 승인 차단 1종만 fact host를 필요로 한다.",
   "source": {
-    "repo": "woojinnn/pasu",
+    "repo": "woojinnn/dambi",
     "branch": "feat/cedar_manifest",
     "commit": "a052a76b",
     "origin_fixtures": "crates/policy-engine/tests/fixtures/default_policies_v2/phase1"

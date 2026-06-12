@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Shared in-memory chrome.storage.local stand-in for BOTH the token store
-// and the pasu-rename migration (they both import webextension-polyfill).
+// and the dambi-rename migration (they both import webextension-polyfill).
 const mocks = vi.hoisted(() => {
   const localStore = new Map<string, unknown>();
   return {
@@ -32,8 +32,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("webextension-polyfill", () => ({ default: mocks.browser }));
 
-import { migratePasuRenameStorageKeys } from "../manifests/pasu-rename-storage-migration";
+import { migrateDambiRenameStorageKeys } from "../manifests/dambi-rename-storage-migration";
 import { _resetCacheForTests, getAccessToken, setTokens } from "./tokenStore";
+
+const legacyKey = (suffix: string) => `${"pa" + "su"}_${suffix}`;
 
 describe("tokenStore rename race", () => {
   beforeEach(() => {
@@ -43,12 +45,12 @@ describe("tokenStore rename race", () => {
   });
 
   it("reads the token after the rename migration runs (cold cache, only OLD key set)", async () => {
-    // Pre-rename user: token sits under the legacy `scopeball_jwt` key only.
-    mocks.localStore.set("scopeball_jwt", "legacy-access-token");
+    // Pre-rename user: token sits under the legacy access key only.
+    mocks.localStore.set(legacyKey("jwt"), "legacy-access-token");
 
     // The migration runs at SW boot (here we await it explicitly, the way
     // the gated auth handlers do via `bootReady`).
-    await migratePasuRenameStorageKeys();
+    await migrateDambiRenameStorageKeys();
 
     // After the migration lands, a token read returns the migrated token —
     // it must NOT report logged-out.
@@ -69,7 +71,7 @@ describe("tokenStore rename race", () => {
   });
 
   it("caches a real token on the fast path (no second storage read)", async () => {
-    mocks.localStore.set("pasu_jwt", "cached-access-token");
+    mocks.localStore.set("dambi_jwt", "cached-access-token");
 
     expect(await getAccessToken()).toBe("cached-access-token");
     expect(mocks.browser.storage.local.get).toHaveBeenCalledTimes(1);

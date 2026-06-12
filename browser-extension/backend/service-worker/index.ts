@@ -4,7 +4,7 @@ import { handleDashboardRequest, isDashboardRequest } from "./dashboard/api";
 import { handleManifestRequest, isManifestRequest } from "./manifests/handlers";
 import { hydrateManifests } from "./manifests/hydrate";
 import { migrateAdapterLoaderStorageKey } from "./manifests/adapter-loader-storage-migration";
-import { migratePasuRenameStorageKeys } from "./manifests/pasu-rename-storage-migration";
+import { migrateDambiRenameStorageKeys } from "./manifests/dambi-rename-storage-migration";
 import { detectPendingMigrations } from "./manifests/migration-detector";
 import { cleanupLegacyKeys } from "./policy-store/seed";
 import {
@@ -43,7 +43,7 @@ import {
   type WalletId,
   type WalletSummary,
   type AddWalletResp,
-} from "./pasu-auth";
+} from "./dambi-auth";
 import {
   declarativeRouteRequestV3,
   estToPolicyText,
@@ -94,7 +94,7 @@ const WALLET_ACTION_TYPES = new Set<string>([
   RequestType.VENUE_ORDER,
 ]);
 
-console.log("Pasu SW alive at", new Date().toISOString());
+console.log("Dambi SW alive at", new Date().toISOString());
 
 // SW boot sequence: serialize the install stages so they don't race each other
 // (parallel calls would clobber the WASM engine state). Listeners are installed
@@ -104,17 +104,17 @@ console.log("Pasu SW alive at", new Date().toISOString());
 // migrations that run inside `bootSequence`. The `.catch` keeps the promise
 // non-rejecting — a stalled stage must not brick the auth handlers.
 export const bootReady: Promise<void> = bootSequence().catch((err) => {
-  console.warn("[Pasu] boot sequence failed:", err);
+  console.warn("[Dambi] boot sequence failed:", err);
 });
 
 async function bootSequence(): Promise<void> {
-  // Storage-key migration for the `scopeball_* → pasu_*` rename (one-time,
-  // idempotent). Runs first so all subsequent reads see the correct keys.
+  // Storage-key migration from previous branded key prefixes to `dambi_*`.
+  // Runs first so all subsequent reads see the correct keys.
   // Chrome.storage only — no WASM dependency.
   try {
-    await migratePasuRenameStorageKeys();
+    await migrateDambiRenameStorageKeys();
   } catch (err) {
-    console.warn("[Pasu] rename storage migration failed:", err);
+    console.warn("[Dambi] rename storage migration failed:", err);
   }
 
   // Run the migration detector before the install passes: it strips v0 policy ids
@@ -125,7 +125,7 @@ async function bootSequence(): Promise<void> {
   try {
     await detectPendingMigrations();
   } catch (err) {
-    console.warn("[Pasu] migration auto-detect failed:", err);
+    console.warn("[Dambi] migration auto-detect failed:", err);
   }
 
   // Storage-key migration for the adapter-loader (one-time, idempotent). Runs
@@ -133,7 +133,7 @@ async function bootSequence(): Promise<void> {
   try {
     await migrateAdapterLoaderStorageKey();
   } catch (err) {
-    console.warn("[Pasu] adapter-loader storage migration failed:", err);
+    console.warn("[Dambi] adapter-loader storage migration failed:", err);
   }
 
   // 구(v1) routing의 `registry:adapter-bundles` 키를 제거한다 (일회성; 부재 시 무시).
@@ -148,7 +148,7 @@ async function bootSequence(): Promise<void> {
   try {
     await cleanupLegacyKeys();
   } catch (err) {
-    console.warn("[Pasu] legacy policy-storage cleanup failed:", err);
+    console.warn("[Dambi] legacy policy-storage cleanup failed:", err);
   }
 
   // Hydrate the manifest-driven schema on SW boot. On a cold start this restores
@@ -156,7 +156,7 @@ async function bootSequence(): Promise<void> {
   try {
     await hydrateManifests();
   } catch (err) {
-    console.warn("[Pasu] manifest hydration failed:", err);
+    console.warn("[Dambi] manifest hydration failed:", err);
   }
 
   // Install default v3 decoder bundles so the simulator has something to look up
@@ -164,9 +164,9 @@ async function bootSequence(): Promise<void> {
   // the engine in a half-installed state on per-bundle errors.
   try {
     const v3Count = await ensureDefaultV3BundlesInstalled();
-    console.log(`[Pasu] v3 default bundles installed (${v3Count})`);
+    console.log(`[Dambi] v3 default bundles installed (${v3Count})`);
   } catch (err) {
-    console.warn("[Pasu] v3 default bundle install failed:", err);
+    console.warn("[Dambi] v3 default bundle install failed:", err);
   }
 
   // 부팅 시 마스코트 배지를 최근 24h verdict 카운트로 1회 동기화한다. SW 가
@@ -174,7 +174,7 @@ async function bootSequence(): Promise<void> {
   try {
     await refreshBadge();
   } catch (err) {
-    console.warn("[Pasu] mascot badge initial refresh failed:", err);
+    console.warn("[Dambi] mascot badge initial refresh failed:", err);
   }
 }
 
@@ -192,11 +192,11 @@ async function handleMessage(
 ): Promise<void> {
   // Advisory messages: log only, no verdict.
   if (message.data.type === "raw-transaction-advisory") {
-    console.warn("[Pasu] raw-tx advisory", message.data);
+    console.warn("[Dambi] raw-tx advisory", message.data);
     return;
   }
   if (message.data.type === "provider-frozen-warning") {
-    console.error("[Pasu] provider frozen", message.data);
+    console.error("[Dambi] provider frozen", message.data);
     return;
   }
 
@@ -242,14 +242,14 @@ async function handleMessage(
   }
 }
 
-interface PasuAuthStatusRequest {
-  type: "pasu-auth-status";
+interface DambiAuthStatusRequest {
+  type: "dambi-auth-status";
 }
-interface PasuAuthSignInRequest {
-  type: "pasu-auth-sign-in";
+interface DambiAuthSignInRequest {
+  type: "dambi-auth-sign-in";
 }
-interface PasuAuthSignOutRequest {
-  type: "pasu-auth-sign-out";
+interface DambiAuthSignOutRequest {
+  type: "dambi-auth-sign-out";
 }
 /** Dashboard → SW token mirror. The dashboard's OAuth flow lands tokens in
  *  page `localStorage`; the SW reads tokens from `chrome.storage.local`.
@@ -258,40 +258,40 @@ interface PasuAuthSignOutRequest {
  *  silently at its `hasToken` guard — leaving the HistoryPage's state-diff
  *  panel permanently empty. The dashboard calls this after every
  *  `fetchMe()` that resolves to a real user, so the sync is idempotent. */
-interface PasuAuthSyncTokensRequest {
-  type: "pasu-auth-sync-tokens";
+interface DambiAuthSyncTokensRequest {
+  type: "dambi-auth-sync-tokens";
   access: string;
   refresh: string | null;
 }
-interface PasuListWalletsRequest {
-  type: "pasu-list-wallets";
+interface DambiListWalletsRequest {
+  type: "dambi-list-wallets";
 }
 /** Wallet 관리 — 팝업이 서버(GET/POST/PATCH/DELETE /wallets)를 단일 소스로
  *  쓰도록 SW 가 대리한다. 대시보드도 같은 서버를 읽어 일관성 유지. */
-interface PasuListWalletSummariesRequest {
-  type: "pasu-list-wallet-summaries";
+interface DambiListWalletSummariesRequest {
+  type: "dambi-list-wallet-summaries";
 }
-interface PasuAddWalletRequest {
-  type: "pasu-add-wallet";
+interface DambiAddWalletRequest {
+  type: "dambi-add-wallet";
   address: string;
   label?: string;
 }
-interface PasuUpdateWalletRequest {
-  type: "pasu-update-wallet";
+interface DambiUpdateWalletRequest {
+  type: "dambi-update-wallet";
   address: string;
   label?: string;
 }
-interface PasuDeleteWalletRequest {
-  type: "pasu-delete-wallet";
+interface DambiDeleteWalletRequest {
+  type: "dambi-delete-wallet";
   address: string;
 }
 /** ⑤ 주간 요약 토스트 수동 트리거 (advisory 표시 전용 — 결정 채널 아님). */
 interface WeeklySummaryRequest {
-  type: "PASU_WEEKLY_SUMMARY";
+  type: "DAMBI_WEEKLY_SUMMARY";
 }
 /** ② 마스코트 배지 — 팝업 열림 = 알람 확인. 발바닥/카운트를 초기화한다. */
 interface BadgeSeenRequest {
-  type: "PASU_BADGE_SEEN";
+  type: "DAMBI_BADGE_SEEN";
 }
 /** apps/web Editor + Simulation pages route Cedar through the
  *  service worker rather than bundling wasm themselves. Three
@@ -410,15 +410,15 @@ interface DiagnosisContextGetRequest {
   id: string;
 }
 type PopupRequest =
-  | PasuAuthStatusRequest
-  | PasuAuthSignInRequest
-  | PasuAuthSignOutRequest
-  | PasuAuthSyncTokensRequest
-  | PasuListWalletsRequest
-  | PasuListWalletSummariesRequest
-  | PasuAddWalletRequest
-  | PasuUpdateWalletRequest
-  | PasuDeleteWalletRequest
+  | DambiAuthStatusRequest
+  | DambiAuthSignInRequest
+  | DambiAuthSignOutRequest
+  | DambiAuthSyncTokensRequest
+  | DambiListWalletsRequest
+  | DambiListWalletSummariesRequest
+  | DambiAddWalletRequest
+  | DambiUpdateWalletRequest
+  | DambiDeleteWalletRequest
   | WeeklySummaryRequest
   | BadgeSeenRequest
   | CedarValidateRequest
@@ -465,7 +465,7 @@ async function pushToastToActiveTab(
     const tabId = tabs[0]?.id;
     if (tabId === undefined) return;
     await Browser.tabs.sendMessage(tabId, {
-      type: "PASU_TOAST",
+      type: "DAMBI_TOAST",
       scenario,
       ...(data ? { data } : {}),
     });
@@ -478,7 +478,7 @@ async function pushToastToActiveTab(
  * ⑤ advisory OS 데스크톱 알림 — 인페이지 토스트(pushToastToActiveTab)와 **함께** 발사.
  * 표시 전용(결정 채널 아님): 버튼은 "무시"(그냥 닫기) / "확인하기"(대시보드 열기)
  * 두 개뿐이고, 권한취소 같은 결정·실행 액션은 절대 넣지 않는다(핸드오프 §보안).
- * 시나리오별 카피는 advisory content-script 의 toastSpec(pasu-advisory.ts)과 1-1.
+ * 시나리오별 카피는 advisory content-script 의 toastSpec(dambi-advisory.ts)과 1-1.
  * notifications 권한/지원이 없으면 조용히 무시(best-effort) — 토스트는 그대로 뜬다.
  */
 async function pushDesktopNotification(
@@ -495,7 +495,7 @@ async function pushDesktopNotification(
 
   switch (scenario) {
     case "summary":
-      title = "이번 주 Pasu 요약";
+      title = "이번 주 Dambi 요약";
       message = `이번 주 위험 ${fail}건을 차단하고 ${warn}건은 검토를 권했어요.`;
       iconFile = fail > 0 ? "picture/state-fail-128.png" : "picture/state-warn-128.png";
       break;
@@ -505,7 +505,7 @@ async function pushDesktopNotification(
       iconFile = "picture/state-fail-128.png";
       break;
     case "session-expired":
-      title = "Pasu 로그인이 만료됐어요";
+      title = "Dambi 로그인이 만료됐어요";
       message = "보호를 계속 받으려면 다시 로그인하세요. 확인하기를 눌러 대시보드를 여세요.";
       iconFile = "picture/state-warn-128.png";
       break;
@@ -597,9 +597,9 @@ Browser.runtime.onMessage.addListener(
     }
 
     // ⑤ 주간 요약 토스트 (수동 트리거). 최근 7일 verdict 카운트를 모아
-    // 현재 활성 탭의 advisory content-script 에 PASU_TOAST 로 push 한다.
+    // 현재 활성 탭의 advisory content-script 에 DAMBI_TOAST 로 push 한다.
     // advisory 전용 — 서명 결정과 무관(표시만).
-    if (req.type === "PASU_WEEKLY_SUMMARY") {
+    if (req.type === "DAMBI_WEEKLY_SUMMARY") {
       void countVerdicts({ range: "7d" })
         .then(async (counts) => {
           await pushToastToActiveTab("summary", {
@@ -622,7 +622,7 @@ Browser.runtime.onMessage.addListener(
     }
 
     // ② 마스코트 배지 — 팝업이 열리면 보냄. 알람 확인 처리(발바닥 초기화).
-    if (req.type === "PASU_BADGE_SEEN") {
+    if (req.type === "DAMBI_BADGE_SEEN") {
       void markBadgeSeen()
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
@@ -775,7 +775,7 @@ Browser.runtime.onMessage.addListener(
       return true;
     }
 
-    if (req.type === "pasu-auth-status") {
+    if (req.type === "dambi-auth-status") {
       // Gate on boot so the storage-key migration finishes before the token read.
       void bootReady
         .then(() => fetchMe())
@@ -783,13 +783,13 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_auth_failed", message: String(err) },
+            error: { kind: "dambi_auth_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "pasu-auth-sign-in") {
+    if (req.type === "dambi-auth-sign-in") {
       void bootReady
         // 새 로그인 전에 이전 계정 토큰을 먼저 비운다. 그래야 OAuth 진행 중
         // 같은 storage 를 공유하는 대시보드(options.html)가 옛 계정으로 잠깐
@@ -806,27 +806,27 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_sign_in_failed", message: String(err) },
+            error: { kind: "dambi_sign_in_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "pasu-auth-sign-out") {
+    if (req.type === "dambi-auth-sign-out") {
       void bootReady
         .then(() => clearTokens())
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_sign_out_failed", message: String(err) },
+            error: { kind: "dambi_sign_out_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "pasu-auth-sync-tokens") {
-      const r = req as PasuAuthSyncTokensRequest;
+    if (req.type === "dambi-auth-sync-tokens") {
+      const r = req as DambiAuthSyncTokensRequest;
       void bootReady
         .then(() => setTokens(r.access, r.refresh))
         .then(() => {
@@ -837,13 +837,13 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_sync_tokens_failed", message: String(err) },
+            error: { kind: "dambi_sync_tokens_failed", message: String(err) },
           }),
         );
       return true;
     }
 
-    if (req.type === "pasu-list-wallets") {
+    if (req.type === "dambi-list-wallets") {
       void bootReady
         .then(() => listWallets())
         .then(async (wallets: WalletId[]) => {
@@ -853,14 +853,14 @@ Browser.runtime.onMessage.addListener(
           try {
             await provisionFromWalletSync(wallets.map((w) => w.address));
           } catch (err) {
-            console.warn("[Pasu] ps2 wallet provisioning failed:", err);
+            console.warn("[Dambi] ps2 wallet provisioning failed:", err);
           }
           sendResponse({ ok: true, data: wallets });
         })
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_list_wallets_failed", message: String(err) },
+            error: { kind: "dambi_list_wallets_failed", message: String(err) },
           }),
         );
       return true;
@@ -868,7 +868,7 @@ Browser.runtime.onMessage.addListener(
 
     // 지갑 요약(라벨+잔액) — 서버 GET /dashboard/summary. 팝업이 별칭(label)을
     // 서버 단일 소스에서 읽는 경로.
-    if (req.type === "pasu-list-wallet-summaries") {
+    if (req.type === "dambi-list-wallet-summaries") {
       void bootReady
         .then(() => listWalletSummaries())
         .then((wallets: WalletSummary[]) =>
@@ -878,7 +878,7 @@ Browser.runtime.onMessage.addListener(
           sendResponse({
             ok: false,
             error: {
-              kind: "pasu_list_wallet_summaries_failed",
+              kind: "dambi_list_wallet_summaries_failed",
               message: String(err),
             },
           }),
@@ -887,11 +887,11 @@ Browser.runtime.onMessage.addListener(
     }
 
     // 지갑 등록(POST /wallets). `chains` 를 명시해 "no chains configured" 400 을
-    // 우회한다 — 서버 pasu-sync.toml 에 RPC 가 설정된 체인만(eth/arbitrum/base).
+    // 우회한다 — 서버 dambi-sync.toml 에 RPC 가 설정된 체인만(eth/arbitrum/base).
     // 미설정 체인을 포함하면 그 체인 native 조회 실패가 디스커버리 전체를
     // 중단시켜 잔액이 0 으로 남는다.
-    if (req.type === "pasu-add-wallet") {
-      const r = req as PasuAddWalletRequest;
+    if (req.type === "dambi-add-wallet") {
+      const r = req as DambiAddWalletRequest;
       const addBody: { address: string; chains: string[]; label?: string } = {
         address: r.address.toLowerCase(),
         chains: ["eip155:1", "eip155:42161", "eip155:8453"],
@@ -903,7 +903,7 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_add_wallet_failed", message: String(err) },
+            error: { kind: "dambi_add_wallet_failed", message: String(err) },
           }),
         );
       return true;
@@ -911,8 +911,8 @@ Browser.runtime.onMessage.addListener(
 
     // 별칭 변경(PATCH /wallets/:addr) — 서버 라벨을 팝업과 동기화. 빈 문자열은
     // 라벨 제거(null)로 보낸다.
-    if (req.type === "pasu-update-wallet") {
-      const r = req as PasuUpdateWalletRequest;
+    if (req.type === "dambi-update-wallet") {
+      const r = req as DambiUpdateWalletRequest;
       const patch: { label?: string | null } = {};
       if (r.label !== undefined) patch.label = r.label === "" ? null : r.label;
       void bootReady
@@ -921,22 +921,22 @@ Browser.runtime.onMessage.addListener(
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_update_wallet_failed", message: String(err) },
+            error: { kind: "dambi_update_wallet_failed", message: String(err) },
           }),
         );
       return true;
     }
 
     // 지갑 삭제(DELETE /wallets/:addr) — 서버에서 제거해 대시보드·팝업 일관성.
-    if (req.type === "pasu-delete-wallet") {
-      const r = req as PasuDeleteWalletRequest;
+    if (req.type === "dambi-delete-wallet") {
+      const r = req as DambiDeleteWalletRequest;
       void bootReady
         .then(() => deleteWallet(r.address.toLowerCase()))
         .then(() => sendResponse({ ok: true, data: null }))
         .catch((err: unknown) =>
           sendResponse({
             ok: false,
-            error: { kind: "pasu_delete_wallet_failed", message: String(err) },
+            error: { kind: "dambi_delete_wallet_failed", message: String(err) },
           }),
         );
       return true;

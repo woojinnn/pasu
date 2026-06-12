@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GOV-02 (re-delegating a LARGE block
+// dambi default v2 policy — explorer id: GOV-02 (re-delegating a LARGE block
 // of voting power to a NEW address).
 //
 // METHOD-BACKED magnitude + DIRECT field re-delegation check (sv = PART). The

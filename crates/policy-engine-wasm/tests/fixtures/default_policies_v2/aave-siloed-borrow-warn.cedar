@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-10 (borrowing a siloed asset
+// dambi default v2 policy — explorer id: AAVE-10 (borrowing a siloed asset
 // locks you into single-asset borrowing).
 //
 // RESERVE-METADATA fact (NOT pure action-field). Some reserves are configured

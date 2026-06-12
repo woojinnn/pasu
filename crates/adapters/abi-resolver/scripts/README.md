@@ -41,8 +41,8 @@ Env knobs (override defaults):
 
 | Variable          | Default               |
 |-------------------|-----------------------|
-| `PASU_DUMP_DIR`   | `/tmp/sourcify_dump`  |
-| `PASU_VENV`       | `/tmp/parquet_venv`   |
+| `DAMBI_DUMP_DIR`   | `/tmp/sourcify_dump`  |
+| `DAMBI_VENV`       | `/tmp/parquet_venv`   |
 
 If the script is interrupted, just re-run it — the parallel downloader skips
 files that already exist, so partial progress is preserved.

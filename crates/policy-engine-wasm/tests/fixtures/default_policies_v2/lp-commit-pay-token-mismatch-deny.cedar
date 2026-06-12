@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: LP-06 (paying a sale with a token
+// dambi default v2 policy — explorer id: LP-06 (paying a sale with a token
 // it does not accept).
 //
 // Mixing up stablecoins and committing with a token the sale does not accept

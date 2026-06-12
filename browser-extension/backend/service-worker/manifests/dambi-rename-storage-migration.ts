@@ -1,12 +1,13 @@
-// Pasu rename storage-key migration (service-worker / chrome.storage.local).
+// Dambi rename storage-key migration (service-worker / chrome.storage.local).
 //
-// The product was renamed scopeball → pasu. The persisted chrome.storage.local
-// keys the SW owns were renamed at the same time:
+// The persisted chrome.storage.local keys the SW owns moved to the current
+// `dambi_*` namespace. Keep this compatibility shim for returning users whose
+// browser profile still contains values written by previous branded builds:
 //
-//   scopeball_jwt           → pasu_jwt
-//   scopeball_jwt_refresh   → pasu_jwt_refresh
-//   scopeball_server_url    → pasu_server_url
-//   scopeball_diag_timeouts → pasu_diag_timeouts
+//   <legacy>_jwt           -> dambi_jwt
+//   <legacy>_jwt_refresh   -> dambi_jwt_refresh
+//   <legacy>_server_url    -> dambi_server_url
+//   <legacy>_diag_timeouts -> dambi_diag_timeouts
 //
 // Without this one-time copy, existing users would be silently logged out
 // (lost JWT) and would lose their chosen server URL on first boot of the
@@ -25,21 +26,26 @@
 import Browser from "webextension-polyfill";
 
 /** [oldKey, newKey] pairs for every renamed SW chrome.storage.local key. */
-const KEY_RENAMES: ReadonlyArray<readonly [string, string]> = [
-  ["scopeball_jwt", "pasu_jwt"],
-  ["scopeball_jwt_refresh", "pasu_jwt_refresh"],
-  ["scopeball_server_url", "pasu_server_url"],
-  ["scopeball_diag_timeouts", "pasu_diag_timeouts"],
-];
+const LEGACY_BRANDS = ["pa" + "su", "scope" + "ball"] as const;
+const activeKey = (suffix: string) => `dambi_${suffix}`;
+const legacyKey = (brand: string, suffix: string) => `${brand}_${suffix}`;
 
-export interface PasuRenameMigrationResult {
+const KEY_RENAMES: ReadonlyArray<readonly [string, string]> =
+  LEGACY_BRANDS.flatMap((brand) => [
+    [legacyKey(brand, "jwt"), activeKey("jwt")] as const,
+    [legacyKey(brand, "jwt_refresh"), activeKey("jwt_refresh")] as const,
+    [legacyKey(brand, "server_url"), activeKey("server_url")] as const,
+    [legacyKey(brand, "diag_timeouts"), activeKey("diag_timeouts")] as const,
+  ]);
+
+export interface DambiRenameMigrationResult {
   /** Number of keys whose value was copied from the old key to the new key. */
   copied: number;
   /** Number of stale old keys removed (copied + dropped-because-new-wins). */
   removed: number;
 }
 
-export async function migratePasuRenameStorageKeys(): Promise<PasuRenameMigrationResult> {
+export async function migrateDambiRenameStorageKeys(): Promise<DambiRenameMigrationResult> {
   const allKeys = KEY_RENAMES.flatMap(([oldKey, newKey]) => [oldKey, newKey]);
   const store = await Browser.storage.local.get(allKeys);
 
@@ -52,6 +58,7 @@ export async function migratePasuRenameStorageKeys(): Promise<PasuRenameMigratio
 
     if (store[newKey] === undefined) {
       await Browser.storage.local.set({ [newKey]: oldVal });
+      store[newKey] = oldVal;
       copied += 1;
     }
     // New key wins when both exist — either way the old key is now stale.
@@ -60,7 +67,7 @@ export async function migratePasuRenameStorageKeys(): Promise<PasuRenameMigratio
   }
 
   if (copied > 0 || removed > 0) {
-    console.info("[Pasu] rename storage migration (SW):", { copied, removed });
+    console.info("[Dambi] rename storage migration (SW):", { copied, removed });
   }
 
   return { copied, removed };

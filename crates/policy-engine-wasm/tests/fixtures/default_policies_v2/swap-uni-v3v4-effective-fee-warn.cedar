@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-08 (effective fee of the route
+// dambi default v2 policy — explorer id: UNI-08 (effective fee of the route
 // exceeds the user's ceiling).
 //
 // Uniswap V4 dynamic-fee pools let a hook set the fee per swap, so the fee paid

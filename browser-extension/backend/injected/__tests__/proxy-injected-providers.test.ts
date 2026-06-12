@@ -746,14 +746,14 @@ describe("inpage provider proxy", () => {
       }),
     );
 
-    const pasuAnnouncements = dispatchSpy.mock.calls.filter(([event]) => {
+    const dambiAnnouncements = dispatchSpy.mock.calls.filter(([event]) => {
       return (
         event instanceof CustomEvent &&
         event.type === "eip6963:announceProvider" &&
-        event.detail?.info?.rdns === "dev.scopeball.wrapper"
+        event.detail?.info?.rdns === "dev.dambi.wrapper"
       );
     });
-    expect(pasuAnnouncements).toHaveLength(0);
+    expect(dambiAnnouncements).toHaveLength(0);
 
     dispatchSpy.mockRestore();
   });
@@ -786,18 +786,18 @@ describe("inpage provider proxy", () => {
       }),
     );
 
-    const pasuAnnouncement = dispatchSpy.mock.calls.find(([event]) => {
+    const dambiAnnouncement = dispatchSpy.mock.calls.find(([event]) => {
       return (
         event instanceof CustomEvent &&
         event.type === "eip6963:announceProvider" &&
-        event.detail?.info?.rdns === "dev.scopeball.wrapper"
+        event.detail?.info?.rdns === "dev.dambi.wrapper"
       );
     })?.[0] as CustomEvent | undefined;
 
-    expect(pasuAnnouncement?.detail.provider).toBe(provider);
+    expect(dambiAnnouncement?.detail.provider).toBe(provider);
 
     await expect(
-      pasuAnnouncement?.detail.provider.request({
+      dambiAnnouncement?.detail.provider.request({
         method: "eth_sendTransaction",
         params: [
           {

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-12 (supply/borrow cap nearly
+// dambi default v2 policy — explorer id: AAVE-12 (supply/borrow cap nearly
 // full).
 //
 // DERIVED fact (NOT pure action-field, despite the raw totals living in

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-07 (absolute gas cost over a
+// dambi default v2 policy — explorer id: GEN-07 (absolute gas cost over a
 // USD cap).
 //
 // An abnormally expensive transaction — fat-fingered gas, a malicious relayer

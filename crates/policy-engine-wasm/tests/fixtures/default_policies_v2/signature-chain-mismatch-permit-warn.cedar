@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-17 (signature whose chainId is
+// dambi default v2 policy — explorer id: GEN-17 (signature whose chainId is
 // not the chain you are connected to).
 //
 // An EIP-712 signature carries the chainId it is bound to in its domain. When

@@ -16,15 +16,15 @@
  *   `sendToExtension({ type: "verdicts:list", opts })`.
  *
  * Protocol (matches `dashboard-bridge.ts`):
- *   request  → `{ source: "pasu-dashboard", id, payload }`
- *   response ← `{ source: "pasu-extension",  id, response }`
- *   broadcast ← `{ source: "pasu-extension", id: "__broadcast__", … }`
+ *   request  → `{ source: "dambi-dashboard", id, payload }`
+ *   response ← `{ source: "dambi-extension",  id, response }`
+ *   broadcast ← `{ source: "dambi-extension", id: "__broadcast__", … }`
  *
  * Broadcasts are filtered out; only matching `id`s resolve a pending call.
  */
 
-const REQ_TAG = "pasu-dashboard" as const;
-const RES_TAG = "pasu-extension" as const;
+const REQ_TAG = "dambi-dashboard" as const;
+const RES_TAG = "dambi-extension" as const;
 const BROADCAST_ID = "__broadcast__";
 
 /** Surfaced when the SW returns `{ ok: false, error }`. */

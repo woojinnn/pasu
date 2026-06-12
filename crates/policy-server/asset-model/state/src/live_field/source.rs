@@ -90,7 +90,7 @@ pub enum DataSource {
         calc_id: String,
     },
 
-    /// The pasu registry server: a provider of static metadata such as
+    /// The dambi registry server: a provider of static metadata such as
     /// token classification, protocol mapping, and decoders. Unlike an oracle,
     /// it tells you "what this is" rather than a price, and its cache policy is
     /// very long (24h+).

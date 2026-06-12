@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: LP-03 (cumulative commitments
+// dambi default v2 policy — explorer id: LP-03 (cumulative commitments
 // across multiple sales exceed a personal cap).
 //
 // Launchpads stoke FOMO into over-committing across many sales at once. The

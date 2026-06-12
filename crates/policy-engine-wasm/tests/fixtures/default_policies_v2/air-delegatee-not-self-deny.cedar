@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AIR-05 (a claim — or a standalone
+// dambi default v2 policy — explorer id: AIR-05 (a claim — or a standalone
 // delegate — hands governance voting power to someone else).
 //
 // ACTION-FIELD + LITERAL SET-MEMBERSHIP (Aggregator type 5; no enrichment). A

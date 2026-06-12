@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: D1 / SUIT (leverage-class token
+// dambi default v2 policy — explorer id: D1 / SUIT (leverage-class token
 // purchase). Personal-trading (TradFi suitability) family.
 //
 // Rule: deny buying a token whose risk class is "Leveraged" (2x/3x products such

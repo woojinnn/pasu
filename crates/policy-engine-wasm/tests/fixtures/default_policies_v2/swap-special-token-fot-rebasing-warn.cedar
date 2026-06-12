@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-13 (fee-on-transfer / rebasing
+// dambi default v2 policy — explorer id: UNI-13 (fee-on-transfer / rebasing
 // token swapped via an unsupported router).
 //
 // FoT (transfer-tax) and rebasing tokens change amount on every transfer, so an

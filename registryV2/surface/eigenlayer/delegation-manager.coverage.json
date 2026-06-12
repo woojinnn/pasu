@@ -8,7 +8,7 @@
     "0xeea9064b": {
       "name": "delegateTo",
       "decision": "cover",
-      "reason": "PERMISSION DELEGATION primitive — staker delegates ALL deposited restaking shares to an operator. (address operator, SignatureWithExpiry approverSignatureAndExpiry, bytes32 approverSalt). Pasu's core target; never exclude."
+      "reason": "PERMISSION DELEGATION primitive — staker delegates ALL deposited restaking shares to an operator. (address operator, SignatureWithExpiry approverSignatureAndExpiry, bytes32 approverSalt). Dambi's core target; never exclude."
     },
     "0xa33a3433": {
       "name": "redelegate",
@@ -89,7 +89,7 @@
   "signed_structs": {
     "DelegationApproval": {
       "decision": "cover",
-      "reason": "off-chain EIP-712 message the operator's delegationApprover SIGNS to authorize a specific staker delegating to the operator. typehash DelegationApproval(address delegationApprover,address staker,address operator,bytes32 salt,uint256 expiry) (0x14bde674...2dad, from verified DelegationManagerStorage.sol). Domain {name:'EigenLayer', version:'1', chainId:1, verifyingContract: DelegationManager proxy}. Consumed by delegateTo's approverSignatureAndExpiry param — a permission grant gating who may delegate, Pasu's core off-chain target."
+      "reason": "off-chain EIP-712 message the operator's delegationApprover SIGNS to authorize a specific staker delegating to the operator. typehash DelegationApproval(address delegationApprover,address staker,address operator,bytes32 salt,uint256 expiry) (0x14bde674...2dad, from verified DelegationManagerStorage.sol). Domain {name:'EigenLayer', version:'1', chainId:1, verifyingContract: DelegationManager proxy}. Consumed by delegateTo's approverSignatureAndExpiry param — a permission grant gating who may delegate, Dambi's core off-chain target."
     }
   }
 }

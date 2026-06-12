@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AMMLP-5 (cancelling an order that no
+// dambi default v2 policy — explorer id: AMMLP-5 (cancelling an order that no
 // longer exists — already filled / expired / cancelled).
 //
 // A cancel costs a signature (sometimes gas); a screen urging you to cancel an

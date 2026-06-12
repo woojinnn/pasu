@@ -2,7 +2,7 @@
 
 **240** research-grounded wallet pre-sign 보안 정책 (v2 ActionBody 모델 대상). 실유스케이스 리서치
 (Pocket Universe / Blockaid / Blowfish / MetaMask / Rabby / Fireblocks / Coinbase + OFAC / FATF / Chainalysis)
-→ ScopeBall expressibility 로 prune → Cedar-compile 검증된 corpus. shipped default 가 **아니다**
+→ Dambi expressibility 로 prune → Cedar-compile 검증된 corpus. shipped default 가 **아니다**
 (`default_policies_v2/` 9 bundle 은 별개; 이 227 은 auto-install/enforce 되지 않음).
 
 ## 구조 — precedence 4-bucket tree

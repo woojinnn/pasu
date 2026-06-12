@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: PERP-01 (leverage above your
+// dambi default v2 policy — explorer id: PERP-01 (leverage above your
 // self-set cap).
 //
 // High leverage thins the distance to liquidation — a brief wick can wipe the

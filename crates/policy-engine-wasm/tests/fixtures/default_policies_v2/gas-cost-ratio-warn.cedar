@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-08 (gas cost disproportionate
+// dambi default v2 policy — explorer id: GEN-08 (gas cost disproportionate
 // to the value moved).
 //
 // A swap whose gas fee is a large fraction of the value it actually moves is

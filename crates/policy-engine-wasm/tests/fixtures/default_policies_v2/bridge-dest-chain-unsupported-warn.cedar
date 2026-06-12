@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-04 (bridging to a destination
+// dambi default v2 policy — explorer id: BRG-04 (bridging to a destination
 // chain the user does not actually use).
 //
 // Bridging to an unintended chain effectively strands funds (assets on an

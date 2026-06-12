@@ -6,16 +6,16 @@ const tokenStore = vi.hoisted(() => ({
   setTokens: vi.fn<(access: string | null, refresh?: string | null) => Promise<void>>(),
 }));
 
-vi.mock("../pasu-auth/tokenStore", () => tokenStore);
+vi.mock("../dambi-auth/tokenStore", () => tokenStore);
 
 import {
   request,
   ServerError,
   setOnSessionExpired,
   resetSessionExpiredGuard,
-} from "../pasu-auth/client";
+} from "../dambi-auth/client";
 
-describe("pasu-auth client", () => {
+describe("dambi-auth client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();

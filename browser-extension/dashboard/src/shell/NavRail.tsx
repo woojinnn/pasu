@@ -43,10 +43,10 @@ export function NavRail() {
   };
 
   return (
-    <nav className="nav-rail" tabIndex={0} aria-label="Pasu global nav">
+    <nav className="nav-rail" tabIndex={0} aria-label="Dambi global nav">
       <div className="nav-logo">
         <div className="mark">sb</div>
-        <div className="word">pasu</div>
+        <div className="word">dambi</div>
       </div>
 
       <div className="nav-divider" />

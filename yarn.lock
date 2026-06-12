@@ -612,29 +612,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@scopeball/api-client@workspace:*, @scopeball/api-client@workspace:packages/api-client":
+"@dambi/api-client@workspace:*, @dambi/api-client@workspace:packages/api-client":
   version: 0.0.0-use.local
-  resolution: "@scopeball/api-client@workspace:packages/api-client"
+  resolution: "@dambi/api-client@workspace:packages/api-client"
   dependencies:
-    "@scopeball/types": "workspace:*"
+    "@dambi/types": "workspace:*"
     typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
-"@scopeball/types@workspace:*, @scopeball/types@workspace:packages/types":
+"@dambi/types@workspace:*, @dambi/types@workspace:packages/types":
   version: 0.0.0-use.local
-  resolution: "@scopeball/types@workspace:packages/types"
+  resolution: "@dambi/types@workspace:packages/types"
   dependencies:
     typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
-"@scopeball/web@workspace:apps/web":
+"@dambi/web@workspace:apps/web":
   version: 0.0.0-use.local
-  resolution: "@scopeball/web@workspace:apps/web"
+  resolution: "@dambi/web@workspace:apps/web"
   dependencies:
-    "@scopeball/api-client": "workspace:*"
-    "@scopeball/types": "workspace:*"
+    "@dambi/api-client": "workspace:*"
+    "@dambi/types": "workspace:*"
     "@tanstack/react-query": "npm:^5.59.0"
     "@types/react": "npm:^18.3.3"
     "@types/react-dom": "npm:^18.3.0"
@@ -2316,9 +2316,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"scopeball@workspace:.":
+"dambi@workspace:.":
   version: 0.0.0-use.local
-  resolution: "scopeball@workspace:."
+  resolution: "dambi@workspace:."
   dependencies:
     npm-run-all: "npm:^4.1.5"
     typescript: "npm:^5.7.3"

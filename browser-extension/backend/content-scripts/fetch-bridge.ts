@@ -52,7 +52,7 @@ stream.on("data", async (message: Message) => {
   } catch (err) {
     // Fail-CLOSED: no SW ⇒ no verdict ⇒ block the order.
     console.error(
-      "[Pasu] cannot reach service worker (extension reloaded?) — " +
+      "[Dambi] cannot reach service worker (extension reloaded?) — " +
         "venue order blocked. Reload this tab to restore policy evaluation.",
       err,
     );

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-14 (V3/V4 LP added one-sided,
+// dambi default v2 policy — explorer id: UNI-14 (V3/V4 LP added one-sided,
 // outside the current price → forced single-asset range order).
 //
 // A concentrated LP whose [tickLower, tickUpper] does not contain the current

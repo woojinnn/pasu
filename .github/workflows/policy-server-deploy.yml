@@ -25,10 +25,10 @@ on:
 env:
   PROJECT_ID: policy-engine-498313
   REGION: asia-northeast3
-  AR_REPO: pasu
-  IMAGE_NAME: pasu-policy-server
-  CLUSTER: pasu-autopilot
-  NAMESPACE: pasu
+  AR_REPO: dambi
+  IMAGE_NAME: dambi-policy-server
+  CLUSTER: dambi-autopilot
+  NAMESPACE: dambi
   HELM_VALUES: crates/policy-server/server/deploy/helm/policy-server/values-m3.yaml
 
 permissions:
@@ -81,13 +81,13 @@ jobs:
           # otherwise coerced to int64 by Helm, and the chart's `printf "%s"` then
           # renders it as `%!s(int64=...)` → InvalidImageName. Forcing a string
           # keeps the image tag valid for every SHA.
-          helm upgrade --install pasu \
+          helm upgrade --install dambi \
             crates/policy-server/server/deploy/helm/policy-server \
             --namespace "${NAMESPACE}" \
             -f "${HELM_VALUES}" \
             --set-string image.tag="${IMAGE_TAG}" \
             --timeout 8m
-          kubectl -n "${NAMESPACE}" rollout status deploy/pasu-policy-server-api --timeout=180s
+          kubectl -n "${NAMESPACE}" rollout status deploy/dambi-policy-server-api --timeout=180s
 
       - name: Summary
         run: |

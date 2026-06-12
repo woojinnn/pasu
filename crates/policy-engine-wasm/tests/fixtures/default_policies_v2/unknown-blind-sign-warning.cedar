@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-09 (blind / opaque signature).
+// dambi default v2 policy — explorer id: GEN-09 (blind / opaque signature).
 //
 // Warn whenever an action could not be decoded by any manifest and therefore
 // surfaces as `Core::Action::"Unknown"` (opaque EIP-712, raw `eth_sign`, or

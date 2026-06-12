@@ -183,7 +183,7 @@ export async function collectOrderEnrichment(
     if (Object.keys(account).length > 0) out.account = account;
     return out;
   } catch (err) {
-    console.warn("[Pasu] HL order-enrichment collection threw (omitted)", {
+    console.warn("[Dambi] HL order-enrichment collection threw (omitted)", {
       err: err instanceof Error ? err.message : String(err),
     });
     return {};

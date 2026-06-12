@@ -1,5 +1,5 @@
 /**
- * Shared TypeScript types matching the pasu policy-rpc server's
+ * Shared TypeScript types matching the dambi policy-rpc server's
  * Rust DTOs. Hand-written today; the Rust side uses `tsify_next` for
  * the policy-state types, so a future build step could generate
  * these instead.

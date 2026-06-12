@@ -168,7 +168,7 @@ fn curve_route_last_token(args: &[JsonValue]) -> Result<JsonValue, String> {
     })
 }
 
-/// `route_hash(route: address[11]) -> bytes32` — a deterministic Pasu
+/// `route_hash(route: address[11]) -> bytes32` — a deterministic Dambi
 /// identity for an aggregator route (NOT an on-chain value). Defined as
 /// `keccak256(route[0] ++ route[1] ++ … )` over the packed 20-byte addresses,
 /// so the same structural route hashes identically regardless of amounts. Feeds
@@ -568,7 +568,7 @@ fn balancer_zip_token_amounts(args: &[JsonValue]) -> Result<JsonValue, String> {
 /// `removeLiquidityProportional` carry the per-token `amounts[]` array but **not**
 /// the token addresses — `amounts[i]` is indexed by the pool's registered token
 /// list, which lives on-chain (V3 Vault `getPoolTokens`) and is absent from
-/// calldata. Since Pasu is static (no sim), that list is supplied as a
+/// calldata. Since Dambi is static (no sim), that list is supplied as a
 /// build-time-baked `pool -> [token]` map (registry `_pool_universe.json`,
 /// inlined into the manifest via `$source.pool_tokens`). This looks up the pool's
 /// token list and zips it with `amounts[]` index-aligned into the
@@ -1305,7 +1305,7 @@ fn json_to_u64(v: &JsonValue) -> Option<u64> {
 }
 
 /// `unoswap_route_hash(dex: uint256, [dex2: uint256], [dex3: uint256]) -> bytes32`
-/// — a deterministic Pasu identity for a 1inch unoswap route (NOT an
+/// — a deterministic Dambi identity for a 1inch unoswap route (NOT an
 /// on-chain value). 1inch unoswap/unoswap2/unoswap3 pack each pool as a
 /// `uint256` `dex` word (low 160 bits = pool address, high bits = direction /
 /// protocol flags). This hashes `keccak256(dex ++ [dex2] ++ [dex3])` over the

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AMMLP-4 (signing a near-duplicate of
+// dambi default v2 policy — explorer id: AMMLP-4 (signing a near-duplicate of
 // an already-open intent order).
 //
 // Re-signing a stuck/"did it go through?" order is common; if both stay live,
