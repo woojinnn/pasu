@@ -18,7 +18,7 @@
       "chainId": 999,
       "address": "0x3333333333333333333333333333333333333333",
       "decision": "cover",
-      "reason": "sendRawAction(bytes) \u2014 the EVM->HyperCore write dispatch Pasu decodes via tagged_dispatch (15 actions). Etherscan-verified. 1\ucc28: HL docs 'Interacting with HyperCore' (CoreWriter.sol)."
+      "reason": "sendRawAction(bytes) \u2014 the EVM->HyperCore write dispatch Dambi decodes via tagged_dispatch (15 actions). Etherscan-verified. 1\ucc28: HL docs 'Interacting with HyperCore' (CoreWriter.sol)."
     },
     {
       "name": "Bridge2 (HyperLiquid USDC bridge)",

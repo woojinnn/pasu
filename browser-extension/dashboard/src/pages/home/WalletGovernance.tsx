@@ -358,7 +358,7 @@ function WalletPanel({
         members,
       });
     } catch (err) {
-      console.error("[Pasu] 패키지 게시 준비 실패", err);
+      console.error("[Dambi] 패키지 게시 준비 실패", err);
     }
   };
 
@@ -374,7 +374,7 @@ function WalletPanel({
         suggestedSlug: d.id.replace(/^def::/, ""),
       });
     } catch (err) {
-      console.error("[Pasu] 정책 게시 준비 실패", err);
+      console.error("[Dambi] 정책 게시 준비 실패", err);
     }
   };
 

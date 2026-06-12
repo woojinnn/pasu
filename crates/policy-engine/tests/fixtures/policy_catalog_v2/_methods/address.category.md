@@ -27,9 +27,9 @@ counterparty)이 **어떤 risk typology 에 속하는지** — mixer · darknet_
 terrorist_financing · stolen_funds · fraud_shop · high_risk_exchange · gambling · pep(정치적 주요인물) ·
 high_risk_jurisdiction — 를 blockchain-analytics 공급자의 entity-typology 로 조회해 단일
 `riskCategory: String` 로 투영한다. compliance/AML 류 정책은 이 한 라벨로 **warn**(또는 일부 라벨에서
-deny)을 결정한다 — 예) "상대방이 mixer 면 경고", "sanctioned 엔티티면 차단". Pasu 은 시뮬레이션
+deny)을 결정한다 — 예) "상대방이 mixer 면 경고", "sanctioned 엔티티면 차단". Dambi 은 시뮬레이션
 없이 정적 분석만 하므로, "이 주소가 어떤 엔티티 유형으로 분류돼 있는가" 는 calldata 만으로 알 수 없고
-외부 typology 피드 fetch 로만 얻는 사실이며, 이 method 가 그 fetch 를 캡슐화한다. Pasu 의
+외부 typology 피드 fetch 로만 얻는 사실이며, 이 method 가 그 fetch 를 캡슐화한다. Dambi 의
 no-simulation 모델과 일관되게 이것은 **순수 fact lookup** 이지 트랜잭션 시뮬레이션이 아니다.
 
 ---
@@ -67,7 +67,7 @@ no-simulation 모델과 일관되게 이것은 **순수 fact lookup** 이지 트
 **canonical 라벨 enum (제안)**: `mixer` \| `darknet_market` \| `ransomware` \| `terrorist_financing` \|
 `stolen_funds` \| `fraud_shop` \| `high_risk_exchange` \| `gambling` \| `pep` \|
 `high_risk_jurisdiction` \| `none`. 이 라벨 집합 자체는 **공급자별로 다르며**(Chainalysis entity
-categories / TRM / Elliptic 각자의 typology), 위 목록은 Pasu 이 정책에서 비교할 **정규화된 상위
+categories / TRM / Elliptic 각자의 typology), 위 목록은 Dambi 이 정책에서 비교할 **정규화된 상위
 집합**이다 — 공급자 raw 라벨 → 이 정규 라벨로의 매핑 테이블이 NET-NEW 산출물이다. 정확한 공급자 라벨
 집합은 **출처 미확인** (provider-specific, 공식 docs 에서 구현 시 확정).
 
@@ -174,7 +174,7 @@ $.result.riskCategory  -> String   (primary; 분류 비교 트리거; leaf = "ri
 
 **heuristic limit (정직한 한계)**
 - **coverage 와 라벨 taxonomy 는 공급자 정의**다. 같은 주소가 공급자마다 다른 라벨/무라벨일 수 있다.
-  Pasu 의 정규 enum 은 근사 매핑이며, 매핑 누락 = 그 정책 inert. 과장 금지: **매핑·공급자
+  Dambi 의 정규 enum 은 근사 매핑이며, 매핑 누락 = 그 정책 inert. 과장 금지: **매핑·공급자
   커버리지가 곧 이 method 의 커버리지**다.
 - **PEP / high_risk_jurisdiction attribution 은 sparse** 하다 — 주소-수준 PEP 귀속은 공급자 데이터가
   희박하고 false-negative 가 많다. 이 두 라벨은 신뢰도 낮음을 reason 에 명시하고 **warn-tier**로만 쓰는
@@ -310,6 +310,6 @@ fraud_shop / high_risk_exchange / gambling / pep / high_risk_jurisdiction + sanc
   - `schema/method-catalog.json` — 등록 스키마 형태 (현재 `address.category` 부재 = aspirational 근거).
   - 자매 spec `address.reputation.md` — 이진 flag(deny) vs 본 method 의 typology 라벨(warn) 구분 참조.
 
-> Pasu 의 risk-category 정책 근거(compliance/AML 위협 진술)는 규제·공급자 문서 기반이며, 개별
+> Dambi 의 risk-category 정책 근거(compliance/AML 위협 진술)는 규제·공급자 문서 기반이며, 개별
 > 주소의 라벨 정확도·커버리지·갱신주기는 **출처 미확인**(공급자별 상이) — 인용 시 공급자 공식 docs 및
 > 라벨 정의를 별도 확인할 것.

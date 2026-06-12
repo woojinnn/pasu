@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-11 (isolation-mode debt ceiling
+// dambi default v2 policy — explorer id: AAVE-11 (isolation-mode debt ceiling
 // nearly reached).
 //
 // PROTOCOL-GLOBAL fact (NOT pure action-field). Isolation assets carry a global

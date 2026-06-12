@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-03 (high-utilization market).
+// dambi default v2 policy — explorer id: AAVE-03 (high-utilization market).
 //
 // ACTION-FIELD. The reserve's utilization is injected into the borrow action's
 // live_inputs and is exposed verbatim as the base context field

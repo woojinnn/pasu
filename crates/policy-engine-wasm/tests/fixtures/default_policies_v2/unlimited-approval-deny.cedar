@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-01 (unlimited / over-balance
+// dambi default v2 policy — explorer id: GEN-01 (unlimited / over-balance
 // ERC20 approval to a non-allowlisted spender).
 //
 // An `approve(spender, amount)` with `amount == U256::MAX` (or an amount far

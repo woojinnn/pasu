@@ -46,7 +46,7 @@ export function LoginPage() {
 
   return (
     <div style={pageStyle}>
-      <h1>Pasu</h1>
+      <h1>Dambi</h1>
       <p style={{ opacity: 0.7, marginBottom: 24 }}>
         Sign in to view your wallets and activity feed.
       </p>

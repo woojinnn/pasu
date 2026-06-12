@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-03 (Permit / Permit2 signature
+// dambi default v2 policy — explorer id: GEN-03 (Permit / Permit2 signature
 // granting a large allowance or a far-future expiry).
 //
 // An off-chain `permit` is a gasless allowance: a signature anyone can later

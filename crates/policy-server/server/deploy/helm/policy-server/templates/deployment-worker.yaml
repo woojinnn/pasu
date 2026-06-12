@@ -24,10 +24,10 @@ spec:
         - name: worker
           image: {{ include "policy-server.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["pasu-sync-worker"]
+          command: ["dambi-sync-worker"]
           env:
-            - name: PASU_SYNC_CONFIG
-              value: /app/pasu-sync.toml
+            - name: DAMBI_SYNC_CONFIG
+              value: /app/dambi-sync.toml
             - name: REQUIRE_SYNC_CONFIG
               value: {{ .Values.runtime.requireSyncConfig | quote }}
             - name: RUN_MIGRATIONS_ON_STARTUP
@@ -72,8 +72,8 @@ spec:
                   optional: true
           volumeMounts:
             - name: sync-config
-              mountPath: /app/pasu-sync.toml
-              subPath: pasu-sync.toml
+              mountPath: /app/dambi-sync.toml
+              subPath: dambi-sync.toml
               readOnly: true
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}

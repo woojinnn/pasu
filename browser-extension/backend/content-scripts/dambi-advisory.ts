@@ -1,9 +1,9 @@
 /**
- * Pasu advisory content-script — ③ 인라인 주석 + ⑤ 인페이지 토스트.
+ * Dambi advisory content-script — ③ 인라인 주석 + ⑤ 인페이지 토스트.
  *
  * ⚠️ 보안 원칙(핸드오프 §보안): 이 스크립트는 **표시(advisory) 전용**이다.
  * 서명 allow/block 게이트는 confirm.html(별도 OS 창)이 전담하며, 여기서는
- * 절대 `pasu:verdict-decision` 같은 결정 메시지를 발신하지 않는다. ④ 인페이지
+ * 절대 `dambi:verdict-decision` 같은 결정 메시지를 발신하지 않는다. ④ 인페이지
  * 드로어는 confirm 창과 트리거가 겹치고 위조 표면을 늘리므로 제거됐다.
  *
  * 데모(intercept.js)는 페이지 DOM 에 직접 노드를 삽입했지만, 여기서는 보안
@@ -26,12 +26,12 @@ interface ToastSpec {
 }
 
 interface AnnotMessage {
-  type: "PASU_ANNOT";
+  type: "DAMBI_ANNOT";
   host?: string;
   selector?: string;
 }
 interface ToastMessage {
-  type: "PASU_TOAST";
+  type: "DAMBI_TOAST";
   scenario?: string;
   /** SW 가 채워 보내는 실제 데이터(예: 주간요약 fail/warn 카운트). */
   data?: { fail?: number; warn?: number };
@@ -39,7 +39,7 @@ interface ToastMessage {
 type AdvisoryMessage =
   | AnnotMessage
   | ToastMessage
-  | { type: "PASU_HIDE" };
+  | { type: "DAMBI_HIDE" };
 
 const ASSET = (p: string): string => Browser.runtime.getURL(`picture/${p}`);
 const STATE_WARN = ASSET("state-warn.png");
@@ -59,7 +59,7 @@ let stylesInjected = false;
 function ensureHost(): ShadowRoot {
   if (host && shadow) return shadow;
   host = document.createElement("div");
-  host.id = "pasu-advisory-host";
+  host.id = "dambi-advisory-host";
   // 호스트는 레이아웃에 영향 안 주는 0-size 컨테이너. 자식(annot/toast)은
   // position:fixed 라 호스트 크기와 무관하게 뜬다.
   host.style.cssText = "all:initial; position:fixed; z-index:2147483646;";
@@ -109,12 +109,12 @@ function placeAnnot(box: HTMLElement, target: Element | null): void {
 
 function showAnnotation(opts: AnnotMessage): void {
   const root = ensureHost();
-  removeById(root, "pasu-annot");
+  removeById(root, "dambi-annot");
   const hostname = opts.host || location.hostname;
   // selector 는 페이지 DOM 기준 — shadow 밖이라 document 에서 찾는다(앵커 위치 계산용).
   const target = opts.selector ? document.querySelector(opts.selector) : null;
   const box = document.createElement("div");
-  box.id = "pasu-annot";
+  box.id = "dambi-annot";
   box.className = "warn";
   box.innerHTML =
     '<div class="co-head">' +
@@ -140,7 +140,7 @@ function showAnnotation(opts: AnnotMessage): void {
 }
 
 function removeAnnotation(): void {
-  if (shadow) removeById(shadow, "pasu-annot");
+  if (shadow) removeById(shadow, "dambi-annot");
 }
 
 /* ============================================================
@@ -154,7 +154,7 @@ function toastSpec(scenario: string, data?: ToastMessage["data"]): ToastSpec {
       return {
         sev: fail > 0 ? "fail" : "warn",
         time: "지난 7일",
-        title: "이번 주 Pasu 요약",
+        title: "이번 주 Dambi 요약",
         bodyHtml:
           `<div class="mn-text">이번 주 위험 <b>${fail}건</b>을 차단하고 <b>${warn}건</b>은 검토를 권했어요.</div>` +
           '<div class="mn-ctx">백그라운드 모니터링 · 지난 7일</div>',
@@ -186,18 +186,18 @@ function toastSpec(scenario: string, data?: ToastMessage["data"]): ToastSpec {
 
 function showToast(scenario: string, data?: ToastMessage["data"]): void {
   const root = ensureHost();
-  removeById(root, "pasu-toast");
+  removeById(root, "dambi-toast");
   const d = toastSpec(scenario, data);
   const mar = d.sev === "fail" ? STATE_FAIL : d.sev === "warn" ? STATE_WARN : STATE_SAFE;
   const paw = d.sev === "fail" ? PAW_NAVY : PAW_GOLD;
   const box = document.createElement("div");
-  box.id = "pasu-toast";
+  box.id = "dambi-toast";
   box.className = d.sev;
   box.innerHTML =
     '<div class="mn-main">' +
     `<div class="mn-icon"><img src="${mar}" alt="" /><span class="mn-paw"><img src="${paw}" alt="" /></span></div>` +
     '<div class="mn-content">' +
-    `<div class="mn-top"><span class="mn-app">Pasu</span><span class="mn-time">${d.time}</span></div>` +
+    `<div class="mn-top"><span class="mn-app">Dambi</span><span class="mn-time">${d.time}</span></div>` +
     `<div class="mn-title">${d.title}</div>${d.bodyHtml}` +
     "</div>" +
     "</div>" +
@@ -216,7 +216,7 @@ function showToast(scenario: string, data?: ToastMessage["data"]): void {
 }
 
 function removeToast(): void {
-  if (shadow) removeById(shadow, "pasu-toast");
+  if (shadow) removeById(shadow, "dambi-toast");
 }
 
 // ─── helpers ───────────────────────────────────────────────────────
@@ -238,9 +238,9 @@ function escapeHtml(s: string): string {
 Browser.runtime.onMessage.addListener((msg: unknown) => {
   const m = msg as AdvisoryMessage | null;
   if (!m || typeof m !== "object" || !("type" in m)) return;
-  if (m.type === "PASU_ANNOT") showAnnotation(m);
-  else if (m.type === "PASU_TOAST") showToast(m.scenario ?? "tx", m.data);
-  else if (m.type === "PASU_HIDE") {
+  if (m.type === "DAMBI_ANNOT") showAnnotation(m);
+  else if (m.type === "DAMBI_TOAST") showToast(m.scenario ?? "tx", m.data);
+  else if (m.type === "DAMBI_HIDE") {
     removeAnnotation();
     removeToast();
   }

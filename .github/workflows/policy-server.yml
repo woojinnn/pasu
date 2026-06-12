@@ -63,13 +63,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: pasu
-          POSTGRES_PASSWORD: pasu
-          POSTGRES_DB: pasu_test
+          POSTGRES_USER: dambi
+          POSTGRES_PASSWORD: dambi
+          POSTGRES_DB: dambi_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U pasu -d pasu_test"
+          --health-cmd "pg_isready -U dambi -d dambi_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -77,8 +77,8 @@ jobs:
       # The job runs on the host (not in a container), so it reaches the service
       # via the mapped localhost port. Both URLs point at the same DB: migrate
       # reads DATABASE_URL, the tests read TEST_DATABASE_URL.
-      DATABASE_URL: postgres://pasu:pasu@127.0.0.1:5432/pasu_test
-      TEST_DATABASE_URL: postgres://pasu:pasu@127.0.0.1:5432/pasu_test
+      DATABASE_URL: postgres://dambi:dambi@127.0.0.1:5432/dambi_test
+      TEST_DATABASE_URL: postgres://dambi:dambi@127.0.0.1:5432/dambi_test
     steps:
       - uses: actions/checkout@v4
 

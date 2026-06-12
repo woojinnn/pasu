@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: CURVE-3 (adding into a Curve pool
+// dambi default v2 policy — explorer id: CURVE-3 (adding into a Curve pool
 // whose pegged assets are actively depegging, e.g. stETH/ETH, crvUSD).
 //
 // DERIVED composite (NOT an action-field). When one asset of a peg pool loses

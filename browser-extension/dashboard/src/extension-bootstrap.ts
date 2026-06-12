@@ -15,7 +15,7 @@
 import { isExtensionContext } from "./env";
 
 /** Keys mirrored from the SW's tokenStore (`chrome.storage.local`). */
-const TOKEN_KEYS = ["pasu_jwt", "pasu_jwt_refresh"] as const;
+const TOKEN_KEYS = ["dambi_jwt", "dambi_jwt_refresh"] as const;
 
 type StorageChange = { newValue?: unknown };
 type ChromeStorage = {

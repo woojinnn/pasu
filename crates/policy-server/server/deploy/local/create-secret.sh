@@ -3,10 +3,10 @@
 # Values can be overridden through environment variables before invocation.
 set -euo pipefail
 
-NS="${1:-${POLICY_SERVER_LOCAL_NAMESPACE:-pasu}}"
+NS="${1:-${POLICY_SERVER_LOCAL_NAMESPACE:-dambi}}"
 SECRET_NAME="${POLICY_SERVER_LOCAL_SECRET_NAME:-policy-server-secrets}"
 
-DATABASE_URL="${DATABASE_URL:-postgres://pasu:pasu@postgres:5432/pasu}"
+DATABASE_URL="${DATABASE_URL:-postgres://dambi:dambi@postgres:5432/dambi}"
 REDIS_URL="${REDIS_URL:-redis://redis:6379/0}"
 GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
 GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"

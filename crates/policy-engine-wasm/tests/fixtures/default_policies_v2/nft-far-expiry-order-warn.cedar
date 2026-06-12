@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: NFT-07 (order signature with a very
+// dambi default v2 policy — explorer id: NFT-07 (order signature with a very
 // distant / effectively open-ended expiry).
 //
 // A Seaport/Blur listing or offer signature stays exploitable until its

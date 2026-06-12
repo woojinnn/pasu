@@ -115,7 +115,7 @@ export function mutate<T>(uid: string, fn: (draft: StoreSnapshot) => T | Promise
     const added = afterIds.filter((id) => !beforeIds.includes(id));
     const removed = beforeIds.filter((id) => !afterIds.includes(id));
     if (added.length > 0 || removed.length > 0) {
-      console.info("[Pasu] policy-store defs changed", { uid, added, removed });
+      console.info("[Dambi] policy-store defs changed", { uid, added, removed });
     }
     // 정책 토글(켜기/끄기)을 콘솔에 로그 — 대시보드의 per-policy 초록 스위치
     // (binding.enabled)와 패키지 마스터 토글(packageEnabled)이 모두 이 게이트를
@@ -151,8 +151,8 @@ export function mutate<T>(uid: string, fn: (draft: StoreSnapshot) => T | Promise
         }
       }
     }
-    if (toggles.length > 0) console.info("[Pasu] policy-store bindings toggled", { uid, toggles });
-    if (pkgToggles.length > 0) console.info("[Pasu] policy-store package toggled", { uid, pkgToggles });
+    if (toggles.length > 0) console.info("[Dambi] policy-store bindings toggled", { uid, toggles });
+    if (pkgToggles.length > 0) console.info("[Dambi] policy-store package toggled", { uid, pkgToggles });
     draft.rev = current.rev + 1;
     await Browser.storage.local.set({
       [libKey(uid)]: draft.library,

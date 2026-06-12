@@ -1,4 +1,4 @@
-/* mypolicy-data.js — Scopeball "My Policy" 프론트 추출본 (예시 데이터 2개)
+/* mypolicy-data.js — Dambi "My Policy" 프론트 추출본 (예시 데이터 2개)
    상태 모델: state.life = 'draft' | 'publish'.  publish 안에서만 on/off 의미.
    예시 정책 2개:
      1) p-slip-wide   — 스왑 와이드 슬리피지 경고 (폼 편집 가능 · warn)

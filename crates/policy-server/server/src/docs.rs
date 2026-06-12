@@ -15,7 +15,7 @@ const SWAGGER_HTML: &str = r##"<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pasu API</title>
+  <title>Dambi API</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
   <style>
     body { margin: 0; background: #fafafa; }
@@ -37,11 +37,11 @@ const SWAGGER_HTML: &str = r##"<!doctype html>
     // Falls back to localStorage (same-origin only — won't see the
     // dashboard's token, but lets a user paste once and have it stick).
     function readTokenFromStorage() {
-      try { return window.localStorage.getItem("pasu_docs_jwt"); }
+      try { return window.localStorage.getItem("dambi_docs_jwt"); }
       catch { return null; }
     }
     function persistToken(t) {
-      try { window.localStorage.setItem("pasu_docs_jwt", t); }
+      try { window.localStorage.setItem("dambi_docs_jwt", t); }
       catch { /* private mode */ }
     }
     window.onload = () => {

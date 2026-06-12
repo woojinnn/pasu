@@ -3,7 +3,7 @@
  *  폼 호환 정책은 "내 정책" 저장과 같은 구조로 승격한다: 모든 leaf 값을 위치
  *  기반 param(v1..vN)으로 가진 holed IR + holesFromIr 파생 — 그래야 렌더
  *  (fillParams)와 바인딩별 값 오버라이드가 그대로 동작한다. 게시 측이
- *  manifest에 동봉한 x_pasu_holes 스펙(블랭킹된 칸)은 같은 위치 규칙으로
+ *  manifest에 동봉한 x_dambi_holes 스펙(블랭킹된 칸)은 같은 위치 규칙으로
  *  계산된 것이라 이름이 일치하며, 해당 hole은 `required`로 표시되고
  *  defaults.params에서 빠진다 — SW가 충전 전 바인딩을 거부하는 판정 기준. */
 import type { PolicyDef } from "../../../sdk/policy-store-types";
@@ -95,7 +95,7 @@ export async function listingToDefs(
     } else if (shipped.length > 0) {
       // 게시자는 빈칸을 안내했지만 이쪽에서 폼으로 못 여는 정책 — 게이트를
       // 적용할 방법이 없으므로 기존 동작(있는 그대로 설치)으로 둔다.
-      console.warn(`[Pasu] 리스팅 "${it.name}": hole 안내를 적용할 수 없어 무시함`);
+      console.warn(`[Dambi] 리스팅 "${it.name}": hole 안내를 적용할 수 없어 무시함`);
     }
 
     defs.push({

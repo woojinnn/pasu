@@ -5,7 +5,7 @@ import "./styles.css";
 // (asset/resource) 룰이 .wasm 에만 걸려 있어 `import x from "*.png"` 를 못 쓴다.
 // 핸드오프 권장 대안대로 에셋을 public/picture/ 에 두고(CopyPlugin 이 dist 로
 // 복사) 런타임 확장 URL 로 참조한다.
-const markWhite = Browser.runtime.getURL("picture/pasu-mark-white.png");
+const markWhite = Browser.runtime.getURL("picture/dambi-mark-white.png");
 // 가드 = 상태별 마스코트(캐논 GuardFace = STATE_MARTEN[kind]) — 인터셉트·②배지·⑤토스트와 동일한 담비 변신.
 const STATE_MARTEN: Record<string, string> = {
   pass: Browser.runtime.getURL("picture/state-safe.png"),
@@ -58,7 +58,7 @@ async function reply(ok: boolean): Promise<void> {
   }
   try {
     await Browser.runtime.sendMessage({
-      type: "pasu:verdict-decision",
+      type: "dambi:verdict-decision",
       requestId,
       ok,
     });
@@ -106,7 +106,7 @@ const SVG = {
 const COPY: Record<string, { head: string; sub: string }> = {
   fail: {
     head: "Transaction blocked",
-    sub: "Pasu policy stopped this signature. Review the matched policies below.",
+    sub: "Dambi policy stopped this signature. Review the matched policies below.",
   },
   warn: {
     head: "Manual review recommended",
@@ -114,7 +114,7 @@ const COPY: Record<string, { head: string; sub: string }> = {
   },
   pass: {
     head: "No policy risks found",
-    sub: "This request passed Pasu's baseline checks.",
+    sub: "This request passed Dambi's baseline checks.",
   },
 };
 
@@ -147,7 +147,7 @@ function render(): void {
   ]);
   const top = el("div", { class: "top" }, [
     mk,
-    el("span", { class: "wd", text: "PASU" }),
+    el("span", { class: "wd", text: "DAMBI" }),
     net,
   ]);
 

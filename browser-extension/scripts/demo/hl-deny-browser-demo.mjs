@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Automated browser proof that the Pasu extension BLOCKS a Hyperliquid
+ * Automated browser proof that the Dambi extension BLOCKS a Hyperliquid
  * `/exchange` short order by policy, while letting a long order through.
  *
  * Drives a real Chrome (the built extension loaded) over the DevTools protocol
  * and asserts the MAIN-world fetch hook's verdict beacon:
- *   - SHORT (b=false) → window.__pasu_last_verdict__.allowed === false   (blocked)
- *   - LONG  (b=true)  → window.__pasu_last_verdict__.allowed === true    (allowed)
+ *   - SHORT (b=false) → window.__dambi_last_verdict__.allowed === false   (blocked)
+ *   - LONG  (b=true)  → window.__dambi_last_verdict__.allowed === true    (allowed)
  *
  * Prereqs:
  *   1. yarn build:chrome          # builds dist/chrome with the deny seed policy
@@ -61,7 +61,7 @@ const orderExpr = (isBuy) => `(async () => {
       { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify(body) });
     outcome = { ok:true, status:r.status };
   } catch (e) { outcome = { ok:false, error: e && e.message }; }
-  return { outcome, verdict: window.__pasu_last_verdict__ };
+  return { outcome, verdict: window.__dambi_last_verdict__ };
 })()`;
 
 async function main() {
@@ -97,7 +97,7 @@ async function main() {
   };
 
   const installed = await evalExpr(
-    "!!window[Symbol.for('__pasu_fetch_hook_install_state__')]",
+    "!!window[Symbol.for('__dambi_fetch_hook_install_state__')]",
   );
   if (!installed) {
     console.error(

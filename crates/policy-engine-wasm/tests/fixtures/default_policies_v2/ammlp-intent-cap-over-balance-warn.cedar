@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AMMLP-3 (stacked open intents whose
+// dambi default v2 policy — explorer id: AMMLP-3 (stacked open intents whose
 // PermitCap sum exceeds the wallet balance → double-spend exposure).
 //
 // CoW/UniswapX/Fusion signed orders each hold a spend-cap on the sell token

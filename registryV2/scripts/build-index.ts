@@ -1,5 +1,5 @@
 /**
- * build-index.ts — Pasu Adapter Registry v3
+ * build-index.ts — Dambi Adapter Registry v3
  *
  * Forked from `registry/scripts/build-index.ts` (v2) and extended for the
  * schema v3 surface (PDF FSM spec). The build-index step is intentionally a

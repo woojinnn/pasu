@@ -25,10 +25,10 @@ import {
   type PolicyRpcAuditMeta,
 } from "./policy-rpc";
 import {
-  evaluate as pasuEvaluate,
-  getAccessToken as pasuGetAccessToken,
-  ServerError as PasuServerError,
-} from "./pasu-auth";
+  evaluate as dambiEvaluate,
+  getAccessToken as dambiGetAccessToken,
+  ServerError as DambiServerError,
+} from "./dambi-auth";
 import { getCurrentUserId } from "./dashboard/current-user";
 import {
   collectActionMetas,
@@ -99,7 +99,7 @@ interface DecisionOptions {
   onAwaitingUser?: () => void;
   /** 표시 전용 advisory 사이드이펙트. 라이브 위험(fail|warn) verdict 에
    *  fire-and-forget 으로 호출. `ok`/결정 흐름·confirm 창을 절대 건드리지 않고
-   *  `pasu:verdict-decision` 도 발신하지 않는다. 구현(데스크톱 알림)은 호출자
+   *  `dambi:verdict-decision` 도 발신하지 않는다. 구현(데스크톱 알림)은 호출자
    *  (index.ts)가 소유 — orchestrator 는 추상 이벤트만 방출(순환 import 회피). */
   onRiskyVerdict?: (args: {
     scenario: "tx" | "approval";
@@ -237,7 +237,7 @@ async function decideInner(
     const { verdict } = lifecycle;
 
     // 표시 전용 advisory 데스크톱 알림 — 라이브 위험(fail|warn) verdict 에서만.
-    // fire-and-forget: `ok`·confirm 창·`pasu:verdict-decision` 채널 어디에도
+    // fire-and-forget: `ok`·confirm 창·`dambi:verdict-decision` 채널 어디에도
     // 영향을 주지 않는다. decideMessage 는 index.ts 의 라이브 호출부 한 곳에서만
     // 불리고(시뮬레이션 핸들러는 여기 도달 안 함) onRiskyVerdict 콜백도 그곳에서만
     // 주입되므로, 시뮬레이션 경로에선 구조적으로 발사되지 않는다.
@@ -339,7 +339,7 @@ async function decideInner(
           data: message.data.transaction.data,
         }
       : undefined;
-    logAt("[Pasu] decideMessage threw", {
+    logAt("[Dambi] decideMessage threw", {
       requestId: message.requestId,
       hostname: message.data.hostname,
       type: pending.type,
@@ -360,7 +360,7 @@ async function decideInner(
 }
 
 /**
- * TEST-ONLY verdict tap. When `chrome.storage.local["pasu_e2e_tap"]` is set,
+ * TEST-ONLY verdict tap. When `chrome.storage.local["dambi_e2e_tap"]` is set,
  * writes one row per venue verdict keyed by requestId — captured at
  * decision-time (before any warn modal), so a high-volume policy e2e can read
  * every verdict uniformly. Additive, default-off, prod no-op.
@@ -371,16 +371,16 @@ async function tapVenueVerdict(
   verdict: VerdictDto,
 ): Promise<void> {
   try {
-    const flag = (await Browser.storage.local.get("pasu_e2e_tap")) as Record<
+    const flag = (await Browser.storage.local.get("dambi_e2e_tap")) as Record<
       string,
       unknown
     >;
-    if (!flag["pasu_e2e_tap"]) return;
+    if (!flag["dambi_e2e_tap"]) return;
     // Key by the resolved MASTER (the e2e gives each case a unique synthetic
     // master), not requestId — identical order bodies (differing only by
     // vaultAddress) hash to the SAME requestId, which would clobber the row.
     await Browser.storage.local.set({
-      [`pasu:e2e-tap:${master ?? requestId}`]: {
+      [`dambi:e2e-tap:${master ?? requestId}`]: {
         master: master ?? null,
         requestId,
         kind: verdict.kind,
@@ -428,7 +428,7 @@ async function appendAudit(
   void appendVerdictsForMessage(message, verdict, userDecision)
     .then(() => refreshBadge())
     .catch((err) => {
-      console.warn("[Pasu] verdict-storage append / badge refresh failed", err);
+      console.warn("[Dambi] verdict-storage append / badge refresh failed", err);
     });
 }
 
@@ -533,7 +533,7 @@ function logIncoming(message: Message): void {
 
   if (isTransaction(message)) {
     const data = message.data.transaction.data;
-    console.info("[Pasu] tx.incoming", {
+    console.info("[Dambi] tx.incoming", {
       ...common,
       chainId: message.data.chainId,
       to: message.data.transaction.to,
@@ -548,7 +548,7 @@ function logIncoming(message: Message): void {
 
   if (isTypedSignature(message)) {
     const typedData = normalizeTypedDataPayload(message.data.typedData);
-    console.info("[Pasu] typed-sig.incoming", {
+    console.info("[Dambi] typed-sig.incoming", {
       ...common,
       chainId: message.data.chainId,
       address: message.data.address,
@@ -559,7 +559,7 @@ function logIncoming(message: Message): void {
   }
 
   if (isUntypedSignature(message)) {
-    console.info("[Pasu] personal-sign.incoming", {
+    console.info("[Dambi] personal-sign.incoming", {
       ...common,
       messageLen: message.data.message.length,
       message: message.data.message,
@@ -583,7 +583,7 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 
   if (isTransaction(message)) {
     const data = message.data.transaction.data;
-    console.info("[Pasu] tx", {
+    console.info("[Dambi] tx", {
       ...common,
       chainId: message.data.chainId,
       to: message.data.transaction.to,
@@ -596,7 +596,7 @@ function logDecision(message: Message, verdict: VerdictDto): void {
 
   if (isTypedSignature(message)) {
     const typedData = normalizeTypedDataPayload(message.data.typedData);
-    console.info("[Pasu] typed-sig", {
+    console.info("[Dambi] typed-sig", {
       ...common,
       chainId: message.data.chainId,
       primaryType: typedData?.primaryType,
@@ -605,7 +605,7 @@ function logDecision(message: Message, verdict: VerdictDto): void {
   }
 
   if (isUntypedSignature(message)) {
-    console.info("[Pasu] personal-sign", {
+    console.info("[Dambi] personal-sign", {
       ...common,
       messageLen: message.data.message.length,
     });
@@ -663,7 +663,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       });
       markPhase(message.requestId, "route_done", { outcome: v3Outcome.kind });
       declarativeV3Meta = auditFromDeclarativeV3Outcome(v3Outcome, nature);
-      console.info("[Pasu] declarative-route-v3", {
+      console.info("[Dambi] declarative-route-v3", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         outcome: v3Outcome.kind,
@@ -694,12 +694,12 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
       // Pretty-printed dump so the decoded ActionBody[] is human-readable in DevTools.
       if (v3Outcome.kind === "hit") {
         console.info(
-          `[Pasu] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
+          `[Dambi] decoded ActionBody[] (${v3Outcome.value.actions.length})\n` +
             JSON.stringify(v3Outcome.value.actions, null, 2),
         );
       }
     } catch (err) {
-      console.warn("[Pasu] declarative-route-v3 threw", {
+      console.warn("[Dambi] declarative-route-v3 threw", {
         requestId: message.requestId,
         err: err instanceof Error ? err.message : String(err),
       });
@@ -724,7 +724,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
   if (v3Outcome && v3Outcome.kind === "hit" && isTransaction(message)) {
     const v2 = await tryV2VerdictPath(message, v3Outcome.value.actions);
     if (v2.verdict) {
-      console.info("[Pasu] declarative-verdict", {
+      console.info("[Dambi] declarative-verdict", {
         requestId: message.requestId,
         verdictSource: "declarative-v2",
         verdict: v2.verdict.kind,
@@ -749,7 +749,7 @@ async function runLifecycle(message: Message): Promise<LifecycleResult> {
 
   // FAIL-CLOSED tail: no decoder produced an evaluable verdict. Emit a warn
   // verdict requiring explicit user approval rather than waiving the request through.
-  console.info("[Pasu] declarative-verdict", {
+  console.info("[Dambi] declarative-verdict", {
     requestId: message.requestId,
     verdictSource: "fail_closed",
     verdict: "warn",
@@ -782,7 +782,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   let meta: Record<string, unknown>;
   try {
     ({ action, meta } = hlOrderToAction(message.data));
-    console.info("[Pasu] HL /exchange parsed →", {
+    console.info("[Dambi] HL /exchange parsed →", {
       requestId: message.requestId,
       venue: message.data.venue,
       wireKind: message.data.hlAction?.kind,
@@ -792,7 +792,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
     });
   } catch (err) {
     // Malformed order wire → deny-closed (do NOT let an unparseable order pass).
-    console.warn("[Pasu] venue-order convert threw", {
+    console.warn("[Dambi] venue-order convert threw", {
       requestId: message.requestId,
       err: err instanceof Error ? err.message : String(err),
     });
@@ -824,7 +824,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   // defaults.enabled 전역 폴백으로 평가된 것(= 토글이 이 주문에 안 먹은 경우).
   // master=null(주소 미해석)이나 venueUid="anonymous"(미로그인)면 대개 여기로 샌다.
   const registered = await isWalletRegistered(venueUid, evalAddress);
-  console.info("[Pasu] HL venue policy-set resolved", {
+  console.info("[Dambi] HL venue policy-set resolved", {
     requestId: message.requestId,
     venueUid,
     master,
@@ -915,7 +915,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       account_leverage,
       order_enrichment,
     });
-    console.info("[Pasu] venue-order-verdict", {
+    console.info("[Dambi] venue-order-verdict", {
       requestId: message.requestId,
       venue: message.data.venue,
       verdict: verdict.kind,
@@ -923,7 +923,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
       account_leverage,
       matched: verdict.matched?.map((m) => ({ id: m.policy_id, severity: m.severity })) ?? [],
     });
-    // TEST-ONLY verdict tap (storage flag `pasu_e2e_tap`): record this venue
+    // TEST-ONLY verdict tap (storage flag `dambi_e2e_tap`): record this venue
     // verdict at decision-time — BEFORE the warn modal blocks `decideMessage` —
     // so a high-volume e2e reads every verdict (pass/warn/fail) uniformly from
     // storage without driving the modal. Additive + default-off (no key in
@@ -945,7 +945,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
         results,
       }).catch((err) =>
         console.warn(
-          "[Pasu] diagnosis-context append failed (venue order)",
+          "[Dambi] diagnosis-context append failed (venue order)",
           err instanceof Error ? err.message : err,
         ),
       );
@@ -963,7 +963,7 @@ async function venueOrderLifecycle(message: Message): Promise<LifecycleResult> {
   } catch (err) {
     // A plan/dispatch/evaluate throw is a fault → deny-closed (a flaky
     // WASM/RPC call must NOT waive a venue order through).
-    console.warn("[Pasu] venue-order-verdict threw", {
+    console.warn("[Dambi] venue-order-verdict threw", {
       requestId: message.requestId,
       err: err instanceof Error ? err.message : String(err),
     });
@@ -1033,7 +1033,7 @@ function leafBodies(body: unknown): unknown[] {
 
 /**
  * Emit a signature-tailored, readable summary of a decoded off-chain payload to
- * the Pasu DevTools console: the EIP-712 `domain` / `primaryType` that was
+ * the Dambi DevTools console: the EIP-712 `domain` / `primaryType` that was
  * signed, the routing decoder, and one `domain/action  field=value …` line per
  * decoded (leaf) `ActionBody`. Complements the full JSON dump.
  */
@@ -1051,7 +1051,7 @@ function logParsedSignature(message: Message, routed: { actions: unknown[]; deco
     return `  #${i} ${b?.domain ?? "?"}/${b?.action ?? "?"}  ${summarizeBodyFields(body)}`;
   });
   console.info(
-    `[Pasu] off-chain signature parsed — ${domainName} / ${primaryType} ` +
+    `[Dambi] off-chain signature parsed — ${domainName} / ${primaryType} ` +
       `(${leaves.length} action${leaves.length === 1 ? "" : "s"}) via ${routed.decoderId}\n` +
       lines.join("\n"),
   );
@@ -1085,7 +1085,7 @@ async function typedSignatureLifecycle(
       submittedAt: Math.floor(Date.now() / 1000),
     });
   } catch (err) {
-    console.warn("[Pasu] typed-sig route threw", {
+    console.warn("[Dambi] typed-sig route threw", {
       requestId: message.requestId,
       err: err instanceof Error ? err.message : String(err),
     });
@@ -1109,7 +1109,7 @@ async function typedSignatureLifecycle(
 
   logParsedSignature(message, routed);
   console.info(
-    `[Pasu] decoded ActionBody[] (${routed.actions.length})\n` +
+    `[Dambi] decoded ActionBody[] (${routed.actions.length})\n` +
       JSON.stringify(routed.actions, null, 2),
   );
   const declarativeV3: DeclarativeV3AuditMeta = {
@@ -1200,7 +1200,7 @@ async function typedSignatureLifecycle(
       // A plan/dispatch/evaluate throw makes this leg unevaluable. Record the
       // fault but keep aggregating siblings — a sibling's computed Fail must not
       // be demoted to an approvable warn. Resolution below honours deny-overrides.
-      console.warn("[Pasu] typed-sig-verdict leg threw", {
+      console.warn("[Dambi] typed-sig-verdict leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
@@ -1223,7 +1223,7 @@ async function typedSignatureLifecycle(
       declarativeV3: { outcome: "fault", nature, reason: "evaluate_failed" },
     };
   }
-  console.info("[Pasu] typed-sig-verdict", {
+  console.info("[Dambi] typed-sig-verdict", {
     requestId: message.requestId,
     verdictSource: "declarative-v2",
     verdict: aggregate.kind,
@@ -1325,7 +1325,7 @@ async function evaluateBodyTree(
         results,
       }).catch((err) =>
         console.warn(
-          "[Pasu] diagnosis-context append failed",
+          "[Dambi] diagnosis-context append failed",
           err instanceof Error ? err.message : err,
         ),
       );
@@ -1334,7 +1334,7 @@ async function evaluateBodyTree(
     // A nested batch position that decoded to nothing — contribute a warn so the
     // parent batch cannot aggregate to PASS on its legible siblings alone;
     // a sibling DENY still outranks this warn via deny-overrides.
-    console.debug("[Pasu] per-child unknown leg → partial-decode warn", {
+    console.debug("[Dambi] per-child unknown leg → partial-decode warn", {
       requestId,
     });
     verdicts.push(partialDecodeVerdict());
@@ -1455,7 +1455,7 @@ async function tryV2VerdictPath(
       // A plan/dispatch throw makes this leg unevaluable. Record the fault but
       // keep evaluating siblings — a sibling's computed Fail must not be demoted
       // to an approvable warn. Resolution below honours deny-overrides.
-      console.warn("[Pasu] declarative-verdict-v2 leg threw", {
+      console.warn("[Dambi] declarative-verdict-v2 leg threw", {
         requestId: message.requestId,
         chainId: message.data.chainId,
         err: err instanceof Error ? err.message : String(err),
@@ -1726,7 +1726,7 @@ async function openVerdictWindow(
       focused: true,
     });
   } catch (err) {
-    console.error("[Pasu] openVerdictWindow failed", {
+    console.error("[Dambi] openVerdictWindow failed", {
       requestId,
       hostname,
       verdict: verdict.kind,
@@ -1795,7 +1795,7 @@ async function openVerdictWindowAndAwait(
         requestId?: string;
         ok?: boolean;
       } | null;
-      if (!m || m.type !== "pasu:verdict-decision") return;
+      if (!m || m.type !== "dambi:verdict-decision") return;
       if (m.requestId !== requestId) return;
       settle(!!m.ok);
     };
@@ -1870,7 +1870,7 @@ async function recordSimulationOnServer(input: {
   readonly value?: string;
 }): Promise<void> {
   // Skip silently for signed-out users — recording is opt-in via login.
-  const hasToken = await pasuGetAccessToken().catch(() => null);
+  const hasToken = await dambiGetAccessToken().catch(() => null);
   if (!hasToken) return;
 
   // Build the server's `EvaluateRequest` shape. `eval_context` fields must match
@@ -1891,7 +1891,7 @@ async function recordSimulationOnServer(input: {
   };
 
   try {
-    const response = await pasuEvaluate({
+    const response = await dambiEvaluate({
       wallet_id: walletId,
       envelopes: [envelope as unknown as Record<string, unknown>],
       eval_context: evalContext,
@@ -1927,18 +1927,18 @@ async function recordSimulationOnServer(input: {
         // Local storage failure doesn't affect the verdict; the server retains the
         // canonical delta and the dashboard can fetch it directly.
         console.warn(
-          "[Pasu] state-delta local append failed",
+          "[Dambi] state-delta local append failed",
           storageErr instanceof Error ? storageErr.message : storageErr,
         );
       }
     }
   } catch (err) {
-    if (err instanceof PasuServerError && err.isUnauthorized) {
+    if (err instanceof DambiServerError && err.isUnauthorized) {
       // Token expired between getAccessToken() and the call — swallow.
-      console.debug("[Pasu] record skipped: server returned 401");
+      console.debug("[Dambi] record skipped: server returned 401");
       return;
     }
-    console.warn("[Pasu] record on server failed (non-fatal)", {
+    console.warn("[Dambi] record on server failed (non-fatal)", {
       chain: input.tx.chain_id,
       from: input.tx.from,
       err: err instanceof Error ? err.message : String(err),

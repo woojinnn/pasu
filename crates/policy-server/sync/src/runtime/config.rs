@@ -1,4 +1,4 @@
-//! Runtime sync configuration loaded from `pasu-sync.toml`.
+//! Runtime sync configuration loaded from `dambi-sync.toml`.
 //!
 //! The file configures RPC failover, oracle catalogs, and venue API endpoints.
 //! Environment variable references in the form `${VAR}` are expanded before

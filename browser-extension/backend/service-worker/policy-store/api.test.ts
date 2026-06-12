@@ -47,7 +47,7 @@ beforeEach(() => mocks.localStore.clear());
 describe("ps2 message API", () => {
   it("isPs2Request gates on the ps2: prefix", () => {
     expect(isPs2Request({ type: "ps2:get-library" })).toBe(true);
-    expect(isPs2Request({ type: "pasu-list-wallets" })).toBe(false);
+    expect(isPs2Request({ type: "dambi-list-wallets" })).toBe(false);
     expect(isPs2Request({})).toBe(false);
   });
 

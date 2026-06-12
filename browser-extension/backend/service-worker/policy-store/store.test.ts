@@ -130,7 +130,7 @@ describe("policy-store core", () => {
     await mutate("u1", (d) => {
       d.wallets.byAddress["0xabc"].bindings["bind::x"].enabled = false;
     });
-    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policy-store bindings toggled", {
+    expect(infoSpy).toHaveBeenCalledWith("[Dambi] policy-store bindings toggled", {
       uid: "u1",
       toggles: [{ address: "0xabc", defId: "def::a", enabled: false }],
     });
@@ -153,7 +153,7 @@ describe("policy-store core", () => {
     await mutate("u1", (d) => {
       d.wallets.byAddress["0xabc"].packageEnabled["pkg::p"] = false;
     });
-    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policy-store package toggled", {
+    expect(infoSpy).toHaveBeenCalledWith("[Dambi] policy-store package toggled", {
       uid: "u1",
       pkgToggles: [{ address: "0xabc", packageId: "pkg::p", enabled: false }],
     });
@@ -176,7 +176,7 @@ describe("policy-store core", () => {
     await mutate("u1", (d) => {
       delete d.wallets.byAddress["0xabc"].bindings["bind::x"];
     });
-    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policy-store bindings toggled", {
+    expect(infoSpy).toHaveBeenCalledWith("[Dambi] policy-store bindings toggled", {
       uid: "u1",
       toggles: [{ address: "0xabc", defId: "def::a", enabled: false }],
     });
@@ -199,7 +199,7 @@ describe("policy-store core", () => {
     await mutate("u1", (d) => {
       d.wallets.byAddress["0xabc"].bindings["bind::x"].params = { x: 1 };
     });
-    expect(infoSpy).not.toHaveBeenCalledWith("[Pasu] policy-store bindings toggled", expect.anything());
+    expect(infoSpy).not.toHaveBeenCalledWith("[Dambi] policy-store bindings toggled", expect.anything());
     infoSpy.mockRestore();
   });
 });

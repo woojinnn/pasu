@@ -1,5 +1,5 @@
 /** popup의 패키지 카드 파생(순수) — ps2 라이브러리 + 활성 지갑 상태 →
- *  표시용 패키지/멤버 구조. store.js(plain JS)가 window.PasuPs2로 사용한다. */
+ *  표시용 패키지/멤버 구조. store.js(plain JS)가 window.DambiPs2로 사용한다. */
 
 interface LibDoc {
   defs: Record<

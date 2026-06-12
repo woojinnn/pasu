@@ -20,7 +20,7 @@ import {
 
 /** 라이브러리 정의 드래그 페이로드 — 라이브러리 폴더 드롭 = 소속 변경,
  *  지갑 패키지 드롭 = 그 지갑에 바인딩. */
-export const DRAG_DEF_MIME = "application/x-pasu-def-id";
+export const DRAG_DEF_MIME = "application/x-dambi-def-id";
 
 const SOURCE_LABEL: Record<PolicyDef["source"], string> = {
   builtin: "내장",

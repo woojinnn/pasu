@@ -18,7 +18,7 @@
  *     demand, so "be watching the console at the exact moment" is not viable.
  *
  * Read the captured snapshots from the SW DevTools console with:
- *   `chrome.storage.local.get("pasu_diag_timeouts").then(console.log)`
+ *   `chrome.storage.local.get("dambi_diag_timeouts").then(console.log)`
  */
 
 export interface FetchEvent {
@@ -104,7 +104,7 @@ export function clearPhase(requestId: string): void {
   phaseTraces.delete(requestId);
 }
 
-const STORAGE_KEY = "pasu_diag_timeouts";
+const STORAGE_KEY = "dambi_diag_timeouts";
 const MAX_SNAPSHOTS = 12;
 
 export interface TimeoutSnapshot {
@@ -175,14 +175,14 @@ export async function captureTimeout(
   };
 
   console.warn(
-    "[Pasu] ⏱️ __engine::timeout DIAGNOSTICS (also saved to storage)",
+    "[Dambi] ⏱️ __engine::timeout DIAGNOSTICS (also saved to storage)",
     snapshot,
   );
 
   const storage = localStorageArea();
   if (!storage) {
     console.warn(
-      "[Pasu] no storage area available — timeout diagnostics logged to console only",
+      "[Dambi] no storage area available — timeout diagnostics logged to console only",
     );
     return;
   }
@@ -196,9 +196,9 @@ export async function captureTimeout(
     while (list.length > MAX_SNAPSHOTS) list.shift();
     await storage.set({ [STORAGE_KEY]: list });
     console.warn(
-      `[Pasu] timeout diagnostics saved → chrome.storage.local["${STORAGE_KEY}"] (${list.length} stored). Read with: chrome.storage.local.get("${STORAGE_KEY}").then(console.log)`,
+      `[Dambi] timeout diagnostics saved → chrome.storage.local["${STORAGE_KEY}"] (${list.length} stored). Read with: chrome.storage.local.get("${STORAGE_KEY}").then(console.log)`,
     );
   } catch (err) {
-    console.warn("[Pasu] failed to persist timeout diagnostics", err);
+    console.warn("[Dambi] failed to persist timeout diagnostics", err);
   }
 }

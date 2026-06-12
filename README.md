@@ -1,6 +1,6 @@
-# pasu
+# dambi
 
-Wallet-side transaction & signature policy engine. **pasu** intercepts wallet
+Wallet-side transaction & signature policy engine. **dambi** intercepts wallet
 RPC in the browser, decodes each transaction or EIP-712 signature into a typed
 semantic **action**, and evaluates that action against a Cedar policy set —
 warning or blocking before the user signs.
@@ -63,7 +63,7 @@ documented until it is actually deleted.
 |------|------|
 | `browser-extension/` | Chrome MV3 / Firefox MV2 extension: service worker (eval), content scripts, popup, confirm page, and the options-page **dashboard**. See [its README](browser-extension/README.md). |
 | `browser-extension/dashboard/` | Standalone Vite + React policy-management UI, also built into the extension's options page. See [its README](browser-extension/dashboard/README.md). |
-| `browser-extension/sdk/` | The `@pasu/sdk` extension client the dashboard talks to. |
+| `browser-extension/sdk/` | The `@dambi/sdk` extension client the dashboard talks to. |
 | `crates/policy-engine/` | Core runtime: the `ActionBody` → Cedar lowering, the Cedar `PolicyEngine` wrapper, and bundled schema composition. |
 | `crates/policy-engine-wasm/` | `wasm-bindgen` bridge that exposes the engine (+ typed `.d.ts`) to the extension. |
 | `crates/policy-server/` | Stateful backend. Sub-crates: `server/` (Axum HTTP), `db/`, `sync/`, and the `asset-model/{state,action,transition}` reducer. See [local deploy README](crates/policy-server/server/deploy/local/README.md). |
@@ -157,7 +157,7 @@ yarn build:ext         # chrome (webpack) + dashboard (vite) → dist/chrome/
 yarn dev:chrome        # webpack --watch; run `cd dashboard && yarn dev` alongside for the dashboard
 ```
 
-Build-time config is via env vars — most importantly `PASU_SERVER_URL` (the
+Build-time config is via env vars — most importantly `DAMBI_SERVER_URL` (the
 policy-server the extension calls; default `http://127.0.0.1:8788`) and
 `REGISTRY_BASE_URL`. See [`browser-extension/README.md`](browser-extension/README.md)
 for the full matrix, load instructions, and the local-server workflow.

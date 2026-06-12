@@ -1,4 +1,4 @@
-// scopeball default v2 policy — demand signal: irreversible-typo-fatfinger-send
+// dambi default v2 policy — demand signal: irreversible-typo-fatfinger-send
 // (Send Safety Set). Coinbase/MetaMask/ENS/Bitdeer all warn that a confirmed
 // transfer is irreversible; the most certain way to lose funds permanently is a
 // send to the burn / zero address.

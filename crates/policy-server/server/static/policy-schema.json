@@ -1,5 +1,5 @@
 {
-  "$schema": "pasu/policy-schema/v1",
+  "$schema": "dambi/policy-schema/v1",
   "actions": [
     {
       "id": "Amm::Swap",

@@ -173,7 +173,7 @@ export class HlInfoClient {
   constructor(private readonly options: HlInfoClientOptions = {}) {}
 
   private base(): string {
-    // Test override (chrome.storage `pasu_hl_info_base`) wins so the venue
+    // Test override (chrome.storage `dambi_hl_info_base`) wins so the venue
     // enrichment can be pointed at a local stub; otherwise ctor option, then
     // mainnet. The override is a module global (set at SW boot / on change).
     return runtimeInfoBase ?? this.options.baseUrl ?? HL_INFO_MAINNET;
@@ -445,14 +445,14 @@ function extractClearinghouseState(parsed: unknown): ClearinghouseState {
 
 /**
  * TEST-ONLY runtime override of the venue `/info` base URL, read from
- * `chrome.storage.local["pasu_hl_info_base"]` (mirrors the `pasu_server_url`
- * pattern in `pasu-auth/client.ts`). Points the order-enrichment fetches at a
+ * `chrome.storage.local["dambi_hl_info_base"]` (mirrors the `dambi_server_url`
+ * pattern in `dambi-auth/client.ts`). Points the order-enrichment fetches at a
  * local stub so the B-plane (enrichment-driven) policy cases can be tested at
  * exact thresholds instead of depending on drifting live HL accounts.
  * DEFAULT-OFF + prod-safe: the key never exists in production → mainnet.
  */
 let runtimeInfoBase: string | null = null;
-const INFO_BASE_KEY = "pasu_hl_info_base";
+const INFO_BASE_KEY = "dambi_hl_info_base";
 if (typeof chrome !== "undefined" && chrome.storage?.local) {
   void chrome.storage.local.get(INFO_BASE_KEY).then((r) => {
     const v = (r as Record<string, unknown>)[INFO_BASE_KEY];

@@ -1,6 +1,6 @@
 //! `BridgeAction` — cross-chain bridge (the source-chain leg the user signs).
 //!
-//! ScopeBall only ever sees the source-chain `send`/`deposit` the wallet signs;
+//! Dambi only ever sees the source-chain `send`/`deposit` the wallet signs;
 //! the destination fill is executed by a relayer/sequencer, never the user. So
 //! every protectable signal (destination recipient, destination chain, output
 //! token/amount) must be carried here, decoded from the source calldata.

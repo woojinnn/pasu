@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: LP-02 (commit / approve on a
+// dambi default v2 policy — explorer id: LP-02 (commit / approve on a
 // launchpad platform outside the personal allowlist).
 //
 // LITERAL SET-MEMBERSHIP. Fake clones of legitimate launchpads (e.g. PinkSale)

@@ -94,7 +94,7 @@ AGENTS.md
 crates/integration-tests/
 
 # Server runtime scratch dir (SQLite stores, per-user pools) — origin/main.
-.pasu-runtime/
+.dambi-runtime/
 
 # Extension signing key — never commit
 *.pem
@@ -144,4 +144,4 @@ browser-extension/package-lock.json
 /field-explorer.html
 
 # local runtime scratch (sqlite, sockets) — never tracked
-.scopeball-runtime/
+.dambi-runtime/

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AIR-07 (claiming a token the wallet
+// dambi default v2 policy — explorer id: AIR-07 (claiming a token the wallet
 // has never held and that no external token list recognises).
 //
 // METHOD-BACKED (state read AND external feed; sv = PART). Held-history alone is

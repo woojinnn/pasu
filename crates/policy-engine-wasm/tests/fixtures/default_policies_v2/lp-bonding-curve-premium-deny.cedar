@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: LP-04 (bonding-curve buy at an
+// dambi default v2 policy — explorer id: LP-04 (bonding-curve buy at an
 // excessive price premium).
 //
 // On pump.fun-style bonding-curve launches, sniper bots front-run and inflate

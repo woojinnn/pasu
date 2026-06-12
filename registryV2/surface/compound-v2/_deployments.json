@@ -172,7 +172,7 @@
       "chainId": 1,
       "address": "0xc0da02939e1441f497fd74f78ce7decb17b66529",
       "decision": "exclude",
-      "reason": "DEFERRED: governance voting + proposal lifecycle (castVote*/propose*/queue/execute/cancel). No fund- or permission-delegation surface and no governance-vote ActionBody domain yet; the Pasu-relevant primitive (COMP voting-power delegation) IS covered via the COMP token. Follow-up: governance-domain round."
+      "reason": "DEFERRED: governance voting + proposal lifecycle (castVote*/propose*/queue/execute/cancel). No fund- or permission-delegation surface and no governance-vote ActionBody domain yet; the Dambi-relevant primitive (COMP voting-power delegation) IS covered via the COMP token. Follow-up: governance-domain round."
     },
     {
       "name": "Timelock",

@@ -16,7 +16,7 @@ export async function reportExecutionOutcome(
   try {
     await appendExecutionReport(report);
   } catch (err) {
-    console.warn("[Pasu] execution report storage failed", {
+    console.warn("[Dambi] execution report storage failed", {
       err: err instanceof Error ? err.message : String(err),
     });
   }

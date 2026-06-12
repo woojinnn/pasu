@@ -131,7 +131,7 @@ let registered = false;
 export function registerMakeParamContextMenu(): void {
   if (registered) return;
   Blockly.ContextMenuRegistry.registry.register({
-    id: "pasu_make_param",
+    id: "dambi_make_param",
     weight: 0,
     scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
     displayText: () => "파라미터로 만들기…",

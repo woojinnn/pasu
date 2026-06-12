@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: PERP-04 (funding is heavily against
+// dambi default v2 policy — explorer id: PERP-04 (funding is heavily against
 // your entry direction).
 //
 // A position can be directionally right and still bleed: an adverse funding rate

@@ -46,7 +46,7 @@ export async function migrateAdapterLoaderStorageKey(): Promise<AdapterLoaderMig
   if (newVal === undefined) {
     await Browser.storage.local.set({ [NEW_KEY]: oldVal });
     await Browser.storage.local.remove(OLD_KEY);
-    console.info("[Pasu] adapter-loader storage migration: copied", {
+    console.info("[Dambi] adapter-loader storage migration: copied", {
       bundleCount: Array.isArray(oldVal) ? oldVal.length : "unknown",
     });
     return { migrated: true, reason: "copied" };
@@ -55,7 +55,7 @@ export async function migrateAdapterLoaderStorageKey(): Promise<AdapterLoaderMig
   // Both exist — new key wins; safe to drop old.
   await Browser.storage.local.remove(OLD_KEY);
   console.info(
-    "[Pasu] adapter-loader storage migration: new key exists, dropping old",
+    "[Dambi] adapter-loader storage migration: new key exists, dropping old",
   );
   return { migrated: false, reason: "new_exists" };
 }

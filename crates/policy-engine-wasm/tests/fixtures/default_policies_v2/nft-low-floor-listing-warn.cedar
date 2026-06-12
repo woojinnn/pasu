@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: NFT-02 (public listing far below the
+// dambi default v2 policy — explorer id: NFT-02 (public listing far below the
 // collection floor).
 //
 // A fat-fingered or tricked public listing priced well under the collection

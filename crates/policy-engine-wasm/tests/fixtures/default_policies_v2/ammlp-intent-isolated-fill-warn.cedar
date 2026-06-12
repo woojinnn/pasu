@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AMMLP-6 (loose buy_min with no
+// dambi default v2 policy — explorer id: AMMLP-6 (loose buy_min with no
 // solver competition → isolated, filler-favourable fill).
 //
 // Intent orders rely on solver competition for a good price; with near-zero

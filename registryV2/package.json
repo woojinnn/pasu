@@ -1,7 +1,7 @@
 {
-  "name": "pasu-registryV2",
+  "name": "dambi-registryV2",
   "version": "0.3.0",
-  "description": "Pasu Adapter Loader registry v3 — PDF FSM spec (hierarchical emit.body + live_inputs.source)",
+  "description": "Dambi Adapter Loader registry v3 — PDF FSM spec (hierarchical emit.body + live_inputs.source)",
   "private": true,
   "type": "module",
   "scripts": {

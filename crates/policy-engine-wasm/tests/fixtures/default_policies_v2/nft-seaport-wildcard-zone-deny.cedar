@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: TOKENNFT-3 (Seaport criteria=any /
+// dambi default v2 policy — explorer id: TOKENNFT-3 (Seaport criteria=any /
 // untrusted-zone wildcard order).
 //
 // A Seaport collection-offer / criteria order can leave `offer`/`consideration`

@@ -112,7 +112,7 @@ impl ServerConfig {
             allow_private_network: true,
             database_url: env::var("TEST_DATABASE_URL")
                 .ok()
-                .or_else(|| Some("postgres://pasu:pasu@127.0.0.1:5432/pasu_test".to_owned())),
+                .or_else(|| Some("postgres://dambi:dambi@127.0.0.1:5432/dambi_test".to_owned())),
             redis_url: None,
             run_migrations_on_startup: true,
             require_sync_config: false,

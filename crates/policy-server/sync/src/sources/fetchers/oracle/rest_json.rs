@@ -54,7 +54,7 @@ impl RestJsonOracleFetcher {
             name: name.into(),
             client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(cfg.timeout_sec))
-                .user_agent(concat!("pasu-sync/", env!("CARGO_PKG_VERSION")))
+                .user_agent(concat!("dambi-sync/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .expect("reqwest client init"),
             base_url: cfg.base_url.clone(),

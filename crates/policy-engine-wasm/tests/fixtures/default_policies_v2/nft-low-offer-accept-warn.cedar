@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: NFT-06 (accepting a collection offer
+// dambi default v2 policy — explorer id: NFT-06 (accepting a collection offer
 // well below the floor).
 //
 // Someone bids (a collection offer) on your NFT and you "accept" it — a flow

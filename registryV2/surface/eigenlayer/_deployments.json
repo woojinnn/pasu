@@ -12,7 +12,7 @@
       "address": "0x39053d51b77dc0d36036fc1fcc8cb819df8ef37a",
       "impl": "0xe7022a128acd4c6cad7aff6fa874d61f984bce75",
       "decision": "cover",
-      "reason": "user delegation + withdrawal surface: delegateTo / redelegate / undelegate / queueWithdrawals / completeQueuedWithdrawal(s) / registerAsOperator / modifyOperatorDetails / updateOperatorMetadataURI. Holds the staker->operator delegation + DelegationApproval EIP-712 grant. Pasu's core permission-delegation target."
+      "reason": "user delegation + withdrawal surface: delegateTo / redelegate / undelegate / queueWithdrawals / completeQueuedWithdrawal(s) / registerAsOperator / modifyOperatorDetails / updateOperatorMetadataURI. Holds the staker->operator delegation + DelegationApproval EIP-712 grant. Dambi's core permission-delegation target."
     },
     {
       "name": "StrategyManager (proxy)",
@@ -52,7 +52,7 @@
       "address": "0x25e5f8b1e7adf44518d35d5b2271f114e081f0e5",
       "impl": "0x36dd260abf606172875e6b5b7a96b435dc74eed2",
       "decision": "cover",
-      "reason": "NEW post-ELIP-002 contract. PERMISSION-DELEGATION primitive contract: setAppointee / addPendingAdmin / acceptAdmin / removeAdmin / removeAppointee. Grants third parties scoped (selector-level) call rights over an account's EigenLayer actions. Pasu's raison d'etre — always cover."
+      "reason": "NEW post-ELIP-002 contract. PERMISSION-DELEGATION primitive contract: setAppointee / addPendingAdmin / acceptAdmin / removeAdmin / removeAppointee. Grants third parties scoped (selector-level) call rights over an account's EigenLayer actions. Dambi's raison d'etre — always cover."
     },
     {
       "name": "AVSDirectory (proxy)",

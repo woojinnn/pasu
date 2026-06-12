@@ -124,7 +124,7 @@ describe("detectPendingMigrations", () => {
     // Build one policy per field; assert every id ends up pending.
     // Import the constant through the same relative path the SW code
     // uses so the root tsconfig (which doesn't carry the dashboard's
-    // `@pasu/sdk` alias) still resolves it.
+    // `@dambi/sdk` alias) still resolves it.
     const { V0_KNOWN_FIELDS } = await import("../../../sdk/extension-client");
     const policies = V0_KNOWN_FIELDS.map((field, i) =>
       makePolicy(

@@ -1,6 +1,6 @@
-# pasu dashboard
+# dambi dashboard
 
-Web UI for managing policies in the pasu browser extension.
+Web UI for managing policies in the dambi browser extension.
 
 Standalone Vite app — runs as a regular web page at **http://127.0.0.1:5173**
 (the extension's content-script bridge is pinned to that origin in its
@@ -14,17 +14,17 @@ yarn install      # or npm install
 yarn dev          # → http://127.0.0.1:5173
 ```
 
-The pasu extension must be loaded as an unpacked extension in your
+The dambi extension must be loaded as an unpacked extension in your
 browser. See `../README.md` for that step. Without the extension installed
 and enabled, every SDK call times out after 5 seconds.
 
 ## Talking to the extension
 
 All communication goes through the SDK in `../sdk/extension-client.ts`
-(aliased as `@pasu/sdk` in `vite.config.ts`):
+(aliased as `@dambi/sdk` in `vite.config.ts`):
 
 ```ts
-import { createExtensionClient } from "@pasu/sdk";
+import { createExtensionClient } from "@dambi/sdk";
 
 const c = createExtensionClient();
 await c.ping();                                  // handshake → { version: 1 }

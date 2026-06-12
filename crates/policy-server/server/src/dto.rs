@@ -2,7 +2,7 @@
 //!
 //! These are the JSON request/response shapes the browser extension and the
 //! backend agree on. They **match + extend** the legacy Node.js
-//! `pasu.evaluate_v3` contract (`wallet_id` / `envelopes` / `eval_context`
+//! `dambi.evaluate_v3` contract (`wallet_id` / `envelopes` / `eval_context`
 //! → `policyRequest{actions,state_before,deltas,state_after}` / `diagnostics`),
 //! adding two fields the new architecture needs:
 //!   - request `call_specs` — the enrichment calls the extension's
@@ -171,7 +171,7 @@ mod tests {
         }
     }
 
-    /// The wire field names match (+ extend) the `pasu.evaluate_v3`
+    /// The wire field names match (+ extend) the `dambi.evaluate_v3`
     /// contract: request `wallet_id`/`envelopes`/`eval_context`/`call_specs`,
     /// response `policyRequest{actions,state_before,deltas,state_after,results}`.
     #[test]

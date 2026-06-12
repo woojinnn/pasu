@@ -17,7 +17,7 @@ vault 의 `totalSupply()` (발행된 share 수) 가 0 이거나 극소수일 때
 "이 vault 가 지금 비어 있는가" 를 알 수 없다 — 이는 **체인 상태**(현재 supply/assets)에 달려 있다.
 `vault.share_state` 는 그 상태를 한 번 읽어 near-empty 휴리스틱으로 판정한 결과를 돌려준다. 정책
 `supply-empty-vault-inflation` (severity=warn) 은 `inflationRisk == true` 일 때만 사용자에게 경고한다.
-**시뮬레이션이 아니라 fact-fetch** — Pasu 의 no-simulation 모델과 일치한다.
+**시뮬레이션이 아니라 fact-fetch** — Dambi 의 no-simulation 모델과 일치한다.
 
 ## interface
 

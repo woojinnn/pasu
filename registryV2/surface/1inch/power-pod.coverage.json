@@ -3,7 +3,7 @@
   "chainId": 1,
   "address": "0xaccfac2339e16dc80c50d2fa81b5c2b049b4f947",
   "snapshot": "power-pod.abi.json",
-  "note": "delegate=cover (Permission::ProtocolAuthorization, kind delegate \u2014 staker delegates Unicorn Power; Pasu-core permission primitive). register/setDefaultFarm/updateBalances=exclude (delegatee share-token creation / admin / internal pod callback).",
+  "note": "delegate=cover (Permission::ProtocolAuthorization, kind delegate \u2014 staker delegates Unicorn Power; Dambi-core permission primitive). register/setDefaultFarm/updateBalances=exclude (delegatee share-token creation / admin / internal pod callback).",
   "functions": {
     "0x5c19a95c": {
       "name": "delegate",

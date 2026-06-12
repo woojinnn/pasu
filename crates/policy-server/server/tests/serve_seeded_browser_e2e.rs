@@ -12,7 +12,7 @@
 //! the safe side) independently.
 //!
 //! Run (Postgres on :5433):
-//!   TEST_DATABASE_URL=postgres://scopeball:scopeball@127.0.0.1:5433/scopeball \
+//!   TEST_DATABASE_URL=postgres://dambi:dambi@127.0.0.1:5433/dambi \
 //!     cargo test -p policy-server --test serve_seeded_browser_e2e \
 //!     serve_seeded_for_browser -- --ignored --nocapture
 
@@ -30,7 +30,7 @@ use policy_state::{ProtocolRef, WalletId, WalletState, WalletStore};
 use policy_sync::{Orchestrator, SyncConfig};
 
 const TEST_SECRET: &str = "test-secret-only-do-not-use-in-production-2026-05-31";
-const EMAIL: &str = "perp-browser-e2e@scopeball.dev";
+const EMAIL: &str = "perp-browser-e2e@dambi.dev";
 
 fn now_unix() -> i64 {
     std::time::SystemTime::now()

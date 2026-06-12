@@ -19,7 +19,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@pasu/sdk": ["../sdk/extension-client.ts"]
+      "@dambi/sdk": ["../sdk/extension-client.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

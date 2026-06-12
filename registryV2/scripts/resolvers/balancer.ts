@@ -4,7 +4,7 @@
  * Unlike Curve (one callkey per pool address), Balancer V3 routes every pool's
  * liquidity through ONE Router. `addLiquidityProportional` / `addLiquidityUnbalanced`
  * / `removeLiquidityProportional` carry the per-token `amounts[]` array but NOT the
- * token addresses (those live on the V3 Vault via `getPoolTokens`). Since Pasu
+ * token addresses (those live on the V3 Vault via `getPoolTokens`). Since Dambi
  * is static (no sim), this resolver bakes a `pool -> [token addresses]` map from the
  * reviewed `surface/balancer/_pool_universe.json` artifact (sourced from the Balancer
  * official API during P0) and surfaces it to the Router liquidity manifests as a

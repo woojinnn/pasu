@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: PERP-05 (market order with a loose
+// dambi default v2 policy — explorer id: PERP-05 (market order with a loose
 // slippage tolerance).
 //
 // On a thin book or through a liquidation band a market order fills far from

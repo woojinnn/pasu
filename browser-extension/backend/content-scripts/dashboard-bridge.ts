@@ -5,8 +5,8 @@ import Browser from "webextension-polyfill";
 // without an exact source tag match. The manifest's `matches` (localhost/127.0.0.1)
 // is the first gate; this is defense in depth so a non-dashboard localhost
 // page can't hijack the channel.
-const REQ_TAG = "pasu-dashboard";
-const RES_TAG = "pasu-extension";
+const REQ_TAG = "dambi-dashboard";
+const RES_TAG = "dambi-extension";
 const BROADCAST_ID = "__broadcast__";
 
 // Origins that the page bridge accepts. The manifest already restricts where
@@ -85,7 +85,7 @@ const WATCHED_KEYS = new Set([
   // Active-user discriminator — when this flips, all per-user reads change.
   "dashboard:current-user-id",
   // 익스텐션 로그인 토큰 — 계정 전환/로그아웃을 대시보드가 실시간 감지하도록 broadcast.
-  "pasu_jwt",
+  "dambi_jwt",
 ]);
 
 /**

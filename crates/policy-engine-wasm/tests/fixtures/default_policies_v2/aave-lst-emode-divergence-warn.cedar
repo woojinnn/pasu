@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-09 (looping a depeg-prone
+// dambi default v2 policy — explorer id: AAVE-09 (looping a depeg-prone
 // LST/LRT into a high-LTV eMode category).
 //
 // Composite: STATE LST classification + ORACLE divergence. Repeatedly borrowing

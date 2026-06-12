@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AMMLP-1 (remove_liquidity output
+// dambi default v2 policy — explorer id: AMMLP-1 (remove_liquidity output
 // redirected to an address other than the signer).
 //
 // Phishing UIs swap one field — `recipient` — for the attacker on LP exit, a

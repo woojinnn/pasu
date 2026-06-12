@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-11 (transfer to a known-
+// dambi default v2 policy — explorer id: GEN-11 (transfer to a known-
 // malicious / sanctioned recipient).
 //
 // Deny a transfer whose `recipient` is flagged by an external address blocklist

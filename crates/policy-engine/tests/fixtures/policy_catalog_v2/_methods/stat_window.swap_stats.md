@@ -11,11 +11,11 @@ status: existing (in method-catalog.json)
 ## purpose
 
 한 지갑(`owner`)의 **rolling-window 누적 swap 명목가치(USD)** 를 집계해 `context.custom.windowSwapUsd`
-(Decimal) 로 주입한다. Pasu 의 velocity-cap 정책 — "오늘 누적 swap 이 $25k 넘으면 warn" — 은
+(Decimal) 로 주입한다. Dambi 의 velocity-cap 정책 — "오늘 누적 swap 이 $25k 넘으면 warn" — 은
 *이번 한 건*의 크기가 아니라 **시간창 누적**에 한도를 건다 (Fireblocks TIMEFRAME-limit 류). 그런데
 calldata 정적 디코드는 *현재 액션 하나*만 본다 — 과거 N시간의 swap 이력은 calldata 에 없다. 따라서 이
 enrichment 가 지갑의 sliding window swap 이력을 합산해 누적 USD 를 돌려주고, 정책이 그 Decimal leaf 에
-한도를 비교한다. Pasu 의 no-simulation 모델과 일관되게 이것은 **이력 fetch(+합산)** 이지 트랜잭션
+한도를 비교한다. Dambi 의 no-simulation 모델과 일관되게 이것은 **이력 fetch(+합산)** 이지 트랜잭션
 시뮬레이션이 아니다.
 
 `stat_window.snapshot` 과 같은 windowed-aggregation 엔진을 공유하되, **action 태그로 필터**해 swap leg 만
@@ -91,7 +91,7 @@ oracle fetcher 를 재사용한다.
     블록범위 스캔. RPC provider 의 `getLogs` range 한도/latency 에 종속. **RpcRouter 에 `eth_getLogs`
     추가가 선결.**
   - **(c) 로컬 누적 ledger.** SW/서버가 *자신이 통과시킨* swap 을 per-owner 로 기록(가장 가벼움). 단,
-    Pasu 밖에서 서명된 swap(다른 지갑 UI)은 못 보는 **체계적 과소집계** — false-PASS 위험. 정직한
+    Dambi 밖에서 서명된 swap(다른 지갑 UI)은 못 보는 **체계적 과소집계** — false-PASS 위험. 정직한
     한계로 문서화 필수.
 - 어느 backend 든 산출물은 동일: `(owner, action="swap", window)` → 그 window 내 swap leg 의 목록
   `{token, rawAmount, ts}`.
@@ -110,7 +110,7 @@ oracle fetcher 를 재사용한다.
 
 ### swap 분류 — **NET-NEW**
 
-- backend 가 트랜잭션/로그를 주면 그중 무엇이 "swap" 인지 판정해야 한다. 가능하면 Pasu 의 v3
+- backend 가 트랜잭션/로그를 주면 그중 무엇이 "swap" 인지 판정해야 한다. 가능하면 Dambi 의 v3
   declarative 디코더(`crates/policy-engine-wasm/src/declarative_exports.rs` → `Amm::Action::Swap`
   body) 를 재사용해 일관된 swap 정의를 쓰는 게 이상적이나, 이력 대량 재디코드는 비용이 크다. backend
   가 인덱서면 인덱서의 swap 라벨에 의존(정확도는 인덱서 종속). 이 분류 기준의 authority 는 `/v1/rpc`
@@ -140,7 +140,7 @@ oracle fetcher 를 재사용한다.
 
 - **이력 커버리지 = 메서드 커버리지.** backend 가 못 본 swap(다른 지갑 UI 로 서명, 인덱서 누락, getLogs
   range 한계) 은 누적에서 빠진다 → **과소집계 → false-PASS 가능**. 특히 로컬-ledger backend(c) 는
-  Pasu 밖 swap 을 0으로 본다. 과장 금지: 이 메서드는 "Pasu 이 관측 가능한 범위의 swap 누적"
+  Dambi 밖 swap 을 0으로 본다. 과장 금지: 이 메서드는 "Dambi 이 관측 가능한 범위의 swap 누적"
   이지 절대적 onchain 진실이 아니다.
 - **가격 시점 근사.** leg 별 ts 시점 가격이 정확하나, 단순화로 *현재가* 를 일괄 적용하면 변동성 큰 토큰의
   과거 leg 가 부정확해진다. cap 은 "대략적 누적 한도" 이지 정밀 회계가 아니다.
@@ -229,7 +229,7 @@ catalog" 로도 분류돼 있음; 실제 catalog 에는 이 정책이 swap_stats
 
 ## primary-source references
 
-- Pasu enrichment wire 계약 / projection 제약 / activation map:
+- Dambi enrichment wire 계약 / projection 제약 / activation map:
   `browser-extension/backend/service-worker/POLICY_RPC_METHODS.md` (§1, §2, §3b, §4, §5) — repo 내부 1차.
 - 메서드 카탈로그 엔트리(params/returns/origin): `schema/method-catalog.json` `stat_window.swap_stats`
   (및 자매 `stat_window.snapshot`).

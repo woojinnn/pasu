@@ -1,19 +1,19 @@
 /* ============================================================
-   PASU popup — 정책 관리 (패키지 우선 · 주소별 스코프)
+   DAMBI popup — 정책 관리 (패키지 우선 · 주소별 스코프)
    본문 토글 = appliedByAddress[activeAddress] 읽기/쓰기
    전체 오버레이 지갑 스위처 · 알림 강도 퀵 시트 · 설정 오버레이
    온보딩(4-step)도 이 팝업 안에서 렌더 — 별도 welcome 탭 없음(R4 §1).
 
    ── 빌드 분리 ───────────────────────────────────────────────
-     window.PasuStore        : 데모(localStorage) ↔ 연동(service-worker) 교체
-     window.PASU_ASSET_BASE  : 에셋 경로 ("picture/" | "../picture/")
-     window.PASU_DASHBOARD_URL: 대시보드 배포 URL (없으면 기본값)
+     window.DambiStore        : 데모(localStorage) ↔ 연동(service-worker) 교체
+     window.DAMBI_ASSET_BASE  : 에셋 경로 ("picture/" | "../picture/")
+     window.DAMBI_DASHBOARD_URL: 대시보드 배포 URL (없으면 기본값)
    ============================================================ */
-const S = window.PasuStore;
+const S = window.DambiStore;
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-const ASSET = (typeof window !== "undefined" && window.PASU_ASSET_BASE) || "picture/";
-// §2.2 — dev 하드코딩 제거. 배포 URL 은 빌드시 window.PASU_DASHBOARD_URL 로 주입.
-const DASHBOARD_URL = (typeof window !== "undefined" && window.PASU_DASHBOARD_URL) || "https://app.pasu.xyz/";
+const ASSET = (typeof window !== "undefined" && window.DAMBI_ASSET_BASE) || "picture/";
+// §2.2 — dev 하드코딩 제거. 배포 URL 은 빌드시 window.DAMBI_DASHBOARD_URL 로 주입.
+const DASHBOARD_URL = (typeof window !== "undefined" && window.DAMBI_DASHBOARD_URL) || "https://app.dambi.xyz/";
 
 /* ---------- icons ---------- */
 const I = {
@@ -99,7 +99,7 @@ async function persist() {
   try {
     await S.saveState({ account: state.account, activeAddress: state.activeAddress, wallets: state.wallets, appliedByAddress: state.appliedByAddress });
   } catch (e) {
-    console.warn("[pasu] profile save failed:", e);
+    console.warn("[dambi] profile save failed:", e);
   }
 }
 
@@ -173,7 +173,7 @@ function renderHero() {
       '<button class="pc-iconbtn" id="dashBtn" title="웹 대시보드 열기">대시보드 ' + I.ext + '</button>' +
     '</div>' +
     '<div class="pc-hero-main">' +
-      '<div class="pc-guard ' + (on ? "" : "off") + '"><div class="ring"></div><div class="face"><img src="' + ASSET + 'pasu-mark-navy.png" alt=""></div><div class="badge">' + I.check + '</div></div>' +
+      '<div class="pc-guard ' + (on ? "" : "off") + '"><div class="ring"></div><div class="face"><img src="' + ASSET + 'dambi-mark-navy.png" alt=""></div><div class="badge">' + I.check + '</div></div>' +
       '<div><div class="pc-hero-h">' + (on ? "보호 중" : "보호 꺼짐") + '</div>' +
         '<div class="pc-hero-s">' + (on ? "정책 " + on + "개 활성 · 패키지 " + pkgOn + "개" : "이 주소에 켜진 정책이 없어요") + '</div></div>' +
     '</div>' +
@@ -193,7 +193,7 @@ function applySize() {
 function toggleSize() {
   state.expanded2 = !state.expanded2;
   applySize();
-  try { if (typeof chrome !== "undefined" && chrome.storage) chrome.storage.local.set({ "pasu.popup.big": state.expanded2 }); } catch (e) {}
+  try { if (typeof chrome !== "undefined" && chrome.storage) chrome.storage.local.set({ "dambi.popup.big": state.expanded2 }); } catch (e) {}
   renderHero();
 }
 
@@ -387,7 +387,7 @@ function renderSettingsOverlay() {
       '</div>' +
       '<div class="pc-set-sec">데이터</div>' +
       '<button class="pc-set-reset" id="setReset">이 계정 데이터 초기화</button>' +
-      '<div class="pc-set-foot">Pasu — 트랜잭션 가드 · watch-only</div>' +
+      '<div class="pc-set-foot">Dambi — 트랜잭션 가드 · watch-only</div>' +
     '</div>';
 
   ovl.querySelector("#setBack").addEventListener("click", closeSettings);
@@ -524,7 +524,7 @@ function renderOvlList() {
         w.nickname = nv;
         persist();
         // 닉네임(label)을 서버에도 반영 → 대시보드와 즉시 동기화
-        if (S.renameWallet) void S.renameWallet(w.address, nv).catch((e) => console.warn("[pasu] rename failed:", e));
+        if (S.renameWallet) void S.renameWallet(w.address, nv).catch((e) => console.warn("[dambi] rename failed:", e));
       });
       ed.addEventListener("keydown", (e) => { if (e.key === "Enter") ed.blur(); });
       row.querySelector(".pin").addEventListener("click", () => {
@@ -613,7 +613,7 @@ async function doDelete(addr) {
   // 서버에서 먼저 삭제 → 대시보드와 즉시 동기화. 로컬 상태도 같이 정리.
   if (S.removeWallet) {
     try { await S.removeWallet(addr); }
-    catch (e) { console.warn("[pasu] delete-wallet(server) failed:", e); }
+    catch (e) { console.warn("[dambi] delete-wallet(server) failed:", e); }
   }
   state.wallets = state.wallets.filter((w) => w.address !== addr);
   delete state.appliedByAddress[addr];
@@ -670,7 +670,7 @@ const ONB_COPY = {
   1: { eb: "설치 완료 · 1 / 4", t: "지갑이 이제 보호받기 시작해요", l: "먼저 Google 계정으로 로그인하면, 이 계정에 지갑을 묶어 정책을 동기화해요." },
   2: { eb: "지갑 등록 · 2 / 4", t: "어느 주소를 지킬까요?", l: "이 계정에서 사용할 지갑 주소를 등록하세요. 여러 개 추가할 수 있어요." },
   3: { eb: "베이스라인 정책 · 3 / 4", t: "기본 보호를 켤게요", l: "권장 가드예요. 최소 한 개는 켜야 검사가 동작해요 — 언제든 팝업에서 바꿀 수 있어요." },
-  4: { eb: "준비 완료 · 4 / 4", t: "이제 보호받고 있어요", l: "트랜잭션에 서명할 때 Pasu가 검토·차단을 페이지 위에서 바로 알려줘요." },
+  4: { eb: "준비 완료 · 4 / 4", t: "이제 보호받고 있어요", l: "트랜잭션에 서명할 때 Dambi가 검토·차단을 페이지 위에서 바로 알려줘요." },
 };
 const ONB_STEPS = [[1, "로그인"], [2, "지갑 등록"], [3, "베이스라인"], [4, "완료"]];
 
@@ -703,7 +703,7 @@ function renderOnboarding() {
   host.innerHTML =
     '<div class="pc-onb-top">' +
       '<button class="pc-onb-back" id="onbBack" aria-label="뒤로"' + (n === 1 ? " hidden" : "") + '>' + I.back + '</button>' +
-      '<div class="pc-onb-brand"><img src="' + ASSET + 'pasu-mark-white.png" alt=""><span class="wd">PASU</span></div>' +
+      '<div class="pc-onb-brand"><img src="' + ASSET + 'dambi-mark-white.png" alt=""><span class="wd">DAMBI</span></div>' +
       '<div class="pc-onb-dots">' + dots + '</div>' +
     '</div>' +
     '<div class="pc-onb-body">' +
@@ -734,7 +734,7 @@ function onbStep1() {
   const authed = !!state.onb.email && !!state.account;
   card.innerHTML =
     '<div class="onb-ghead">' +
-      '<div class="onb-guard ' + (authed ? "" : "idle") + '"><div class="ring"></div><div class="face"><img src="' + ASSET + 'pasu-mark-navy.png" alt=""></div><div class="badge">' + I.check + '</div></div>' +
+      '<div class="onb-guard ' + (authed ? "" : "idle") + '"><div class="ring"></div><div class="face"><img src="' + ASSET + 'dambi-mark-navy.png" alt=""></div><div class="badge">' + I.check + '</div></div>' +
       '<div class="gt">' + (authed ? "로그인됐어요" : "Google 계정으로 시작") + '</div>' +
       '<div class="gs">' + (authed ? "이 계정에 지갑과 정책이 동기화돼요." : "키는 받지 않아요 — 읽기 전용으로 정책만 묶어요.") + '</div>' +
     '</div>' +
@@ -879,9 +879,9 @@ function onbStep4() {
   const card = document.getElementById("onbCard");
   card.innerHTML =
     '<div class="onb-ghead">' +
-      '<div class="onb-guard"><div class="ring"></div><div class="face"><img src="' + ASSET + 'pasu-mark-navy.png" alt=""></div><div class="badge">' + I.check + '</div></div>' +
+      '<div class="onb-guard"><div class="ring"></div><div class="face"><img src="' + ASSET + 'dambi-mark-navy.png" alt=""></div><div class="badge">' + I.check + '</div></div>' +
       '<div class="gt">보호가 켜졌어요</div>' +
-      '<div class="gs">서명 직전마다 Pasu가 정책으로 검사해요.</div>' +
+      '<div class="gs">서명 직전마다 Dambi가 정책으로 검사해요.</div>' +
     '</div>' +
     '<div class="onb-sum">' +
       '<div class="onb-sumcard"><div class="n">' + state.onb.wallets.length + '</div><div class="l">등록한 지갑</div></div>' +
@@ -903,7 +903,7 @@ async function onbFinish() {
     }
   }
   const offDefIds = (S.BASELINE || []).map((b) => b.id).filter((id) => !state.onb.baseline.has(id));
-  try { await S.applyBaseline(addresses, offDefIds); } catch (e) { console.warn("[pasu] baseline apply failed:", e); }
+  try { await S.applyBaseline(addresses, offDefIds); } catch (e) { console.warn("[dambi] baseline apply failed:", e); }
   // 영속화(활성 주소/핀) 후 전체 리로드 — ps2 상태가 진실.
   try {
     await S.saveState({ account: state.account || { email: state.onb.email || "dev@team.xyz" }, activeAddress: addresses[0] || null, wallets, appliedByAddress: {} });
@@ -929,7 +929,7 @@ function renderLoadError() {
   const root = document.getElementById("root");
   root.innerHTML =
     '<div class="pc-signin">' +
-      '<div class="pc-guard off" style="margin:0 auto 6px"><div class="ring"></div><div class="face"><img src="' + ASSET + 'pasu-mark-navy.png" alt=""></div></div>' +
+      '<div class="pc-guard off" style="margin:0 auto 6px"><div class="ring"></div><div class="face"><img src="' + ASSET + 'dambi-mark-navy.png" alt=""></div></div>' +
       '<div class="pc-si-h">연결할 수 없어요</div>' +
       '<div class="pc-si-s">백그라운드(서비스 워커)가 응답하지 않아요. 잠시 후 다시 시도해 주세요.</div>' +
       '<div class="pc-si-note" style="color:var(--fail-600)">' + esc(state.loadError) + '</div>' +
@@ -973,8 +973,8 @@ function route() {
   // 저장된 popup 크기 선호 복원
   try {
     if (typeof chrome !== "undefined" && chrome.storage) {
-      const r = await chrome.storage.local.get("pasu.popup.big");
-      state.expanded2 = !!r["pasu.popup.big"];
+      const r = await chrome.storage.local.get("dambi.popup.big");
+      state.expanded2 = !!r["dambi.popup.big"];
     }
   } catch (e) {}
   try { state.settings = await S.loadSettings(); } catch (e) { state.settings = S.SETTINGS_DEFAULT; }

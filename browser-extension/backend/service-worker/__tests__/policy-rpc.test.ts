@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchCallsV2, formatAuditMatched } from "../policy-rpc";
 import type { PlannedCallV2Dto } from "../wasm-bridge.types";
 
-// pasu-auth is imported LAZILY inside the authenticated dispatch path only —
+// dambi-auth is imported LAZILY inside the authenticated dispatch path only —
 // these factories intercept the dynamic imports. Existing signed-out tests
 // (ctx omitted) never reach `hasServerSession`, so the mocks are inert there.
 const authMocks = vi.hoisted(() => ({
@@ -12,10 +12,10 @@ const authMocks = vi.hoisted(() => ({
     (req: unknown) => Promise<{ policyRequest: Record<string, unknown> }>
   >(async () => ({ policyRequest: { results: {} } })),
 }));
-vi.mock("../pasu-auth/tokenStore", () => ({
+vi.mock("../dambi-auth/tokenStore", () => ({
   getAccessToken: authMocks.getAccessToken,
 }));
-vi.mock("../pasu-auth/client", () => ({
+vi.mock("../dambi-auth/client", () => ({
   evaluate: authMocks.serverEvaluate,
 }));
 

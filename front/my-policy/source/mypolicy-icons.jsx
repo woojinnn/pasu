@@ -72,7 +72,7 @@ function NavRail({ onNewPolicy, loc }) {
     : { newp: "새 정책", ws: "메인 지갑", home: "Home", editor: "Editor", policy: "My Policy", sim: "Simulation", mon: "Monitoring", hist: "History", set: "Settings" };
   return (
     <nav className="nav-rail">
-      <div className="nav-logo"><div className="mark">{MPI.shield()}</div><div className="word">Scopeball</div></div>
+      <div className="nav-logo"><div className="mark">{MPI.shield()}</div><div className="word">Dambi</div></div>
       <div className="nav-cta">
         <div className="main" onClick={onNewPolicy}>{MPI.plus({ className: "plus" })}<span className="label">{T.newp}</span></div>
       </div>
@@ -89,7 +89,7 @@ function NavRail({ onNewPolicy, loc }) {
         <a className="nav-item"><span className="icon">{NAV_SVG.hist}</span><span className="label">{T.hist}</span><span className="badge">12</span></a>
         <a className="nav-item"><span className="icon">{NAV_SVG.set}</span><span className="label">{T.set}</span></a>
       </div>
-      <div className="nav-bottom"><div className="nav-user"><span className="av">TY</span><div className="meta"><div className="nm">Taeyoon Kim</div><div className="em">ty@scopeball.co</div></div></div></div>
+      <div className="nav-bottom"><div className="nav-user"><span className="av">TY</span><div className="meta"><div className="nm">Taeyoon Kim</div><div className="em">ty@dambi.co</div></div></div></div>
     </nav>
   );
 }

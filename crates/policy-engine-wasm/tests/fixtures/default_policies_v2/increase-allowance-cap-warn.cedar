@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-15 (`increaseAllowance` stacking
+// dambi default v2 policy — explorer id: GEN-15 (`increaseAllowance` stacking
 // onto an existing approval).
 //
 // `increaseAllowance(spender, addedValue)` ADDS to whatever allowance already

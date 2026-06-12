@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: CURVE-2 (remove_liquidity_one_coin
+// dambi default v2 policy — explorer id: CURVE-2 (remove_liquidity_one_coin
 // imbalance penalty).
 //
 // DERIVED fact (NOT an action-field). Withdrawing an LP position entirely into

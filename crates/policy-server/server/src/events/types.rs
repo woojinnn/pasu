@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use policy_state::primitives::ChainId;
 
-/// One pasu event. Tagged externally so the JSON shape matches what
+/// One dambi event. Tagged externally so the JSON shape matches what
 /// the dashboard's `EventSource.addEventListener('tx_confirmed', …)`
 /// expects.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

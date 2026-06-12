@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-09 (Permit2 spender is not the
+// dambi default v2 policy — explorer id: UNI-09 (Permit2 spender is not the
 // real router → phishing).
 //
 // Permit2 phishing captures a signature whose `spender` is the attacker, then

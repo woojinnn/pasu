@@ -265,7 +265,7 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
     const sentAtMs = Date.now();
     const startedAt = performance.now();
     const traceSeq = fetchStarted("token", url);
-    console.info("[Pasu] registry-fetch → sent", {
+    console.info("[Dambi] registry-fetch → sent", {
       label: "token",
       url,
       sentAt: new Date(sentAtMs).toISOString(),
@@ -279,7 +279,7 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
         response.status,
         Math.round(performance.now() - startedAt),
       );
-      console.info("[Pasu] registry-fetch ← recv", {
+      console.info("[Dambi] registry-fetch ← recv", {
         label: "token",
         url,
         sentAt: new Date(sentAtMs).toISOString(),
@@ -294,7 +294,7 @@ class TokenRegistryClientImpl implements TokenRegistryClient {
         `error:${err instanceof Error ? err.message : String(err)}`,
         Math.round(performance.now() - startedAt),
       );
-      console.warn("[Pasu] registry-fetch ✗ error", {
+      console.warn("[Dambi] registry-fetch ✗ error", {
         label: "token",
         url,
         sentAt: new Date(sentAtMs).toISOString(),

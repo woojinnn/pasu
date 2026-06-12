@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-02 (post-trade HF in the warn
+// dambi default v2 policy — explorer id: AAVE-02 (post-trade HF in the warn
 // band AND collateral is volatile).
 //
 // STATE / REDUCER fact. A "permitted but not safe" HF band (e.g. 1.1–1.5) is far

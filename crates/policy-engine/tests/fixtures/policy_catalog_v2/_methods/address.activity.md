@@ -16,7 +16,7 @@ status: aspirational (referenced; not yet in method-catalog.json — register on
 체인 활동성을 요약한다: 보낸 트랜잭션 수(`txCount`, = nonce), EOA/contract 구분(`isContract`),
 그리고 (가능하면) 최초 관측 시각(`firstSeenTs`). 1차 소비자는 카탈로그 정책
 `transfer-new-recipient` (action `transfer`) 으로, **`txCount == 0` 인 갓-생성 주소로의 전송을 `warn`**
-시킨다 — address-poisoning / typo-주소 / 갓-배포 drainer 컨트랙트의 전형적 신호다. Pasu 의
+시킨다 — address-poisoning / typo-주소 / 갓-배포 drainer 컨트랙트의 전형적 신호다. Dambi 의
 no-simulation 모델과 일관되게 이 메서드는 트랜잭션 트레이스가 아니라 **사실 1건을 fetch** 하는 호출이다.
 
 ## interface

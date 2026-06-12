@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-01 (health-factor floor).
+// dambi default v2 policy — explorer id: AAVE-01 (health-factor floor).
 //
 // Rule: warn if, AFTER this borrow, the Aave health factor would fall below the
 // user's floor (1.1000). calldata alone cannot answer this — the post-trade HF
