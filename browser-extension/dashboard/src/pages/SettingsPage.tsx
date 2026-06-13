@@ -5,16 +5,13 @@ import { useState } from "react";
  *
  * Writes the runtime override to BOTH `localStorage` (dashboard) and
  * `chrome.storage.local` (service worker) under the same key, so one save
- * points the whole extension at a local/test server or prod without a
- * rebuild. The SW picks it up live (its `chrome.storage.onChanged`
+ * points the whole extension at a server URL without a rebuild. The SW picks
+ * it up live (its `chrome.storage.onChanged`
  * listener); the dashboard reads it on next load — hence the reload hint.
  */
 const KEY = "dambi_server_url";
 
-const PRESETS = [
-  { label: "로컬 (테스트)", url: "http://127.0.0.1:8788" },
-  { label: "프로덕션", url: "https://dambi-policy.duckdns.org" },
-];
+const PRESETS = [{ label: "프로덕션", url: "https://dambi-policy.duckdns.org" }];
 
 type ChromeStorageLocal = {
   set(items: Record<string, unknown>): Promise<void>;
@@ -72,7 +69,7 @@ export function SettingsPage() {
       <input
         type="text"
         value={value}
-        placeholder="http://127.0.0.1:8788  (비우면 빌드 기본값)"
+        placeholder="https://dambi-policy.duckdns.org  (비우면 빌드 기본값)"
         onChange={(e) => {
           setValue(e.target.value);
           setSaved(false);

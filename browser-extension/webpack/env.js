@@ -1,6 +1,6 @@
 const path = require("path");
 
-const DEFAULT_SERVER_URL = "http://127.0.0.1:8788";
+const DEFAULT_SERVER_URL = "https://dambi-policy.duckdns.org";
 
 function buildMode(env = process.env) {
   return env.DAMBI_EXTENSION_BUILD_MODE || env.NODE_ENV || "development";

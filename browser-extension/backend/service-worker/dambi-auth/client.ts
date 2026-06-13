@@ -12,7 +12,7 @@
  * (webpack DefinePlugin) and can be swapped at runtime via
  * `chrome.storage.local["dambi_server_url"]` — the service-worker
  * mirror of the dashboard's `localStorage["dambi_server_url"]`
- * override. Falls back to the local-dev default.
+ * override. Falls back to the deployed Dambi server.
  */
 
 import { getAccessToken, getRefreshToken, setTokens } from "./tokenStore";
@@ -22,7 +22,7 @@ declare const DAMBI_SERVER_URL: string | undefined;
 /** Build-time default (webpack DefinePlugin → `DAMBI_SERVER_URL`). */
 const BUILD_BASE_URL =
   (typeof DAMBI_SERVER_URL !== "undefined" && DAMBI_SERVER_URL) ||
-  "http://127.0.0.1:8788";
+  "https://dambi-policy.duckdns.org";
 
 /** Runtime override key — mirrors the dashboard's
  * `localStorage["dambi_server_url"]`, in `chrome.storage.local`

@@ -14,12 +14,12 @@ describe("webpack env mode helpers", () => {
     expect(envFileNameForMode("production")).toBe(".env");
   });
 
-  it("keeps the policy server URL local unless explicitly overridden", () => {
+  it("uses the deployed policy server URL unless explicitly overridden", () => {
     const { resolveServerUrl } = require("../../../webpack/env.js") as {
       resolveServerUrl(env: Record<string, string | undefined>): string;
     };
 
-    expect(resolveServerUrl({})).toBe("http://127.0.0.1:8788");
+    expect(resolveServerUrl({})).toBe("https://dambi-policy.duckdns.org");
     expect(
       resolveServerUrl({ DAMBI_SERVER_URL: "https://dambi-policy.example.test" }),
     ).toBe("https://dambi-policy.example.test");

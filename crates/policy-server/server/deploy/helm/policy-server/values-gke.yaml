@@ -1,4 +1,4 @@
-# Helm value overrides for GKE (M2 — temporary HTTP via LoadBalancer, managed data).
+# Helm value overrides for GKE.
 # Layered on the chart default values.yaml.
 # Deploy:
 #   helm upgrade --install dambi <chart> -n dambi \
@@ -11,11 +11,11 @@ image:
 
 api:
   replicas: 2
-  # M2 has no domain; these only affect OAuth redirects / CORS, not the bind port.
-  publicApiUrl: http://dambi-m2-loadbalancer
-  dashboardUrl: http://localhost:5173
+  publicApiUrl: https://dambi-policy.duckdns.org
+  dashboardUrl: https://dambi-policy.duckdns.org
   corsAllowedOrigins:
-    - http://localhost:5173
+    - https://dambi-policy.duckdns.org
+    - chrome-extension://fbadoakiikjmgdpdhpcohaddifhaggki
 
 # M2: expose the API via an external L4 LoadBalancer (temp HTTP). No ingress/TLS yet.
 service:
