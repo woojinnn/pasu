@@ -85,7 +85,7 @@ const sharedPlugins = () => [
     systemvars: true,
   }),
   new webpack.DefinePlugin({
-    PASU_SERVER_URL: JSON.stringify(serverUrl),
+    DAMBI_SERVER_URL: JSON.stringify(serverUrl),
   }),
   // ProvidePlugin for `process` so readable-stream's `process.nextTick` etc.
   // resolve at runtime even in code paths that don't import it explicitly.
@@ -134,10 +134,10 @@ const pageConfig = {
       "content-scripts",
       "fetch-bridge.ts",
     ),
-    "content-scripts/pasu-advisory": path.join(
+    "content-scripts/dambi-advisory": path.join(
       backendDir,
       "content-scripts",
-      "pasu-advisory.ts",
+      "dambi-advisory.ts",
     ),
     "confirm/index": path.join(frontendDir, "confirm", "index.ts"),
     "popup/index": path.join(frontendDir, "popup", "index.ts"),

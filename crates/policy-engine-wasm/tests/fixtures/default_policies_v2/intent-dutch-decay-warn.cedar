@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-12 (UniswapX Dutch order's
+// dambi default v2 policy — explorer id: UNI-12 (UniswapX Dutch order's
 // guaranteed floor decays far below the expected fill).
 //
 // A Dutch order's terms worsen over time; if the guaranteed floor (`buyMin`) is

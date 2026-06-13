@@ -1,9 +1,9 @@
 {
-  "name": "pasu-dashboard",
+  "name": "dambi-dashboard",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Policy management UI for the pasu browser extension. Standalone Vite app, communicates with the extension SW through the SDK at ../sdk/extension-client.ts.",
+  "description": "Policy management UI for the dambi browser extension. Standalone Vite app, communicates with the extension SW through the SDK at ../sdk/extension-client.ts.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

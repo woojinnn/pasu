@@ -43,10 +43,10 @@ export function NavRail() {
   };
 
   return (
-    <nav className="nav-rail" tabIndex={0} aria-label="Pasu global nav">
+    <nav className="nav-rail" tabIndex={0} aria-label="Dambi global nav">
       <div className="nav-logo">
         <div className="mark">sb</div>
-        <div className="word">pasu</div>
+        <div className="word">dambi</div>
       </div>
 
       <div className="nav-divider" />
@@ -124,7 +124,14 @@ function RailItem({ to, label, icon, end, disabled, badge, showDot }: RailItemPr
     );
   }
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}>
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+      onPointerUp={(event) => {
+        event.currentTarget.blur();
+      }}
+    >
       <span className="icon">{icon}</span>
       <span className="label">{label}</span>
       {badge && <span className="badge">{badge}</span>}

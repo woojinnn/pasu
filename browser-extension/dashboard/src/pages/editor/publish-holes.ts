@@ -27,7 +27,7 @@ import type { HoleSpec } from "../../server-api/policy-store";
 import { ZERO_ADDR, type PublishHole } from "./publish-redact";
 
 /** manifest 안에서 hole 스펙이 사는 예약 키 (엔진은 unknown key 무시). */
-export const MANIFEST_HOLES_KEY = "x_pasu_holes";
+export const MANIFEST_HOLES_KEY = "x_dambi_holes";
 
 /** 설치자가 채워야 하는 한 칸. name은 ps2 위치 기반 param 이름(vN). */
 export interface ShippedHoleSpec {

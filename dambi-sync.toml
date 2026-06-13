@@ -1,4 +1,4 @@
-# pasu sync config
+# dambi sync config
 #
 # 세 섹션: [rpc] / [oracles] / [venues]
 #   - rpc:     체인별 JSON-RPC provider + failover
@@ -167,7 +167,7 @@ chains = ["eip155:1"]
 # ===========================================================================
 #  (옵션) 로컬 registry 서버 — 별도 config 로 분리 예정
 # ===========================================================================
-# pasu 자체 메타데이터 공급자. 본 파일과는 별도로 RegistryFetcher 가
+# dambi 자체 메타데이터 공급자. 본 파일과는 별도로 RegistryFetcher 가
 # 자체 config 읽음.
 # [registry]
 # endpoint = "http://localhost:8080"

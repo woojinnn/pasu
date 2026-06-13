@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-20 (re-approving a spender you
+// dambi default v2 policy — explorer id: GEN-20 (re-approving a spender you
 // already granted).
 //
 // Approving a spender you have ALREADY approved is usually redundant, and a

@@ -1,11 +1,11 @@
-/* Pasu onboarding — 4-step flow
+/* Dambi onboarding — 4-step flow
    1 Google 로그인 → 2 지갑 등록(다중) → 3 베이스라인 정책 → 4 완료
    전진 게이팅 · 뒤로만 허용 · 입력 보존 · 완료 시 store 영속화 */
 
 const CHECK = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const G_SVG = '<svg class="gg" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18c-.44-1.32-.69-2.73-.69-4.18s.25-2.86.69-4.18v-5.7H4.34A21.99 21.99 0 0 0 2 24c0 3.55.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 9.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 2.97 29.93 1 24 1 15.4 1 7.96 5.93 4.34 13.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>';
 
-const S = window.PasuStore;
+const S = window.DambiStore;
 
 const dotsEls = [...document.querySelectorAll("#dots .dot")];
 const stsEls = [...document.querySelectorAll(".ob-st")];
@@ -28,7 +28,7 @@ const COPY = {
   1: { eb: "설치 완료 · 1 / 4", t: "지갑이 이제 보호받기 시작해요", l: "먼저 Google 계정으로 로그인하면, 이 계정에 지갑을 묶어 정책을 동기화해요." },
   2: { eb: "지갑 등록 · 2 / 4", t: "어느 주소를 지킬까요?", l: "이 Google 계정에서 사용할 지갑 주소를 등록하세요. 여러 개 추가할 수 있어요." },
   3: { eb: "베이스라인 정책 · 3 / 4", t: "기본 보호를 켤게요", l: "권장 스왑 가드예요. 최소 한 개는 켜야 검사가 동작해요 — 언제든 팝업에서 바꿀 수 있어요." },
-  4: { eb: "준비 완료 · 4 / 4", t: "이제 보호받고 있어요", l: "트랜잭션에 서명할 때 Pasu가 검토·차단을 페이지 위에서 바로 알려줘요." },
+  4: { eb: "준비 완료 · 4 / 4", t: "이제 보호받고 있어요", l: "트랜잭션에 서명할 때 Dambi가 검토·차단을 페이지 위에서 바로 알려줘요." },
 };
 
 function paintChrome() {
@@ -62,7 +62,7 @@ backBtn.addEventListener("click", () => { if (flow.step > 1) goTo(flow.step - 1)
 function renderStep1() {
   card.innerHTML =
     '<div class="ob-ghead">' +
-      '<div class="ob-guard ' + (flow.email ? "" : "idle") + '" id="g1"><div class="ring"></div><div class="face"><img src="picture/pasu-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
+      '<div class="ob-guard ' + (flow.email ? "" : "idle") + '" id="g1"><div class="ring"></div><div class="face"><img src="picture/dambi-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
       '<div class="gt">' + (flow.email ? "로그인됐어요" : "Google 계정으로 시작") + '</div>' +
       '<div class="gs">' + (flow.email ? "이 계정에 지갑과 정책이 동기화돼요." : "키는 받지 않아요 — 읽기 전용으로 정책만 묶어요.") + '</div>' +
     '</div>' +
@@ -214,9 +214,9 @@ function paintGate3() {
 function renderStep4() {
   card.innerHTML =
     '<div class="ob-ghead">' +
-      '<div class="ob-guard" id="g4"><div class="ring"></div><div class="face"><img src="picture/pasu-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
+      '<div class="ob-guard" id="g4"><div class="ring"></div><div class="face"><img src="picture/dambi-mark-navy.png" alt="" /></div><div class="badge">' + CHECK + '</div></div>' +
       '<div class="gt">보호가 켜졌어요</div>' +
-      '<div class="gs">서명 직전마다 Pasu가 정책으로 검사해요.</div>' +
+      '<div class="gs">서명 직전마다 Dambi가 정책으로 검사해요.</div>' +
     '</div>' +
     '<div class="ob-summary">' +
       '<div class="ob-sumcard"><div class="n">' + flow.wallets.length + '</div><div class="l">등록한 지갑</div></div>' +
@@ -238,7 +238,7 @@ async function finish() {
       for (const w of wallets) { try { await S.addWallet(w.address, w.nickname || undefined); } catch (e) {} }
     }
     const offDefIds = (S.BASELINE || []).map((b) => b.id).filter((id) => !flow.baseline.has(id));
-    try { await S.applyBaseline(addresses, offDefIds); } catch (e) { console.warn("[pasu] baseline apply failed:", e); }
+    try { await S.applyBaseline(addresses, offDefIds); } catch (e) { console.warn("[dambi] baseline apply failed:", e); }
     await S.saveState({
       account,
       activeAddress: wallets[0] ? wallets[0].address : null,

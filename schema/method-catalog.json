@@ -191,8 +191,8 @@
       "returns": { "kind": "scalar", "type": "Long", "from": "$.result.bps" },
       "origin": "bundled"
     },
-    "pasu.evaluate_v3": {
-      "name": "pasu.evaluate_v3",
+    "dambi.evaluate_v3": {
+      "name": "dambi.evaluate_v3",
       "description": "Phase 5D mock — echo (actions, eval_context, wallet_id) back as policyRequest.actions with empty state_before / deltas / state_after. Real implementation arrives in Phase 6 (reducer + state sync).",
       "params": {
         "wallet_id": {

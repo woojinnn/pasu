@@ -93,7 +93,7 @@ export function CodeView({ code, lang }: { code: string; lang: "cedar" | "json" 
 /**
  * Tabbed viewer: 조건(읽기 전용 트리, 빈칸 표시) + `policy.cedar` +
  * `manifest.json`. Cedar 원문에서 빈칸(hole)은 제로주소/0 플레이스홀더로만
- * 보이므로, 기본 탭은 x_pasu_holes를 배지로 보여주는 조건 트리다.
+ * 보이므로, 기본 탭은 x_dambi_holes를 배지로 보여주는 조건 트리다.
  */
 export function CodeTabs({
   cedar,

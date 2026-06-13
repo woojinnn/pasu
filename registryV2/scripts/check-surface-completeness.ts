@@ -1,5 +1,5 @@
 /**
- * check-surface-completeness.ts — Pasu Adapter Registry v3
+ * check-surface-completeness.ts — Dambi Adapter Registry v3
  *
  * EXECUTABLE research-completeness gate. Converts the P0 "external
  * state-changing function 전수 + per-function COVER/EXCLUDE triage" step of the
@@ -10,7 +10,7 @@
  * ---------------
  * The §3 prose gate let an agent silently author adapters for "the easy
  * functions" and drop the rest (e.g. Morpho `setAuthorization`, the permission-
- * delegation primitive = Pasu's raison d'être). A prose checklist can be
+ * delegation primitive = Dambi's raison d'être). A prose checklist can be
  * skipped with no signal. This script makes the omission a build failure, the
  * same way `compose_per_policy` makes a missing Cedar registration a runtime
  * `MissingAction`. Research-completeness becomes machine-checked, not trusted.

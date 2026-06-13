@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-13 (repay-with-collateral /
+// dambi default v2 policy — explorer id: AAVE-13 (repay-with-collateral /
 // collateral-swap has excessive embedded-swap slippage).
 //
 // EXTERNAL fact (ORACLE vs calldata). Repay-with-collateral and collateral swaps

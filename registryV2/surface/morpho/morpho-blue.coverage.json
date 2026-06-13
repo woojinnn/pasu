@@ -11,7 +11,7 @@
     "0x20b76e81": { "name": "repay",              "decision": "cover", "reason": "user position: repay own debt" },
     "0x238d6579": { "name": "supplyCollateral",   "decision": "cover", "reason": "user position: supply collateral to own position" },
     "0x8720316d": { "name": "withdrawCollateral", "decision": "cover", "reason": "user position: withdraw own collateral" },
-    "0xeecea000": { "name": "setAuthorization",   "decision": "cover", "reason": "PERMISSION DELEGATION primitive — grants an operator full control of the caller's Morpho positions. Pasu's raison d'être; never exclude (permission-primitive red-flag, manual §3)." },
+    "0xeecea000": { "name": "setAuthorization",   "decision": "cover", "reason": "PERMISSION DELEGATION primitive — grants an operator full control of the caller's Morpho positions. Dambi's raison d'être; never exclude (permission-primitive red-flag, manual §3)." },
 
     "0x8069218f": { "name": "setAuthorizationWithSig", "decision": "exclude", "reason": "relayer submission path — submits an ALREADY-SIGNED Authorization on behalf of the signer. The authorizer's risk is captured at off-chain sign time (signed_structs.Authorization / authorization-sign manifest), NOT at on-chain submission; the submitter is a third-party relayer, not the position owner. Future-cover candidate if self-submit calldata analysis is wanted (semantics duplicate the off-chain path)." },
     "0xd8eabcb8": { "name": "liquidate",          "decision": "exclude", "reason": "keeper — caller is the liquidator seizing an unhealthy position, not the position owner. Same policy as Aave liquidationCall / HL finalizer." },
@@ -25,6 +25,6 @@
     "0x4d98a93b": { "name": "enableLltv",         "decision": "exclude", "reason": "governance (owner-only) — whitelist an LLTV (DAO)." }
   },
   "signed_structs": {
-    "Authorization": { "decision": "cover", "reason": "off-chain EIP-712 message the user SIGNS to grant an operator full control of their positions (authorization-sign manifest, sentinel selector 0x00000001; later relayed via setAuthorizationWithSig). The most dangerous off-chain grant — Pasu's core target." }
+    "Authorization": { "decision": "cover", "reason": "off-chain EIP-712 message the user SIGNS to grant an operator full control of their positions (authorization-sign manifest, sentinel selector 0x00000001; later relayed via setAuthorizationWithSig). The most dangerous off-chain grant — Dambi's core target." }
   }
 }

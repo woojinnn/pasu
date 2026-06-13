@@ -34,7 +34,7 @@ function UploadModal({ pkg, loc, onClose, toast }) {
 
   const publish = () => {
     onClose();
-    toast(loc === "en" ? `Published “${name}” to the market` : `“${name}” 을 마켓에 공개했어요`, "scopeball.co/m/···");
+    toast(loc === "en" ? `Published “${name}” to the market` : `“${name}” 을 마켓에 공개했어요`, "dambi.co/m/···");
   };
 
   return (

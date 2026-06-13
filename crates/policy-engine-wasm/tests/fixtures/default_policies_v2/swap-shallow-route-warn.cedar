@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-06 (route hops through a thin
+// dambi default v2 policy — explorer id: UNI-06 (route hops through a thin
 // or unknown pool).
 //
 // A route through a shallow / unknown pool can explode price impact at that hop

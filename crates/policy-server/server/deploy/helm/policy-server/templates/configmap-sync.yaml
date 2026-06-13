@@ -5,5 +5,5 @@ metadata:
   labels:
     {{- include "policy-server.labels" . | nindent 4 }}
 data:
-  pasu-sync.toml: |-
+  dambi-sync.toml: |-
     {{- .Values.syncConfig | nindent 4 }}

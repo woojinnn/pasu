@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-04 (per-asset USD outflow cap).
+// dambi default v2 policy — explorer id: GEN-04 (per-asset USD outflow cap).
 //
 // Deny an ERC20 transfer whose USD value exceeds the user's per-asset spend cap
 // (a product-team-requested control). The outflow is valued by the oracle

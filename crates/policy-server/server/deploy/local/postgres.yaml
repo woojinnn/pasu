@@ -1,6 +1,6 @@
 # Throwaway in-cluster PostgreSQL for local Kubernetes testing only.
 # The Service name `postgres` is used by the local DATABASE_URL:
-# postgres://pasu:pasu@postgres:5432/pasu
+# postgres://dambi:dambi@postgres:5432/dambi
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,11 +22,11 @@ spec:
           image: postgres:16-alpine
           env:
             - name: POSTGRES_USER
-              value: pasu
+              value: dambi
             - name: POSTGRES_PASSWORD
-              value: pasu
+              value: dambi
             - name: POSTGRES_DB
-              value: pasu
+              value: dambi
             - name: POSTGRES_INITDB_ARGS
               value: "--no-sync"
           ports:
@@ -34,7 +34,7 @@ spec:
               containerPort: 5432
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "pasu", "-d", "pasu"]
+              command: ["pg_isready", "-U", "dambi", "-d", "dambi"]
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:

@@ -16,13 +16,13 @@ status: existing (in method-catalog.json — `stat_window.snapshot`, `returns.ki
 
 한 actor(지갑) 의 **시간 윈도우 누적 OUTFLOW** 를 집계한다. 정적 per-action 엔진은 *지금 이 한 건* 의
 calldata/signature 만 본다 — 직전 시각에 같은 지갑이 얼마를 내보냈는지(cumulative-over-time) 는 구조적으로
-보이지 않는다. Pasu 의 velocity / structuring 류 정책 — "단건은 작아도 하루 누적 OUTFLOW 가 $10k 를
+보이지 않는다. Dambi 의 velocity / structuring 류 정책 — "단건은 작아도 하루 누적 OUTFLOW 가 $10k 를
 넘는 transfer/approve 는 warn" — 은 바로 이 **윈도우 누적값** 을 필요로 한다. per-tx cap 은 천 번에 걸친
 조금씩-빼가기(drain-by-a-thousand-cuts) 를 놓치지만, rolling-window USD ceiling 은 aggregate 를 잡는다
 (`daily-cumulative-transfer-cap` policy.cedar 의 의도 주석 인용).
 
 이 enrichment 가 actor 의 최근 OUTFLOW 합을 가져와 `context.custom.windowOutflowUsd` (Decimal) 로 주입하고,
-정책이 그 Decimal leaf 에 한도(`> 10000.0000`)를 비교한다. Pasu 의 no-simulation 모델과 일관되게
+정책이 그 Decimal leaf 에 한도(`> 10000.0000`)를 비교한다. Dambi 의 no-simulation 모델과 일관되게
 이것은 **이미 인덱싱된 history 에 대한 집계(fetch+sum)** 이지 트랜잭션 시뮬레이션이 아니다 — 단, 다른
 catalog enrichment(`oracle.usd_value`, `approval.allowance` 등)가 "한 번의 fetch" 인 것과 달리, 이 메서드는
 **서버측 history 인덱싱 인프라를 전제** 한다 (그 부재가 이 메서드의 진짜 dormancy 원인이다, 아래).
@@ -219,7 +219,7 @@ capitalized (`"Decimal"`), `custom_context` 철자는 lowercase Cedar (`"decimal
 
 ## primary-source references
 
-- Pasu enrichment wire 계약 / projection 제약 / 활성화 맵:
+- Dambi enrichment wire 계약 / projection 제약 / 활성화 맵:
   `browser-extension/backend/service-worker/POLICY_RPC_METHODS.md` (§1, §2, §3b, §6) — repo 내부 1차.
 - 메서드 카탈로그 엔트리(params/returns/origin): `schema/method-catalog.json` `stat_window.snapshot`
   (`returns.kind = "record"`, `type = "WindowStats"`, `params.owner.defaultSelector = "$.root.from"`).

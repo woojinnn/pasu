@@ -49,7 +49,7 @@ import "./monitoring.css";
  *   single   → L2 layout: per-wallet header band (FAIL/WARN/CALM + VaR
  *              + unlimited count), action queue (urgent findings + risky
  *              approvals), holdings, approvals. Closer to the original
- *              front/pasu-v3 drilldown experience.
+ *              front/dambi-v3 drilldown experience.
  *
  * Risk overlay (UNLIMITED / BLOCKED inline on a holding) and VaR
  * (= min(allowance, balance) × price) are computed client-side by
@@ -1656,7 +1656,7 @@ function RevokeModal({ item, onClose }: { item: RevokeItem; onClose: () => void 
       <p style={{ marginTop: 0, fontSize: 13, color: "var(--slate-600)" }}>
         아래는 <code>approve(spender, 0)</code> 호출에 필요한 calldata입니다.
         지갑(MetaMask 등)에서 직접 트랜잭션으로 보내야 실제로 철회됩니다.
-        Pasu 백엔드는 절대 자동 전송하지 않습니다.
+        Dambi 백엔드는 절대 자동 전송하지 않습니다.
       </p>
       <div className="form-row">
         <label>대상</label>

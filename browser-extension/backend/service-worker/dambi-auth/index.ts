@@ -1,5 +1,5 @@
 /**
- * Pasu (Rust server) auth surface for the service worker.
+ * Dambi (Rust server) auth surface for the service worker.
  *
  * Tight, message-friendly API the popup can call via
  * `Browser.runtime.sendMessage`. The actual handlers are wired in

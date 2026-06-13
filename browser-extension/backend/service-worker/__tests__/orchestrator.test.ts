@@ -116,7 +116,7 @@ const mocks = vi.hoisted(() => {
         },
       },
       runtime: {
-        getURL: vi.fn((path: string) => `chrome-extension://pasu/${path}`),
+        getURL: vi.fn((path: string) => `chrome-extension://dambi/${path}`),
         sendMessage: vi.fn(async () => undefined),
         onMessage: {
           addListener: vi.fn((listener: (message: unknown) => void) => {
@@ -281,7 +281,7 @@ function venueMessage(requestId: string, walletAddress?: string): Message {
 
 function approve(requestId: string, ok: boolean): void {
   for (const listener of [...mocks.runtimeMessageListeners]) {
-    listener({ type: "pasu:verdict-decision", requestId, ok });
+    listener({ type: "dambi:verdict-decision", requestId, ok });
   }
 }
 
@@ -959,7 +959,7 @@ describe("orchestrator", () => {
 
     const summary = infoSpy.mock.calls
       .map((call) => String(call[0]))
-      .find((line) => line.startsWith("[Pasu] off-chain signature parsed"));
+      .find((line) => line.startsWith("[Dambi] off-chain signature parsed"));
     expect(summary).toBeDefined();
     // EIP-712 primaryType + routing decoder + the decoded action tag/fields are
     // all surfaced in one readable line.

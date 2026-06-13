@@ -2,15 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Pasu — Hyperliquid deny demo</title>
+    <title>Dambi — Hyperliquid deny demo</title>
   </head>
   <body>
-    <h1>Pasu · Hyperliquid <code>/exchange</code> deny demo</h1>
+    <h1>Dambi · Hyperliquid <code>/exchange</code> deny demo</h1>
     <p>
-      With the Pasu extension loaded, a <b>short</b> perp order is blocked
+      With the Dambi extension loaded, a <b>short</b> perp order is blocked
       by the shipped <code>hl-no-short-perp</code> policy; a <b>long</b> order
       passes. Open the service-worker console to see
-      <code>[Pasu] venue-order-verdict … verdict: "fail"</code>.
+      <code>[Dambi] venue-order-verdict … verdict: "fail"</code>.
     </p>
     <button id="short">POST short order (blocked)</button>
     <button id="long">POST long order (allowed)</button>
@@ -41,8 +41,8 @@
         } catch (e) {
           log(`  fetch THREW → ${e?.message ?? e} (BLOCKED)`);
         }
-        const v = window.__pasu_last_verdict__;
-        if (v) log(`  pasu verdict: allowed=${v.allowed} venue=${v.venue}`);
+        const v = window.__dambi_last_verdict__;
+        if (v) log(`  dambi verdict: allowed=${v.allowed} venue=${v.venue}`);
       }
       document.getElementById("short").onclick = () => post(false);
       document.getElementById("long").onclick = () => post(true);

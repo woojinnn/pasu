@@ -1,4 +1,4 @@
-// pasu default v2 policy — deny any swap whose input is worth $0.05 or more.
+// dambi default v2 policy — deny any swap whose input is worth $0.05 or more.
 //
 // The swap's input USD value is the host-populated `direction.amountInUsd`
 // projection (3-layer amount: raw hex / token-native nano / fiat USD — see

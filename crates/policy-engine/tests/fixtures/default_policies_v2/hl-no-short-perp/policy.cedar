@@ -1,4 +1,4 @@
-// pasu default v2 policy — block opening NEW short perp exposure on Hyperliquid.
+// dambi default v2 policy — block opening NEW short perp exposure on Hyperliquid.
 //
 // Hyperliquid `/exchange` orders now decode to the generic `Perp::PlaceOrder`
 // (orderType limit/stop/twap), so ONE action rule covers plain + TWAP shorts.

@@ -50,7 +50,7 @@ pub enum TokenType {
 }
 
 /// JWT payload. `sub` follows the standard claim name; everything else is
-/// pasu-specific. `exp` and `iat` are unix seconds.
+/// dambi-specific. `exp` and `iat` are unix seconds.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: UserId,

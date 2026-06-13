@@ -1,23 +1,23 @@
 # Helm overlay for M3 (fixed HTTPS domain via GCE Ingress + ManagedCertificate + OAuth).
 # Deploy:
-#   helm upgrade --install pasu <chart> -n pasu \
+#   helm upgrade --install dambi <chart> -n dambi \
 #     -f <chart>/values-m3.yaml --set image.tag=<git short sha>
 
 image:
-  repository: asia-northeast3-docker.pkg.dev/policy-engine-498313/pasu/pasu-policy-server
+  repository: asia-northeast3-docker.pkg.dev/policy-engine-498313/dambi/dambi-policy-server
   pullPolicy: IfNotPresent
 
 api:
   replicas: 2
-  publicApiUrl: https://pasu-policy.duckdns.org
-  dashboardUrl: https://pasu-policy.duckdns.org
+  publicApiUrl: https://dambi-policy.duckdns.org
+  dashboardUrl: https://dambi-policy.duckdns.org
   # Local-unpacked browser extension (stable id via manifest key) logging in
   # through chrome.identity.launchWebAuthFlow. Must EQUAL getRedirectURL()
   # byte-for-byte (trailing slash included).
   oauthAllowedRedirectUris: "https://fbadoakiikjmgdpdhpcohaddifhaggki.chromiumapp.org/"
   marketAdminEmails: "dandi@upside.center"
   corsAllowedOrigins:
-    - https://pasu-policy.duckdns.org
+    - https://dambi-policy.duckdns.org
     - chrome-extension://fbadoakiikjmgdpdhpcohaddifhaggki
 
 # GCE Ingress backend → ClusterIP (no external LB on the Service itself).
@@ -29,12 +29,12 @@ ingress:
   # GCE controller is selected via the kubernetes.io/ingress.class annotation
   # (this cluster has no "gce" IngressClass, so ingressClassName would match nothing).
   className: ""
-  host: pasu-policy.duckdns.org
+  host: dambi-policy.duckdns.org
   tls:
     enabled: false          # ManagedCertificate provides TLS via annotation, not a secret
   gce:
     enabled: true
-    staticIpName: pasu-ingress-ip
+    staticIpName: dambi-ingress-ip
     allowHttp: "true"       # keep :80 during cert provisioning; clients use HTTPS once ACTIVE
   annotations: {}
 
@@ -90,7 +90,7 @@ syncConfig: |-
   # price_usd never populates and the dashboard USD column stays empty. The CoinGecko
   # REST block below is currently unused by token pricing (no holding uses that
   # provider) — it is kept for future/manual sources. Catalog mirrors the repo root
-  # `pasu-sync.toml`.
+  # `dambi-sync.toml`.
   [oracles.chainlink.chains."eip155:1".feeds]
   "USDC/USD" = { address = "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6", decimals = 8 }
   "USDT/USD" = { address = "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D", decimals = 8 }

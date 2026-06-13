@@ -20,16 +20,16 @@ describe("dashboard server-api client", () => {
   });
 
   it("uses the Vite server URL when it is defined", async () => {
-    vi.stubEnv("VITE_PASU_SERVER_URL", "https://pasu-policy.duckdns.org");
+    vi.stubEnv("VITE_DAMBI_SERVER_URL", "https://dambi-policy.duckdns.org");
 
     const { SERVER_BASE_URL } = await import("./client");
 
-    expect(SERVER_BASE_URL).toBe("https://pasu-policy.duckdns.org");
+    expect(SERVER_BASE_URL).toBe("https://dambi-policy.duckdns.org");
   });
 
   it("refreshes the access token once and retries after a 401", async () => {
-    window.localStorage.setItem("pasu_jwt", "old-access");
-    window.localStorage.setItem("pasu_jwt_refresh", "refresh-token");
+    window.localStorage.setItem("dambi_jwt", "old-access");
+    window.localStorage.setItem("dambi_jwt_refresh", "refresh-token");
     const { request } = await import("./client");
 
     const fetchMock = vi
@@ -48,9 +48,11 @@ describe("dashboard server-api client", () => {
 
     expect(result).toEqual({ user_id: "u_1", email: "a@example.com" });
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toBe("http://127.0.0.1:8788/auth/refresh");
-    expect(window.localStorage.getItem("pasu_jwt")).toBe("new-access");
-    expect(window.localStorage.getItem("pasu_jwt_refresh")).toBe("new-refresh");
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://dambi-policy.duckdns.org/auth/refresh",
+    );
+    expect(window.localStorage.getItem("dambi_jwt")).toBe("new-access");
+    expect(window.localStorage.getItem("dambi_jwt_refresh")).toBe("new-refresh");
     expect(fetchMock.mock.calls[2][1]).toMatchObject({
       headers: {
         Authorization: "Bearer new-access",

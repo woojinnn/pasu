@@ -349,7 +349,7 @@ export function pickI18n(t: I18nText | undefined, locale: "en" | "ko" = "ko"): s
 
 /**
  * Human-friendly publisher label. Official listings get a fixed brand name
- * (the seed user's email is `official@pasu.seed`, ugly to render);
+ * (the seed user's email is `official@dambi.seed`, ugly to render);
  * everyone else gets the email's local part (`alice@example.com` → `alice`).
  */
 export function publisherDisplay(

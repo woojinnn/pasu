@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-05 (credit-delegation to a
+// dambi default v2 policy — explorer id: AAVE-05 (credit-delegation to a
 // non-allowlisted delegatee).
 //
 // LITERAL SET-MEMBERSHIP. Aave credit delegation lets another address borrow

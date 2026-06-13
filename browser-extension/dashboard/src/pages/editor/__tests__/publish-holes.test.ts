@@ -12,7 +12,7 @@ import { ZERO_ADDR, type PublishHole } from "../publish-redact";
 
 /** redact 직후의 정책 모델 — 주소는 제로주소, decimal 임곗값은 "0.0". */
 const REDACTED: FormModel = {
-  trigger: { kind: "actionEq", entityType: "Pasu::Action", id: "swap" },
+  trigger: { kind: "actionEq", entityType: "Dambi::Action", id: "swap" },
   when: [
     {
       joiner: "and",

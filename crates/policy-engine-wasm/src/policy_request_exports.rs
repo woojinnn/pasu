@@ -1,7 +1,7 @@
 //! Phase 5B — `evaluate_policy_request_json` WASM stub.
 //!
 //! The Phase 5 cutover wires the SW ↔ rpc-server JSON-RPC 2.0 channel
-//! (`pasu.evaluate_v3`) — the rpc-server returns a `policy_request`
+//! (`dambi.evaluate_v3`) — the rpc-server returns a `policy_request`
 //! payload (typed actions + state_before/deltas/state_after) which the SW
 //! then hands to this WASM entry alongside the user's Cedar policy set.
 //!
@@ -74,7 +74,7 @@ impl PolicyRequestVerdictDto {
 /// Phase 5B — evaluate a (policy_request, user_policies) pair.
 ///
 /// **Input**: two JSON strings, ignored by the stub.
-///   * `policy_request_json` — rpc-server's `pasu.evaluate_v3`
+///   * `policy_request_json` — rpc-server's `dambi.evaluate_v3`
 ///     result body (`{ actions, state_before, deltas, state_after, ... }`).
 ///   * `user_policies_json` — caller-loaded Cedar policy set.
 ///

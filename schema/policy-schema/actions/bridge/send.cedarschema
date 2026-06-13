@@ -1,5 +1,5 @@
 // Bridge::Send — outbound cross-chain bridge of a token (the source-chain leg
-// the user signs). ScopeBall never sees the destination fill, so every
+// the user signs). Dambi never sees the destination fill, so every
 // protectable signal is decoded from the source calldata:
 //   - dstRecipient : who receives on the destination chain (#1 phishing field)
 //   - dstChainId   : where funds go (CAIP-2)

@@ -17,12 +17,12 @@
     "0x5c19a95c": {
       "name": "delegate",
       "decision": "cover",
-      "reason": "governance power-delegation primitive (voting/proposition); Pasu core permission-delegation red-flag \u2014 delegates BOTH voting+proposition power, on-chain"
+      "reason": "governance power-delegation primitive (voting/proposition); Dambi core permission-delegation red-flag \u2014 delegates BOTH voting+proposition power, on-chain"
     },
     "0xdc937e1c": {
       "name": "delegateByType",
       "decision": "cover",
-      "reason": "governance power-delegation primitive (voting/proposition); Pasu core permission-delegation red-flag \u2014 delegates one power type (0=voting,1=proposition)"
+      "reason": "governance power-delegation primitive (voting/proposition); Dambi core permission-delegation red-flag \u2014 delegates one power type (0=voting,1=proposition)"
     },
     "0x39509351": {
       "name": "increaseAllowance",

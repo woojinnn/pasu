@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-01 (swap output redirected to
+// dambi default v2 policy — explorer id: UNI-01 (swap output redirected to
 // an address other than the signer).
 //
 // Drainers dress a swap up as normal but flip only `recipient` to the attacker:

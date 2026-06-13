@@ -24,7 +24,7 @@ import {
   type VenueBodyDecision,
 } from "../hl-exchange-parse";
 
-const XHR_META = Symbol.for("__pasu_xhr_meta__");
+const XHR_META = Symbol.for("__dambi_xhr_meta__");
 
 /**
  * Minimal XHR-like class with `open`/`send`/`dispatchEvent` on the PROTOTYPE

@@ -11,11 +11,11 @@ status: existing (in method-catalog.json)
 ## purpose
 
 한 토큰의 **on-chain 명목 수량(uint256 wei-form)** 을 **USD 명목가치(Decimal)** 로 환산한다.
-Pasu 의 USD-cap 류 정책 — "X 달러 넘는 approve / swap / transfer / borrow / perp 포지션은
+Dambi 의 USD-cap 류 정책 — "X 달러 넘는 approve / swap / transfer / borrow / perp 포지션은
 warn/fail" — 은 토큰 단위가 아니라 **달러 단위**로 한도를 건다. 그런데 calldata 만으로는
 `amount * price / 10^decimals` 를 계산할 가격(price)을 알 수 없다 (정적 디코드는 가격 oracle 을
 모른다). 따라서 이 enrichment 가 가격을 가져와 USD 로 환산해 `context.custom.<field>` (예:
-`usdValue`) 로 주입하고, 정책이 그 Decimal 필드에 한도를 비교한다. Pasu 의 no-simulation 모델과
+`usdValue`) 로 주입하고, 정책이 그 Decimal 필드에 한도를 비교한다. Dambi 의 no-simulation 모델과
 일관되게 이것은 **순수 fetch(+산술)** 이지 트랜잭션 시뮬레이션이 아니다.
 
 ## interface
@@ -206,7 +206,7 @@ warn/fail" — 은 토큰 단위가 아니라 **달러 단위**로 한도를 건
 
 ## primary-source references
 
-- Pasu enrichment wire 계약 / projection 제약 / activation map:
+- Dambi enrichment wire 계약 / projection 제약 / activation map:
   `browser-extension/backend/service-worker/POLICY_RPC_METHODS.md` (§1, §2, §3a, §4, §5) — repo 내부 1차.
 - 메서드 카탈로그 엔트리(params/returns/source enum/origin): `schema/method-catalog.json` `oracle.usd_value`.
 - 재사용 fetcher (1차 = 코드):

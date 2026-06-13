@@ -1,4 +1,4 @@
-// pasu default v2 policy — deny any swap that SELLS USDC (USDC as the input
+// dambi default v2 policy — deny any swap that SELLS USDC (USDC as the input
 // token), across the major chains.
 //
 // Unlike the USD/token-amount caps, this guards a field the lowering ALWAYS

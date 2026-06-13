@@ -15,7 +15,7 @@ status: aspirational (referenced; not yet in method-catalog.json — register on
 scam / drainer / phishing 주소인지** 를 denylist 피드로 조회해 단일 `flagged: Bool` 로 투영한다.
 off-chain `permit` 서명은 on-chain tx 가 없어 wallet 경고가 약하고, drainer 가 victim 으로부터
 무제한 allowance 를 빼내는 1순위 phishing surface 다 (SlowMist / ScamSniffer 보고). 정책은 이
-한 비트로 **deny** 를 결정한다 — `flagged == true` 면 서명 자체를 차단한다. Pasu 은 시뮬레이션
+한 비트로 **deny** 를 결정한다 — `flagged == true` 면 서명 자체를 차단한다. Dambi 은 시뮬레이션
 없이 정적 분석만 하므로, "이 주소가 악성으로 등록돼 있는가" 는 외부 reputation 피드 fetch 로만
 얻을 수 있는 사실이며, 이 method 가 그 fetch 를 캡슐화한다.
 
@@ -143,7 +143,7 @@ result payload 에 같이 실려도 무방하다 — manifest 가 `flagged` 만 
 
 **heuristic limit (정직한 한계)**
 - denylist 는 **사후(post-hoc)** 다 — 새로 만든 drainer 주소는 등재 전까지 miss. false-negative
-  존재. Pasu 은 이 한계를 reason 에 과장 없이 표기해야 한다("known-malicious" — *알려진* 한정).
+  존재. Dambi 은 이 한계를 reason 에 과장 없이 표기해야 한다("known-malicious" — *알려진* 한정).
 - score-임계치 차단은 피드 캘리브레이션에 의존하는 휴리스틱이며, false-positive(정상 주소
   과대 flag) 시 사용자가 정당한 transfer 를 못 함 → deny severity 라 비용이 크다. 임계치는
   보수적으로(높은 score 만) 설정.

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: A1 / CONC (single-token
+// dambi default v2 policy — explorer id: A1 / CONC (single-token
 // concentration cap). Personal-trading family.
 //
 // Rule: after this swap, if the acquired token would exceed the user's

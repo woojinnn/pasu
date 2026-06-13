@@ -120,7 +120,7 @@ export async function resolveBundlesForWallet(uid: string, fromAddress: string):
   const holesOk = (def: PolicyDef, params?: Record<string, HoleValue>): boolean => {
     const missing = missingRequiredHoles(def, params);
     if (missing.length > 0) {
-      console.warn(`[Pasu] 빈칸 미충전 정책 건너뜀: ${def.displayName} (${missing.join(", ")})`);
+      console.warn(`[Dambi] 빈칸 미충전 정책 건너뜀: ${def.displayName} (${missing.join(", ")})`);
       return false;
     }
     return true;
@@ -154,7 +154,7 @@ export async function resolveBundlesForWallet(uid: string, fromAddress: string):
       out.push({ id: defId, policy: r.text, manifest, trigger: extractTrigger(manifest) });
     } catch (err) {
       // 한 정의의 손상이 전체 평가를 막지 않게 — 그 정의만 건너뛴다.
-      console.warn(`[Pasu] 정책 렌더 실패 — 건너뜀: ${defId}`, err);
+      console.warn(`[Dambi] 정책 렌더 실패 — 건너뜀: ${defId}`, err);
     }
   }
   return out;

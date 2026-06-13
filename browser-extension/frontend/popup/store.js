@@ -1,9 +1,9 @@
 /* ============================================================
-   PASU — backend-wired store
-   Claude 디자인 popup UI(popup.js)가 기대하는 PasuStore 인터페이스를
+   DAMBI — backend-wired store
+   Claude 디자인 popup UI(popup.js)가 기대하는 DambiStore 인터페이스를
    그대로 유지하되, 데모 데이터 대신 service-worker 메시지에 연결한다.
 
-     loadState()   → policy-catalog + pasu-auth-status + pasu-list-wallets
+     loadState()   → policy-catalog + dambi-auth-status + dambi-list-wallets
      saveState()   → set-enabled-ids  (활성 주소 = 단일 계정 enabled)
      PACKAGES/POLICIES → catalog.policies 로부터 동적 생성 (sourceLabel 그룹핑)
 
@@ -90,9 +90,9 @@
    *  반환값: enabled 인 bindingId 배열(appliedByAddress 캐시에 들어간다). */
   function rebuildFromPs2(lib, walletState) {
     LIBRARY = lib;
-    api.BASELINE = window.PasuPs2.deriveBaseline(lib);
+    api.BASELINE = window.DambiPs2.deriveBaseline(lib);
     for (const k of Object.keys(POLICIES)) delete POLICIES[k];
-    const pkgs = window.PasuPs2.derivePopupPackages(lib, walletState || { bindings: {}, packageEnabled: {} });
+    const pkgs = window.DambiPs2.derivePopupPackages(lib, walletState || { bindings: {}, packageEnabled: {} });
     const enabled = [];
     for (const pkg of pkgs) {
       for (const m of pkg.members) {
@@ -123,13 +123,13 @@
   /* ---------- 계정별 로컬 프로필 (지갑·별칭·핀·주소별 정책) ----------
      지갑 모델 = "로컬 수동 주소". 단, 계정(uid)별로 격리 저장해서
      다른 Google 계정으로 로그인하면 이전 계정 지갑이 안 보이게 한다.
-     키: chrome.storage.local["pasu.profile.<uid>"]
+     키: chrome.storage.local["dambi.profile.<uid>"]
        = { activeAddress, wallets:[{address,nickname,pinned}], appliedByAddress:{addr:[ids]} }
      uid: 로그인 시 me.user_id, 로그아웃 시 null(=프로필 없음). */
   const hasLocal =
     typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
   function profileKey(uid) {
-    return "pasu.profile." + (uid || "__anon__");
+    return "dambi.profile." + (uid || "__anon__");
   }
   async function readProfile(uid) {
     if (!hasLocal) return null;
@@ -153,7 +153,7 @@
   // 현재 로그인된 계정(uid + email). 로그아웃이면 null.
   let currentUid = null;
 
-  /* ---------- 실제 인증 (scopeball auth) ---------- */
+  /* ---------- 실제 인증 (dambi auth) ---------- */
   // 로그인: Google OAuth 플로우를 SW 가 수행하고 Me 를 반환.
   // 반환에 isFirstLogin 포함 — 이 계정(uid)의 로컬 프로필이 아직 없으면 true
   // (= 이 계정으로 처음 로그인 → 온보딩 welcome 을 띄울 신호).
@@ -162,7 +162,7 @@
     // 항상 넘긴다. 5초에 reject 되면 팝업이 "실패"로 오인해 재시도를 유도하고,
     // 그 사이 서비스워커는 토큰을 저장 → 두 번째 클릭에 "성공"하는 것처럼 보여
     // "매번 2번 로그인" 증상이 생겼다. OAuth 에 충분한 3분으로 가드를 늘린다.
-    const me = await send("pasu-auth-sign-in", null, 180000);
+    const me = await send("dambi-auth-sign-in", null, 180000);
     if (!me || !me.email) return null;
     const uid = me.user_id || me.email;
     currentUid = uid;
@@ -172,28 +172,28 @@
   }
   // 로그아웃: 저장된 토큰 제거. (프로필은 uid 별로 남으므로 재로그인 시 복구)
   async function signOut() {
-    await send("pasu-auth-sign-out");
+    await send("dambi-auth-sign-out");
     currentUid = null;
   }
 
   // 서버에 지갑 등록 (대시보드와 공유). 실패해도 로컬 프로필에는 남는다.
   async function addWallet(address, label) {
     try {
-      await send("pasu-add-wallet", { address, label }, 30000);
+      await send("dambi-add-wallet", { address, label }, 30000);
       return true;
     } catch (e) {
-      console.warn("[pasu] add-wallet(server) failed:", e);
+      console.warn("[dambi] add-wallet(server) failed:", e);
       return false;
     }
   }
 
   // 서버에서 지갑 삭제 (대시보드와 즉시 동기화). throw 로 호출자에 결과 전달.
   async function removeWallet(address) {
-    await send("pasu-delete-wallet", { address });
+    await send("dambi-delete-wallet", { address });
   }
   // 서버 닉네임(label) 변경. label="" 이면 서버에서 라벨 제거.
   async function renameWallet(address, label) {
-    await send("pasu-update-wallet", { address, label });
+    await send("dambi-update-wallet", { address, label });
   }
 
   // 온보딩(welcome) 탭 열기 — 첫 로그인 계정에서 호출.
@@ -214,7 +214,7 @@
     let account = null;
     let uid = null;
     try {
-      const me = await send("pasu-auth-status");
+      const me = await send("dambi-auth-status");
       if (me && me.email) {
         account = { email: me.email };
         uid = me.user_id || me.email; // user_id 우선, 없으면 email 로 격리
@@ -243,11 +243,11 @@
     // 원인이었다. 서버에 없으면 popup 에도 없다.
     let summaries = [];
     try {
-      summaries = (await sendRetry("pasu-list-wallet-summaries")) || [];
+      summaries = (await sendRetry("dambi-list-wallet-summaries")) || [];
     } catch (e) {
       // summary 실패 시 주소만이라도 (label 없이)
       try {
-        const list = await send("pasu-list-wallets");
+        const list = await send("dambi-list-wallets");
         summaries = (list || []).map((w) => ({ address: w.address, label: null }));
       } catch (e2) {
         summaries = [];
@@ -532,5 +532,5 @@
     setAllBindings,
     applyBaseline,
   };
-  global.PasuStore = api;
+  global.DambiStore = api;
 })(typeof window !== "undefined" ? window : this);

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: UNI-10 (exact-out max-in far above
+// dambi default v2 policy — explorer id: UNI-10 (exact-out max-in far above
 // fair value).
 //
 // An exact-out swap ("receive exactly N") carries a `maxAmountIn` ceiling; if

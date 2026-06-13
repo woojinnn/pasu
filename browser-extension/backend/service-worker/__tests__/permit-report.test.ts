@@ -9,8 +9,8 @@ const tokenStore = vi.hoisted(() => ({
 const client = vi.hoisted(() => ({
   ingestPermit: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }));
-vi.mock("../pasu-auth/tokenStore", () => tokenStore);
-vi.mock("../pasu-auth/client", () => client);
+vi.mock("../dambi-auth/tokenStore", () => tokenStore);
+vi.mock("../dambi-auth/client", () => client);
 
 import { permitBodyToIngestReq, reportPermitIfApplicable } from "../permit-report";
 

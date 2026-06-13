@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: PERP-12 (stop-loss / take-profit
+// dambi default v2 policy — explorer id: PERP-12 (stop-loss / take-profit
 // trigger placed on the wrong side of price).
 //
 // A long with its stop-loss ABOVE mark (or a take-profit BELOW it) fires instantly

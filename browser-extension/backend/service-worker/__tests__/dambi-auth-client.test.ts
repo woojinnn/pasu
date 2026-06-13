@@ -6,16 +6,16 @@ const tokenStore = vi.hoisted(() => ({
   setTokens: vi.fn<(access: string | null, refresh?: string | null) => Promise<void>>(),
 }));
 
-vi.mock("../pasu-auth/tokenStore", () => tokenStore);
+vi.mock("../dambi-auth/tokenStore", () => tokenStore);
 
 import {
   request,
   ServerError,
   setOnSessionExpired,
   resetSessionExpiredGuard,
-} from "../pasu-auth/client";
+} from "../dambi-auth/client";
 
-describe("pasu-auth client", () => {
+describe("dambi-auth client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
@@ -44,7 +44,9 @@ describe("pasu-auth client", () => {
 
     expect(result).toEqual([{ address: "0x1", chains: [] }]);
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toBe("http://127.0.0.1:8788/auth/refresh");
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://dambi-policy.duckdns.org/auth/refresh",
+    );
     expect(tokenStore.setTokens).toHaveBeenCalledWith("new-access", "new-refresh");
     expect(fetchMock.mock.calls[2][1]).toMatchObject({
       headers: {

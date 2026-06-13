@@ -208,7 +208,7 @@ async fn google_redirect_when_env_configured() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn cors_rejects_unconfigured_origin() {
-    let addr = spawn_server_with_origin_allowlist(vec!["https://pasu-policy.duckdns.org"]).await;
+    let addr = spawn_server_with_origin_allowlist(vec!["https://dambi-policy.duckdns.org"]).await;
     let res = reqwest::Client::new()
         .request(reqwest::Method::OPTIONS, format!("http://{addr}/auth/me"))
         .header("origin", "https://evil.example")
@@ -226,10 +226,10 @@ async fn cors_rejects_unconfigured_origin() {
 #[tokio::test]
 #[ignore = "requires TEST_DATABASE_URL PostgreSQL integration database"]
 async fn cors_allows_configured_dashboard_origin() {
-    let addr = spawn_server_with_origin_allowlist(vec!["https://pasu-policy.duckdns.org"]).await;
+    let addr = spawn_server_with_origin_allowlist(vec!["https://dambi-policy.duckdns.org"]).await;
     let res = reqwest::Client::new()
         .request(reqwest::Method::OPTIONS, format!("http://{addr}/auth/me"))
-        .header("origin", "https://pasu-policy.duckdns.org")
+        .header("origin", "https://dambi-policy.duckdns.org")
         .header("access-control-request-method", "GET")
         .send()
         .await
@@ -241,6 +241,6 @@ async fn cors_allows_configured_dashboard_origin() {
             .unwrap()
             .to_str()
             .unwrap(),
-        "https://pasu-policy.duckdns.org"
+        "https://dambi-policy.duckdns.org"
     );
 }

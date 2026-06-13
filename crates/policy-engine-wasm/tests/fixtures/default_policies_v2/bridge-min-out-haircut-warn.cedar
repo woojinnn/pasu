@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-05 (liquidity-bridge minimum
+// dambi default v2 policy — explorer id: BRG-05 (liquidity-bridge minimum
 // received amount / slippage floor is too harsh).
 //
 // On liquidity bridges (Stargate, Hop) a larger send can lose meaningfully to

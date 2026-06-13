@@ -434,7 +434,7 @@ export async function evaluateActionV2(
       context?: unknown;
     }>(exports.debug_lowered_context_v2_json(JSON.stringify(input)));
     const body = input.action as { domain?: unknown; action?: unknown };
-    console.debug("[Pasu] wasm.lowered-context", {
+    console.debug("[Dambi] wasm.lowered-context", {
       domain: body?.domain,
       action: body?.action,
       actionUid: lowered.actionUid,
@@ -443,9 +443,9 @@ export async function evaluateActionV2(
       context: lowered.context,
     });
   } catch (err) {
-    console.debug("[Pasu] wasm.lowered-context (failed)", err);
+    console.debug("[Dambi] wasm.lowered-context (failed)", err);
   }
-  console.debug("[Pasu] wasm.evaluate-action-v2", {
+  console.debug("[Dambi] wasm.evaluate-action-v2", {
     chainId: input.tx.chain_id,
     from: input.tx.from,
     to: input.tx.to,

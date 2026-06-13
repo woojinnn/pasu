@@ -54,7 +54,7 @@ jobs:
       # `cargo test`는 doctest를 포함하므로 별도 `cargo test --doc`은 두지 않는다.
       - name: Test
         env:
-          PASU_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
+          DAMBI_V3_HARNESS_REPRESENTATIVE_SOURCE_REFS: '1'
         run: cargo test --all-features
 
       - name: Docs
@@ -143,13 +143,13 @@ jobs:
       - working-directory: browser-extension
         run: yarn build:chrome
         env:
-          PASU_ALLOW_INSECURE_REGISTRY: '1'
+          DAMBI_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension
         if: github.ref == 'refs/heads/main'
         run: yarn build:firefox
         env:
-          PASU_ALLOW_INSECURE_REGISTRY: '1'
+          DAMBI_ALLOW_INSECURE_REGISTRY: '1'
 
       - working-directory: browser-extension/dashboard
         name: Dashboard build (tsc --noEmit + vite build)
@@ -158,7 +158,7 @@ jobs:
       - name: Upload dashboard dist (PR build artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: pasu-dashboard-${{ github.sha }}
+          name: dambi-dashboard-${{ github.sha }}
           path: |
             browser-extension/dist/chrome/options.html
             browser-extension/dist/chrome/assets
@@ -172,7 +172,7 @@ jobs:
       - name: Upload Chrome dist (PR build artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: pasu-chrome-${{ github.sha }}
+          name: dambi-chrome-${{ github.sha }}
           path: browser-extension/dist/chrome.zip
           if-no-files-found: error
           retention-days: 14
@@ -187,7 +187,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
-          name: pasu-firefox-${{ github.sha }}
+          name: dambi-firefox-${{ github.sha }}
           path: browser-extension/dist/firefox.zip
           if-no-files-found: error
           retention-days: 14

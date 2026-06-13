@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: J1 / BEHV (averaging down — re-check
+// dambi default v2 policy — explorer id: J1 / BEHV (averaging down — re-check
 // your thesis before buying more of a losing position). Personal-trading
 // (behavioral) family.
 //

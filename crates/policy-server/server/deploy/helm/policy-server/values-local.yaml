@@ -1,9 +1,9 @@
 # Local Kubernetes overrides for a developer Kubernetes cluster.
 # Layer this on top of values.yaml:
-#   helm upgrade --install pasu <chart> -n pasu -f values-local.yaml
+#   helm upgrade --install dambi <chart> -n dambi -f values-local.yaml
 
 image:
-  repository: pasu-policy-server
+  repository: dambi-policy-server
   tag: dev
   # The local wrapper builds this tag directly inside minikube's Docker daemon.
   # Docker Desktop Kubernetes may use a separate containerd image store; use

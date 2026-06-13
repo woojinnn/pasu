@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AIR-04 (distributor claims to be a
+// dambi default v2 policy — explorer id: AIR-04 (distributor claims to be a
 // MerkleDistributor but asks for a signature with NO inclusion proof).
 //
 // PURE ACTION-FIELD introspection (decode-time cross-check, no enrichment). A

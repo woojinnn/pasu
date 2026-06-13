@@ -51,7 +51,7 @@
     "0x3d140d21": {
       "name": "approve(address,bool)",
       "decision": "cover",
-      "reason": "PERMISSION DELEGATION — approve(_spender, _allow) authorizes another address to manage the caller's LlamaLend loan (operator). Decoded as permission/protocol_authorization{operator, authorized=_spender, is_authorized=_allow}. This is exactly Pasu's pre-sign permission surface; NOT silently dropped."
+      "reason": "PERMISSION DELEGATION — approve(_spender, _allow) authorizes another address to manage the caller's LlamaLend loan (operator). Decoded as permission/protocol_authorization{operator, authorized=_spender, is_authorized=_allow}. This is exactly Dambi's pre-sign permission surface; NOT silently dropped."
     },
     "0x69c6804e": {
       "name": "save_rate()",

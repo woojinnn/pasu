@@ -3,7 +3,7 @@
   "chainId": 999,
   "address": "0x3333333333333333333333333333333333333333",
   "snapshot": "core-writer.abi.json",
-  "note": "CoreWriter system contract (HyperEVM->HyperCore writes), verified on hyperevmscan. One mutating fn sendRawAction(bytes) \u2014 the dispatch envelope Pasu decodes via tagged_dispatch. cover.",
+  "note": "CoreWriter system contract (HyperEVM->HyperCore writes), verified on hyperevmscan. One mutating fn sendRawAction(bytes) \u2014 the dispatch envelope Dambi decodes via tagged_dispatch. cover.",
   "functions": {
     "0x17938e13": {
       "name": "sendRawAction",

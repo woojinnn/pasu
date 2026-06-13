@@ -8,7 +8,7 @@
     "0xa0169ddd": {
       "name": "setClaimerFor(address)",
       "decision": "cover",
-      "reason": "PERMISSION-GRANT — earner designates a claimer allowed to call processClaim and receive their rewards (address claimer). Delegates reward-claim authority over the caller's earnings. Pasu permission primitive; never exclude."
+      "reason": "PERMISSION-GRANT — earner designates a claimer allowed to call processClaim and receive their rewards (address claimer). Delegates reward-claim authority over the caller's earnings. Dambi permission primitive; never exclude."
     },
     "0xf22cef85": {
       "name": "setClaimerFor(address,address)",

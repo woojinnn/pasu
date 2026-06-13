@@ -10,7 +10,7 @@ RUN apt-get update \
 RUN useradd --uid 10001 --create-home appuser
 WORKDIR /app
 COPY --from=builder /app/target/release/policy-server /usr/local/bin/policy-server
-COPY --from=builder /app/target/release/sync_worker   /usr/local/bin/pasu-sync-worker
+COPY --from=builder /app/target/release/sync_worker   /usr/local/bin/dambi-sync-worker
 COPY --from=builder /app/target/release/migrate       /usr/local/bin/policy-server-migrate
 # A4 pair: migrations must live in the runtime image; the compile-time path is absent here.
 COPY crates/policy-server/db/migrations               /app/migrations

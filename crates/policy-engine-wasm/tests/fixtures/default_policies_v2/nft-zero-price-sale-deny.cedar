@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: NFT-01 (signing away an owned NFT
+// dambi default v2 policy — explorer id: NFT-01 (signing away an owned NFT
 // at effectively zero / far-below-floor price).
 //
 // On Seaport/Blur an NFT sale is a *signature*, not a transaction. Phishing

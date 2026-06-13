@@ -57,7 +57,7 @@ export async function resolveOrderSymbol(
       // placeholder. The collectors key by it, so the body stays internally
       // consistent; only symbol-specific policies stay dormant.
       console.info(
-        "[Pasu] HL order symbol: index unresolved (spot index or meta miss) → placeholder kept",
+        "[Dambi] HL order symbol: index unresolved (spot index or meta miss) → placeholder kept",
         { assetIndex },
       );
       return null;
@@ -68,11 +68,11 @@ export async function resolveOrderSymbol(
     // the SAME resolved symbol. The asset index is the signed truth, so its
     // resolved name always matches what the order targets.
     (action.market as { symbol?: unknown }).symbol = coin;
-    console.info("[Pasu] HL order symbol resolved", { assetIndex, coin });
+    console.info("[Dambi] HL order symbol resolved", { assetIndex, coin });
     return coin;
   } catch (err) {
     // Never let symbol resolution break (or deny-close) the verdict path.
-    console.warn("[Pasu] HL order symbol resolution threw (placeholder kept)", {
+    console.warn("[Dambi] HL order symbol resolution threw (placeholder kept)", {
       err: err instanceof Error ? err.message : String(err),
     });
     return null;

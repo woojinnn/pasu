@@ -8,8 +8,8 @@
 // Types here mirror the SW surface; they live in the extension code under
 // src/background/dashboard. Keep them in sync until the workspaces are joined.
 
-const REQ_TAG = "pasu-dashboard";
-const RES_TAG = "pasu-extension";
+const REQ_TAG = "dambi-dashboard";
+const RES_TAG = "dambi-extension";
 const BROADCAST_ID = "__broadcast__";
 const DEFAULT_TIMEOUT_MS = 5_000;
 
@@ -185,7 +185,7 @@ export interface MigrationRewriteResult {
  * `context.custom.<field>`. Both the dashboard's rewrite banner and the
  * SW-side migration detector must agree on this set, so it lives here
  * — the only module both build graphs reach (dashboard via the
- * `@pasu/sdk` path alias, SW via a relative import).
+ * `@dambi/sdk` path alias, SW via a relative import).
  *
  * Used by:
  *  - `dashboard/src/migration/rewrite-banner.tsx` — passes to

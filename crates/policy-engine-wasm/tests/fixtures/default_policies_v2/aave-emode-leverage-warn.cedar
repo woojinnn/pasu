@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-06 (eMode/collateral toggle
+// dambi default v2 policy — explorer id: AAVE-06 (eMode/collateral toggle
 // pushes looping leverage too high).
 //
 // STATE / REDUCER fact. Bundling correlated assets (e.g. stETH/ETH) into eMode

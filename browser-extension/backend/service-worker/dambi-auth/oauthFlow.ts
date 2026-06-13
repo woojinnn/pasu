@@ -47,7 +47,7 @@ export async function startGoogleLogin(): Promise<{ access: string; refresh: str
   // string must be byte-for-byte in the server's OAUTH_ALLOWED_REDIRECT_URIS
   // (trailing slash included); log it so it can be copied into the allowlist.
   const redirectUri = identity.getRedirectURL();
-  console.log("[pasu] OAuth redirect_uri (allowlist this exactly):", redirectUri);
+  console.log("[dambi] OAuth redirect_uri (allowlist this exactly):", redirectUri);
 
   const url = `${getServerBaseUrl()}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`;
   const redirectUrl: string = await identity.launchWebAuthFlow({

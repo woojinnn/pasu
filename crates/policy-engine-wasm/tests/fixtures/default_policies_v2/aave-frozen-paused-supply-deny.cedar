@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: AAVE-04 (supply into a frozen /
+// dambi default v2 policy — explorer id: AAVE-04 (supply into a frozen /
 // paused market).
 //
 // ACTION-FIELD. The reserve's governance state flags ride in the supply action's

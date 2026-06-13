@@ -9,12 +9,12 @@ from an empty database.
 ## Current Production Targets
 
 - GCP project: `policy-engine-498313`
-- GKE cluster: `pasu-autopilot`
+- GKE cluster: `dambi-autopilot`
 - GKE region: `asia-northeast3`
-- Kubernetes namespace: `pasu`
-- Helm release: `pasu`
-- Cloud SQL instance: `pasu-pg`
-- Cloud SQL database: `pasu`
+- Kubernetes namespace: `dambi`
+- Helm release: `dambi`
+- Cloud SQL instance: `dambi-pg`
+- Cloud SQL database: `dambi`
 - Kubernetes secret: `policy-server-secrets`
 - Helm values: `crates/policy-server/server/deploy/helm/policy-server/values-m3.yaml`
 
@@ -23,7 +23,7 @@ from an empty database.
 1. Point kubectl at production GKE.
 
    ```sh
-   gcloud container clusters get-credentials pasu-autopilot \
+   gcloud container clusters get-credentials dambi-autopilot \
      --region asia-northeast3 \
      --project policy-engine-498313
    kubectl config current-context
@@ -32,23 +32,23 @@ from an empty database.
 2. Snapshot non-secret state.
 
    ```sh
-   mkdir -p /private/tmp/pasu-reset
-   helm get values pasu -n pasu > /private/tmp/pasu-reset/helm-values.yaml
-   helm get manifest pasu -n pasu > /private/tmp/pasu-reset/helm-manifest.yaml
-   kubectl -n pasu get deploy,pod,svc,ingress,managedcertificate,backendconfig -o wide \
-     > /private/tmp/pasu-reset/k8s-resources.txt
+   mkdir -p /private/tmp/dambi-reset
+   helm get values dambi -n dambi > /private/tmp/dambi-reset/helm-values.yaml
+   helm get manifest dambi -n dambi > /private/tmp/dambi-reset/helm-manifest.yaml
+   kubectl -n dambi get deploy,pod,svc,ingress,managedcertificate,backendconfig -o wide \
+     > /private/tmp/dambi-reset/k8s-resources.txt
    ```
 
 3. Stop API and worker pods so PostgreSQL connections close before dropping the
    database.
 
    ```sh
-   kubectl -n pasu scale \
-     deploy/pasu-policy-server-api \
-     deploy/pasu-policy-server-worker \
+   kubectl -n dambi scale \
+     deploy/dambi-policy-server-api \
+     deploy/dambi-policy-server-worker \
      --replicas=0
-   kubectl -n pasu wait --for=delete pod \
-     -l app.kubernetes.io/instance=pasu \
+   kubectl -n dambi wait --for=delete pod \
+     -l app.kubernetes.io/instance=dambi \
      --timeout=120s
    ```
 
@@ -56,12 +56,12 @@ from an empty database.
    data, but keeps the Cloud SQL instance and SQL user.
 
    ```sh
-   gcloud sql databases delete pasu \
-     --instance pasu-pg \
+   gcloud sql databases delete dambi \
+     --instance dambi-pg \
      --project policy-engine-498313 \
      --quiet
-   gcloud sql databases create pasu \
-     --instance pasu-pg \
+   gcloud sql databases create dambi \
+     --instance dambi-pg \
      --project policy-engine-498313
    ```
 
@@ -71,9 +71,9 @@ from an empty database.
 
    ```sh
    IMAGE_TAG="$(git rev-parse --short HEAD)"
-   helm upgrade --install pasu \
+   helm upgrade --install dambi \
      crates/policy-server/server/deploy/helm/policy-server \
-     -n pasu \
+     -n dambi \
      -f crates/policy-server/server/deploy/helm/policy-server/values-m3.yaml \
      --set image.tag="${IMAGE_TAG}"
    ```
@@ -81,10 +81,10 @@ from an empty database.
 6. Verify rollout and readiness.
 
    ```sh
-   kubectl -n pasu rollout status deploy/pasu-policy-server-api --timeout=180s
-   kubectl -n pasu rollout status deploy/pasu-policy-server-worker --timeout=180s
-   curl -sS -i https://pasu-policy.duckdns.org/health
-   curl -sS -i https://pasu-policy.duckdns.org/readyz
+   kubectl -n dambi rollout status deploy/dambi-policy-server-api --timeout=180s
+   kubectl -n dambi rollout status deploy/dambi-policy-server-worker --timeout=180s
+   curl -sS -i https://dambi-policy.duckdns.org/health
+   curl -sS -i https://dambi-policy.duckdns.org/readyz
    ```
 
    `/readyz` should report:

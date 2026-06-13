@@ -15,7 +15,7 @@ status: aspirational (referenced; not yet in method-catalog.json — register on
 
 대출 포지션의 **action 이후 projected health factor (HF)** 를 계산해, 청산 근접도를 정책이
 판단할 수 있게 한다. 사용자가 추가 borrow 하거나 collateral 을 withdraw 하면 HF 가 떨어지고,
-HF < 1 이면 청산 대상이 된다. Pasu 은 트랜잭션을 **시뮬레이션하지 않으므로**, 이 method 는
+HF < 1 이면 청산 대상이 된다. Dambi 은 트랜잭션을 **시뮬레이션하지 않으므로**, 이 method 는
 프로토콜의 현재 user account 상태를 읽어(현 collateral / debt / liquidation threshold) action
 파라미터(asset + amount)를 **closed-form** 으로 반영한 post-action HF 를 재계산한다. 이 값이
 catalog 정책 `borrow-low-health-factor` / `withdraw-collateral-health-factor` 의 `< 1.5` warn

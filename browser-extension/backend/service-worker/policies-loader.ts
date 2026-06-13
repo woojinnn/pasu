@@ -84,7 +84,7 @@ async function installFiltered(enabledIds: readonly string[]): Promise<void> {
     policy_set: filtered.map(({ id, text }) => ({ id, text })),
     manifests,
   });
-  console.info("[Pasu] policies installed", {
+  console.info("[Dambi] policies installed", {
     requestedIds: [...enabledIds].sort(),
     installedIds: filtered.map((p) => p.id).sort(),
     availableCount: union.length,

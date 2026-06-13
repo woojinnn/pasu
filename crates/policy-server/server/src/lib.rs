@@ -11,7 +11,7 @@
 //! # Status
 //! This crate provides the service **DTO contract** ([`dto`]) — the
 //! request/response shapes the extension and backend agree on, matching +
-//! extending the legacy Node.js `pasu.evaluate_v3` contract — plus the
+//! extending the legacy Node.js `dambi.evaluate_v3` contract — plus the
 //! axum [`app`] (router + shared state), the [`handler`] that simulates action
 //! envelopes over canonical wallet state (load → reduce → predicted response),
 //! and the in-memory test store boundary ([`store`]). The server stores

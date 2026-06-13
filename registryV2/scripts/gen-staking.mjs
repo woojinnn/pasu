@@ -8,7 +8,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { toFunctionSelector } from "viem";
 
-const ROOT = "/Users/jhy/Desktop/Pasu/pasu-registry-v2";
+const ROOT = "/Users/jhy/Desktop/Dambi/dambi-registry-v2";
 const SURF = `${ROOT}/registryV2/surface/curve`;
 const MAN = `${ROOT}/registryV2/manifests/curve`;
 

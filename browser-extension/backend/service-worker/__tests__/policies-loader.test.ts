@@ -161,7 +161,7 @@ describe("policies-loader (filtered install)", () => {
         .map((p: { id: string }) => p.id)
         .sort(),
     ).toEqual(["default::dex/b", "default::dex/c"]);
-    expect(infoSpy).toHaveBeenCalledWith("[Pasu] policies installed", {
+    expect(infoSpy).toHaveBeenCalledWith("[Dambi] policies installed", {
       requestedIds: ["default::dex/b", "default::dex/c"],
       installedIds: ["default::dex/b", "default::dex/c"],
       availableCount: 3,

@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-05 (whole-tx / multicall net
+// dambi default v2 policy — explorer id: GEN-05 (whole-tx / multicall net
 // outflow over a USD cap).
 //
 // A single transfer is caught by GEN-04, but a multicall can drain the wallet

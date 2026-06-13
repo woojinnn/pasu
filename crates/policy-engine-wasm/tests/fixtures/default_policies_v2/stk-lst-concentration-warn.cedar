@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: STK-04 (LST/LRT over-concentration).
+// dambi default v2 policy — explorer id: STK-04 (LST/LRT over-concentration).
 //
 // WHOLE-WALLET FOLD, not an action-field. Acquiring more of an LST/LRT can push
 // it past a safe share of the whole portfolio; one depeg (stETH/ezETH) then

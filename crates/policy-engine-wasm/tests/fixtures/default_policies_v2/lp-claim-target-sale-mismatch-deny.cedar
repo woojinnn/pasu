@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: LP-01 (claim from a contract that
+// dambi default v2 policy — explorer id: LP-01 (claim from a contract that
 // is NOT the sale I originally subscribed to).
 //
 // Token-distribution (claim) is when fake-claim sites are most active: a

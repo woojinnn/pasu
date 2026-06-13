@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: GEN-02 (setApprovalForAll to a
+// dambi default v2 policy — explorer id: GEN-02 (setApprovalForAll to a
 // non-allowlisted operator).
 //
 // `setApprovalForAll(operator, true)` hands an operator the right to move every

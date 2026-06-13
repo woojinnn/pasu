@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-02 (funds sent to a bridge
+// dambi default v2 policy — explorer id: BRG-02 (funds sent to a bridge
 // contract that is not on the known-good bridge allowlist).
 //
 // Fake bridge sites are a top bridging loss path ($520K LINK to a spoofed

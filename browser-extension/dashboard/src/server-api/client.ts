@@ -2,7 +2,7 @@
  * Thin fetch wrapper for the policy-rpc server (policy-server).
  *
  * Responsibilities:
- * - Prepend the server base URL (configurable; defaults to localhost).
+ * - Prepend the server base URL (configurable; defaults to the deployed server).
  * - Attach `Authorization: Bearer <jwt>` automatically when a token is
  *   stored.
  * - Throw structured `ServerError` on non-2xx so callers can match on
@@ -10,13 +10,14 @@
  * - Stay tiny and dependency-free — no axios, no React.
  */
 
-const DEFAULT_BASE = import.meta.env.VITE_PASU_SERVER_URL || "http://127.0.0.1:8788";
+const DEFAULT_BASE =
+  import.meta.env.VITE_DAMBI_SERVER_URL || "https://dambi-policy.duckdns.org";
 
 /** Resolve the server URL — env > localStorage > default. Read once at
  * import time; we don't expect users to swap servers mid-session. */
 function resolveBaseUrl(): string {
   if (typeof window !== "undefined") {
-    const stored = window.localStorage.getItem("pasu_server_url");
+    const stored = window.localStorage.getItem("dambi_server_url");
     if (stored) return stored;
   }
   return DEFAULT_BASE;
@@ -24,8 +25,8 @@ function resolveBaseUrl(): string {
 
 export const SERVER_BASE_URL = resolveBaseUrl();
 
-const TOKEN_KEY = "pasu_jwt";
-const REFRESH_KEY = "pasu_jwt_refresh";
+const TOKEN_KEY = "dambi_jwt";
+const REFRESH_KEY = "dambi_jwt_refresh";
 
 /** Persisted access token. Returns `null` when the user is logged out. */
 export function getStoredToken(): string | null {

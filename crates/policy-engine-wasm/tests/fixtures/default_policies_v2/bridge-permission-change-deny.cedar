@@ -1,4 +1,4 @@
-// pasu default v2 policy — explorer id: BRG-10 (a "bridge" message moves
+// dambi default v2 policy — explorer id: BRG-10 (a "bridge" message moves
 // no funds but changes permissions / config).
 //
 // LayerZero OApp calls like setDelegate / setConfig / setPeer (or a plain

@@ -19,7 +19,7 @@ use policy_sync::SyncConfig;
 use crate::app::AppState;
 use crate::config::ServerConfig;
 
-const DEFAULT_SYNC_CONFIG: &str = "./pasu-sync.toml";
+const DEFAULT_SYNC_CONFIG: &str = "./dambi-sync.toml";
 
 /// JSON body returned by `/readyz`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -78,7 +78,7 @@ async fn postgres_status(state: &AppState) -> String {
 }
 
 fn sync_config_status(config: &ServerConfig) -> String {
-    let path = std::env::var("PASU_SYNC_CONFIG")
+    let path = std::env::var("DAMBI_SYNC_CONFIG")
         .map_or_else(|_| PathBuf::from(DEFAULT_SYNC_CONFIG), PathBuf::from);
     match SyncConfig::load_file(&path) {
         Ok(_) => "ok".to_owned(),
