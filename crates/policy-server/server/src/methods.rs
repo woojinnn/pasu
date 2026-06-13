@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 
 use policy_state::pending::{AssetCommitment, PendingKind, PendingStatus};
 use policy_state::primitives::U256;
-use policy_state::{HlAccount, PositionKind, WalletState};
+use policy_state::{HlAccount, LendingAccount, PositionKind, WalletState};
 
 /// The reserved HL account position id — mirrors the reducer's
 /// `effect/hyperliquid_core/common.rs::HL_ACCOUNT_ID` (which is `pub(super)`
@@ -341,6 +341,166 @@ fn unix_now() -> i64 {
         .ok()
         .and_then(|d| i64::try_from(d.as_secs()).ok())
         .unwrap_or(0)
+}
+
+/// Lowercase hex address from a param that is a bare address string, an object
+/// carrying `address`, or a lowered token ref `{ key: { address } }`. Wraps
+/// [`asset_hex`] for the extra nested-`key` shape the swap/transfer params carry.
+fn ref_address(v: &Value) -> Option<String> {
+    asset_hex(v).or_else(|| v.get("key").and_then(asset_hex))
+}
+
+/// `portfolio.input_fraction_bps`: what fraction (in basis points) of the wallet's
+/// held balance of the input token does this action spend? `amount / balance ×
+/// 10_000`. A fraction-of-holdings cap catches "drain a large share of one position
+/// in a single tx" that a fixed USD cap misses (it scales with the user, not a
+/// global dollar line).
+///
+/// Pure read of the loaded `WalletState`: matches the input token by
+/// `(chain_id, contract)` against the synced holdings — the same balance source as
+/// [`pending_cap_over_balance`] — and divides. Returns `{ bps: Long }` (saturating
+/// at `i64::MAX`). `None` (→ field unset → policy dormant, fail-open) when params
+/// don't parse, the input token is native / has no synced holding, or the held
+/// balance is zero (a fraction of nothing is undefined — never warns on it).
+///
+/// Params are exactly what the manifest projects (`{ chain_id, owner, asset,
+/// amount }`): `asset` is the lowered input token (`$.action.tokenIn` /
+/// `$.action.token`, an object whose address is at `.key.address`); `amount` is the
+/// camelCase `0x`-hex input amount (`$.action.direction.amountIn` / `$.action.amount`).
+/// `owner` is unused (the loaded state is already the owner's).
+pub(crate) fn input_fraction_bps(state: &WalletState, params: &Value) -> Option<Value> {
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let asset = params.get("asset").and_then(ref_address)?;
+    let amount = params.get("amount").and_then(parse_hex_u256)?;
+
+    let matches = |k: &policy_state::token::TokenKey| -> bool {
+        k.chain().as_str() == chain
+            && k.contract().map(|a| format!("{a:#x}")).as_deref() == Some(asset.as_str())
+    };
+    let balance = state
+        .tokens
+        .values()
+        .find_map(|h| matches(&h.key).then(|| h.balance.as_fungible()).flatten())?;
+    if balance == U256::ZERO {
+        return None; // fraction of a zero holding is undefined → dormant
+    }
+    let bps_u = amount.saturating_mul(U256::from(10_000u64)) / balance;
+    // bps can exceed i64 only for amount ≫ balance; saturate (the policy compares
+    // `> 5000`, so any saturated value is correctly "over").
+    let bps: i64 = bps_u.to_string().parse().unwrap_or(i64::MAX);
+    Some(json!({ "bps": bps }))
+}
+
+/// `address.similarity`: is the action's recipient a look-alike of an address the
+/// wallet already has a relationship with — the address-poisoning trap, where an
+/// attacker seeds a dust transfer from a vanity address sharing the victim's real
+/// counterparty's leading/trailing hex so a later copy-paste sends to the impostor.
+/// A wallet UI truncates `0x1234…5678`, so a shared first-2-/last-2-byte prefix is
+/// the exact collision a human eyeballs as "the same address".
+///
+/// Pure: compares the `candidate` recipient against the set of addresses already in
+/// the loaded `WalletState` the user recognises — every held-token contract and every
+/// approval spender/operator (erc20 allowance, set-for-all, permit2). `collision` =
+/// some known address (≠ the candidate) shares its first 4 AND last 4 hex chars.
+/// Returns `{ poisonCollision: Bool }`. `None` (→ dormant, fail-open) when the
+/// candidate is missing / not a 20-byte address, or the wallet has no known address
+/// to compare against.
+///
+/// HONEST LIMIT (v1): the comparison set is the wallet's approval/holding addresses,
+/// NOT its full historical transfer-recipient list (the state model keeps no transfer
+/// log). It therefore catches a poison of a known *contract/spender* but not yet a
+/// poison of a one-off past payee. Widening the set to a recipient history is a
+/// follow-up; the prefix/suffix test itself is exact.
+pub(crate) fn address_similarity(state: &WalletState, params: &Value) -> Option<Value> {
+    let candidate = params.get("candidate").and_then(ref_address)?;
+    let cand = candidate.trim_start_matches("0x");
+    if cand.len() != 40 {
+        return None; // not a 20-byte EVM address → cannot judge
+    }
+
+    let mut known: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for h in state.tokens.values() {
+        if let Some(a) = h.key.contract() {
+            known.insert(format!("{a:#x}"));
+        }
+    }
+    for spenders in state.approvals.erc20.values() {
+        for s in spenders.keys() {
+            known.insert(format!("{s:#x}"));
+        }
+    }
+    for operators in state.approvals.set_for_all.values() {
+        for s in operators {
+            known.insert(format!("{s:#x}"));
+        }
+    }
+    for k in state.approvals.permit2.keys() {
+        known.insert(format!("{:#x}", k.2));
+    }
+    if known.is_empty() {
+        return None; // nothing to compare against → dormant
+    }
+
+    let pre = &cand[..4];
+    let suf = &cand[cand.len() - 4..];
+    let collision = known.iter().any(|k| {
+        let kk = k.trim_start_matches("0x");
+        kk.len() == 40 && kk != cand && &kk[..4] == pre && &kk[kk.len() - 4..] == suf
+    });
+    Some(json!({ "poisonCollision": collision }))
+}
+
+/// `lending.health_factor`: the wallet's **post-action** health factor for the
+/// lending market the action targets. A borrow/withdraw lowers HF; a liquidation
+/// guard must see where the action LANDS the position, not where it started — a
+/// fixed USD cap cannot express "this borrow tips me toward liquidation".
+///
+/// Reads the **predicted post-action state** (`state_after`): the reducer folds the
+/// borrow/withdraw/`set_emode` effect into `LendingAccount.health_factor` via
+/// `recompute_health_factor`, so this returns the authoritative post-action HF with
+/// no re-derivation here. Matches the lending account by the action's `venue.name`,
+/// falling back to the sole account when the wallet has exactly one. If the action
+/// could not be simulated, `state_after == state_before`, so this gracefully reports
+/// the pre-action HF instead of fabricating one.
+///
+/// Returns `{ postActionHf }` (4dp decimal string, Cedar-parseable). `None`
+/// (→ field unset → policy dormant, fail-open) when there is no matching lending
+/// account (the wallet has none on that venue / is ambiguous) or the HF string does
+/// not parse. Params are the manifest's `{ chain_id, owner, venue, asset, amount }`;
+/// only `venue.name` is read here (the amount is already reflected in `state_after`).
+pub(crate) fn lending_health_factor(state_after: &WalletState, params: &Value) -> Option<Value> {
+    let venue_name = params
+        .get("venue")
+        .and_then(|v| v.get("name"))
+        .and_then(Value::as_str);
+
+    let accounts: Vec<&LendingAccount> = state_after
+        .positions
+        .iter()
+        .filter_map(|p| match &p.kind {
+            PositionKind::LendingAccount(a) => Some(a),
+            _ => None,
+        })
+        .collect();
+
+    // Prefer the account on the action's venue; else the sole lending account.
+    let account = venue_name
+        .and_then(|name| {
+            accounts
+                .iter()
+                .copied()
+                .find(|a| a.market.venue.name == name)
+        })
+        .or_else(|| {
+            if accounts.len() == 1 {
+                accounts.first().copied()
+            } else {
+                None
+            }
+        })?;
+
+    let hf: f64 = account.health_factor.value.as_str().parse().ok()?;
+    Some(json!({ "postActionHf": format!("{hf:.4}") }))
 }
 
 #[cfg(test)]
@@ -1032,5 +1192,156 @@ mod tests {
     fn fill_stats_missing_chain_id_is_none() {
         let st = fills_state(vec![fill(1, DAY_START_MS + 1000, "-1.0")]);
         assert!(super::session_fill_stats(&st, &serde_json::json!({ "now": NOW_SECS })).is_none());
+    }
+
+    // ---- portfolio.input_fraction_bps -------------------------------------
+
+    /// A lowered token-ref param (`{ key: { address } }`), as the manifest projects.
+    fn asset_ref(addr: &str) -> Value {
+        serde_json::json!({ "key": { "address": addr } })
+    }
+
+    #[test]
+    fn input_fraction_bps_computes_bps() {
+        // 300 of a 1000 holding = 30% = 3000 bps.
+        let st = state(vec![holding(SELL, 1000)], vec![]);
+        let p = serde_json::json!({
+            "chain_id": "eip155:1", "owner": "0x0",
+            "asset": asset_ref(SELL), "amount": "0x12c" // 300
+        });
+        let v = super::input_fraction_bps(&st, &p).expect("computes");
+        assert_eq!(v["bps"], serde_json::json!(3000));
+    }
+
+    #[test]
+    fn input_fraction_bps_over_half_holding() {
+        let st = state(vec![holding(SELL, 1000)], vec![]);
+        let p = serde_json::json!({
+            "chain_id": "eip155:1", "owner": "0x0",
+            "asset": asset_ref(SELL), "amount": "0x258" // 600 → 6000 bps
+        });
+        assert_eq!(
+            super::input_fraction_bps(&st, &p).unwrap()["bps"],
+            serde_json::json!(6000)
+        );
+    }
+
+    #[test]
+    fn input_fraction_bps_dormant_when_unheld_or_zero() {
+        let p = serde_json::json!({
+            "chain_id": "eip155:1", "owner": "0x0", "asset": asset_ref(SELL), "amount": "0x1"
+        });
+        // No synced holding for the asset → None.
+        let st = state(vec![holding(OTHER, 1000)], vec![]);
+        assert!(super::input_fraction_bps(&st, &p).is_none());
+        // Zero balance → None (fraction of nothing is undefined).
+        let st0 = state(vec![holding(SELL, 0)], vec![]);
+        assert!(super::input_fraction_bps(&st0, &p).is_none());
+    }
+
+    // ---- address.similarity ----------------------------------------------
+
+    #[test]
+    fn address_similarity_flags_lookalike_of_known_contract() {
+        // OTHER (WETH, 0xc02a…6cc2) is a known (held) contract; the candidate
+        // shares its first-2 and last-2 bytes but differs in the middle.
+        let st = state(vec![holding(OTHER, 1)], vec![]);
+        let poison = format!("0xc02a{}6cc2", "0".repeat(32));
+        let p = serde_json::json!({ "chain_id": "eip155:1", "candidate": poison });
+        assert_eq!(
+            super::address_similarity(&st, &p).unwrap()["poisonCollision"],
+            serde_json::json!(true)
+        );
+    }
+
+    #[test]
+    fn address_similarity_no_collision_for_distinct_address() {
+        let st = state(vec![holding(OTHER, 1)], vec![]);
+        let p = serde_json::json!({ "chain_id": "eip155:1", "candidate": SELL });
+        assert_eq!(
+            super::address_similarity(&st, &p).unwrap()["poisonCollision"],
+            serde_json::json!(false)
+        );
+    }
+
+    #[test]
+    fn address_similarity_dormant_when_no_known_set_or_bad_candidate() {
+        // No known addresses to compare against → None.
+        let empty = state(vec![], vec![]);
+        let p = serde_json::json!({ "chain_id": "eip155:1", "candidate": OTHER });
+        assert!(super::address_similarity(&empty, &p).is_none());
+        // Candidate is not a 20-byte address → None.
+        let st = state(vec![holding(OTHER, 1)], vec![]);
+        let bad = serde_json::json!({ "chain_id": "eip155:1", "candidate": "0x1234" });
+        assert!(super::address_similarity(&st, &bad).is_none());
+    }
+
+    // ---- lending.health_factor -------------------------------------------
+
+    /// A `WalletState` carrying one lending account with the given (post-action)
+    /// health factor on `venue` — the shape the reducer leaves in `state_after`.
+    fn lending_state(hf: &str, venue: &str) -> WalletState {
+        use policy_state::{
+            Decimal, LendingAccount, LiveField, MarketRef, Position, PositionKind, ProtocolRef,
+        };
+        let lf = |s: &str| {
+            LiveField::new(
+                Decimal::new(s),
+                DataSource::UserSupplied,
+                Time::from_unix(0),
+            )
+        };
+        let account = LendingAccount {
+            market: MarketRef {
+                symbol: venue.into(),
+                venue: VenueRef::new(venue),
+            },
+            collaterals: vec![],
+            debts: vec![],
+            emode: None,
+            is_isolated: false,
+            health_factor: lf(hf),
+            ltv: lf("0"),
+            liquidation_threshold: lf("0.8250"),
+        };
+        let pos = Position {
+            id: "lending/aave_v3".to_owned(),
+            protocol: ProtocolRef::new(venue),
+            chain: Some(ChainId::ethereum_mainnet()),
+            kind: PositionKind::LendingAccount(account),
+            primitives_synced_at: Time::from_unix(0),
+            primitives_source: DataSource::UserSupplied,
+        };
+        let mut s = WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        s.positions.push(pos);
+        s
+    }
+
+    #[test]
+    fn lending_health_factor_reads_post_action_hf() {
+        let st = lending_state("1.2345", "aave_v3");
+        let p = serde_json::json!({ "venue": { "name": "aave_v3" }, "owner": "0x0" });
+        assert_eq!(
+            super::lending_health_factor(&st, &p).unwrap()["postActionHf"],
+            serde_json::json!("1.2345")
+        );
+    }
+
+    #[test]
+    fn lending_health_factor_single_account_fallback() {
+        // No venue in params, but the wallet has exactly one lending account → used.
+        let st = lending_state("0.9000", "aave_v3");
+        let p = serde_json::json!({ "owner": "0x0" });
+        assert_eq!(
+            super::lending_health_factor(&st, &p).unwrap()["postActionHf"],
+            serde_json::json!("0.9000")
+        );
+    }
+
+    #[test]
+    fn lending_health_factor_dormant_when_no_account() {
+        let empty = state(vec![], vec![]);
+        let p = serde_json::json!({ "venue": { "name": "aave_v3" } });
+        assert!(super::lending_health_factor(&empty, &p).is_none());
     }
 }

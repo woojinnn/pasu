@@ -91,6 +91,104 @@ impl NftFloorOracle for NoFloorOracle {
     }
 }
 
+/// Screens an address against a scam/drainer **reputation** feed — a malicious-actor
+/// flag for a counterparty (claim distributor, swap-output token, approval spender,
+/// governance representative), DISTINCT from the legal [`SanctionsScreen`] list.
+/// `Some(true)` = flagged malicious, `Some(false)` = explicitly clean, `None` = could
+/// not screen (unconfigured / error). The v1 production feed is env-gated
+/// (`POLICY_REPUTATION_API_URL`) and defaults to a "knows nothing" impl, so the
+/// dependent deny policies stay dormant (fail-open) until a feed is wired — never a
+/// fabricated verdict.
+#[async_trait]
+pub trait ReputationFeed: Send + Sync {
+    /// `Some(bool)` flagged-or-clean for `address` (0x-hex), `None` when unknown.
+    async fn is_flagged(&self, chain_id: i64, address: &str) -> Option<bool>;
+}
+
+/// A reputation feed that knows nothing (always `None`) — the safe default.
+pub struct NoReputationFeed;
+#[async_trait]
+impl ReputationFeed for NoReputationFeed {
+    async fn is_flagged(&self, _chain_id: i64, _address: &str) -> Option<bool> {
+        None
+    }
+}
+
+/// On-chain activity facts for an arbitrary address, returned by [`AddressActivity`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ActivityFacts {
+    /// Outbound transaction count (account nonce) — `0` for a never-used address.
+    pub tx_count: i64,
+    /// Unix seconds of the address's first on-chain transaction.
+    pub first_seen_ts: i64,
+}
+
+/// Resolves [`ActivityFacts`] for an arbitrary recipient address — the "is this a
+/// brand-new / never-used address?" signal a new-recipient cooldown needs. `None`
+/// when the source is unconfigured / errors. The v1 production source is env-gated
+/// (`POLICY_ACTIVITY_RPC_URL` + `POLICY_ETHERSCAN_API_KEY`) and defaults to a "knows
+/// nothing" impl, so the cooldown policy stays dormant until wired.
+#[async_trait]
+pub trait AddressActivity: Send + Sync {
+    /// `Some(ActivityFacts)` for `address`, or `None` when the source can't answer.
+    async fn activity(&self, chain_id: i64, address: &str) -> Option<ActivityFacts>;
+}
+
+/// An activity source that knows nothing (always `None`) — the safe default.
+pub struct NoAddressActivity;
+#[async_trait]
+impl AddressActivity for NoAddressActivity {
+    async fn activity(&self, _chain_id: i64, _address: &str) -> Option<ActivityFacts> {
+        None
+    }
+}
+
+/// Resolves an AMM pool/venue's rolling 24h USD trading volume — a liquidity-depth
+/// proxy for "is this pool too thin to trade safely?" `None` when unknown. The v1
+/// production source is env-gated (`POLICY_POOL_STATS_API_URL`) and defaults to
+/// "knows nothing", so the low-liquidity policy stays dormant until wired.
+#[async_trait]
+pub trait PoolStats: Send + Sync {
+    /// `Some(vol_24h_usd)` for the pool identified by `venue` on `chain`, or `None`.
+    async fn vol24h_usd(&self, chain: &str, venue: &str) -> Option<f64>;
+}
+
+/// A pool-stats source that knows nothing (always `None`) — the safe default.
+pub struct NoPoolStats;
+#[async_trait]
+impl PoolStats for NoPoolStats {
+    async fn vol24h_usd(&self, _chain: &str, _venue: &str) -> Option<f64> {
+        None
+    }
+}
+
+/// The extra enrichment feeds a method may need beyond the price book + synced
+/// state, bundled into one parameter to keep [`evaluate`] / `execute_call_specs`
+/// signatures small. Each is env-gated in production and defaults to a "knows
+/// nothing" impl, so a dependent policy stays dormant (fail-open) until configured.
+#[derive(Clone, Copy)]
+pub struct ExtraFeeds<'a> {
+    /// Scam/drainer reputation screen (`address.reputation`).
+    pub reputation: &'a dyn ReputationFeed,
+    /// On-chain address activity facts (`address.activity`).
+    pub activity: &'a dyn AddressActivity,
+    /// AMM pool 24h-volume stats (`pool.liquidity`).
+    pub pool_stats: &'a dyn PoolStats,
+}
+
+impl ExtraFeeds<'static> {
+    /// All-`None` feeds — every dependent policy stays dormant (fail-open). The
+    /// default when no external sources are wired, and what [`evaluate`] passes.
+    #[must_use]
+    pub fn none() -> Self {
+        Self {
+            reputation: &NoReputationFeed,
+            activity: &NoAddressActivity,
+            pool_stats: &NoPoolStats,
+        }
+    }
+}
+
 /// Error surfaced by [`evaluate`].
 /// `Reducer` is a *client* error (the action could not be applied to the given
 /// state — map to `422 Unprocessable Entity`); `Store` is a *server* error (the
@@ -148,11 +246,12 @@ impl From<StoreError> for HandlerError {
 /// Returns [`HandlerError::Store`] if loading wallet state fails, or
 /// [`HandlerError::Reducer`] if any action cannot be applied to the running
 /// predicted state.
-pub async fn evaluate(
+pub async fn evaluate_with_feeds(
     store: &dyn WalletStore,
     price_book: &dyn PriceBook,
     sanctions: &dyn SanctionsScreen,
     floor: &dyn NftFloorOracle,
+    feeds: ExtraFeeds<'_>,
     req: EvaluateRequest,
 ) -> Result<EvaluateResponse, HandlerError> {
     // This handler is db-agnostic: production passes the PostgreSQL-backed
@@ -211,8 +310,16 @@ pub async fn evaluate(
     // requesting wallet doesn't hold it — no live network call either way — so a
     // USD-cap policy's `context.custom.*Usd` field is populated even for a wallet
     // that was never registered/synced.
-    let (results, mut diagnostics) =
-        execute_call_specs(&state_before, &req.call_specs, price_book, sanctions, floor).await;
+    let (results, mut diagnostics) = execute_call_specs(
+        &state_before,
+        &state,
+        &req.call_specs,
+        price_book,
+        sanctions,
+        floor,
+        feeds,
+    )
+    .await;
     diagnostics.append(&mut sim_diagnostics);
 
     let note = if req.envelopes.is_empty() {
@@ -238,6 +345,23 @@ pub async fn evaluate(
     })
 }
 
+/// Convenience entry: [`evaluate_with_feeds`] with all extra feeds defaulted to
+/// "knows nothing" ([`ExtraFeeds::none`]) — so `address.reputation` / `address.activity`
+/// / `pool.liquidity` stay dormant. Tests and any caller without external feeds use
+/// this; the production HTTP handler calls [`evaluate_with_feeds`] with live feeds.
+///
+/// # Errors
+/// Same as [`evaluate_with_feeds`].
+pub async fn evaluate(
+    store: &dyn WalletStore,
+    price_book: &dyn PriceBook,
+    sanctions: &dyn SanctionsScreen,
+    floor: &dyn NftFloorOracle,
+    req: EvaluateRequest,
+) -> Result<EvaluateResponse, HandlerError> {
+    evaluate_with_feeds(store, price_book, sanctions, floor, ExtraFeeds::none(), req).await
+}
+
 /// Execute the request's enrichment call-specs against the (already-loaded)
 /// wallet state. Currently serves `oracle.usd_value` from the synced `price_usd`
 /// on the held token; unknown methods are surfaced as diagnostics and skipped.
@@ -247,10 +371,12 @@ pub async fn evaluate(
 /// fail-opens an optional one, so this never fabricates a value.
 async fn execute_call_specs(
     state: &WalletState,
+    state_after: &WalletState,
     specs: &[CallSpec],
     price_book: &dyn PriceBook,
     sanctions: &dyn SanctionsScreen,
     floor: &dyn NftFloorOracle,
+    feeds: ExtraFeeds<'_>,
 ) -> (BTreeMap<String, Value>, Vec<Diagnostic>) {
     let mut results = BTreeMap::new();
     let mut diagnostics = Vec::new();
@@ -423,6 +549,55 @@ async fn execute_call_specs(
                     }),
                 }
             }
+            "portfolio.input_fraction_bps" => {
+                match crate::methods::input_fraction_bps(state, &spec.params) {
+                    Some(value) => {
+                        tracing::debug!(call_id = %spec.call_id, "portfolio.input_fraction_bps: OK");
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "portfolio.input_fraction_bps: unparseable params or unsynced \
+                             input-token balance (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
+            "address.similarity" => match crate::methods::address_similarity(state, &spec.params) {
+                Some(value) => {
+                    tracing::debug!(call_id = %spec.call_id, "address.similarity: OK");
+                    results.insert(spec.call_id.clone(), value);
+                }
+                None => diagnostics.push(Diagnostic {
+                    level: "warn".to_owned(),
+                    message: format!(
+                        "address.similarity: missing candidate or no known address to \
+                             compare against (call {}) — field left unset",
+                        spec.call_id
+                    ),
+                    call_id: Some(spec.call_id.clone()),
+                }),
+            },
+            "lending.health_factor" => {
+                match crate::methods::lending_health_factor(state_after, &spec.params) {
+                    Some(value) => {
+                        tracing::debug!(call_id = %spec.call_id, "lending.health_factor: OK");
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "lending.health_factor: no matching lending account in the \
+                             predicted state (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
             "address.sanctions" => match address_sanctions(&spec.params, sanctions).await {
                 Some(value) => {
                     tracing::debug!(call_id = %spec.call_id, "address.sanctions: OK");
@@ -432,6 +607,53 @@ async fn execute_call_specs(
                     level: "warn".to_owned(),
                     message: format!(
                         "address.sanctions: missing address or oracle unavailable \
+                         (call {}) — field left unset",
+                        spec.call_id
+                    ),
+                    call_id: Some(spec.call_id.clone()),
+                }),
+            },
+            "address.reputation" => {
+                match address_reputation(&spec.params, feeds.reputation).await {
+                    Some(value) => {
+                        tracing::debug!(call_id = %spec.call_id, "address.reputation: OK");
+                        results.insert(spec.call_id.clone(), value);
+                    }
+                    None => diagnostics.push(Diagnostic {
+                        level: "warn".to_owned(),
+                        message: format!(
+                            "address.reputation: missing address or feed unavailable \
+                             (call {}) — field left unset",
+                            spec.call_id
+                        ),
+                        call_id: Some(spec.call_id.clone()),
+                    }),
+                }
+            }
+            "address.activity" => match address_activity(&spec.params, feeds.activity).await {
+                Some(value) => {
+                    tracing::debug!(call_id = %spec.call_id, "address.activity: OK");
+                    results.insert(spec.call_id.clone(), value);
+                }
+                None => diagnostics.push(Diagnostic {
+                    level: "warn".to_owned(),
+                    message: format!(
+                        "address.activity: missing recipient or activity source \
+                             unavailable (call {}) — field left unset",
+                        spec.call_id
+                    ),
+                    call_id: Some(spec.call_id.clone()),
+                }),
+            },
+            "pool.liquidity" => match pool_liquidity(&spec.params, feeds.pool_stats).await {
+                Some(value) => {
+                    tracing::debug!(call_id = %spec.call_id, "pool.liquidity: OK");
+                    results.insert(spec.call_id.clone(), value);
+                }
+                None => diagnostics.push(Diagnostic {
+                    level: "warn".to_owned(),
+                    message: format!(
+                        "pool.liquidity: missing venue or pool-stats source unavailable \
                          (call {}) — field left unset",
                         spec.call_id
                     ),
@@ -893,6 +1115,55 @@ async fn address_sanctions(params: &Value, sanctions: &dyn SanctionsScreen) -> O
     Some(json!({ "sanctioned": flag }))
 }
 
+/// Server-side `address.reputation`: flag a counterparty address against the injected
+/// scam/drainer [`ReputationFeed`] (distinct from the legal sanctions list). Params
+/// are `{ address, chain_id? }` — `address` is the lowered counterparty (claim
+/// distributor / swap-output token / spender / representative). Returns
+/// `{ "flagged": bool }`, the shape every consuming manifest projects from
+/// `$.result.flagged` (into `distributorFlagged` / `spenderFlagged` / …). `None`
+/// when the address is missing or the feed cannot answer → the result is omitted
+/// (fail-open for the optional call), never a fabricated `false`.
+async fn address_reputation(params: &Value, feed: &dyn ReputationFeed) -> Option<Value> {
+    let address = params.get("address").and_then(asset_address)?;
+    let chain_id = params.get("chain_id").and_then(Value::as_i64).unwrap_or(1);
+    let flag = feed.is_flagged(chain_id, &address).await?;
+    Some(json!({ "flagged": flag }))
+}
+
+/// Server-side `address.activity`: the action recipient's outbound transaction count
+/// (account nonce) + first-seen unix timestamp, via the injected [`AddressActivity`]
+/// source — the freshness signal a new-recipient cooldown needs (a never-used,
+/// just-created payee is the classic mistake-or-scam recipient). Params are
+/// `{ address, chain_id? }` (`address` = the lowered `recipient`). Returns
+/// `{ "txCount", "firstSeenTs" }`. `None` when the recipient is missing or the source
+/// cannot answer — and the consuming cedar requires BOTH fields, so a partial answer
+/// is correctly withheld (dormant, fail-open) rather than half-reported.
+async fn address_activity(params: &Value, source: &dyn AddressActivity) -> Option<Value> {
+    let address = params.get("address").and_then(asset_address)?;
+    let chain_id = params.get("chain_id").and_then(Value::as_i64).unwrap_or(1);
+    let facts = source.activity(chain_id, &address).await?;
+    Some(json!({ "txCount": facts.tx_count, "firstSeenTs": facts.first_seen_ts }))
+}
+
+/// Server-side `pool.liquidity`: the action venue's rolling 24h USD trading volume,
+/// via the injected [`PoolStats`] source — a liquidity-depth proxy that catches
+/// "this pool is too thin to exit" which a slippage bound alone misses. Params are
+/// `{ chain_id, venue }`; reads `venue.name` to key the pool. Returns
+/// `{ "vol24hUsd" }` (4dp decimal string). `None` (→ dormant, fail-open) when the
+/// venue is missing or the stats source is unavailable / returns a non-finite value.
+async fn pool_liquidity(params: &Value, source: &dyn PoolStats) -> Option<Value> {
+    let chain = params.get("chain_id").and_then(Value::as_str)?;
+    let venue = params
+        .get("venue")
+        .and_then(|v| v.get("name"))
+        .and_then(Value::as_str)?;
+    let vol = source.vol24h_usd(chain, venue).await?;
+    if !vol.is_finite() || vol < 0.0 {
+        return None;
+    }
+    Some(json!({ "vol24hUsd": format!("{vol:.4}") }))
+}
+
 /// ABI-encode `isSanctioned(address)` calldata: 4-byte selector `0xdf592f7d`
 /// (`keccak256("isSanctioned(address)")[..4]`) + the 32-byte left-padded
 /// lowercased address. `None` for a malformed (non-20-byte / non-hex) address.
@@ -985,6 +1256,42 @@ mod tests {
             }),
             Some(18),
         )
+    }
+
+    /// A test [`ReputationFeed`] returning a fixed answer for ANY address.
+    struct StubReputation(Option<bool>);
+    #[async_trait]
+    impl ReputationFeed for StubReputation {
+        async fn is_flagged(&self, _chain_id: i64, _address: &str) -> Option<bool> {
+            self.0
+        }
+    }
+
+    /// A test [`AddressActivity`] returning fixed facts for ANY address.
+    struct StubActivity(Option<ActivityFacts>);
+    #[async_trait]
+    impl AddressActivity for StubActivity {
+        async fn activity(&self, _chain_id: i64, _address: &str) -> Option<ActivityFacts> {
+            self.0
+        }
+    }
+
+    /// A test [`PoolStats`] returning a fixed 24h volume for ANY venue.
+    struct StubPoolStats(Option<f64>);
+    #[async_trait]
+    impl PoolStats for StubPoolStats {
+        async fn vol24h_usd(&self, _chain: &str, _venue: &str) -> Option<f64> {
+            self.0
+        }
+    }
+
+    /// All-`None` extra feeds — the default for tests that don't exercise them.
+    fn no_feeds() -> ExtraFeeds<'static> {
+        ExtraFeeds {
+            reputation: &NoReputationFeed,
+            activity: &NoAddressActivity,
+            pool_stats: &NoPoolStats,
+        }
     }
 
     /// A standard Seaport listing params object: offer 1 NFT, consideration one
@@ -1228,10 +1535,12 @@ mod tests {
         };
         let (results, _diag) = super::execute_call_specs(
             &st,
+            &st,
             &[spec],
             &no_price_book(),
             &StubSanctions(Some(true)),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         assert_eq!(
@@ -1259,10 +1568,12 @@ mod tests {
         };
         let (results, _diag) = super::execute_call_specs(
             &st,
+            &st,
             &[spec],
             &priced_book(),
             &StubSanctions(None),
             &StubFloor(Some(5.0)),
+            no_feeds(),
         )
         .await;
         assert_eq!(
@@ -1289,10 +1600,12 @@ mod tests {
         };
         let (results, _diag) = super::execute_call_specs(
             &st,
+            &st,
             &[spec],
             &priced_book(),
             &StubSanctions(None),
             &StubFloor(Some(1.0)),
+            no_feeds(),
         )
         .await;
         assert_eq!(
@@ -1997,10 +2310,12 @@ mod tests {
 
         let (results, _diag) = execute_call_specs(
             &state,
+            &state,
             std::slice::from_ref(&spec),
             &no_price_book(),
             &no_sanctions(),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         assert_eq!(
@@ -2086,10 +2401,12 @@ mod tests {
 
         let (results, _diag) = execute_call_specs(
             &state,
+            &state,
             &[dup_spec.clone(), horizon_spec.clone()],
             &no_price_book(),
             &no_sanctions(),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         assert_eq!(
@@ -2141,10 +2458,12 @@ mod tests {
 
         let (results, _diag) = execute_call_specs(
             &state,
+            &state,
             std::slice::from_ref(&spec),
             &no_price_book(),
             &no_sanctions(),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         // day: (968.42-920)/968.42 ≈ 500 bps; peak: (1000-920)/1000 = 800 bps.
@@ -2161,10 +2480,12 @@ mod tests {
         let empty = WalletState::new(sample_wallet_id());
         let (results, diag) = execute_call_specs(
             &empty,
+            &empty,
             std::slice::from_ref(&spec),
             &no_price_book(),
             &no_sanctions(),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         assert!(!results.contains_key(&spec.call_id));
@@ -2310,10 +2631,12 @@ mod tests {
 
         let (results, _diag) = execute_call_specs(
             &state,
+            &state,
             std::slice::from_ref(&spec),
             &no_price_book(),
             &no_sanctions(),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         assert_eq!(
@@ -2330,10 +2653,12 @@ mod tests {
         let empty = WalletState::new(sample_wallet_id());
         let (results, diag) = execute_call_specs(
             &empty,
+            &empty,
             std::slice::from_ref(&spec),
             &no_price_book(),
             &no_sanctions(),
             &NoFloorOracle,
+            no_feeds(),
         )
         .await;
         assert!(!results.contains_key(&spec.call_id));
@@ -2341,6 +2666,105 @@ mod tests {
             diag.iter()
                 .any(|d| d.message.contains("perp.session_fill_stats")),
             "diagnostic names the method: {diag:?}"
+        );
+    }
+
+    // ---- address.reputation / address.activity / pool.liquidity ----------
+
+    #[tokio::test]
+    async fn address_reputation_projects_flagged() {
+        let p = serde_json::json!({
+            "address": "0xabc0000000000000000000000000000000000001", "chain_id": 1
+        });
+        assert_eq!(
+            super::address_reputation(&p, &StubReputation(Some(true)))
+                .await
+                .unwrap(),
+            serde_json::json!({ "flagged": true })
+        );
+        // Dormant when the feed can't answer, or the address is missing.
+        assert!(super::address_reputation(&p, &StubReputation(None))
+            .await
+            .is_none());
+        assert!(
+            super::address_reputation(&serde_json::json!({}), &StubReputation(Some(true)))
+                .await
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn address_activity_projects_both_facts() {
+        let p = serde_json::json!({
+            "address": "0xabc0000000000000000000000000000000000001", "chain_id": 1
+        });
+        let facts = ActivityFacts {
+            tx_count: 0,
+            first_seen_ts: 1_700_000_000,
+        };
+        assert_eq!(
+            super::address_activity(&p, &StubActivity(Some(facts)))
+                .await
+                .unwrap(),
+            serde_json::json!({ "txCount": 0, "firstSeenTs": 1_700_000_000i64 })
+        );
+        assert!(super::address_activity(&p, &StubActivity(None))
+            .await
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn pool_liquidity_formats_4dp_volume() {
+        let p = serde_json::json!({ "chain_id": "eip155:1", "venue": { "name": "uniswap_v3" } });
+        assert_eq!(
+            super::pool_liquidity(&p, &StubPoolStats(Some(1234.5)))
+                .await
+                .unwrap(),
+            serde_json::json!({ "vol24hUsd": "1234.5000" })
+        );
+        assert!(super::pool_liquidity(&p, &StubPoolStats(None))
+            .await
+            .is_none());
+        // Dormant when the venue is missing.
+        let no_venue = serde_json::json!({ "chain_id": "eip155:1" });
+        assert!(super::pool_liquidity(&no_venue, &StubPoolStats(Some(1.0)))
+            .await
+            .is_none());
+    }
+
+    /// WIRING (dispatch): `address.reputation` flows through `execute_call_specs` via
+    /// the injected [`ExtraFeeds`], landing `{ flagged }` under the call id.
+    #[tokio::test]
+    async fn reputation_dispatch_through_execute_call_specs() {
+        let st = WalletState::new(WalletId::new(Address::ZERO, [ChainId::ethereum_mainnet()]));
+        let spec = CallSpec {
+            manifest_id: "pf-approve-spender-reputation-deny".into(),
+            call_id: "rep::spender".into(),
+            method: "address.reputation".into(),
+            params: serde_json::json!({
+                "address": "0xabc0000000000000000000000000000000000001", "chain_id": 1
+            }),
+            outputs: Vec::new(),
+            optional: true,
+        };
+        let feeds = ExtraFeeds {
+            reputation: &StubReputation(Some(true)),
+            activity: &NoAddressActivity,
+            pool_stats: &NoPoolStats,
+        };
+        let (results, _diag) = super::execute_call_specs(
+            &st,
+            &st,
+            std::slice::from_ref(&spec),
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            feeds,
+        )
+        .await;
+        assert_eq!(
+            results["rep::spender"],
+            serde_json::json!({ "flagged": true })
         );
     }
 }

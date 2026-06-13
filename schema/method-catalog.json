@@ -1,5 +1,112 @@
 {
   "methods": {
+    "address.activity": {
+      "name": "address.activity",
+      "description": "Outbound transaction count (account nonce) + first-seen unix timestamp of an arbitrary recipient — the 'brand-new / never-used address?' signal a new-recipient cooldown needs. v1 Ethereum mainnet; env-gated RPC + Etherscan source.",
+      "params": {
+        "address": {
+          "type": "String",
+          "required": true,
+          "description": "Recipient under review, 0x-hex.",
+          "defaultSelector": "$.action.recipient"
+        },
+        "chain_id": {
+          "type": "Long",
+          "required": false,
+          "defaultSelector": "$.root.chain_id"
+        }
+      },
+      "returns": { "kind": "record", "type": "AddressActivity" },
+      "origin": "bundled"
+    },
+    "address.reputation": {
+      "name": "address.reputation",
+      "description": "Is an address flagged on a scam/drainer reputation feed (malicious-actor heuristic, distinct from the legal sanctions list)? Env-gated source; fail-open when unconfigured.",
+      "params": {
+        "address": {
+          "type": "String",
+          "required": true,
+          "description": "Counterparty under review (claim distributor / swap-output token / approval spender / representative), 0x-hex."
+        },
+        "chain_id": {
+          "type": "Long",
+          "required": false,
+          "defaultSelector": "$.root.chain_id"
+        }
+      },
+      "returns": { "kind": "scalar", "type": "Bool", "from": "$.result.flagged" },
+      "origin": "bundled"
+    },
+    "address.similarity": {
+      "name": "address.similarity",
+      "description": "Does the action's recipient share leading/trailing hex with an address the wallet already knows (held-token contract / approval spender) but differ from it — the address-poisoning look-alike trap?",
+      "params": {
+        "candidate": {
+          "type": "String",
+          "required": true,
+          "description": "Recipient under review, 0x-hex.",
+          "defaultSelector": "$.action.recipient"
+        },
+        "chain_id": {
+          "type": "Long",
+          "required": false,
+          "defaultSelector": "$.root.chain_id"
+        }
+      },
+      "returns": { "kind": "scalar", "type": "Bool", "from": "$.result.poisonCollision" },
+      "origin": "bundled"
+    },
+    "lending.health_factor": {
+      "name": "lending.health_factor",
+      "description": "The wallet's predicted POST-action health factor for the lending market the action targets (a borrow/withdraw lowers it), read from the reducer's predicted state.",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": false,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "owner": {
+          "type": "String",
+          "required": false,
+          "defaultSelector": "$.root.from"
+        },
+        "venue": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.venue"
+        },
+        "asset": {
+          "type": "AssetRef",
+          "required": false,
+          "defaultSelector": "$.action.asset"
+        },
+        "amount": {
+          "type": "String",
+          "required": false,
+          "defaultSelector": "$.action.amount"
+        }
+      },
+      "returns": { "kind": "scalar", "type": "Decimal", "from": "$.result.postActionHf" },
+      "origin": "bundled"
+    },
+    "pool.liquidity": {
+      "name": "pool.liquidity",
+      "description": "An AMM pool/venue's rolling 24h USD trading volume — a liquidity-depth proxy that catches a too-thin-to-exit pool. Env-gated analytics source.",
+      "params": {
+        "chain_id": {
+          "type": "Long",
+          "required": true,
+          "defaultSelector": "$.root.chain_id"
+        },
+        "venue": {
+          "type": "String",
+          "required": true,
+          "defaultSelector": "$.action.venue"
+        }
+      },
+      "returns": { "kind": "scalar", "type": "Decimal", "from": "$.result.vol24hUsd" },
+      "origin": "bundled"
+    },
     "address.sanctions": {
       "name": "address.sanctions",
       "description": "Is an address on an on-chain sanctions oracle (Chainalysis isSanctioned — OFAC/EU/UN)? Legal-list membership, distinct from a scam/drainer heuristic. v1 screens Ethereum mainnet (the EigenLayer chain).",
