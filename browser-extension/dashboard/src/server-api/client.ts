@@ -2,7 +2,7 @@
  * Thin fetch wrapper for the policy-rpc server (policy-server).
  *
  * Responsibilities:
- * - Prepend the server base URL (configurable; defaults to localhost).
+ * - Prepend the server base URL (configurable; defaults to the deployed server).
  * - Attach `Authorization: Bearer <jwt>` automatically when a token is
  *   stored.
  * - Throw structured `ServerError` on non-2xx so callers can match on
@@ -10,7 +10,8 @@
  * - Stay tiny and dependency-free — no axios, no React.
  */
 
-const DEFAULT_BASE = import.meta.env.VITE_DAMBI_SERVER_URL || "http://127.0.0.1:8788";
+const DEFAULT_BASE =
+  import.meta.env.VITE_DAMBI_SERVER_URL || "https://dambi-policy.duckdns.org";
 
 /** Resolve the server URL — env > localStorage > default. Read once at
  * import time; we don't expect users to swap servers mid-session. */

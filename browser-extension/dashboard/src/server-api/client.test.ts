@@ -48,7 +48,9 @@ describe("dashboard server-api client", () => {
 
     expect(result).toEqual({ user_id: "u_1", email: "a@example.com" });
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toBe("http://127.0.0.1:8788/auth/refresh");
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://dambi-policy.duckdns.org/auth/refresh",
+    );
     expect(window.localStorage.getItem("dambi_jwt")).toBe("new-access");
     expect(window.localStorage.getItem("dambi_jwt_refresh")).toBe("new-refresh");
     expect(fetchMock.mock.calls[2][1]).toMatchObject({
