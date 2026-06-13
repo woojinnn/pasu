@@ -2767,4 +2767,282 @@ mod tests {
             serde_json::json!({ "flagged": true })
         );
     }
+
+    // ---- WIRING (full public entry): real manifest params + seeded state -----
+    // These exercise the SAME `evaluate` / `evaluate_with_feeds` entry the
+    // extension's `/evaluate` call hits, with the EXACT resolved param shapes the
+    // service worker sends for each registered policy's `policy_rpc`, asserting the
+    // result lands under the manifest `call_id` (which the WASM materializer then
+    // projects to `context.custom.<field>`).
+
+    const USDC: &str = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    const WETH: &str = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+    fn synced_holding(addr: &str, balance: u64, decimals: u8) -> TokenHolding {
+        TokenHolding {
+            key: TokenKey::Erc20 {
+                chain: ChainId::ethereum_mainnet(),
+                address: Address::from_str(addr).unwrap(),
+            },
+            kind: TokenKind::Base {
+                category: BaseCategory::Stable,
+                peg_to: None,
+            },
+            symbol: "T".into(),
+            decimals,
+            balance: Balance::fungible(U256::from(balance)),
+            committed: Balance::zero_fungible(),
+            approved_to: None,
+            price_usd: None,
+            metadata: None,
+            value_usd: None,
+            last_synced_at: Time::from_unix(0),
+            primitives_source: DataSource::UserSupplied,
+        }
+    }
+
+    fn seeded_store(state: WalletState) -> InMemoryWalletStore {
+        let store = InMemoryWalletStore::new();
+        store.seed(state);
+        store
+    }
+
+    fn spec(manifest_id: &str, call_id: &str, method: &str, params: serde_json::Value) -> CallSpec {
+        CallSpec {
+            manifest_id: manifest_id.into(),
+            call_id: call_id.into(),
+            method: method.into(),
+            params,
+            outputs: Vec::new(),
+            optional: true,
+        }
+    }
+
+    /// `portfolio.input_fraction_bps` via the public entry: 600 spent of a 1000
+    /// holding → 6000 bps, exactly as pf-D3 `swap-fraction-of-holdings-warn` projects.
+    #[tokio::test]
+    async fn input_fraction_bps_full_evaluate() {
+        let mut st = WalletState::new(sample_wallet_id());
+        st.tokens.insert(
+            synced_holding(USDC, 1000, 6).key.clone(),
+            synced_holding(USDC, 1000, 6),
+        );
+        let store = seeded_store(st);
+        let mut req = empty_envelope_request();
+        req.call_specs.push(spec(
+            "pf-swap-fraction-of-holdings-warn",
+            "pf-swap-fraction-of-holdings-warn::in-holdings-fraction",
+            "portfolio.input_fraction_bps",
+            serde_json::json!({
+                "chain_id": "eip155:1", "owner": "0x0",
+                "asset": { "key": { "address": USDC } }, "amount": "0x258"
+            }),
+        ));
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["pf-swap-fraction-of-holdings-warn::in-holdings-fraction"],
+            serde_json::json!({ "bps": 6000 })
+        );
+    }
+
+    /// `address.similarity` via the public entry: a candidate sharing WETH's first/last
+    /// 2 bytes (pf-T2 `transfer-address-poisoning-warn`) → `{ poisonCollision: true }`.
+    #[tokio::test]
+    async fn address_similarity_full_evaluate() {
+        let mut st = WalletState::new(sample_wallet_id());
+        st.tokens.insert(
+            synced_holding(WETH, 1, 18).key.clone(),
+            synced_holding(WETH, 1, 18),
+        );
+        let store = seeded_store(st);
+        let mut req = empty_envelope_request();
+        let poison = format!("0xc02a{}6cc2", "0".repeat(32));
+        req.call_specs.push(spec(
+            "pf-transfer-address-poisoning-warn",
+            "pf-transfer-address-poisoning-warn::poison",
+            "address.similarity",
+            serde_json::json!({ "chain_id": "eip155:1", "candidate": poison }),
+        ));
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["pf-transfer-address-poisoning-warn::poison"],
+            serde_json::json!({ "poisonCollision": true })
+        );
+    }
+
+    /// `lending.health_factor` via the public entry: a seeded Aave position with HF
+    /// 1.2 (pf-L1 `borrow-low-health-factor-warn`). Empty envelopes ⇒ `state_after ==
+    /// state_before`, so the method reports the seeded (post-action) HF.
+    #[tokio::test]
+    async fn lending_health_factor_full_evaluate() {
+        use policy_state::position::{LendingAccount, Position};
+        use policy_state::primitives::{MarketRef, ProtocolRef, VenueRef};
+        let lf = |s: &str| {
+            LiveField::new(
+                Decimal::new(s),
+                DataSource::UserSupplied,
+                Time::from_unix(0),
+            )
+        };
+        let mut st = WalletState::new(sample_wallet_id());
+        st.positions.push(Position {
+            id: "lending/aave_v3".to_owned(),
+            protocol: ProtocolRef::new("aave_v3"),
+            chain: Some(ChainId::ethereum_mainnet()),
+            kind: PositionKind::LendingAccount(LendingAccount {
+                market: MarketRef {
+                    symbol: "aave_v3".into(),
+                    venue: VenueRef::new("aave_v3"),
+                },
+                collaterals: vec![],
+                debts: vec![],
+                emode: None,
+                is_isolated: false,
+                health_factor: lf("1.2000"),
+                ltv: lf("0"),
+                liquidation_threshold: lf("0.8250"),
+            }),
+            primitives_synced_at: Time::from_unix(0),
+            primitives_source: DataSource::UserSupplied,
+        });
+        let store = seeded_store(st);
+        let mut req = empty_envelope_request();
+        req.call_specs.push(spec(
+            "pf-borrow-low-health-factor-warn",
+            "pf-borrow-low-health-factor-warn::post-borrow-hf",
+            "lending.health_factor",
+            serde_json::json!({
+                "chain_id": "eip155:1", "owner": "0x0",
+                "venue": { "name": "aave_v3" }, "asset": { "key": { "address": USDC } }, "amount": "0x1"
+            }),
+        ));
+        let resp = evaluate(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["pf-borrow-low-health-factor-warn::post-borrow-hf"],
+            serde_json::json!({ "postActionHf": "1.2000" })
+        );
+    }
+
+    /// `address.reputation` via the public entry with a stub feed returning flagged.
+    #[tokio::test]
+    async fn address_reputation_full_evaluate() {
+        let store = seeded_store(WalletState::new(sample_wallet_id()));
+        let mut req = empty_envelope_request();
+        req.call_specs.push(spec(
+            "pf-approve-spender-reputation-deny",
+            "pf-approve-spender-reputation-deny::rep",
+            "address.reputation",
+            serde_json::json!({ "address": "0xabc0000000000000000000000000000000000001", "chain_id": 1 }),
+        ));
+        let feeds = ExtraFeeds {
+            reputation: &StubReputation(Some(true)),
+            activity: &NoAddressActivity,
+            pool_stats: &NoPoolStats,
+        };
+        let resp = evaluate_with_feeds(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            feeds,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["pf-approve-spender-reputation-deny::rep"],
+            serde_json::json!({ "flagged": true })
+        );
+    }
+
+    /// `address.activity` via the public entry with a stub source (both facts present).
+    #[tokio::test]
+    async fn address_activity_full_evaluate() {
+        let store = seeded_store(WalletState::new(sample_wallet_id()));
+        let mut req = empty_envelope_request();
+        req.call_specs.push(spec(
+            "pf-transfer-new-recipient-cooldown-warn",
+            "pf-transfer-new-recipient-cooldown-warn::activity",
+            "address.activity",
+            serde_json::json!({ "address": "0xabc0000000000000000000000000000000000001", "chain_id": 1 }),
+        ));
+        let feeds = ExtraFeeds {
+            reputation: &NoReputationFeed,
+            activity: &StubActivity(Some(ActivityFacts {
+                tx_count: 0,
+                first_seen_ts: 1_700_000_000,
+            })),
+            pool_stats: &NoPoolStats,
+        };
+        let resp = evaluate_with_feeds(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            feeds,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["pf-transfer-new-recipient-cooldown-warn::activity"],
+            serde_json::json!({ "txCount": 0, "firstSeenTs": 1_700_000_000i64 })
+        );
+    }
+
+    /// `pool.liquidity` via the public entry with a stub stats source.
+    #[tokio::test]
+    async fn pool_liquidity_full_evaluate() {
+        let store = seeded_store(WalletState::new(sample_wallet_id()));
+        let mut req = empty_envelope_request();
+        req.call_specs.push(spec(
+            "pf-addliquidity-low-liquidity-warn",
+            "pf-addliquidity-low-liquidity-warn::pool",
+            "pool.liquidity",
+            serde_json::json!({ "chain_id": "eip155:1", "venue": { "name": "uniswap_v3" } }),
+        ));
+        let feeds = ExtraFeeds {
+            reputation: &NoReputationFeed,
+            activity: &NoAddressActivity,
+            pool_stats: &StubPoolStats(Some(1234.5)),
+        };
+        let resp = evaluate_with_feeds(
+            &store,
+            &no_price_book(),
+            &no_sanctions(),
+            &NoFloorOracle,
+            feeds,
+            req,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            resp.policy_request.results["pf-addliquidity-low-liquidity-warn::pool"],
+            serde_json::json!({ "vol24hUsd": "1234.5000" })
+        );
+    }
 }
