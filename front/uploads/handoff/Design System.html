@@ -1,0 +1,1761 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Cloudy Pond · Design System</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!--
+  Type system:
+  • Sans: IBM Plex Sans KR — humanist sans with subtle slab influence (curved ‘a’,
+    bracketed terminals on ‘l’ / ‘i’, slight stress). Reads dusty·earthy, less default
+    than Pretendard/Inter/Roboto in Korean dashboard contexts. Full KR coverage.
+  • Mono: IBM Plex Mono — same family system, so labels/addresses/rule-IDs feel
+    visually bonded to body copy. Slab feet keep an engineering tone but it’s less
+    saturated in AI-tool screenshots than JetBrains Mono / Fira Code.
+  Both OFL 1.1, served from Google Fonts with font-display: swap.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+
+<style>
+  /* ─────────────────────────────────────────────────────────────────
+     Cloudy Pond — design tokens
+     ───────────────────────────────────────────────────────────────── */
+  :root {
+    /* Base palette — sampled from source PNG · base sits at 500 */
+    --sage-50:#F8F9F6; --sage-100:#EBF3E8; --sage-200:#D9E9D3; --sage-300:#C5DDBD;
+    --sage-400:#B0D1A4; --sage-500:#9CC58D; --sage-600:#7FA172; --sage-700:#637E59;
+    --sage-800:#44583D; --sage-900:#283523;
+
+    --slate-50:#EFF0F2; --slate-100:#D7DBDF; --slate-200:#B5BBC4; --slate-300:#9099A5;
+    --slate-400:#697485; --slate-500:#475569; --slate-600:#384455; --slate-700:#2A3441;
+    --slate-800:#1B222C; --slate-900:#0D1118;
+
+    --cyan-50:#F8F9F9; --cyan-100:#EDF4F6; --cyan-200:#DCEAED; --cyan-300:#CAE0E4;
+    --cyan-400:#B6D4DA; --cyan-500:#A4C9D1; --cyan-600:#85A4AB; --cyan-700:#688186;
+    --cyan-800:#485A5E; --cyan-900:#2B3639;
+
+    --fog-50:#FEFEFE; --fog-100:#FCFCFC; --fog-200:#FAFAF9; --fog-300:#F7F7F6;
+    --fog-400:#F4F5F3; --fog-500:#F1F2F0; --fog-600:#C5C6C4; --fog-700:#9B9C9A;
+    --fog-800:#6E6E6D; --fog-900:#434343;
+
+    /* Semantic · status — base at 500. Honey shifted toward amber (hue ~50)
+       to push WARN further from PASS green on the colour wheel — diverges from
+       source board by design (logged as intentional deviation in tokens.json). */
+    --pass-50:#F4F9F3; --pass-100:#E4EFE1; --pass-200:#CDE1C5; --pass-300:#B2D1A8;
+    --pass-400:#96C087; --pass-500:#7CB069; --pass-600:#648F55; --pass-700:#4E7041;
+    --pass-800:#354E2C; --pass-900:#1E2E18;
+
+    --warn-50:#FBF2DF; --warn-100:#F6DFB0; --warn-200:#EEC781; --warn-300:#E3AE56;
+    --warn-400:#DA9D43; --warn-500:#D69238; --warn-600:#AC7529; --warn-700:#80571F;
+    --warn-800:#573C16; --warn-900:#2D210C;
+
+    --fail-50:#FAEAE6; --fail-100:#F4D9D5; --fail-200:#EDC9C4; --fail-300:#E2ADA5;
+    --fail-400:#D48E85; --fail-500:#C77268; --fail-600:#A25C54; --fail-700:#7F4740;
+    --fail-800:#59302B; --fail-900:#361B18;
+
+    /* Surface · text — Fog “base” intentionally at 400 (brighter / cleaner page bg).
+       Exception to the all-bases-at-500 rule: Fog is neutral surface, not brand. */
+    --page:           var(--fog-400);
+    --surface:        #FFFFFF;
+    --surface-quiet:  var(--fog-300);
+    --surface-inv:    var(--slate-500);
+    --text-strong:    var(--slate-900);
+    --text:           var(--slate-500);
+    --text-muted:     var(--slate-400);
+    --text-faint:     var(--slate-300);
+    --text-inv:       var(--fog-50);
+    --hairline:       var(--fog-600);
+    --hairline-soft:  #E5E6E3;
+
+    /* Interactive · focus / disabled / error */
+    --focus-ring-color:   var(--sage-500);
+    --focus-ring-soft:    rgba(156,197,141,0.32);
+    --focus-ring-on-dark: rgba(255,255,255,0.42);
+    --disabled-opacity:   0.42;
+    --err-border:         var(--fail-500);
+    --err-shadow:         rgba(199,114,104,0.20);
+
+    /* Shape */
+    --r-lg: 20px;
+    --r-md: 14px;
+    --r-sm: 10px;
+    --r-input: 12px;
+    --r-pill: 999px;
+
+    /* Spacing scale (4/8/12/16/24/32/48/64) */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+    --s6: 24px; --s8: 32px; --s12: 48px; --s16: 64px;
+
+    /* Type */
+    --ff-sans: "IBM Plex Sans KR", "IBM Plex Sans", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --ff-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Base
+     ───────────────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--text);
+    font-family: var(--ff-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: "ss01", "ss02";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection { background: var(--sage-200); color: var(--slate-900); }
+
+  .page {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: var(--s12) var(--s12) var(--s16);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Header
+     ───────────────────────────────────────────────────────────────── */
+  .head {
+    display: grid;
+    grid-template-columns: 96px 1fr auto;
+    gap: var(--s6);
+    align-items: center;
+    margin-bottom: var(--s12);
+  }
+  .avatar {
+    width: 96px; height: 96px;
+    border-radius: 18px;
+    background:
+      repeating-linear-gradient(135deg,
+        var(--fog-300) 0 6px,
+        var(--fog-400) 6px 12px);
+    display: grid; place-items: center;
+    border: 1px dashed var(--slate-300);
+    color: var(--slate-500);
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+    user-select: none;
+  }
+  .avatar.sm { width: 32px; height: 32px; border-radius: 8px; font-size: 7px; }
+  .avatar.md { width: 40px; height: 40px; border-radius: 10px; font-size: 8px; }
+  .avatar.lg { width: 64px; height: 64px; border-radius: 14px; font-size: 9px; }
+  .wordmark {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+    color: var(--slate-500);
+    font-weight: 700; font-size: 13px; letter-spacing: -0.005em;
+  }
+  .wordmark::before {
+    content: "";
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    background: var(--sage-500);
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .h1 {
+    font-size: 44px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .h1 .ko {
+    font-size: 18px; font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: -0.005em;
+  }
+  .h1 .tag {
+    font-size: 13px; font-weight: 500;
+    color: var(--slate-500);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 4px 12px;
+    align-self: center;
+  }
+  .lede {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 6px;
+  }
+
+  /* Status dot chips (header right) */
+  .dots { display: flex; gap: 8px; align-items: center; }
+  .dot-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 8px 14px 8px 12px;
+    font-size: 13px; font-weight: 500;
+    color: var(--slate-600);
+    font-variant-numeric: tabular-nums;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--slate-300);
+    box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 16%, transparent);
+  }
+  .dot.pass { background: var(--pass-500); color: var(--pass-500); }
+  .dot.warn { background: var(--warn-400); color: var(--warn-400); }
+  .dot.fail { background: var(--fail-400); color: var(--fail-400); }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Section
+     ───────────────────────────────────────────────────────────────── */
+  .section { margin-bottom: var(--s8); }
+  .section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: var(--s4);
+    padding: 0 4px;
+  }
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .section-meta {
+    font-size: 12px;
+    color: var(--text-faint);
+    font-family: var(--ff-mono);
+  }
+
+  .grid {
+    display: grid;
+    gap: var(--s4);
+    grid-template-columns: repeat(12, 1fr);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Card
+     ───────────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: var(--s6);
+    position: relative;
+  }
+  .card.lg { border-radius: var(--r-lg); }
+  .card.inv { background: var(--surface-inv); color: var(--text-inv); border-color: transparent; }
+  .card.quiet { background: var(--surface-quiet); }
+
+  .card-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-eyebrow .count {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0;
+  }
+  .card.inv .card-eyebrow { color: rgba(255,255,255,0.62); }
+  .card.inv .card-eyebrow .count { color: rgba(255,255,255,0.42); }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Palette swatch cards
+     ───────────────────────────────────────────────────────────────── */
+  .col-3 { grid-column: span 3; }
+  .col-4 { grid-column: span 4; }
+  .col-5 { grid-column: span 5; }
+  .col-6 { grid-column: span 6; }
+  .col-7 { grid-column: span 7; }
+  .col-8 { grid-column: span 8; }
+  .col-12 { grid-column: span 12; }
+
+  .swatch-card {
+    border-radius: var(--r-md);
+    overflow: hidden;
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    display: flex; flex-direction: column;
+  }
+  .swatch-hero {
+    height: 168px;
+    padding: var(--s4) var(--s6);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    color: var(--text-strong);
+  }
+  .swatch-hero.dark { color: var(--text-inv); }
+  .swatch-hero .role {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .swatch-hero .name {
+    font-size: 26px; font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-top: 2px;
+  }
+  .swatch-hero .hex {
+    font-family: var(--ff-mono);
+    font-size: 13px;
+    opacity: 0.85;
+    font-weight: 500;
+  }
+  .ramp {
+    display: flex;
+    height: 36px;
+  }
+  .ramp > div { flex: 1; position: relative; }
+  .ramp > div[data-base="1"]::after {
+    content: "";
+    position: absolute; inset: 0;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), inset 0 0 0 3px rgba(0,0,0,.06);
+  }
+  .ramp-labels {
+    display: flex;
+    padding: 6px var(--s4) var(--s4);
+    background: var(--surface);
+    font-family: var(--ff-mono);
+    font-size: 9.5px;
+    color: var(--text-faint);
+    justify-content: space-between;
+    letter-spacing: 0;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Typography
+     ───────────────────────────────────────────────────────────────── */
+  .type-aa {
+    font-size: 116px;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: var(--text-strong);
+    margin: 8px 0 var(--s4);
+  }
+  .type-aa.body {
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .type-aa.mono {
+    font-family: var(--ff-mono);
+    font-size: 96px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+  }
+  .type-sample {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .type-sample .strong { color: var(--text-strong); font-weight: 600; }
+
+  .typescale {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    column-gap: var(--s4);
+    row-gap: 6px;
+    align-items: baseline;
+    margin-top: var(--s4);
+  }
+  .typescale .label {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .typescale .specimen { color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .typescale .spec {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Shape & spacing visualisers
+     ───────────────────────────────────────────────────────────────── */
+  .radii {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: var(--s4);
+    margin-top: var(--s4);
+  }
+  .radii .r {
+    aspect-ratio: 1.1 / 1;
+    background: var(--fog-400);
+    border: 1px solid var(--hairline);
+    display: grid; place-items: end center;
+    padding: 10px;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .radii .r.pill { border-radius: var(--r-pill); }
+  .radii .r.lg   { border-radius: var(--r-lg); }
+  .radii .r.md   { border-radius: var(--r-md); }
+  .radii .r.sm   { border-radius: var(--r-sm); }
+  .radii .r.input{ border-radius: var(--r-input); }
+
+  .spacing {
+    margin-top: var(--s4);
+    display: grid;
+    grid-template-columns: 60px 1fr 50px;
+    row-gap: 10px;
+    column-gap: var(--s4);
+    align-items: center;
+  }
+  .spacing .tok { font-family: var(--ff-mono); font-size: 11px; color: var(--text-muted); }
+  .spacing .bar { height: 12px; background: var(--sage-200); border-radius: 2px; }
+  .spacing .px { font-family: var(--ff-mono); font-size: 11px; color: var(--text-faint); text-align: right; }
+
+  /* ─────────────────────────────────────────────────────────────────
+     Components
+     ───────────────────────────────────────────────────────────────── */
+  .stack { display: flex; flex-direction: column; gap: var(--s3); }
+  .row   { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+  .row-tight { gap: 8px; }
+
+  /* Buttons */
+  .btn {
+    appearance: none;
+    border: none;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+    padding: 10px 18px;
+    border-radius: var(--r-pill);
+    cursor: default;
+    letter-spacing: -0.005em;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform .12s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary   { background: var(--sage-400); color: var(--slate-900); }
+  .btn.primary:hover{ background: var(--sage-500); }
+  .btn.secondary { background: var(--surface); color: var(--slate-800); border: 1px solid var(--hairline); }
+  .btn.secondary:hover { border-color: var(--slate-300); }
+  .btn.inverted  { background: var(--slate-500); color: var(--fog-50); }
+  .btn.inverted:hover { background: var(--slate-700); }
+  .btn.outlined  { background: transparent; color: var(--slate-800); border: 1px solid var(--slate-300); }
+  .btn.outlined:hover { border-color: var(--slate-500); }
+  .btn.connect   { background: var(--cyan-300); color: var(--slate-800); }
+  .btn.connect:hover { background: var(--cyan-400); color: var(--slate-900); }
+
+  /* Button states (forced) */
+  .btn[data-force="hover"].primary,   .btn.primary:focus-visible           { background: var(--sage-600); }
+  .btn[data-force="hover"].secondary, .btn.secondary:focus-visible         { border-color: var(--slate-300); background: var(--fog-300); }
+  .btn[data-force="hover"].inverted,  .btn.inverted:focus-visible          { background: var(--slate-700); }
+  .btn[data-force="hover"].outlined,  .btn.outlined:focus-visible          { border-color: var(--slate-500); }
+  .btn[data-force="hover"].connect,   .btn.connect:focus-visible           { background: var(--cyan-400); color: var(--slate-900); }
+
+  .btn[data-force="active"]  { transform: translateY(1px); filter: brightness(0.92); }
+  .btn[data-force="focus"], .btn:focus-visible {
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring-soft);
+  }
+  .btn[data-force="disabled"], .btn:disabled, .btn.is-disabled {
+    opacity: var(--disabled-opacity);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .btn.is-error {
+    background: var(--fail-100);
+    color: var(--fail-800);
+  }
+  .btn.is-loading { color: transparent !important; position: relative; pointer-events: none; }
+  .btn.is-loading::after {
+    content: "";
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    background: inherit; border-radius: inherit; color: var(--slate-900);
+  }
+  .btn.is-loading::before {
+    content: "";
+    position: absolute; top: 50%; left: 50%;
+    width: 14px; height: 14px; margin: -7px 0 0 -7px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%;
+    animation: cp-spin .8s linear infinite;
+    z-index: 2; color: var(--slate-900);
+  }
+  @keyframes cp-spin { to { transform: rotate(360deg); } }
+
+  .btn .arrow {
+    display: inline-block; width: 14px; height: 14px;
+  }
+
+  /* IconButton */
+  .ibtn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    border: none;
+    cursor: default;
+    color: var(--slate-900);
+    transition: transform .12s ease;
+  }
+  .ibtn:active { transform: scale(0.96); }
+  .ibtn.sage    { background: var(--sage-400); color: var(--slate-900); }
+  .ibtn.slate   { background: var(--slate-500); color: var(--fog-50); }
+  .ibtn.cyan    { background: var(--cyan-300); color: var(--slate-800); }
+  .ibtn.outline { background: var(--surface); border: 1.5px solid var(--sage-400); color: var(--slate-800); }
+  .ibtn.fail    { background: var(--fail-600); color: var(--fog-50); }
+  .ibtn.sm      { width: 32px; height: 32px; }
+  .ibtn svg     { width: 18px; height: 18px; }
+
+  /* IconButton states */
+  .ibtn[data-force="hover"].sage,    .ibtn.sage:focus-visible    { background: var(--sage-600); }
+  .ibtn[data-force="hover"].slate,   .ibtn.slate:focus-visible   { background: var(--slate-700); }
+  .ibtn[data-force="hover"].cyan,    .ibtn.cyan:focus-visible    { background: var(--cyan-400); }
+  .ibtn[data-force="hover"].outline, .ibtn.outline:focus-visible { background: var(--sage-50); }
+  .ibtn[data-force="focus"], .ibtn:focus-visible {
+    outline: 2px solid var(--focus-ring-color);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring-soft);
+  }
+  .ibtn[data-force="disabled"], .ibtn:disabled, .ibtn.is-disabled {
+    opacity: var(--disabled-opacity);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Pill button with label */
+  .ibtn-label {
+    display: inline-flex; align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    padding: 4px 16px 4px 4px;
+    gap: 8px;
+    color: var(--slate-800);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .ibtn-label .ibtn { width: 32px; height: 32px; }
+
+  /* Input */
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .input {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-input);
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text-strong);
+  }
+  .input.mono { font-family: var(--ff-mono); letter-spacing: -0.01em; font-size: 13px; }
+  .input input {
+    border: none; outline: none; background: transparent;
+    width: 100%; font: inherit; color: inherit;
+    letter-spacing: inherit;
+  }
+  .input input::placeholder { color: var(--text-faint); }
+  .input svg { color: var(--text-muted); flex-shrink: 0; }
+  .input:focus-within, .input[data-force="focus"] {
+    border-color: var(--sage-500);
+    box-shadow: 0 0 0 4px var(--focus-ring-soft);
+  }
+  .input[data-force="disabled"], .input.is-disabled {
+    opacity: var(--disabled-opacity);
+    cursor: not-allowed;
+    background: var(--fog-300);
+  }
+  .input.is-error, .input[data-force="error"] {
+    border-color: var(--err-border);
+    box-shadow: 0 0 0 4px var(--err-shadow);
+  }
+  .input-help {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .input-help.error { color: var(--fail-700); }
+  .input-help::before {
+    content: "";
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; opacity: 0.7;
+  }
+
+  /* Pill (status / label) */
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+  .pill.active  { background: var(--sage-200); color: var(--sage-900); }
+  .pill.pending { background: var(--cyan-200); color: var(--cyan-900); }
+  .pill.blocked { background: var(--slate-500); color: var(--fog-50); }
+  .pill.ghost-light { background: var(--surface); color: var(--slate-500); border: 1px solid var(--hairline); font-family: var(--ff-mono); font-weight: 500; }
+  .pill.pass    { background: var(--pass-100); color: var(--pass-800); }
+  .pill.warn    { background: var(--warn-100); color: var(--warn-800); }
+  .pill.fail    { background: var(--fail-100); color: var(--fail-800); }
+  .pill.pass-on-slate { background: var(--slate-500); color: var(--pass-200); }
+  .pill.warn-on-slate { background: var(--slate-500); color: var(--warn-200); }
+  .pill.fail-on-slate { background: var(--slate-500); color: var(--fail-200); }
+
+  /* Accent lines */
+  .accent-lines { display: flex; flex-direction: column; gap: 10px; padding: var(--s2) 0 var(--s4); }
+  .accent-lines .ln {
+    height: 5px;
+    border-radius: 2px;
+  }
+  .accent-lines .ln.a { background: var(--sage-400); width: 78%; }
+  .accent-lines .ln.b { background: var(--cyan-300); width: 56%; }
+  .accent-lines .ln.c { background: var(--slate-500); width: 42%; }
+
+  /* Status Card — 4-channel redundant coding: left bar + bg tint + icon + right text */
+  .status-card {
+    display: flex; gap: 14px;
+    padding: 14px 16px 14px 14px;
+    border-radius: var(--r-md);
+    border: 1px solid;
+    border-left-width: 4px;
+    align-items: flex-start;
+  }
+  .status-card.pass { background: var(--pass-100); border-color: var(--pass-200); border-left-color: var(--pass-500); }
+  .status-card.warn { background: var(--warn-100); border-color: var(--warn-200); border-left-color: var(--warn-500); }
+  .status-card.fail { background: var(--fail-100); border-color: var(--fail-200); border-left-color: var(--fail-500); }
+  .status-card .icon {
+    width: 28px; height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: white;
+  }
+  .status-card.pass .icon { background: var(--pass-500); }
+  .status-card.warn .icon { background: var(--warn-400); }
+  .status-card.fail .icon { background: var(--fail-400); }
+  .status-card .icon svg { width: 16px; height: 16px; }
+  .status-card .title { font-weight: 700; color: var(--slate-900); font-size: 14px; line-height: 1.3; }
+  .status-card .meta  { color: var(--slate-500); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+  .status-card .progress {
+    margin-top: 10px;
+    height: 6px;
+    background: rgba(255,255,255,.6);
+    border-radius: var(--r-pill);
+    overflow: hidden;
+  }
+  .status-card.pass .progress > i { display:block; height: 100%; width: 72%; background: var(--pass-500); border-radius: inherit; }
+
+  /* StatBox — 4-channel coding: number colour + left rule + border + label */
+  .statbox {
+    border-radius: var(--r-md);
+    border: 1px solid;
+    background: var(--surface);
+    padding: 14px 16px;
+    border-left-width: 4px;
+  }
+  .statbox .num {
+    font-size: 32px; font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .statbox .lbl {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .statbox.pass { border-color: var(--pass-200); border-left-color: var(--pass-500); background: var(--pass-50); }
+  .statbox.pass .num { color: var(--pass-700); }
+  .statbox.warn { border-color: var(--warn-200); border-left-color: var(--warn-500); background: var(--warn-50); }
+  .statbox.warn .num { color: var(--warn-700); }
+  .statbox.fail { border-color: var(--fail-200); border-left-color: var(--fail-500); background: var(--fail-50); }
+  .statbox.fail .num { color: var(--fail-700); }
+
+  /* RuleRow */
+  .rulerow {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid;
+    border-radius: var(--r-md);
+  }
+  .rulerow .sd {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: white;
+  }
+  .rulerow .sd svg { width: 12px; height: 12px; }
+  .rulerow .name { font-weight: 600; color: var(--slate-900); font-size: 13.5px; }
+  .rulerow .id   { font-family: var(--ff-mono); font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .rulerow .right { font-family: var(--ff-mono); font-size: 12.5px; color: var(--slate-500); }
+  .rulerow.pass { background: var(--pass-100); border-color: var(--pass-200); border-left-width: 4px; border-left-color: var(--pass-500); }
+  .rulerow.warn { background: var(--warn-100); border-color: var(--warn-200); border-left-width: 4px; border-left-color: var(--warn-500); }
+  .rulerow.fail { background: var(--fail-100); border-color: var(--fail-200); border-left-width: 4px; border-left-color: var(--fail-500); }
+  .rulerow.pass .right { color: var(--pass-700); font-weight: 600; }
+  .rulerow.warn .right { color: var(--warn-700); font-weight: 600; }
+  .rulerow.fail .right { color: var(--fail-700); font-weight: 600; }
+  .rulerow.pass .sd { background: var(--pass-500); }
+  .rulerow.warn .sd { background: var(--warn-400); }
+  .rulerow.fail .sd { background: var(--fail-400); }
+
+  /* Nav icons */
+  .nav-icons { display: flex; gap: 14px; }
+  .nav-icons .item {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--text-muted);
+    font-size: 10.5px;
+  }
+  .nav-icons .item.active { color: var(--slate-900); font-weight: 600; }
+  .nav-icons .ibtn { background: var(--fog-300); color: var(--slate-400); }
+  .nav-icons .item.active .ibtn { background: var(--sage-400); color: var(--slate-900); }
+
+  /* Combinations row (final 6 chips) */
+  .combos {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .combo-label {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-right: 8px;
+  }
+
+  /* Inverted (Block-listed) special card */
+  .inv-block {
+    background: var(--slate-500);
+    color: var(--fog-50);
+    border-radius: var(--r-md);
+    padding: 18px 20px;
+  }
+  .inv-block .eb { color: rgba(255,255,255,0.62); font-size:10px; letter-spacing:.18em; text-transform:uppercase; font-weight:700; }
+  .inv-block .ttl { font-size: 18px; font-weight: 700; margin-top: 6px; }
+  .inv-block .meta { font-family: var(--ff-mono); font-size: 12px; color: rgba(255,255,255,0.62); margin-top: 4px; }
+  .inv-block .pills { display:flex; gap: 8px; margin-top: 14px; }
+  .inv-block .pills .pill { font-family: var(--ff-mono); font-weight: 500; padding: 4px 10px; font-size: 11px;}
+
+  /* Footer */
+  .footer {
+    margin-top: var(--s12);
+    padding-top: var(--s6);
+    border-top: 1px dashed var(--hairline);
+    display: flex; justify-content: space-between;
+    color: var(--text-faint);
+    font-family: var(--ff-mono);
+    font-size: 11px;
+  }
+
+  /* Density tweaks */
+  body[data-density="compact"] { font-size: 13px; }
+  body[data-density="compact"] .card { padding: 18px; }
+  body[data-density="compact"] .page { padding: 32px 32px 48px; }
+  body[data-density="comfy"] .card { padding: 28px; }
+  body[data-density="comfy"] .page { padding: 64px 64px 80px; }
+
+  /* Page bg variants */
+  body[data-bg="white"] { --page: #FFFFFF; }
+  body[data-bg="surface"] { --page: var(--fog-200); }
+
+  /* Hex visibility */
+  body[data-hex="false"] .hex { display: none; }
+  body[data-hex="false"] .ramp-labels { display: none; }
+
+  /* Locale toggle — dual-language elements use [lang="ko"] / [lang="en"] */
+  body[data-locale="ko"]  [lang="en"] { display: none; }
+  body[data-locale="en"]  [lang="ko"] { display: none; }
+  body[data-locale="en"]  .h1 .ko       { display: none; }
+  body[data-locale="mix"] [lang="ko"],
+  body[data-locale="mix"] [lang="en"] { display: inline; }
+
+  /* States grid */
+  .state-grid {
+    display: grid;
+    grid-template-columns: 90px repeat(auto-fit, minmax(140px, 1fr));
+    row-gap: 14px;
+    column-gap: 16px;
+    align-items: center;
+  }
+  .state-grid .state-name {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: lowercase;
+    letter-spacing: 0;
+  }
+  .state-grid .state-cell {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    align-items: center;
+  }
+  .state-grid + .state-grid { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--hairline); }
+  .state-grid-head {
+    font-family: var(--ff-mono);
+    font-size: 10.5px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Sage ↔ Sage Leaf side-by-side comparator */
+  .sage-vs-leaf {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .sage-vs-leaf .col {
+    border-radius: var(--r-md);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    padding: 14px 16px;
+  }
+  .sage-vs-leaf .col h4 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sage-vs-leaf .col h4::before {
+    content: "";
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    background: var(--swatch);
+  }
+  .sage-vs-leaf .col p {
+    margin: 0; font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
+  }
+  .sage-vs-leaf .col code {
+    font-family: var(--ff-mono); font-size: 11.5px;
+    color: var(--slate-700);
+  }
+  .sage-vs-leaf .demo-row {
+    margin-top: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+</style>
+</head>
+
+<body data-density="regular" data-bg="fog" data-hex="true">
+
+<div class="page">
+
+<!-- ──────────────────────────  HEADER  ────────────────────────── -->
+<header class="head">
+  <div class="avatar" aria-label="Logo placeholder">logo</div>
+  <div>
+    <div class="wordmark">scopeball</div>
+    <div class="eyebrow">Web3 wallet policy SDK · Design system v0.3</div>
+    <h1 class="h1">
+      Cloudy Pond
+      <span class="ko">클라우디 폰드</span>
+      <span class="tag">IBM Plex Sans KR · IBM Plex Mono</span>
+    </h1>
+    <div class="lede">
+      <span lang="ko">차분한 슬레이트 위에 dusty 톤의 시맨틱 컬러를 얹어 SDK 정책 검증 결과를 안정감 있게 표현. 프로페셔널 톤다운 — 흐린 날의 연못.</span>
+      <span lang="en">Quiet slate base with dusty semantic accents, so SDK policy validation reads as calm authority. Professional tone‑down — a pond on an overcast day.</span>
+    </div>
+  </div>
+  <div class="dots">
+    <span class="dot-chip"><span class="dot pass"></span>3 passing</span>
+    <span class="dot-chip"><span class="dot warn"></span>1 warning</span>
+    <span class="dot-chip"><span class="dot fail"></span>1 failing</span>
+  </div>
+</header>
+
+
+<!-- ──────────────────────────  BASE PALETTE  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Base palette · 4 roles</div>
+    <div class="section-meta">tokens/color/base · 10 stops · 50 → 900</div>
+  </div>
+  <div class="grid">
+    <!-- Sage -->
+    <div class="swatch-card col-3">
+      <div class="swatch-hero" style="background: var(--sage-400);">
+        <div>
+          <div class="role">Primary</div>
+          <div class="name">Sage</div>
+        </div>
+        <div class="hex">#9CC58D</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--sage-50)"></div>
+        <div style="background:var(--sage-100)"></div>
+        <div style="background:var(--sage-200)"></div>
+        <div style="background:var(--sage-300)"></div>
+        <div style="background:var(--sage-400)" data-base="1"></div>
+        <div style="background:var(--sage-500)"></div>
+        <div style="background:var(--sage-600)"></div>
+        <div style="background:var(--sage-700)"></div>
+        <div style="background:var(--sage-800)"></div>
+        <div style="background:var(--sage-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+
+    <!-- Slate -->
+    <div class="swatch-card col-3">
+      <div class="swatch-hero dark" style="background: var(--slate-500);">
+        <div>
+          <div class="role">Secondary</div>
+          <div class="name">Slate</div>
+        </div>
+        <div class="hex">#475569</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--slate-50)"></div>
+        <div style="background:var(--slate-100)"></div>
+        <div style="background:var(--slate-200)"></div>
+        <div style="background:var(--slate-300)"></div>
+        <div style="background:var(--slate-400)"></div>
+        <div style="background:var(--slate-500)" data-base="1"></div>
+        <div style="background:var(--slate-600)"></div>
+        <div style="background:var(--slate-700)"></div>
+        <div style="background:var(--slate-800)"></div>
+        <div style="background:var(--slate-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+
+    <!-- Cyan -->
+    <div class="swatch-card col-3">
+      <div class="swatch-hero" style="background: var(--cyan-500);">
+        <div>
+          <div class="role">Tertiary</div>
+          <div class="name">Cyan</div>
+        </div>
+        <div class="hex">#A4C9D1</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--cyan-50)"></div>
+        <div style="background:var(--cyan-100)"></div>
+        <div style="background:var(--cyan-200)"></div>
+        <div style="background:var(--cyan-300)"></div>
+        <div style="background:var(--cyan-400)"></div>
+        <div style="background:var(--cyan-500)" data-base="1"></div>
+        <div style="background:var(--cyan-600)"></div>
+        <div style="background:var(--cyan-700)"></div>
+        <div style="background:var(--cyan-800)"></div>
+        <div style="background:var(--cyan-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+
+    <!-- Fog -->
+    <div class="swatch-card col-3">
+      <div class="swatch-hero" style="background: var(--fog-400); border-bottom: 1px solid var(--hairline);">
+        <div>
+          <div class="role">Neutral</div>
+          <div class="name">Fog</div>
+        </div>
+        <div class="hex">#F4F5F3</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--fog-50)"></div>
+        <div style="background:var(--fog-100)"></div>
+        <div style="background:var(--fog-200)"></div>
+        <div style="background:var(--fog-300)"></div>
+        <div style="background:var(--fog-400)" data-base="1"></div>
+        <div style="background:var(--fog-500)"></div>
+        <div style="background:var(--fog-600)"></div>
+        <div style="background:var(--fog-700)"></div>
+        <div style="background:var(--fog-800)"></div>
+        <div style="background:var(--fog-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ──────────────────────────  SEMANTIC · STATUS  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Semantic · status</div>
+    <div class="section-meta">tokens/color/status · brand Sage 와 분리 유지</div>
+  </div>
+  <div class="grid">
+    <!-- PASS -->
+    <div class="swatch-card col-4">
+      <div class="swatch-hero" style="background: var(--pass-500);">
+        <div>
+          <div class="role">Pass</div>
+          <div class="name">Sage Leaf</div>
+        </div>
+        <div class="hex">#7CB069</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--pass-50)"></div>
+        <div style="background:var(--pass-100)"></div>
+        <div style="background:var(--pass-200)"></div>
+        <div style="background:var(--pass-300)"></div>
+        <div style="background:var(--pass-400)"></div>
+        <div style="background:var(--pass-500)" data-base="1"></div>
+        <div style="background:var(--pass-600)"></div>
+        <div style="background:var(--pass-700)"></div>
+        <div style="background:var(--pass-800)"></div>
+        <div style="background:var(--pass-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+    <!-- WARN -->
+    <div class="swatch-card col-4">
+      <div class="swatch-hero" style="background: var(--warn-500);">
+        <div>
+          <div class="role">Warn</div>
+          <div class="name">Honey</div>
+        </div>
+        <div class="hex">#D69238</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--warn-50)"></div>
+        <div style="background:var(--warn-100)"></div>
+        <div style="background:var(--warn-200)"></div>
+        <div style="background:var(--warn-300)"></div>
+        <div style="background:var(--warn-400)"></div>
+        <div style="background:var(--warn-500)" data-base="1"></div>
+        <div style="background:var(--warn-600)"></div>
+        <div style="background:var(--warn-700)"></div>
+        <div style="background:var(--warn-800)"></div>
+        <div style="background:var(--warn-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+    <!-- FAIL -->
+    <div class="swatch-card col-4">
+      <div class="swatch-hero" style="background: var(--fail-500);">
+        <div>
+          <div class="role">Fail</div>
+          <div class="name">Clay</div>
+        </div>
+        <div class="hex">#C77268</div>
+      </div>
+      <div class="ramp">
+        <div style="background:var(--fail-50)"></div>
+        <div style="background:var(--fail-100)"></div>
+        <div style="background:var(--fail-200)"></div>
+        <div style="background:var(--fail-300)"></div>
+        <div style="background:var(--fail-400)"></div>
+        <div style="background:var(--fail-500)" data-base="1"></div>
+        <div style="background:var(--fail-600)"></div>
+        <div style="background:var(--fail-700)"></div>
+        <div style="background:var(--fail-800)"></div>
+        <div style="background:var(--fail-900)"></div>
+      </div>
+      <div class="ramp-labels"><span>50</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ──────────────────────────  TYPOGRAPHY  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Typography · Pretendard + JetBrains Mono</div>
+    <div class="section-meta">한·영 혼용, system-ui fallback</div>
+  </div>
+  <div class="grid">
+    <!-- Headline -->
+    <div class="card col-4">
+      <div class="card-eyebrow">Headline · Pretendard <span class="count">800 · -0.04em</span></div>
+      <div class="type-aa">Aa</div>
+      <div class="type-sample">
+        <div class="strong">정책으로 지키는 자산</div>
+        Scopeball Policy SDK
+      </div>
+    </div>
+    <!-- Body -->
+    <div class="card col-5">
+      <div class="card-eyebrow">Body · Pretendard <span class="count">500 / 700 · 14–16px</span></div>
+      <div class="type-aa body" style="font-size:96px;">Aa</div>
+      <div class="type-sample">
+        트랜잭션 한도, 화이트리스트, 자동 승인 규칙을 한 곳에서 정의하고 배포하세요. 
+        <span class="strong">Daily tx limit · ≤ 5 ETH</span> 같은 가드를 1줄로 추가합니다.
+      </div>
+    </div>
+    <!-- Mono -->
+    <div class="card col-3">
+      <div class="card-eyebrow">Mono · JetBrains <span class="count">500 · -0.01em</span></div>
+      <div class="type-aa mono">Aa</div>
+      <div class="type-sample" style="font-family: var(--ff-mono); font-size: 12.5px; color: var(--slate-500);">
+        rule#daily.limit<br/>
+        0xA1c4···7e29<br/>
+        when amount &gt; 5 ETH
+      </div>
+    </div>
+
+    <!-- Scale -->
+    <div class="card col-12">
+      <div class="card-eyebrow">Type scale <span class="count">12 → 44px</span></div>
+      <div class="typescale">
+        <div class="label">display</div><div class="specimen" style="font-size:44px; font-weight:800; letter-spacing:-0.02em; line-height:1;">Cloudy Pond · 클라우디 폰드</div><div class="spec">44 / 800 / -0.02em</div>
+        <div class="label">h1</div><div class="specimen" style="font-size:32px; font-weight:700; letter-spacing:-0.015em; line-height:1.1;">Policy validation</div><div class="spec">32 / 700 / -0.015em</div>
+        <div class="label">h2</div><div class="specimen" style="font-size:22px; font-weight:700; letter-spacing:-0.01em;">정책 검증 결과</div><div class="spec">22 / 700 / -0.01em</div>
+        <div class="label">h3</div><div class="specimen" style="font-size:16px; font-weight:600;">Daily transfer limit · ≤ 5 ETH</div><div class="spec">16 / 600 / 0</div>
+        <div class="label">body</div><div class="specimen" style="font-size:14px; color:var(--slate-500);">트랜잭션 한도, 화이트리스트, 자동 승인 규칙을 한 곳에서 정의합니다.</div><div class="spec">14 / 500 / 0</div>
+        <div class="label">caption</div><div class="specimen" style="font-size:12px; color:var(--slate-500);">last verified 2 min ago · 128 passing today</div><div class="spec">12 / 500 / 0</div>
+        <div class="label">mono · lg</div><div class="specimen" style="font-family:var(--ff-mono); font-size:14px; color:var(--slate-700);">rule#allowlist.trusted_dapps</div><div class="spec">14 / 500 / mono</div>
+        <div class="label">mono · sm</div><div class="specimen" style="font-family:var(--ff-mono); font-size:11px; color:var(--slate-500);">0x8c5f···a91 · 2 hrs ago</div><div class="spec">11 / 500 / mono</div>
+        <div class="label">label</div><div class="specimen" style="font-size:11px; letter-spacing:0.16em; font-weight:700; text-transform:uppercase; color:var(--slate-500);">SEARCH · INPUT</div><div class="spec">11 / 700 / 0.16em</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ──────────────────────────  SHAPE & SPACING  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Shape · spacing · grid</div>
+    <div class="section-meta">tokens/layout · 4-pt baseline</div>
+  </div>
+  <div class="grid">
+    <!-- Radii -->
+    <div class="card col-6">
+      <div class="card-eyebrow">Radii <span class="count">5 stops</span></div>
+      <div class="radii">
+        <div class="r sm">10</div>
+        <div class="r input">12</div>
+        <div class="r md">14</div>
+        <div class="r lg">20</div>
+        <div class="r pill">full</div>
+      </div>
+    </div>
+    <!-- Spacing -->
+    <div class="card col-6">
+      <div class="card-eyebrow">Spacing scale <span class="count">4 / 8 / 12 / 16 / 24 / 32 / 48 / 64</span></div>
+      <div class="spacing">
+        <div class="tok">s-1</div><div class="bar" style="width: 4px;"></div><div class="px">4 px</div>
+        <div class="tok">s-2</div><div class="bar" style="width: 8px;"></div><div class="px">8 px</div>
+        <div class="tok">s-3</div><div class="bar" style="width: 12px;"></div><div class="px">12 px</div>
+        <div class="tok">s-4</div><div class="bar" style="width: 16px;"></div><div class="px">16 px</div>
+        <div class="tok">s-6</div><div class="bar" style="width: 24px;"></div><div class="px">24 px</div>
+        <div class="tok">s-8</div><div class="bar" style="width: 32px;"></div><div class="px">32 px</div>
+        <div class="tok">s-12</div><div class="bar" style="width: 48px;"></div><div class="px">48 px</div>
+        <div class="tok">s-16</div><div class="bar" style="width: 64px;"></div><div class="px">64 px</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ──────────────────────────  COMPONENTS  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Components · 11 primitives</div>
+    <div class="section-meta">every page is composed of these · no inventions</div>
+  </div>
+
+  <!-- Row 1: Buttons / IconButton / Pill -->
+  <div class="grid" style="margin-bottom: var(--s4);">
+    <!-- Buttons -->
+    <div class="card col-5">
+      <div class="card-eyebrow">Button <span class="count">5 variants</span></div>
+      <div class="stack" style="margin-top: 12px;">
+        <div class="row">
+          <button class="btn primary" data-state-demo>Primary</button>
+          <button class="btn secondary" data-state-demo>Secondary</button>
+          <button class="btn inverted" data-state-demo>Inverted</button>
+        </div>
+        <div class="row">
+          <button class="btn outlined">Outlined</button>
+          <button class="btn connect">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Connect
+          </button>
+          <button class="btn primary">
+            Approve safe rules
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IconButton -->
+    <div class="card col-4">
+      <div class="card-eyebrow">IconButton <span class="count">4 variants · circular</span></div>
+      <div class="row" style="margin-top: 12px;">
+        <button class="ibtn sage" aria-label="edit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+        <button class="ibtn slate" aria-label="wallet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg>
+        </button>
+        <button class="ibtn cyan" aria-label="tag">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.4"/></svg>
+        </button>
+        <button class="ibtn outline" aria-label="edit-outline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <span class="ibtn-label">
+          <span class="ibtn sage" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          </span>
+          Label
+        </span>
+      </div>
+    </div>
+
+    <!-- Pill -->
+    <div class="card col-3">
+      <div class="card-eyebrow">Pill <span class="count">state · label</span></div>
+      <div class="row" style="margin-top: 12px;">
+        <span class="pill active">Active</span>
+        <span class="pill pending">Pending</span>
+        <span class="pill blocked">Blocked</span>
+      </div>
+      <div class="row" style="margin-top: 12px;">
+        <span class="pill ghost-light">policy</span>
+        <span class="pill ghost-light">wallet</span>
+        <span class="pill ghost-light">tx</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Input / Nav icons / Avatar -->
+  <div class="grid" style="margin-bottom: var(--s4);">
+    <!-- Input -->
+    <div class="card col-5">
+      <div class="card-eyebrow">Input <span class="count">search · wallet address (mono)</span></div>
+      <div class="stack" style="margin-top: 12px; gap: 14px;">
+        <div class="input-group">
+          <div class="input-label">Search · input</div>
+          <label class="input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="text" placeholder="정책 검색 — daily limit, allowlist, sig scheme..."/>
+          </label>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Wallet address</div>
+          <label class="input mono">
+            <span style="color:var(--text-faint);">0x</span>
+            <input type="text" value="A1c4···7e29" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav icons -->
+    <div class="card col-4">
+      <div class="card-eyebrow">Nav icon <span class="count">4 · home active</span></div>
+      <div class="nav-icons" style="margin-top: 16px;">
+        <div class="item active">
+          <button class="ibtn" aria-label="home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg>
+          </button>
+          <span>Home</span>
+        </div>
+        <div class="item">
+          <button class="ibtn" aria-label="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </button>
+          <span>Search</span>
+        </div>
+        <div class="item">
+          <button class="ibtn" aria-label="wallet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg>
+          </button>
+          <span>Wallet</span>
+        </div>
+        <div class="item">
+          <button class="ibtn" aria-label="user">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+          </button>
+          <span>User</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avatar -->
+    <div class="card col-3">
+      <div class="card-eyebrow">Avatar <span class="count">placeholder · sm · md · lg</span></div>
+      <div class="row" style="margin-top: 16px; align-items: center;">
+        <div class="avatar lg">logo</div>
+        <div class="avatar md">logo</div>
+        <div class="avatar sm"></div>
+      </div>
+      <div class="type-sample" style="font-size:12px; color:var(--text-muted); margin-top:14px;">
+        로고는 추후 별도 교체. 지금은 dashed placeholder. 헤더 좌상단 전용 · 본문 중앙 배치 금지.
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: StatusCard / StatusToast / StatusDot + Icon set -->
+  <div class="grid" style="margin-bottom: var(--s4);">
+    <!-- StatusCard (3) -->
+    <div class="card col-5">
+      <div class="card-eyebrow">StatusCard <span class="count">pass · warn · fail</span></div>
+      <div class="stack" style="margin-top: 12px; gap: 10px;">
+        <div class="status-card pass">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>
+          </span>
+          <div style="flex:1;">
+            <div class="title">Policy synced</div>
+            <div class="meta">3 rules verified · 2 min ago</div>
+            <div class="progress"><i></i></div>
+          </div>
+        </div>
+        <div class="status-card warn">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20z"/><path d="M12 10v5"/><circle cx="12" cy="18" r="0.6" fill="currentColor"/></svg>
+          </span>
+          <div style="flex:1;">
+            <div class="title">Manual review suggested</div>
+            <div class="meta">1 rule above usual gas threshold</div>
+          </div>
+        </div>
+        <div class="status-card fail">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8M16 8l-8 8"/></svg>
+          </span>
+          <div style="flex:1;">
+            <div class="title">Transaction blocked</div>
+            <div class="meta">Destination matched blocklist entry</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- StatusToast — 3 tones (compact) -->
+    <div class="card col-4">
+      <div class="card-eyebrow">StatusToast <span class="count">3 tones · header right rail</span></div>
+      <div class="stack" style="margin-top: 12px; gap: 10px;">
+        <div class="status-card pass" style="padding: 10px 12px 10px 10px;">
+          <span class="icon" style="width:22px;height:22px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="m5 12 5 5 9-10"/></svg>
+          </span>
+          <div style="flex:1;">
+            <div class="title" style="font-size:13px;">Policy synced</div>
+          </div>
+          <div style="font-family:var(--ff-mono);font-size:11px;color:var(--pass-700);">2m</div>
+        </div>
+        <div class="status-card warn" style="padding: 10px 12px 10px 10px;">
+          <span class="icon" style="width:22px;height:22px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><path d="M12 3 2 21h20z"/><path d="M12 10v5"/></svg>
+          </span>
+          <div style="flex:1;">
+            <div class="title" style="font-size:13px;">Manual review suggested</div>
+          </div>
+          <div style="font-family:var(--ff-mono);font-size:11px;color:var(--warn-700);">7m</div>
+        </div>
+        <div class="status-card fail" style="padding: 10px 12px 10px 10px;">
+          <span class="icon" style="width:22px;height:22px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8M16 8l-8 8"/></svg>
+          </span>
+          <div style="flex:1;">
+            <div class="title" style="font-size:13px;">Transaction blocked</div>
+          </div>
+          <div style="font-family:var(--ff-mono);font-size:11px;color:var(--fail-700);">12m</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- StatusDot + Icon set -->
+    <div class="card col-3">
+      <div class="card-eyebrow">StatusDot <span class="count">header chip</span></div>
+      <div class="stack" style="margin-top: 12px; gap: 10px;">
+        <span class="dot-chip"><span class="dot pass"></span>3 passing</span>
+        <span class="dot-chip"><span class="dot warn"></span>1 warning</span>
+        <span class="dot-chip"><span class="dot fail"></span>1 failing</span>
+      </div>
+      <div class="card-eyebrow" style="margin-top: 18px;">Icon set <span class="count">4</span></div>
+      <div class="row" style="margin-top: 10px;">
+        <button class="ibtn sage" aria-label="shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></button>
+        <button class="ibtn slate" aria-label="wallet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg></button>
+        <button class="ibtn cyan" aria-label="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.4"/></svg></button>
+        <button class="ibtn fail" aria-label="trash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 4: StatBox / RuleRow -->
+  <div class="grid" style="margin-bottom: var(--s4);">
+    <!-- StatBox -->
+    <div class="card col-5">
+      <div class="card-eyebrow">StatBox <span class="count">3 statuses · left-rule</span></div>
+      <div class="grid" style="margin-top: 12px; grid-template-columns: repeat(3,1fr); gap: 12px;">
+        <div class="statbox pass">
+          <div class="num">128</div>
+          <div class="lbl">Passed today</div>
+        </div>
+        <div class="statbox warn">
+          <div class="num">7</div>
+          <div class="lbl">Warnings</div>
+        </div>
+        <div class="statbox fail">
+          <div class="num">2</div>
+          <div class="lbl">Blocked</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RuleRow -->
+    <div class="card col-7">
+      <div class="card-eyebrow">RuleRow <span class="count">ok · review · blocked</span></div>
+      <div class="stack" style="margin-top: 12px; gap: 10px;">
+        <div class="rulerow pass">
+          <span class="sd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+          <div>
+            <div class="name">Daily tx limit · ≤ 5 ETH</div>
+            <div class="id">rule#daily.limit</div>
+          </div>
+          <div class="right">2.4 / 5.0 ETH</div>
+        </div>
+        <div class="rulerow pass">
+          <span class="sd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+          <div>
+            <div class="name">Allowlist match · trusted dapps</div>
+            <div class="id">rule#allowlist</div>
+          </div>
+          <div class="right">ok</div>
+        </div>
+        <div class="rulerow warn">
+          <span class="sd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 21h20z"/><path d="M12 10v5"/></svg></span>
+          <div>
+            <div class="name">Gas spike detected · +38% vs avg</div>
+            <div class="id">rule#gas.guard</div>
+          </div>
+          <div class="right">review</div>
+        </div>
+        <div class="rulerow fail">
+          <span class="sd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8M16 8l-8 8"/></svg></span>
+          <div>
+            <div class="name">Destination on blocklist</div>
+            <div class="id">rule#blocklist</div>
+          </div>
+          <div class="right">0x8c···a91</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 5: Accent lines / Inverted-block card -->
+  <div class="grid">
+    <div class="card col-5">
+      <div class="card-eyebrow">Accent lines <span class="count">sage · cyan · slate</span></div>
+      <div class="accent-lines">
+        <div class="ln a"></div>
+        <div class="ln b"></div>
+        <div class="ln c"></div>
+      </div>
+      <div class="row" style="gap:8px;">
+        <span class="pill active">Active</span>
+        <span class="pill pending">Pending</span>
+        <span class="pill blocked">Blocked</span>
+      </div>
+    </div>
+
+    <div class="col-7">
+      <div class="inv-block">
+        <div class="eb">Inverted card · 강조 surface</div>
+        <div style="display:flex; gap:18px; align-items:center; margin-top:6px;">
+          <div>
+            <div class="ttl">Block listed</div>
+            <div class="meta">0x8c5f···a91 · 2 hrs ago · matched <span style="color:var(--fog-50);">rule#blocklist</span></div>
+          </div>
+          <div style="flex:1;"></div>
+          <div class="pills">
+            <span class="pill" style="background:var(--cyan-300); color:var(--slate-800);">review</span>
+            <span class="pill" style="background:var(--sage-400); color:var(--slate-900);">approve</span>
+            <span class="pill" style="background:var(--slate-600); color:var(--fog-50); border:1px solid var(--slate-500);">dismiss</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ──────────────────────────  STATES  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Interactive states · focus · disabled · error · loading</div>
+    <div class="section-meta">WCAG AA focus ring · Sage 500 / 4px soft halo</div>
+  </div>
+
+  <!-- Button states -->
+  <div class="grid" style="margin-bottom: var(--s4);">
+    <div class="card col-12">
+      <div class="card-eyebrow">Button states <span class="count">rest · hover · focus · active · disabled · loading · error</span></div>
+      <div class="state-grid" style="margin-top: 14px; grid-template-columns: 90px repeat(7, 1fr);">
+        <div class="state-grid-head"></div>
+        <div class="state-grid-head">rest</div>
+        <div class="state-grid-head">hover</div>
+        <div class="state-grid-head">focus</div>
+        <div class="state-grid-head">active</div>
+        <div class="state-grid-head">disabled</div>
+        <div class="state-grid-head">loading</div>
+        <div class="state-grid-head">error</div>
+
+        <div class="state-name">primary</div>
+        <div class="state-cell"><button class="btn primary">Approve</button></div>
+        <div class="state-cell"><button class="btn primary" data-force="hover">Approve</button></div>
+        <div class="state-cell"><button class="btn primary" data-force="focus">Approve</button></div>
+        <div class="state-cell"><button class="btn primary" data-force="active">Approve</button></div>
+        <div class="state-cell"><button class="btn primary" data-force="disabled">Approve</button></div>
+        <div class="state-cell"><button class="btn primary is-loading">Approve</button></div>
+        <div class="state-cell"><button class="btn primary is-error">Failed · retry</button></div>
+
+        <div class="state-name">secondary</div>
+        <div class="state-cell"><button class="btn secondary">Cancel</button></div>
+        <div class="state-cell"><button class="btn secondary" data-force="hover">Cancel</button></div>
+        <div class="state-cell"><button class="btn secondary" data-force="focus">Cancel</button></div>
+        <div class="state-cell"><button class="btn secondary" data-force="active">Cancel</button></div>
+        <div class="state-cell"><button class="btn secondary" data-force="disabled">Cancel</button></div>
+        <div class="state-cell"><button class="btn secondary is-loading">Cancel</button></div>
+        <div class="state-cell"><button class="btn secondary is-error">Retry</button></div>
+
+        <div class="state-name">inverted</div>
+        <div class="state-cell"><button class="btn inverted">Deploy</button></div>
+        <div class="state-cell"><button class="btn inverted" data-force="hover">Deploy</button></div>
+        <div class="state-cell"><button class="btn inverted" data-force="focus">Deploy</button></div>
+        <div class="state-cell"><button class="btn inverted" data-force="active">Deploy</button></div>
+        <div class="state-cell"><button class="btn inverted" data-force="disabled">Deploy</button></div>
+        <div class="state-cell"><button class="btn inverted is-loading">Deploy</button></div>
+        <div class="state-cell"><span style="font-family:var(--ff-mono);font-size:11px;color:var(--text-faint);">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input states -->
+  <div class="grid" style="margin-bottom: var(--s4);">
+    <div class="card col-12">
+      <div class="card-eyebrow">Input states <span class="count">rest · focus · filled · error · disabled</span></div>
+      <div class="grid" style="margin-top: 14px; grid-template-columns: repeat(5, 1fr); gap: 14px;">
+        <div class="input-group">
+          <div class="input-label">rest</div>
+          <label class="input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="text" placeholder="정책 검색"/>
+          </label>
+          <div class="input-help">검색 가능한 라벨 · ID · 단위</div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">focus</div>
+          <label class="input" data-force="focus">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="text" value="daily" />
+          </label>
+          <div class="input-help">Sage 500 ring · 4px halo</div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">filled · mono</div>
+          <label class="input mono">
+            <span style="color:var(--text-faint);">0x</span>
+            <input type="text" value="A1c4···7e29" />
+          </label>
+          <div class="input-help">EIP-55 정상 형식</div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">error</div>
+          <label class="input mono is-error">
+            <span style="color:var(--fail-600);">0x</span>
+            <input type="text" value="A1g4···7e2" />
+          </label>
+          <div class="input-help error">EIP-55 checksum 불일치</div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">disabled</div>
+          <label class="input is-disabled">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="text" value="archived rule" disabled />
+          </label>
+          <div class="input-help">아카이브된 규칙 · 잠금</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IconButton & focus-on-dark -->
+  <div class="grid">
+    <div class="card col-7">
+      <div class="card-eyebrow">IconButton states <span class="count">rest · hover · focus · disabled</span></div>
+      <div class="state-grid" style="margin-top: 14px; grid-template-columns: 90px repeat(4, 1fr);">
+        <div class="state-grid-head"></div>
+        <div class="state-grid-head">rest</div>
+        <div class="state-grid-head">hover</div>
+        <div class="state-grid-head">focus</div>
+        <div class="state-grid-head">disabled</div>
+
+        <div class="state-name">sage</div>
+        <div class="state-cell"><button class="ibtn sage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn sage" data-force="hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn sage" data-force="focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn sage" data-force="disabled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+
+        <div class="state-name">slate</div>
+        <div class="state-cell"><button class="ibtn slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn slate" data-force="hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn slate" data-force="focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn slate" data-force="disabled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M17 13h.01"/></svg></button></div>
+
+        <div class="state-name">outline</div>
+        <div class="state-cell"><button class="ibtn outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn outline" data-force="hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn outline" data-force="focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="state-cell"><button class="ibtn outline" data-force="disabled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+      </div>
+    </div>
+
+    <!-- Sage vs Sage Leaf identifiability -->
+    <div class="card col-5">
+      <div class="card-eyebrow">Sage <span class="count" style="text-transform:none;">brand</span> vs Sage Leaf <span class="count" style="text-transform:none;">status</span></div>
+      <div class="type-sample" style="margin-top: 8px; font-size: 12.5px; color: var(--text-muted);">
+        같은 화면에 등장해도 분리 — Sage는 surface/CTA, Sage Leaf는 status dot/메시지.
+      </div>
+      <div class="sage-vs-leaf" style="margin-top: 14px;">
+        <div class="col" style="--swatch: var(--sage-500);">
+          <h4>Sage · brand</h4>
+          <p><code>--sage-500 · #9CC58D</code></p>
+          <div class="demo-row">
+            <button class="btn primary" style="padding:8px 14px;font-size:13px;">Approve</button>
+            <span class="pill active">Active</span>
+          </div>
+        </div>
+        <div class="col" style="--swatch: var(--pass-500);">
+          <h4>Sage Leaf · pass</h4>
+          <p><code>--pass-500 · #7CB069</code></p>
+          <div class="demo-row">
+            <span class="dot pass" style="width:10px;height:10px;"></span>
+            <span style="font-size:12.5px;color:var(--pass-700);font-weight:600;">passed</span>
+            <span class="pill pass">ok</span>
+          </div>
+        </div>
+      </div>
+      <div class="type-sample" style="margin-top: 12px; font-size: 11.5px; color: var(--text-faint); font-family: var(--ff-mono);">
+        ΔE ≈ 12.4 · 충분히 식별. RuleRow와 Primary 버튼이 같은 row에 와도 안전.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ──────────────────────────  COMBINATIONS  ────────────────────────── -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-title">Combinations · 6 status pills</div>
+    <div class="section-meta">pass · warn · fail × fog · slate</div>
+  </div>
+  <div class="grid">
+    <div class="card col-12">
+      <div class="combos">
+        <span class="combo-label">on fog</span>
+        <span class="pill pass">pass on fog</span>
+        <span class="pill warn">warn on fog</span>
+        <span class="pill fail">fail on fog</span>
+        <span style="display:inline-block; width:1px; height:24px; background:var(--hairline); margin: 0 6px;"></span>
+        <span class="combo-label">on slate</span>
+        <span class="pill pass-on-slate">pass on slate</span>
+        <span class="pill warn-on-slate">warn on slate</span>
+        <span class="pill fail-on-slate">fail on slate</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>scopeball / cloudy-pond / design-system.v0.1</span>
+  <span>tokens · 11 components · 6 combinations · 4-pt grid</span>
+</footer>
+
+</div><!-- /.page -->
+
+
+<!-- ──────────────────────────  Tweaks panel  ────────────────────────── -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<div id="tweaks-root"></div>
+
+<script type="text/babel">
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "density": "comfy",
+    "background": "surface",
+    "showHex": true,
+    "locale": "ko",
+    "forceState": "none"
+  }/*EDITMODE-END*/;
+
+  function TweaksApp() {
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+    React.useEffect(() => {
+      document.body.setAttribute('data-density', t.density);
+      document.body.setAttribute('data-bg', t.background);
+      document.body.setAttribute('data-hex', String(t.showHex));
+      document.body.setAttribute('data-locale', t.locale);
+      const demos = document.querySelectorAll('[data-state-demo]');
+      demos.forEach(el => {
+        if (t.forceState === 'none') el.removeAttribute('data-force');
+        else el.setAttribute('data-force', t.forceState);
+        if (t.forceState === 'loading') el.classList.add('is-loading'); else el.classList.remove('is-loading');
+        if (t.forceState === 'error')   el.classList.add('is-error');   else el.classList.remove('is-error');
+      });
+    }, [t.density, t.background, t.showHex, t.locale, t.forceState]);
+
+    return (
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Layout" />
+        <TweakRadio  label="Density" value={t.density}
+                     options={['compact','regular','comfy']}
+                     onChange={(v) => setTweak('density', v)} />
+        <TweakRadio  label="Page bg" value={t.background}
+                     options={['page','surface','white']}
+                     onChange={(v) => setTweak('background', v)} />
+        <TweakSection label="Content" />
+        <TweakRadio  label="Locale" value={t.locale}
+                     options={['ko','en','mix']}
+                     onChange={(v) => setTweak('locale', v)} />
+        <TweakToggle label="Show hex codes" value={t.showHex}
+                     onChange={(v) => setTweak('showHex', v)} />
+        <TweakSection label="Force state — demo row" />
+        <TweakSelect label="Apply" value={t.forceState}
+                     options={['none','hover','focus','active','disabled','loading','error']}
+                     onChange={(v) => setTweak('forceState', v)} />
+      </TweaksPanel>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<TweaksApp />);
+</script>
+
+</body>
+</html>

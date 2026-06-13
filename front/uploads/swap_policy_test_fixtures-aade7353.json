@@ -1,0 +1,402 @@
+{
+  "$meta": {
+    "purpose": "Scopeball Editor 'Policy test'가 실제로 boolean 평가를 수행하도록 하는 픽스처. 모든 블록은 실제 .cedarschema 필드 기준(mock 제거).",
+    "scope": "Amm::Swap 액션 1개 기준. 다른 액션도 동일 패턴으로 확장.",
+    "schemaFidelity": [
+      "캔버스/팔레트의 모든 조건 블록은 실제 스키마 필드만 사용. 임의 라벨 금지.",
+      "제거된 mock: 'Swap direction == market'(SwapDirection.kind엔 exact_input/exact_output만 존재) · 'claim == match'(claim은 Airdrop/Launchpad 필드, Amm::Swap 아님).",
+      "필드 출처 3계층: context.*(액션 스키마) / meta.*(공통 봉투) / enrichment.*(host-populated 커스텀, 화면 ENRICHMENT 그룹)."
+    ],
+    "policyModel": "allow 기반(permit allow-list). Cedar 정석. '위험 패턴이면 차단'이 아니라 '안전 조건 모두 참일 때만 허용'. 위험 패턴은 NOT 배제로 표현."
+  },
+  "metaSchema": {
+    "name": "MetaContext",
+    "version": "v0-provisional",
+    "comment": "임시 공통 트랜잭션 봉투(core). 화면 좌하단 ENRICHMENT와 별개. 확정 시 이 블록만 교체.",
+    "fields": [
+      {
+        "name": "from",
+        "type": "String",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "호출 지갑 주소(0x-hex). principal."
+      },
+      {
+        "name": "to",
+        "type": "String",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "호출 대상 컨트랙트 주소(0x-hex). resource."
+      },
+      {
+        "name": "selector",
+        "type": "String",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "4-byte 함수 셀렉터(0x-hex)."
+      },
+      {
+        "name": "chainId",
+        "type": "Long",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "체인 ID."
+      },
+      {
+        "name": "value",
+        "type": "String",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "전송 네이티브 값(U256 hex)."
+      },
+      {
+        "name": "nonce",
+        "type": "Long",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "트랜잭션 nonce."
+      },
+      {
+        "name": "blockTimestamp",
+        "type": "Long",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "예상 실행 시점(unix sec)."
+      },
+      {
+        "name": "isSimulated",
+        "type": "Bool",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "시뮬레이션 트랜잭션 여부."
+      }
+    ]
+  },
+  "enrichmentSchema": {
+    "name": "Enrichment",
+    "version": "v0-provisional",
+    "comment": "Host-populated 파생 필드. 화면 좌하단 '커스텀 · ENRICHMENT'(editable) 그룹에 대응. validityDeltaSec·recipientIsContract·oracle(effectiveRateVsOracleBps·totalInputUsd).",
+    "fields": [
+      {
+        "name": "validityDeltaSec",
+        "type": "Long",
+        "fieldKind": "primitive",
+        "optional": true,
+        "description": "마감까지 남은 초(deadline - now). 없으면 무기한."
+      },
+      {
+        "name": "recipientIsContract",
+        "type": "Bool",
+        "fieldKind": "primitive",
+        "optional": false,
+        "description": "출력/수신 주소가 컨트랙트인지."
+      },
+      {
+        "name": "effectiveRateVsOracleBps",
+        "type": "Long",
+        "fieldKind": "primitive",
+        "optional": true,
+        "description": "Oracle 대비 실효 슬리피지(bps). oracle 폴더."
+      },
+      {
+        "name": "totalInputUsd",
+        "type": "decimal",
+        "fieldKind": "primitive",
+        "optional": true,
+        "description": "입력 총가치 USD."
+      }
+    ]
+  },
+  "evaluationContract": {
+    "comment": "블록 1개=leaf, 논리노드=AND/OR/NOT. 트리 평가→bool. tone 우선순위로 verdict 산출.",
+    "operatorsByFieldKind": {
+      "primitive.String": [
+        "eq",
+        "neq",
+        "in",
+        "notIn",
+        "startsWith",
+        "contains"
+      ],
+      "primitive.Long": [
+        "eq",
+        "neq",
+        "lt",
+        "lte",
+        "gt",
+        "gte"
+      ],
+      "primitive.decimal": [
+        "eq",
+        "neq",
+        "lt",
+        "lte",
+        "gt",
+        "gte"
+      ],
+      "primitive.Bool": [
+        "isTrue",
+        "isFalse"
+      ],
+      "ref": [
+        "eq",
+        "neq",
+        "in",
+        "notIn"
+      ],
+      "collection": [
+        "contains",
+        "containsAny",
+        "containsAll",
+        "isEmpty",
+        "sizeEq",
+        "sizeGt",
+        "sizeLt"
+      ],
+      "record": []
+    },
+    "absencePolicy": {
+      "options": [
+        "treatAsFalse",
+        "treatAsTrue",
+        "skip"
+      ],
+      "default": "treatAsFalse"
+    },
+    "logicNodes": {
+      "AND": "모든 자식 true → true",
+      "OR": "하나라도 true → true",
+      "NOT": "단일 자식 부정"
+    },
+    "verdict": {
+      "model": "permit-based (allow-list)",
+      "rule": "단일 permit 문장. when 절(AND 트리)이 참이면 ALLOW, 아니면 기본 차단(deny-by-default)으로 DENY.",
+      "failedConditions": "DENY일 때, when 절에서 거짓이 된 안전조건을 표시(어떤 조건이 막았는지).",
+      "forbidOverride": "forbid(하드 차단) 레인은 v2. v1은 permit 단일 레인.",
+      "unconnectedBlocks": "permit when 절에 미연결된 블록은 컴파일/평가 제외."
+    }
+  },
+  "valueRefs": {
+    "syntax": "@meta.from / @context.tokenIn / @enrichment.* 처럼 @ 접두로 동적 참조"
+  },
+  "samplePolicy": {
+    "name": "Swap baseline",
+    "action": "Amm::Swap",
+    "effect": "permit",
+    "comment": "단일 permit. when=AND(안전조건). 위험 패턴(swap-and-send, 만료임박+고임팩트)은 NOT 배제. 매칭 실패 시 deny-by-default.",
+    "denyMessage": "swap baseline not satisfied",
+    "root": {
+      "node": "AND",
+      "children": [
+        {
+          "guardId": "s1",
+          "label": "swap-and-send 배제",
+          "node": "NOT",
+          "children": [
+            {
+              "node": "AND",
+              "children": [
+                {
+                  "param": "context.recipient",
+                  "fieldKind": "primitive.String",
+                  "op": "neq",
+                  "value": "@meta.from"
+                },
+                {
+                  "param": "enrichment.recipientIsContract",
+                  "fieldKind": "primitive.Bool",
+                  "op": "isTrue"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "guardId": "s2",
+          "label": "슬리피지 가드",
+          "param": "context.slippageBp",
+          "fieldKind": "primitive.Long",
+          "op": "lt",
+          "value": 100
+        },
+        {
+          "guardId": "s3",
+          "label": "만료임박+고임팩트 배제",
+          "node": "NOT",
+          "children": [
+            {
+              "node": "AND",
+              "children": [
+                {
+                  "param": "enrichment.validityDeltaSec",
+                  "fieldKind": "primitive.Long",
+                  "op": "lt",
+                  "value": 30,
+                  "absence": "treatAsFalse"
+                },
+                {
+                  "param": "context.priceImpactBp",
+                  "fieldKind": "primitive.Long",
+                  "op": "gt",
+                  "value": 50
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "unconnectedExamples": [
+      {
+        "param": "enrichment.effectiveRateVsOracleBps",
+        "fieldKind": "primitive.Long",
+        "op": "lt",
+        "value": 100,
+        "note": "오라클 슬리피지 안전조건 후보 — 미연결, 제외"
+      },
+      {
+        "param": "enrichment.totalInputUsd",
+        "fieldKind": "primitive.decimal",
+        "op": "lt",
+        "value": 10000,
+        "note": "대형거래 한도 후보 — 미연결, 제외"
+      }
+    ]
+  },
+  "sampleTransactions": [
+    {
+      "id": "tx-calm",
+      "label": "Calm swap · USDC→WETH",
+      "meta": {
+        "from": "0xA1c4000000000000000000000000000000007e29",
+        "to": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "selector": "0x414bf389",
+        "chainId": 1,
+        "value": "0x0",
+        "nonce": 42,
+        "blockTimestamp": 1748649600,
+        "isSimulated": true
+      },
+      "enrichment": {
+        "validityDeltaSec": 300,
+        "recipientIsContract": false,
+        "effectiveRateVsOracleBps": 8,
+        "totalInputUsd": 4800.0
+      },
+      "context": {
+        "venue": "uniswap_v3",
+        "tokenIn": "USDC",
+        "tokenOut": "WETH",
+        "direction": {
+          "kind": "exact_input",
+          "amountIn": "0x...",
+          "minAmountOut": "0x...",
+          "amountInUsd": 4800.0,
+          "amountOutUsd": 4790.0
+        },
+        "recipient": "0xA1c4000000000000000000000000000000007e29",
+        "slippageBp": 50,
+        "priceImpactBp": 12,
+        "expectedAmountOut": "0x...",
+        "routeEstimatedOut": "0x...",
+        "gasEstimate": "0x..."
+      },
+      "expected": {
+        "verdict": "ALLOW",
+        "permitMatch": true,
+        "failed": []
+      }
+    },
+    {
+      "id": "tx-market-expiry",
+      "label": "Market swap · 만료 임박",
+      "meta": {
+        "from": "0xA1c4000000000000000000000000000000007e29",
+        "to": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "selector": "0x414bf389",
+        "chainId": 1,
+        "value": "0x0",
+        "nonce": 43,
+        "blockTimestamp": 1748649600,
+        "isSimulated": true
+      },
+      "enrichment": {
+        "validityDeltaSec": 18,
+        "recipientIsContract": false,
+        "effectiveRateVsOracleBps": 140,
+        "totalInputUsd": 4800.0
+      },
+      "context": {
+        "venue": "uniswap_v3",
+        "tokenIn": "USDC",
+        "tokenOut": "WETH",
+        "direction": {
+          "kind": "exact_input",
+          "amountIn": "0x...",
+          "minAmountOut": "0x...",
+          "amountInUsd": 4800.0,
+          "amountOutUsd": 4710.0
+        },
+        "recipient": "0xA1c4000000000000000000000000000000007e29",
+        "slippageBp": 150,
+        "priceImpactBp": 60,
+        "expectedAmountOut": "0x...",
+        "routeEstimatedOut": "0x...",
+        "gasEstimate": "0x..."
+      },
+      "expected": {
+        "verdict": "DENY",
+        "permitMatch": false,
+        "failed": [
+          "s2",
+          "s3"
+        ]
+      }
+    },
+    {
+      "id": "tx-send-to-contract",
+      "label": "Send to contract",
+      "meta": {
+        "from": "0xA1c4000000000000000000000000000000007e29",
+        "to": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+        "selector": "0x414bf389",
+        "chainId": 1,
+        "value": "0x0",
+        "nonce": 44,
+        "blockTimestamp": 1748649600,
+        "isSimulated": true
+      },
+      "enrichment": {
+        "validityDeltaSec": 200,
+        "recipientIsContract": true,
+        "effectiveRateVsOracleBps": 5,
+        "totalInputUsd": 4800.0
+      },
+      "context": {
+        "venue": "uniswap_v3",
+        "tokenIn": "USDC",
+        "tokenOut": "WETH",
+        "direction": {
+          "kind": "exact_input",
+          "amountIn": "0x...",
+          "minAmountOut": "0x...",
+          "amountInUsd": 4800.0,
+          "amountOutUsd": 4790.0
+        },
+        "recipient": "0xBEEF000000000000000000000000000000001234",
+        "slippageBp": 40,
+        "priceImpactBp": 10,
+        "expectedAmountOut": "0x...",
+        "routeEstimatedOut": "0x...",
+        "gasEstimate": "0x..."
+      },
+      "expected": {
+        "verdict": "DENY",
+        "permitMatch": false,
+        "failed": [
+          "s1"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scopeball · Block palette 상태 변형 (v6)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "IBM Plex Sans KR", system-ui, sans-serif; }
+  .frame-img { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: 2px; }
+  .note {
+    position: absolute; bottom: 14px; left: 14px; right: 14px;
+    background: rgba(13,17,24,0.86); color: #FAFAF9; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-radius: 10px; padding: 11px 14px; font-size: 13px; line-height: 1.5;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .note .k { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #9CC58D; background: rgba(156,197,141,0.16); padding: 3px 8px; border-radius: 5px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+  .note .b { color: #fff; font-weight: 600; }
+  .note .mono { font-family: "IBM Plex Mono", monospace; color: #B6D4DA; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel">
+const W = 1440, H = 1024;
+function Frame({ src, note }) {
+  return (<div style={{ position: 'relative', width: '100%', height: '100%' }}><img className="frame-img" src={src} alt="" />{note}</div>);
+}
+function Note({ k, children }) { return <div className="note"><span className="k">{k}</span><span>{children}</span></div>; }
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="tree" title="① 디렉토리 트리 & 패널 내부 스크롤" subtitle="단일 actions/ 루트 · 좌측 고정 리사이즈 패널 · 트리만 내부 스크롤(페이지는 안 늘어남)">
+        <DCArtboard id="main6" label="메인 — 트리 펼친 기본 상태" width={W} height={H}>
+          <Frame src="states/01-main.png" note={
+            <Note k="main">패널은 뷰포트 높이에 고정되고 <b>트리 영역만 내부 스크롤</b>(우측 스크롤바). 푸터 힌트는 항상 하단 고정 — 트리를 모두 펼쳐도 페이지/캔버스는 영향받지 않음. 단일 <span className="mono">actions/</span> 루트 아래 카테고리가 중첩.</Note>
+          } />
+        </DCArtboard>
+        <DCArtboard id="collapse6" label="전체 접기 + 권한 비교" width={W} height={H}>
+          <Frame src="states/02-collapse.png" note={
+            <Note k="collapse · 권한">기본필드 섹션 아이콘 = <b>전체 펼치기/접기</b> + 검색 필터(read-only라 편집 액션 숨김). 한 번 클릭으로 시스템 폴더 전체 접힘 → 하단 <b>커스텀 · ENRICHMENT</b>(editable, 4 액션) 노출. 시스템(자물쇠)과 사용자 영역 권한 분리.</Note>
+          } />
+        </DCArtboard>
+        <DCArtboard id="focus6" label="Focus mode — actions/amm 격리" width={W} height={H}>
+          <Frame src="states/03-focus.png" note={
+            <Note k="focus">폴더명 클릭 시 해당 폴더만 격리 표시. 상단 <span className="mono">actions / amm</span> 브레드크럼 활성 — 세그먼트로 드릴업, <b>Exit</b>로 해제. 파일 클릭은 선택/드래그로 유지(폴더와 동작 분리).</Note>
+          } />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="search" title="② 검색 & 패널 폭 리사이즈" subtitle="검색 필터링 + 가로 폭만 드래그(280–600). 높이는 항상 뷰포트 고정.">
+        <DCArtboard id="search6" label="검색 — 매치 항목만 + 하이라이트" width={W} height={H}>
+          <Frame src="states/04-search.png" note={
+            <Note k="search">‘permit’ 입력 → 매치된 파일과 조상 폴더만 펼쳐 표시, 매치 substring 하이라이트. 가로 스크롤 없이 긴 파일명은 ellipsis 처리.</Note>
+          } />
+        </DCArtboard>
+        <DCArtboard id="narrow6" label="좁은 폭 — 파일명 truncate" width={W} height={H}>
+          <Frame src="states/05-narrow.png" note={
+            <Note k="resize">우측 경계선을 드래그해 폭 축소(min 280px). 파일명은 더 빨리 <span className="mono">…</span>로 truncate되지만 레이아웃은 깨지지 않고 캔버스가 늘어남. 높이는 항상 뷰포트.</Note>
+          } />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="style" title="③ 스타일 인스펙터 & 커스텀 모달" subtitle="시그널 3톤 + 커스텀 피커 / 풀 폼 manifest 블록 정의">
+        <DCArtboard id="insp6" label="블록 스타일 인스펙터 (3 시그널 톤)" width={W} height={H}>
+          <Frame src="states/06-inspector.png" note={
+            <Note k="inspector">색상은 <b>차단·경고·정상</b> 3개 시그널 톤 + 커스텀 fill/border 피커만 (info/sage/neutral 제거). 모양 4종 · 라벨 태그 · <span className="mono">"style"</span> JSON 직렬화.</Note>
+          } />
+        </DCArtboard>
+        <DCArtboard id="modal6" label="커스텀 블록 정의 모달" width={W} height={H}>
+          <Frame src="states/07-modal.png" note={
+            <Note k="modal">파일명·타입·absence·모양·색(모노톤+3시그널)·대상 폴더 입력 → 커스텀 트리에 추가, 즉시 드래그 가능. 색 옵션도 시그널 체계로 정리.</Note>
+          } />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>

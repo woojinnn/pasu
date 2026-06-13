@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Cloudy Pond · Editor</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" />
+
+<link rel="stylesheet" href="editor-styles.css" />
+<link rel="stylesheet" href="editor-styles-2.css" />
+<link rel="stylesheet" href="editor-styles-3.css" />
+
+<style>
+  /* Locale visibility utility */
+  .locale-ko [lang="en"] { display: none; }
+  .locale-en [lang="ko"] { display: none; }
+  /* locale-mix shows both — explicit nothing */
+</style>
+</head>
+<body>
+
+<div class="stage">
+<div class="screen" data-screen-label="Editor — Block / Builder / Code">
+
+  <!-- NAV RAIL — lock-collapsed in Editor (per handoff §4.2) -->
+  <nav class="nav-rail" aria-label="Global navigation (lock-collapsed)">
+    <div class="nav-logo">
+      <div class="mark">SB</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <a class="nav-item" href="Home.html" title="Home">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+      </a>
+      <a class="nav-item active" href="#" title="Editor" aria-current="page">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+      </a>
+      <a class="nav-item" href="#" title="Library">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span>
+      </a>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-group">
+      <a class="nav-item" href="#" title="Audit">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-7"/></svg></span>
+        <span class="dot-badge"></span>
+      </a>
+      <a class="nav-item" href="#" title="Settings">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span>
+      </a>
+    </div>
+    <div class="nav-lock-pill" title="Editor에서는 항상 접힌 상태 — ⌘+B로 토글">⌘B</div>
+    <div class="nav-bottom">
+      <div class="nav-user"><span class="av">TY</span></div>
+    </div>
+  </nav>
+
+  <!-- Editor content -->
+  <main class="content">
+    <div id="app"></div>
+  </main>
+
+</div>
+</div>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Policy data (plain JS) -->
+<script src="editor-policy.js"></script>
+
+<!-- Tweaks shell + Editor components (JSX) -->
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="editor-shell.jsx"></script>
+<script type="text/babel" src="editor-block.jsx"></script>
+<script type="text/babel" src="editor-builder.jsx"></script>
+<script type="text/babel" src="editor-code.jsx"></script>
+<script type="text/babel" src="editor-test.jsx"></script>
+<script type="text/babel" src="editor-main.jsx"></script>
+
+</body>
+</html>

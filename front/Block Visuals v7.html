@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scopeball · Block Visuals v7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="editor-v7.css" />
+<style>
+  body { overflow: hidden; }
+  /* shared fragment frame */
+  .bv { padding: 22px; display: flex; flex-direction: column; gap: 12px; font-family: var(--ff-sans); }
+  .bv-note { font-size: 12px; line-height: 1.55; color: var(--slate-500); border-top: 1px solid var(--hairline-soft); padding-top: 12px; margin-top: 2px; }
+  .bv-note b { color: var(--slate-800); }
+  .bv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .bv-tag { font-family: var(--ff-mono); font-size: 10px; font-weight: 600; color: var(--slate-500); background: var(--fog-200); border: 1px solid var(--hairline-soft); border-radius: var(--r-pill); padding: 2px 9px; }
+  .bv-tag.pick { color: var(--pass-800); background: var(--pass-50); border-color: var(--pass-300); }
+
+  /* ───────── Direction A — header-row card (현재 채택) ───────── */
+  .A-hat { background: linear-gradient(180deg, var(--pass-100), var(--pass-50)); border: 1.5px solid var(--pass-300); border-radius: 12px; padding: 11px 14px; display: flex; align-items: center; gap: 9px; }
+  .A-hat .eff { font-size: 11px; font-weight: 800; color: var(--pass-900); background: var(--pass-300); border-radius: var(--r-pill); padding: 3px 10px; }
+  .A-hat .st { font-size: 12.5px; color: var(--slate-700); }
+  .A-hat .st b { color: var(--slate-900); }
+
+  /* ───────── Direction B — compact inline chip ───────── */
+  .B-hat { display: inline-flex; align-items: center; gap: 8px; background: var(--pass-500); color: var(--pass-900); border-radius: var(--r-pill); padding: 6px 14px; font-size: 12.5px; font-weight: 700; align-self: flex-start; }
+  .B-not { border-left: 3px solid var(--warn-400); padding-left: 12px; display: flex; flex-direction: column; gap: 7px; }
+  .B-not .lab { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--warn-800); }
+  .B-and { border-left: 3px solid var(--slate-300); padding-left: 12px; margin-left: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .B-pred { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--r-bd); border-radius: var(--r-pill); padding: 5px 13px 5px 8px; align-self: flex-start; box-shadow: 0 1px 2px rgba(15,23,42,0.05); white-space: nowrap; }
+  .B-pred .ic { width: 20px; height: 20px; border-radius: 50%; background: var(--r-fill); display: grid; place-items: center; color: var(--r-ink); }
+  .B-pred .ic svg { width: 12px; height: 12px; }
+  .B-pred .nm { font-size: 12.5px; font-weight: 600; color: var(--slate-900); }
+  .B-pred .op { font-family: var(--ff-mono); font-size: 12px; font-weight: 700; color: var(--slate-500); }
+  .B-pred .vl { font-family: var(--ff-mono); font-size: 12px; font-weight: 600; color: var(--slate-900); }
+  .B-pred .vl.ref { color: var(--cyan-800); }
+  .B-pred.live { border-style: dashed; }
+
+  /* ───────── Direction C — bracket-heavy Scratch ───────── */
+  .C-hat { background: var(--pass-500); border: 2px solid var(--pass-600); border-radius: 14px 14px 4px 14px; padding: 13px 16px; color: var(--pass-900); font-weight: 700; font-size: 13px; box-shadow: 0 2px 0 var(--pass-600); }
+  .C-not { background: var(--warn-50); border: 2px solid var(--warn-300); border-left-width: 8px; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; box-shadow: 0 2px 0 rgba(214,146,56,0.25); }
+  .C-not .lab { display: inline-flex; align-items: center; gap: 7px; font-family: var(--ff-mono); font-size: 12px; font-weight: 800; color: var(--warn-800); }
+  .C-not .lab .kw { background: var(--warn-400); color: #fff; border-radius: 6px; padding: 2px 9px; }
+  .C-and { background: var(--surface); border: 2px solid var(--slate-200); border-left-width: 8px; border-radius: 12px; padding: 10px 12px; margin-left: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .C-and .lab { font-family: var(--ff-mono); font-size: 12px; font-weight: 800; color: var(--slate-600); }
+  .C-and .lab .kw { background: var(--slate-200); border-radius: 6px; padding: 2px 9px; }
+  .C-pred { display: flex; align-items: stretch; border-radius: 10px; overflow: hidden; border: 2px solid var(--r-bd); align-self: flex-start; box-shadow: 0 2px 0 var(--r-bd); }
+  .C-pred .cap { width: 34px; background: var(--r-bd); display: grid; place-items: center; color: #fff; }
+  .C-pred .cap svg { width: 16px; height: 16px; }
+  .C-pred .bd { background: var(--r-fill); padding: 7px 13px; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .C-pred .nm { font-size: 13px; font-weight: 700; color: var(--slate-900); }
+  .C-pred .op { font-family: var(--ff-mono); font-size: 13px; font-weight: 800; color: var(--slate-600); }
+  .C-pred .vl { font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--slate-900); }
+  .C-pred .vl.ref { color: var(--cyan-800); }
+  .C-pred.live { border-style: dashed; }
+
+  /* ───────── Direction D — prose / sentence rule ───────── */
+  .D-hat { font-size: 14px; color: var(--slate-700); line-height: 1.5; padding-bottom: 4px; }
+  .D-hat .eff { display: inline-block; font-size: 11px; font-weight: 800; color: var(--pass-800); background: var(--pass-100); border: 1px solid var(--pass-200); border-radius: var(--r-pill); padding: 2px 10px; margin-right: 6px; }
+  .D-hat b { color: var(--slate-900); }
+  .D-rail { border-left: 2px solid var(--slate-200); padding-left: 16px; margin-left: 6px; display: flex; flex-direction: column; gap: 11px; }
+  .D-rail.not { border-color: var(--warn-400); }
+  .D-rail.and { border-color: var(--slate-300); }
+  .D-clause { font-family: var(--ff-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--slate-400); margin-bottom: -3px; }
+  .D-rail.not > .D-clause { color: var(--warn-700); }
+  .D-line { font-size: 14px; line-height: 1.7; color: var(--slate-600); }
+  .D-tok { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--r-ink); border-bottom: 2px solid var(--r-bd); padding: 0 2px 1px; }
+  .D-tok svg { width: 12px; height: 12px; }
+  .D-tok.live { border-bottom-style: dashed; }
+  .D-op { font-family: var(--ff-mono); font-weight: 700; color: var(--slate-400); margin: 0 4px; }
+  .D-val { font-family: var(--ff-mono); font-weight: 700; color: var(--slate-900); background: var(--fog-200); border-radius: 5px; padding: 1px 7px; }
+  .D-val.ref { color: var(--cyan-800); background: var(--cyan-50); }
+  .D-canon { font-family: var(--ff-mono); font-size: 10px; color: var(--slate-300); }
+
+  /* ───────── Direction E — puzzle connector (true Scratch interlock) ───────── */
+  .E-hat { background: var(--pass-500); color: var(--pass-900); font-weight: 700; font-size: 13px; padding: 12px 16px 16px; border-radius: 12px 12px 0 0; position: relative; }
+  .E-hat::after { content: ""; position: absolute; left: 24px; bottom: -8px; width: 26px; height: 10px; background: var(--pass-500); border-radius: 0 0 7px 7px; z-index: 2; }
+  .E-wrap { background: var(--warn-100); border-radius: 0 12px 12px 12px; padding: 12px 12px 14px 16px; position: relative; }
+  .E-wrap .ehead { font-family: var(--ff-mono); font-size: 11.5px; font-weight: 800; color: var(--warn-800); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .E-wrap .ehead .kw { background: var(--warn-500); color: #fff; border-radius: 6px; padding: 2px 9px; }
+  .E-and { background: var(--slate-100); border-radius: 10px; padding: 10px 12px 12px 14px; margin-left: 6px; }
+  .E-and .ehead { color: var(--slate-600); }
+  .E-and .ehead .kw { background: var(--slate-400); }
+  .E-stack { display: flex; flex-direction: column; gap: 0; align-items: flex-start; }
+  .E-pred { position: relative; display: inline-flex; align-items: center; gap: 9px; background: var(--r-fill); border: 2px solid var(--r-bd); border-radius: 9px; padding: 8px 14px 8px 10px; margin-bottom: 6px; box-shadow: 0 2px 0 var(--r-bd); }
+  .E-pred::after { content: ""; position: absolute; left: 18px; bottom: -7px; width: 22px; height: 8px; background: var(--r-fill); border: 2px solid var(--r-bd); border-top: 0; border-radius: 0 0 6px 6px; z-index: 1; }
+  .E-pred:last-child { margin-bottom: 0; }
+  .E-pred .ic { width: 24px; height: 24px; border-radius: 7px; background: var(--r-bd); display: grid; place-items: center; color: #fff; flex-shrink: 0; }
+  .E-pred .ic svg { width: 14px; height: 14px; }
+  .E-pred .nm { font-size: 13px; font-weight: 700; color: var(--slate-900); white-space: nowrap; }
+  .E-pred .op { font-family: var(--ff-mono); font-size: 13px; font-weight: 800; color: var(--slate-600); white-space: nowrap; }
+  .E-pred .vl { font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--slate-900); white-space: nowrap; }
+  .E-pred .vl.ref { color: var(--cyan-800); }
+  .E-pred.live { border-style: dashed; }
+
+  /* ───────── Direction G — ledger / table rows ───────── */
+  .G-hat { display: flex; align-items: center; gap: 9px; padding: 10px 14px; background: var(--pass-50); border: 1px solid var(--pass-200); border-radius: 10px; font-size: 12.5px; color: var(--slate-700); }
+  .G-hat .eff { font-size: 11px; font-weight: 800; color: var(--pass-900); background: var(--pass-300); border-radius: var(--r-pill); padding: 3px 10px; }
+  .G-band { border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+  .G-bandhead { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--warn-50); border-bottom: 1px solid var(--warn-200); }
+  .G-bandhead.and { background: var(--fog-200); border-bottom-color: var(--hairline-soft); }
+  .G-bandhead .kw { font-family: var(--ff-mono); font-size: 10.5px; font-weight: 800; color: var(--warn-800); background: var(--warn-200); border-radius: 5px; padding: 1px 8px; }
+  .G-bandhead.and .kw { color: var(--slate-600); background: var(--slate-100); }
+  .G-bandhead .lab { font-size: 12px; color: var(--slate-600); }
+  .G-trow { display: grid; grid-template-columns: 6px 1fr 46px 110px; align-items: center; border-bottom: 1px solid var(--fog-400); background: var(--surface); }
+  .G-trow:last-child { border-bottom: 0; }
+  .G-gut { align-self: stretch; background: var(--r-bd); }
+  .G-cell-f { display: flex; align-items: center; gap: 9px; padding: 8px 12px; }
+  .G-cell-f .ic { color: var(--r-ink); display: grid; place-items: center; }
+  .G-cell-f .ic svg { width: 14px; height: 14px; }
+  .G-cell-f .nm { font-size: 12.5px; font-weight: 600; color: var(--slate-900); }
+  .G-cell-f .cn { font-family: var(--ff-mono); font-size: 9.5px; color: var(--slate-400); }
+  .G-cell-op { font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--slate-500); text-align: center; }
+  .G-cell-v { font-family: var(--ff-mono); font-size: 12px; font-weight: 600; color: var(--slate-900); padding-right: 12px; }
+  .G-cell-v.ref { color: var(--cyan-800); }
+  .G-trow.live .G-cell-f { border-left: 0; }
+  .G-trow.live { background: var(--cyan-50); }
+
+  /* ───────── Direction H — outline / legal clause ───────── */
+  .H-hat { font-size: 13.5px; color: var(--slate-800); font-weight: 600; padding-bottom: 8px; border-bottom: 2px solid var(--slate-200); margin-bottom: 4px; }
+  .H-hat .eff { color: var(--pass-700); }
+  .H-clause { margin-left: 2px; }
+  .H-chead { display: flex; align-items: baseline; gap: 9px; padding: 6px 0; }
+  .H-chead .id { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--slate-300); }
+  .H-chead .kw { font-family: var(--ff-mono); font-size: 11px; font-weight: 800; color: var(--warn-700); }
+  .H-chead .kw.and { color: var(--slate-500); }
+  .H-chead .lab { font-size: 13px; font-weight: 700; color: var(--slate-900); }
+  .H-items { margin: 2px 0 10px 22px; border-left: 1px solid var(--hairline); padding-left: 16px; display: flex; flex-direction: column; gap: 9px; }
+  .H-item { display: flex; align-items: baseline; gap: 9px; font-size: 13.5px; color: var(--slate-700); line-height: 1.5; }
+  .H-item .dot { width: 8px; height: 8px; border-radius: 3px; background: var(--r-bd); flex-shrink: 0; align-self: center; }
+  .H-item .nm { font-weight: 600; color: var(--slate-900); }
+  .H-item .op { font-family: var(--ff-mono); color: var(--slate-400); }
+  .H-item .vl { font-family: var(--ff-mono); font-weight: 700; color: var(--slate-900); }
+  .H-item .vl.ref { color: var(--cyan-800); }
+  .H-item .cn { font-family: var(--ff-mono); font-size: 10px; color: var(--slate-300); margin-left: auto; }
+  .H-item .lv { font-family: var(--ff-mono); font-size: 8.5px; font-weight: 800; color: var(--cyan-700); text-transform: uppercase; border: 1px solid var(--cyan-300); border-radius: var(--r-pill); padding: 0 6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel">
+const KeyIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="5"/><path d="M11.5 11.5L21 21M17 17l2-2"/></svg>;
+const SwitchIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor" stroke="none"/></svg>;
+const HashIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>;
+
+/* Direction A — header-row card (current) */
+function FragmentA() {
+  return (
+    <div className="bv">
+      <div className="A-hat"><span className="eff">허용 · permit</span><span className="st"><b>지갑</b>이 <b>Swap</b>할 때, 모두 참이면:</span></div>
+      <div className="v7-logic op-NOT" style={{ position: 'relative' }}>
+        <span className="v7-logic-spine" />
+        <div className="v7-logic-head"><span className="v7-logic-kw">NOT</span><span className="v7-logic-guard"><span className="v7-guard-id">s1</span><span className="v7-guard-lab">swap-and-send 배제</span></span></div>
+        <div className="v7-logic-slot"><div className="v7-slot-list">
+          <div className="v7-logic op-AND" style={{ position: 'relative' }}>
+            <span className="v7-logic-spine" />
+            <div className="v7-logic-head"><span className="v7-logic-kw">AND</span></div>
+            <div className="v7-logic-slot"><div className="v7-slot-list">
+              <div className="v7-pred role-address" style={{ position: 'relative' }}><div className="v7-pred-cap"><KeyIcon /></div><div className="v7-pred-field"><span className="nm">수신자</span><span className="canon">context.recipient</span></div><span className="v7-pred-op">≠</span><span className="v7-pred-val ref">@meta.from</span></div>
+              <div className="v7-pred role-address is-live" style={{ position: 'relative' }}><span className="v7-live-badge">live</span><div className="v7-pred-cap"><SwitchIcon /></div><div className="v7-pred-field"><span className="nm">수신자가 컨트랙트</span><span className="canon">enrichment.recipientIsContract</span></div><span className="v7-pred-op">is true</span></div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+      <div className="v7-pred role-numeric" style={{ position: 'relative' }}><div className="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div className="v7-pred-field"><span className="nm">슬리피지(bp)</span><span className="canon">context.slippageBp</span></div><span className="v7-pred-op">&lt;</span><span className="v7-pred-val">100<span className="u">bp</span></span></div>
+      <div className="bv-tags"><span className="bv-tag pick">✓ 현재 채택</span><span className="bv-tag">canonical 항상 노출</span><span className="bv-tag">정보 밀도 높음</span></div>
+      <div className="bv-note"><b>헤더 행 카드.</b> 표시이름 위에 canonical 경로를 항상 노출 — 정책이 모호해지지 않음. 블록이 크고 명확하지만 큰 정책에서 세로로 길어짐.</div>
+    </div>
+  );
+}
+
+/* Direction B — compact inline chip */
+function FragmentB() {
+  return (
+    <div className="bv">
+      <span className="B-hat">허용 · 지갑이 Swap할 때 모두 참이면</span>
+      <div className="B-not">
+        <span className="lab">NOT · s1 swap-and-send 배제</span>
+        <div className="B-and">
+          <span className="B-pred role-address"><span className="ic"><KeyIcon /></span><span className="nm">수신자</span><span className="op">≠</span><span className="vl ref">@meta.from</span></span>
+          <span className="B-pred role-address live"><span className="ic"><SwitchIcon /></span><span className="nm">수신자가 컨트랙트</span><span className="op">is true</span></span>
+        </div>
+      </div>
+      <span className="B-pred role-numeric"><span className="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></span><span className="nm">슬리피지(bp)</span><span className="op">&lt;</span><span className="vl">100</span></span>
+      <div className="bv-tags"><span className="bv-tag">한 줄 칩</span><span className="bv-tag">canonical = hover</span><span className="bv-tag">밀도 최고</span></div>
+      <div className="bv-note"><b>인라인 칩.</b> 한 줄 pill, canonical은 hover/인스펙터에만. 큰 정책도 한 화면에 — 밀도가 높지만 경로가 상시 보이지 않아 정확성 신호가 약함.</div>
+    </div>
+  );
+}
+
+/* Direction C — bracket-heavy Scratch */
+function FragmentC() {
+  return (
+    <div className="bv">
+      <div className="C-hat">허용 · permit — 지갑이 Swap할 때 모두 참이면</div>
+      <div className="C-not">
+        <span className="lab"><span className="kw">NOT</span> s1 · swap-and-send 배제</span>
+        <div className="C-and">
+          <span className="lab"><span className="kw">AND</span></span>
+          <span className="C-pred role-address"><span className="cap"><KeyIcon /></span><span className="bd"><span className="nm">수신자</span><span className="op">≠</span><span className="vl ref">@meta.from</span></span></span>
+          <span className="C-pred role-address live"><span className="cap"><SwitchIcon /></span><span className="bd"><span className="nm">수신자가 컨트랙트</span><span className="op">is true</span></span></span>
+        </div>
+      </div>
+      <span className="C-pred role-numeric"><span className="cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></span><span className="bd"><span className="nm">슬리피지(bp)</span><span className="op">&lt;</span><span className="vl">100<span style={{fontSize:10,color:'var(--slate-400)',marginLeft:4}}>bp</span></span></span></span>
+      <div className="bv-tags"><span className="bv-tag">두꺼운 브래킷</span><span className="bv-tag">물리적 블록감</span><span className="bv-tag">중첩 가독성 최고</span></div>
+      <div className="bv-note"><b>브래킷 강조 (Scratch 정통).</b> 굵은 좌측 탭 + 그림자로 "끼우는 조각" 느낌 최대. 중첩 깊이가 한눈에 들어오나 시각 무게가 무겁고 canonical 경로 자리가 줄어듦.</div>
+    </div>
+  );
+}
+
+/* Direction D — prose / sentence rule */
+function FragmentD({ addr, num }) {
+  return (
+    <div className="bv">
+      <div className="D-hat"><span className="eff">허용 · permit</span><b>지갑</b>이 <b>Swap</b>할 때, 아래 안전 조건이 모두 참이면 허용:</div>
+      <div className="D-rail not">
+        <div className="D-clause">s1 · 다음 패턴이면 제외 (NOT)</div>
+        <div className="D-rail and">
+          <div className="D-line">
+            <span className="D-tok" style={addr}><KeyIcon />수신자</span><span className="D-op">가</span> <span className="D-val ref">@meta.from</span><span className="D-op">와 다르고,</span>
+          </div>
+          <div className="D-line">
+            <span className="D-tok live" style={addr}><SwitchIcon />수신자가 컨트랙트</span><span className="D-op">이다</span> <span className="D-canon">enrichment.recipientIsContract</span>
+          </div>
+        </div>
+      </div>
+      <div className="D-line">
+        <span className="D-clause" style={{ display: 'block', marginBottom: 4 }}>s2 · 슬리피지 가드</span>
+        <span className="D-tok" style={num}><HashIcon />슬리피지</span><span className="D-op">가</span> <span className="D-val">100 bp</span><span className="D-op">미만</span>
+      </div>
+      <div className="bv-tags"><span className="bv-tag">박스 거의 없음</span><span className="bv-tag">한 문장으로 읽힘</span><span className="bv-tag">한국어 자연스러움</span></div>
+      <div className="bv-note"><b>문장형.</b> 색 토큰 + 얇은 레일만. 정책이 글처럼 읽혀 비개발자 가독성 최고. 단, 클릭 편집 영역(토큰)이 작고 큰 트리에선 구조감이 약함.</div>
+    </div>
+  );
+}
+
+/* Direction E — puzzle connector (true Scratch interlock) */
+function FragmentE({ addr, num }) {
+  return (
+    <div className="bv">
+      <div className="E-hat">허용 · permit — 지갑이 Swap할 때 모두 참이면</div>
+      <div className="E-wrap">
+        <div className="ehead"><span className="kw">NOT</span> s1 · swap-and-send 배제</div>
+        <div className="E-and">
+          <div className="ehead"><span className="kw">AND</span></div>
+          <div className="E-stack">
+            <span className="E-pred" style={addr}><span className="ic"><KeyIcon /></span><span className="nm">수신자</span><span className="op">≠</span><span className="vl ref">@meta.from</span></span>
+            <span className="E-pred live" style={addr}><span className="ic"><SwitchIcon /></span><span className="nm">수신자가 컨트랙트</span><span className="op">is true</span></span>
+          </div>
+        </div>
+      </div>
+      <span className="E-pred" style={num}><span className="ic"><HashIcon /></span><span className="nm">슬리피지(bp)</span><span className="op">&lt;</span><span className="vl">100</span></span>
+      <div className="bv-tags"><span className="bv-tag">위·아래 탭 맞물림</span><span className="bv-tag">물리적 조립감</span><span className="bv-tag">중첩 명확</span></div>
+      <div className="bv-note"><b>퍼즐 커넥터.</b> 블록 하단 탭이 다음 블록과 맞물려 "끼웠다"는 느낌. 진짜 Scratch에 가장 가깝고 중첩이 직관적. 시각 무게가 크고 canonical 표시 공간이 줄어듦.</div>
+    </div>
+  );
+}
+
+/* Direction G — ledger / table rows */
+function FragmentG({ addr, num }) {
+  return (
+    <div className="bv">
+      <div className="G-hat"><span className="eff">허용 · permit</span>지갑이 Swap할 때, 아래가 모두 참이면 허용</div>
+      <div className="G-band">
+        <div className="G-bandhead"><span className="kw">NOT</span><span className="lab">s1 · swap-and-send 배제</span></div>
+        <div className="G-bandhead and" style={{ paddingLeft: 24 }}><span className="kw">AND</span></div>
+        <div className="G-trow" style={addr}>
+          <span className="G-gut" /><span className="G-cell-f"><span className="ic"><KeyIcon /></span><span><div className="nm">수신자</div><div className="cn">context.recipient</div></span></span><span className="G-cell-op">≠</span><span className="G-cell-v ref">@meta.from</span>
+        </div>
+        <div className="G-trow live" style={addr}>
+          <span className="G-gut" /><span className="G-cell-f"><span className="ic"><SwitchIcon /></span><span><div className="nm">수신자가 컨트랙트</div><div className="cn">enrichment.recipientIsContract</div></span></span><span className="G-cell-op">=</span><span className="G-cell-v">true</span>
+        </div>
+      </div>
+      <div className="G-band">
+        <div className="G-trow" style={num}>
+          <span className="G-gut" /><span className="G-cell-f"><span className="ic"><HashIcon /></span><span><div className="nm">슬리피지(bp)</div><div className="cn">context.slippageBp</div></span></span><span className="G-cell-op">&lt;</span><span className="G-cell-v">100</span>
+        </div>
+      </div>
+      <div className="bv-tags"><span className="bv-tag">컬럼 정렬</span><span className="bv-tag">스캔 빠름</span><span className="bv-tag">감사 친화</span></div>
+      <div className="bv-note"><b>원장 행.</b> 필드│연산자│값을 컬럼으로 정렬 — 조건이 많아도 세로로 스캔하기 쉬움. 감사·리뷰에 강하나 "조립하는 블록" 느낌은 가장 약함.</div>
+    </div>
+  );
+}
+
+/* Direction H — outline / legal clause */
+function FragmentH({ addr, num }) {
+  return (
+    <div className="bv">
+      <div className="H-hat"><span className="eff">허용 · permit</span> — 지갑이 <b>Swap</b>할 때, 다음 안전 조건이 모두 참이면 허용</div>
+      <div className="H-clause">
+        <div className="H-chead"><span className="id">s1</span><span className="kw">NOT</span><span className="lab">swap-and-send 배제</span></div>
+        <div className="H-items">
+          <div className="H-chead" style={{ padding: 0 }}><span className="kw and">AND — 다음이 동시에 참이면</span></div>
+          <div className="H-item" style={addr}><span className="dot" /><span className="nm">수신자</span><span className="op">≠</span><span className="vl ref">@meta.from</span><span className="cn">context.recipient</span></div>
+          <div className="H-item" style={addr}><span className="dot" /><span className="nm">수신자가 컨트랙트</span><span className="op">=</span><span className="vl">true</span><span className="lv">live</span></div>
+        </div>
+      </div>
+      <div className="H-clause">
+        <div className="H-chead"><span className="id">s2</span><span className="kw and" style={{ color: 'var(--slate-500)' }}>조건</span><span className="lab">슬리피지 가드</span></div>
+        <div className="H-items" style={{ borderLeft: 0, marginLeft: 22, paddingLeft: 16 }}>
+          <div className="H-item" style={num}><span className="dot" /><span className="nm">슬리피지(bp)</span><span className="op">&lt;</span><span className="vl">100</span><span className="cn">context.slippageBp</span></div>
+        </div>
+      </div>
+      <div className="bv-tags"><span className="bv-tag">법조문 들여쓰기</span><span className="bv-tag">canonical 우측 정렬</span><span className="bv-tag">문서 가독성</span></div>
+      <div className="bv-note"><b>개요 트리.</b> NOT/AND를 절(clause) 헤더로, 술어를 들여쓴 항목으로. 정책 문서처럼 읽혀 전문성·가독성 높음. 드래그 조립 UX는 별도 설계 필요.</div>
+    </div>
+  );
+}
+
+function App() {
+  const addr = { '--r-fill': 'var(--role-address-fill)', '--r-bd': 'var(--role-address-bd)', '--r-ink': 'var(--role-address-ink)' };
+  const num = { '--r-fill': 'var(--role-numeric-fill)', '--r-bd': 'var(--role-numeric-bd)', '--r-ink': 'var(--role-numeric-ink)' };
+  return (
+    <DesignCanvas>
+      <DCSection id="cards" title="① 카드 계열 (v6 연장선)" subtitle="둥근 사각 카드 — 사용자 피드백: v6와 유사, 가독성 한계.">
+        <DCArtboard id="A" label="A · 헤더 행 카드 (구 채택)" width={420} height={560}><FragmentA /></DCArtboard>
+        <DCArtboard id="B" label="B · 인라인 칩" width={380} height={460}><FragmentB /></DCArtboard>
+        <DCArtboard id="C" label="C · 브래킷 강조" width={420} height={540}><FragmentC /></DCArtboard>
+      </DCSection>
+      <DCSection id="fresh" title="② 카드 탈피 — 새 방향 4종" subtitle="박스 패러다임을 벗어나 '읽힘'을 최우선으로. 같은 가드(s1 + 슬리피지)를 네 스타일로.">
+        <DCArtboard id="D" label="D · 문장형 prose" width={440} height={420}><FragmentD addr={addr} num={num} /></DCArtboard>
+        <DCArtboard id="E" label="E · 퍼즐 커넥터 Scratch" width={420} height={500}><FragmentE addr={addr} num={num} /></DCArtboard>
+        <DCArtboard id="G" label="G · 원장 행 ledger" width={460} height={460}><FragmentG addr={addr} num={num} /></DCArtboard>
+        <DCArtboard id="H" label="H · 개요 트리 outline" width={460} height={440}><FragmentH addr={addr} num={num} /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

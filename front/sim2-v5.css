@@ -1,0 +1,76 @@
+/* ════════════════════════════════════════════════════════════════════
+   sim2-v5.css — 5차 피드백. Loaded after sim2-v4.css.
+   #1 TX 선택 focus view · #4 위험배너 제거 · #8 승인 revoke 제거 ·
+   #10 가로 압축 (값을 라벨 가까이, State 폭 축소 · 판정/정책 여유)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── #10 판정/정책에 여유 — judge 폭 ↑, state 폭 ↓ ── */
+.judge-col { flex-basis:560px; }
+.sp-scroll { padding:10px; gap:9px; }
+.scard-b, .balcard, .poscard, .aprows { }
+
+/* ── #10 잔고 행 압축 — 값을 라벨 가까이 ── */
+.brow-h { display:flex; align-items:center; gap:11px; padding:10px 5px; cursor:pointer; }
+.brow.brow:hover .brow-h, .brow-h:hover { background:var(--fog-200); border-radius:8px; }
+.brow-id { min-width:54px; flex-shrink:0; }
+.brow-id .sym { font-family:var(--ff-mono); font-size:13.5px; font-weight:700; color:var(--slate-800); }
+.brow-id .px { display:flex; align-items:center; gap:5px; font-family:var(--ff-mono); font-size:9px; font-weight:500; color:var(--slate-400); margin-top:-1px; }
+.brow-id .stale { font-size:7.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--warn-800);
+  background:var(--warn-50); border:1px solid var(--warn-300); border-radius:4px; padding:0 4px; }
+.brow-delta { font-family:var(--ff-mono); font-size:19px; font-weight:700; line-height:1; letter-spacing:-0.01em; font-variant-numeric:tabular-nums; flex-shrink:0; min-width:72px; text-align:right; }
+.brow-delta.up { color:var(--pass-600); } .brow-delta.down { color:var(--slate-900); }
+.brow-delta.zero { color:var(--slate-300); } .brow-delta.breach { color:var(--fail-600); }
+.brow-after { font-family:var(--ff-mono); font-size:10px; color:var(--slate-400); margin-left:16px; text-align:left; white-space:nowrap; }
+.brow-after b { color:var(--slate-700); font-weight:700; } .brow-after .arr { color:var(--slate-300); margin:0 4px; }
+.brow-after .breach-t { color:var(--fail-600); font-weight:700; } .brow-after .fl { color:var(--slate-400); }
+.brow-body { padding:0 5px 11px 30px; }
+
+/* ── #10 포지션·게이지 압축 ── */
+.poscard { padding:8px 11px 11px; gap:9px; }
+.pos-sub { padding:10px 11px; }
+.pledger-k { min-width:30px; }
+.pledger-v { flex:0 1 auto; gap:7px; }
+.pledger-d { margin-left:14px; }
+.mgauge { padding:9px 11px 8px; }
+.mg-meter { margin-top:9px; margin-bottom:15px; }
+
+/* ── #1+#2 FOCUS VIEW (TX 선택 시) ── */
+.focus-bar { display:flex; align-items:center; gap:11px; padding:10px 12px; border:1px solid; border-radius:var(--r-md); }
+.focus-bar.forbid { border-color:var(--fail-300); background:var(--fail-50); }
+.focus-bar.warn { border-color:var(--warn-300); background:var(--warn-50); }
+.focus-bar.permit { border-color:var(--pass-200); background:var(--pass-50); }
+.fb-aid { font-family:var(--ff-mono); font-size:11px; font-weight:700; color:var(--fog-50); background:var(--slate-800); border-radius:6px; padding:3px 8px; flex-shrink:0; }
+.fb-m { flex:1; min-width:0; } .fb-m .nm { font-size:13px; font-weight:700; color:var(--slate-900); }
+.fb-m .ds { font-family:var(--ff-mono); font-size:9.5px; color:var(--slate-400); margin-top:0; }
+.fb-vd { font-family:var(--ff-mono); font-size:10px; font-weight:700; padding:3px 10px; border-radius:var(--r-pill); flex-shrink:0; text-transform:uppercase; letter-spacing:0.03em; }
+.fb-vd.forbid { background:var(--fail-500); color:var(--fog-50); } .fb-vd.warn { background:var(--warn-100); color:var(--warn-800); } .fb-vd.permit { background:var(--pass-100); color:var(--pass-800); }
+.fb-clear { appearance:none; border:1px solid var(--hairline); background:var(--surface); height:28px; padding:0 11px; border-radius:var(--r-pill);
+  font-size:11px; font-weight:700; color:var(--slate-500); display:inline-flex; align-items:center; gap:5px; flex-shrink:0; } .fb-clear:hover { border-color:var(--slate-300); color:var(--slate-800); } .fb-clear svg { width:13px; height:13px; }
+.focus-note { display:flex; align-items:center; gap:6px; font-family:var(--ff-mono); font-size:9.5px; font-weight:600; color:var(--slate-400); padding:0 4px; } .focus-note svg { width:12px; height:12px; }
+
+.fpcard { padding:8px 11px 11px; display:flex; flex-direction:column; gap:6px; }
+.fpbal { display:flex; align-items:center; gap:11px; padding:10px 11px; border:1px solid var(--hairline-soft); border-radius:11px; }
+.fpbal.blk { border-color:var(--fail-200); background:var(--fail-50); }
+.fp-id { min-width:54px; flex-shrink:0; }
+.fp-id .sym { font-family:var(--ff-mono); font-size:13px; font-weight:700; color:var(--slate-800); }
+.fp-id .px { display:block; font-family:var(--ff-mono); font-size:9px; color:var(--slate-400); margin-top:-1px; }
+.fp-num { flex:1; min-width:0; display:flex; align-items:baseline; gap:9px; }
+.fp-num .d { font-family:var(--ff-mono); font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.fp-num .d.up { color:var(--pass-600); } .fp-num .d.down { color:var(--slate-900); } .fp-num .d.ghost { color:var(--slate-300); }
+.fp-num .d .strike { text-decoration:line-through; }
+.fp-cut { font-family:var(--ff-mono); font-size:9px; font-weight:600; color:var(--cyan-800); background:var(--cyan-100); border:1px solid var(--cyan-300); border-radius:5px; padding:1px 6px; }
+.fp-net { margin-left:auto; font-family:var(--ff-mono); font-size:10px; color:var(--slate-400); white-space:nowrap; }
+.fp-blk { display:inline-flex; align-items:center; gap:4px; font-family:var(--ff-mono); font-size:9px; font-weight:700; color:var(--fail-700); flex-shrink:0;
+  background:var(--surface); border:1px solid var(--fail-200); border-radius:5px; padding:2px 7px; } .fp-blk svg { width:11px; height:11px; }
+.fp-empty { padding:14px; text-align:center; font-size:11.5px; color:var(--slate-400); }
+
+/* ── verdict filter hint ── */
+.v2-filterhint { display:flex; align-items:center; gap:6px; font-family:var(--ff-mono); font-size:9.5px; font-weight:700; letter-spacing:0.04em;
+  text-transform:uppercase; color:var(--slate-400); padding:0 2px 2px; } .v2-filterhint svg { width:12px; height:12px; color:var(--cyan-600); }
+
+/* ── #4 risk banner removed (defensive hide) ── */
+.risk-banner { display:none !important; }
+
+/* ── #3 policy rows: ensure no stray highlight/badge artifacts ── */
+.p2-row.lit, .p2-row.dim { box-shadow:none; opacity:1; border-color:var(--hairline-soft); background:transparent; }
+.p2-row:hover { background:var(--fog-200); border-color:var(--hairline); }

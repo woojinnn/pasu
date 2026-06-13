@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scopeball · Block System v7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="editor-v7.css" />
+<style>
+  body { overflow: auto; background: var(--fog-300); }
+  .sheet { max-width: 1080px; margin: 0 auto; padding: 56px 40px 96px; }
+  .sheet-head { margin-bottom: 44px; }
+  .sheet-eyebrow { font-family: var(--ff-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sage-700); margin-bottom: 10px; }
+  .sheet-title { font-size: 32px; font-weight: 700; color: var(--slate-900); letter-spacing: -0.02em; margin: 0 0 12px; }
+  .sheet-sub { font-size: 15px; line-height: 1.6; color: var(--slate-500); max-width: 660px; }
+  .sec { margin-top: 52px; }
+  .sec-num { font-family: var(--ff-mono); font-size: 12px; color: var(--slate-300); font-weight: 700; }
+  .sec-h { font-size: 20px; font-weight: 700; color: var(--slate-900); margin: 6px 0 6px; }
+  .sec-d { font-size: 13.5px; line-height: 1.6; color: var(--slate-500); max-width: 640px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 28px 30px; }
+  .card + .card { margin-top: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-start; }
+  .col-lab { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; }
+  .specrow { display: grid; grid-template-columns: 150px 1fr; gap: 24px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--hairline-soft); }
+  .specrow:last-child { border-bottom: 0; }
+  .specrow .meta .nm { font-size: 14px; font-weight: 700; color: var(--slate-900); }
+  .specrow .meta .ds { font-size: 12px; color: var(--slate-500); margin-top: 4px; line-height: 1.5; }
+  .specrow .meta .ct { font-family: var(--ff-mono); font-size: 11px; color: var(--slate-400); margin-top: 5px; }
+  .state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px; }
+  .state-cell .col-lab { margin-bottom: 12px; }
+  .anatomy { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 18px; }
+  .anatomy .a { font-size: 11.5px; color: var(--slate-500); display: flex; align-items: center; gap: 6px; }
+  .anatomy .dot { width: 9px; height: 9px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="sheet-head">
+    <div class="sheet-eyebrow">Scopeball · Editor v7</div>
+    <h1 class="sheet-title">블록 시스템 — 3종 + 6역할군</h1>
+    <p class="sheet-sub">와이어를 폐기하고 <b>물리적 중첩(Scratch식)</b>으로 불리언 식을 조립한다. 블록은 구조적으로 모두 같은 술어이므로, 차별화는 <b>의미 역할(role)을 색·아이콘·입력형태</b>로 표현한다. 색 fill은 도메인 팔레트(Sage/Slate/Cyan)만 쓰고, 심각도(차단/경고)는 fill에 칠하지 않는다.</p>
+  </div>
+
+  <!-- 1. block types -->
+  <div class="sec">
+    <div class="sec-num">01</div>
+    <div class="sec-h">블록 3종 체계</div>
+    <div class="sec-d">구조 역할별로 3종. 술어 조각은 슬롯에 끼우고, 논리 컨테이너가 감싸며, 정책 헤더(hat)가 문장의 머리가 된다.</div>
+
+    <div class="card">
+      <div class="col-lab">(1) 정책 헤더 · hat — permit 문장의 머리</div>
+      <div class="v7-hat" style="position: relative; min-width: 0;">
+        <div class="v7-hat-head">
+          <span class="v7-hat-eff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4" stroke-linecap="round"/></svg> 허용 · permit</span>
+          <span class="v7-hat-sentence"><b>지갑</b>이 <b>프로토콜</b>에 대해 <span class="v7-hat-act">Swap</span> 할 때, 다음 안전 조건이 <b>모두 참</b>이면 허용:</span>
+        </div>
+        <div class="v7-hat-body" style="padding-bottom: 18px;">
+          <div class="v7-dropzone" style="margin-left: 0;">안전 조건 블록을 여기에 추가</div>
+        </div>
+      </div>
+      <div class="anatomy">
+        <span class="a"><span class="dot" style="background: var(--pass-300);"></span>허용 톤 헤더 (permit)</span>
+        <span class="a"><span class="dot" style="background: var(--slate-900);"></span>조립 문장 — 읽으면 정책 한 문장</span>
+        <span class="a"><span class="dot" style="background: var(--pass-100); border:1px solid var(--pass-300);"></span>안전조건 슬롯 (AND 트리)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="col-lab">(2) 논리 컨테이너 · AND / OR / NOT — 감싸는 C형</div>
+      <div class="row">
+        <div class="v7-logic op-AND" style="position: relative;">
+          <span class="v7-logic-spine"></span>
+          <div class="v7-logic-head"><span class="v7-logic-kw">AND</span></div>
+          <div class="v7-logic-slot"><div class="v7-slot-list"><div class="v7-dropzone">모든 자식 참 → 참</div></div></div>
+        </div>
+        <div class="v7-logic op-OR" style="position: relative;">
+          <span class="v7-logic-spine"></span>
+          <div class="v7-logic-head"><span class="v7-logic-kw">OR</span></div>
+          <div class="v7-logic-slot"><div class="v7-slot-list"><div class="v7-dropzone">하나라도 참 → 참</div></div></div>
+        </div>
+        <div class="v7-logic op-NOT" style="position: relative;">
+          <span class="v7-logic-spine"></span>
+          <div class="v7-logic-head"><span class="v7-logic-kw">NOT</span><span style="font-size:11px;color:var(--slate-400);">아래 패턴이면 제외</span></div>
+          <div class="v7-logic-slot"><div class="v7-slot-list"><div class="v7-dropzone">슬롯 1개 · 단일 자식 부정</div></div></div>
+        </div>
+      </div>
+      <div class="anatomy">
+        <span class="a"><span class="dot" style="background: var(--slate-300);"></span>AND 중립</span>
+        <span class="a"><span class="dot" style="background: var(--cyan-500);"></span>OR cyan 스파인</span>
+        <span class="a"><span class="dot" style="background: var(--warn-400);"></span>NOT 경고 스파인 (배제)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="col-lab">(3) 술어 조각 · predicate — [필드] [연산자] [값]</div>
+      <div class="row">
+        <div class="v7-pred role-numeric" style="position: relative;">
+          <div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div>
+          <div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div>
+          <span class="v7-pred-op">&lt;</span>
+          <span class="v7-pred-val">100<span class="u">bp</span></span>
+        </div>
+      </div>
+      <div class="anatomy">
+        <span class="a"><span class="dot" style="background: var(--slate-50); border:1px solid var(--slate-300);"></span>역할 색 캡 + 아이콘</span>
+        <span class="a"><span class="dot" style="background: var(--surface); border:1px solid var(--hairline);"></span>표시이름 + canonical 경로</span>
+        <span class="a"><span class="dot" style="background: var(--surface); border:1px solid var(--hairline);"></span>연산자 · 값 (클릭 편집)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. role groups -->
+  <div class="sec">
+    <div class="sec-num">02</div>
+    <div class="sec-h">술어 6역할군 — 색 · 아이콘</div>
+    <div class="sec-d">377개 필드를 6역할군으로 분류. fill은 도메인 팔레트 안에서, 아이콘이 역할을 구분한다.</div>
+    <div class="card">
+      <div class="specrow">
+        <div class="meta"><div class="nm">수량 · 한도</div><div class="ds">비교 연산 + 숫자</div><div class="ct">numeric · 132</div></div>
+        <div class="v7-pred role-numeric" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">가격 충격(bp)</span><span class="canon">context.priceImpactBp</span></div><span class="v7-pred-op">&gt;</span><span class="v7-pred-val">50<span class="u">bp</span></span></div>
+      </div>
+      <div class="specrow">
+        <div class="meta"><div class="nm">주체 · 주소</div><div class="ds">주소 입력 / 동적 참조</div><div class="ct">address · 54</div></div>
+        <div class="v7-pred role-address" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5"/><path d="M11.5 11.5L21 21M17 17l2-2"/></svg></div><div class="v7-pred-field"><span class="nm">수신자</span><span class="canon">context.recipient</span></div><span class="v7-pred-op">≠</span><span class="v7-pred-val ref">@meta.from</span></div>
+      </div>
+      <div class="specrow">
+        <div class="meta"><div class="nm">대상 선택</div><div class="ds">드롭다운 · 검색 (ref)</div><div class="ct">ref · 36</div></div>
+        <div class="v7-pred role-ref" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M9.5 12l1.8 1.8 3.5-3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="v7-pred-field"><span class="nm">베뉴</span><span class="canon">context.venue</span></div><span class="v7-pred-op">∈</span><span class="v7-pred-val">allowlist</span></div>
+      </div>
+      <div class="specrow">
+        <div class="meta"><div class="nm">모드 · 열거</div><div class="ds">고정값 선택 (enum)</div><div class="ct">enum · 35</div></div>
+        <div class="v7-pred role-enum" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor" stroke="none"/></svg></div><div class="v7-pred-field"><span class="nm">스왑 방향</span><span class="canon">context.direction.kind</span></div><span class="v7-pred-op">==</span><span class="v7-pred-val">exact_input</span></div>
+      </div>
+      <div class="specrow">
+        <div class="meta"><div class="nm">서명 · 시간</div><div class="ds">텍스트 / 시각 (auth)</div><div class="ct">auth · 9</div></div>
+        <div class="v7-pred role-auth" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="v7-pred-field"><span class="nm">머클 증명</span><span class="canon">context.proof</span></div><span class="v7-pred-op">has</span><span class="v7-pred-val">root</span></div>
+      </div>
+      <div class="specrow">
+        <div class="meta"><div class="nm">그 외</div><div class="ds">타입별 (misc)</div><div class="ct">misc · 111</div></div>
+        <div class="v7-pred role-misc" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg></div><div class="v7-pred-field"><span class="nm">시뮬레이션 여부</span><span class="canon">meta.isSimulated</span></div><span class="v7-pred-op">is true</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. cross axis: live -->
+  <div class="sec">
+    <div class="sec-num">03</div>
+    <div class="sec-h">교차축 — 파생 · 라이브 필드</div>
+    <div class="sec-d">Host-populated · LiveField (oracle 슬리피지, validityDeltaSec 등) 54개는 사용자가 설정 불가, 비교만 가능. 점선 테두리 + "live" 뱃지로 구분.</div>
+    <div class="card">
+      <div class="row" style="gap: 30px;">
+        <div class="v7-pred role-numeric is-live" style="position: relative;"><span class="v7-live-badge">live</span><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">마감까지(초)</span><span class="canon">enrichment.validityDeltaSec</span></div><span class="v7-pred-op">&lt;</span><span class="v7-pred-val">30<span class="u">sec</span></span></div>
+        <div class="v7-pred role-address is-live" style="position: relative;"><span class="v7-live-badge">live</span><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor" stroke="none"/></svg></div><div class="v7-pred-field"><span class="nm">수신자가 컨트랙트</span><span class="canon">enrichment.recipientIsContract</span></div><span class="v7-pred-op">is true</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. states -->
+  <div class="sec">
+    <div class="sec-num">04</div>
+    <div class="sec-h">상태</div>
+    <div class="sec-d">기본 / hover / 선택 / 비활성 / 에러(타입 불일치) / 평가 실패(failed) — 상태는 fill이 아니라 테두리·그림자·뱃지로 표현.</div>
+    <div class="card">
+      <div class="state-grid">
+        <div class="state-cell"><div class="col-lab">기본</div><div class="v7-pred role-numeric" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div><span class="v7-pred-op">&lt;</span><span class="v7-pred-val">100</span></div></div>
+        <div class="state-cell"><div class="col-lab">hover</div><div class="v7-pred role-numeric" style="position: relative; box-shadow: 0 2px 8px rgba(15,23,42,0.10);"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div><span class="v7-pred-op">&lt;</span><span class="v7-pred-val">100</span></div></div>
+        <div class="state-cell"><div class="col-lab">선택</div><div class="v7-pred role-numeric sel" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div><span class="v7-pred-op">&lt;</span><span class="v7-pred-val">100</span></div></div>
+        <div class="state-cell"><div class="col-lab">비활성</div><div class="v7-pred role-numeric off" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div><span class="v7-pred-op">&lt;</span><span class="v7-pred-val">100</span></div></div>
+        <div class="state-cell"><div class="col-lab">에러 · 타입 불일치</div><div class="v7-pred role-numeric err" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div><span class="v7-pred-op">==</span><span class="v7-pred-val" style="color:var(--fail-600);">"x"</span></div></div>
+        <div class="state-cell"><div class="col-lab">평가 실패 · failed</div><div class="v7-pred role-numeric failed" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="v7-pred-field"><span class="nm">슬리피지(bp)</span><span class="canon">context.slippageBp</span></div><span class="v7-pred-op">&lt;</span><span class="v7-pred-val">100</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. assembled example -->
+  <div class="sec">
+    <div class="sec-num">05</div>
+    <div class="sec-h">조립 예시 — NOT 배제 가드</div>
+    <div class="sec-d">위험 패턴(swap-and-send)은 NOT으로 감싸 배제. 끼우면 한 문장으로 읽힌다.</div>
+    <div class="card">
+      <div class="v7-logic op-NOT" style="position: relative;">
+        <span class="v7-logic-spine"></span>
+        <div class="v7-logic-head"><span class="v7-logic-kw">NOT</span><span class="v7-logic-guard"><span class="v7-guard-id">s1</span><span class="v7-guard-lab">swap-and-send 배제</span></span><span style="font-size:11px;color:var(--slate-400);">아래 패턴이면 제외</span></div>
+        <div class="v7-logic-slot"><div class="v7-slot-list">
+          <div class="v7-logic op-AND" style="position: relative;">
+            <span class="v7-logic-spine"></span>
+            <div class="v7-logic-head"><span class="v7-logic-kw">AND</span></div>
+            <div class="v7-logic-slot"><div class="v7-slot-list">
+              <div class="v7-pred role-address" style="position: relative;"><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5"/><path d="M11.5 11.5L21 21M17 17l2-2"/></svg></div><div class="v7-pred-field"><span class="nm">수신자</span><span class="canon">context.recipient</span></div><span class="v7-pred-op">≠</span><span class="v7-pred-val ref">@meta.from</span></div>
+              <div class="v7-pred role-address is-live" style="position: relative;"><span class="v7-live-badge">live</span><div class="v7-pred-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="8" cy="12" r="3" fill="currentColor" stroke="none"/></svg></div><div class="v7-pred-field"><span class="nm">수신자가 컨트랙트</span><span class="canon">enrichment.recipientIsContract</span></div><span class="v7-pred-op">is true</span></div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

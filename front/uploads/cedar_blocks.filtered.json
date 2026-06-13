@@ -1,0 +1,3212 @@
+{
+  "actions": {
+    "Airdrop::Claim": {
+      "namespace": "Airdrop",
+      "action": "Claim",
+      "category": "airdrop",
+      "file": "airdrop/claim.cedarschema",
+      "contextType": "ClaimContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "source",
+          "optional": false,
+          "type": "Core::ProtocolRef",
+          "fieldKind": "ref",
+          "description": "Source protocol/distribution (e.g. Optimism, Arbitrum DAO, Jupiter)."
+        },
+        {
+          "name": "claimTarget",
+          "optional": false,
+          "type": "ClaimTarget",
+          "fieldKind": "ref",
+          "description": "Distributor mechanism used to deliver this claim."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address that will receive the claimed tokens."
+        },
+        {
+          "name": "proof",
+          "optional": true,
+          "type": "Set<String>",
+          "fieldKind": "collection",
+          "description": "Merkle inclusion proof; set of 0x-hex sibling hashes. Required for kind = \"merkle_distributor\"."
+        },
+        {
+          "name": "sig",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "EIP-712 signature (0x-hex bytes) authorizing the claim. Required for kind = \"signature_distributor\"."
+        },
+        {
+          "name": "isStillClaimable",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": "----- Live inputs (flattened from `ClaimAirdropLiveInputs`) ----- Whether the claim is still available (not expired and not already claimed)."
+        },
+        {
+          "name": "actualAmount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Actual claimable amount (U256 hex). Some airdrops are dynamic (e.g. vesting)."
+        },
+        {
+          "name": "actualAmountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano projection (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "actualAmountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "claimToken",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token to be received; some distributions resolve the token dynamically."
+        },
+        {
+          "name": "claimWindowStart",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Start of the optional claim window (unix seconds). Flattened from `LiveField<Option<(Time, Time)>>`; either both bounds are present or both absent."
+        },
+        {
+          "name": "claimWindowEnd",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "End of the optional claim window (unix seconds). See `claimWindowStart`."
+        }
+      ],
+      "subTypes": {
+        "ClaimTarget": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "\"merkle_distributor\" | \"signature_distributor\" | \"staking_claim\"."
+          },
+          {
+            "name": "chain",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "CAIP-2 id of the chain hosting the distributor contract."
+          },
+          {
+            "name": "contract",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Distributor (or staking/rewards) contract address."
+          },
+          {
+            "name": "index",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Leaf index in the Merkle tree; present iff kind = \"merkle_distributor\"."
+          }
+        ]
+      }
+    },
+    "Airdrop::Delegate": {
+      "namespace": "Airdrop",
+      "action": "Delegate",
+      "category": "airdrop",
+      "file": "airdrop/delegate.cedarschema",
+      "contextType": "DelegateContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "token",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Governance token whose voting power is being delegated."
+        },
+        {
+          "name": "delegatee",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the delegated voting power."
+        },
+        {
+          "name": "currentDelegate",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "----- Live inputs (flattened from `DelegateLiveInputs`) ----- Address currently delegated to. Absent means no current delegate has ever been recorded (most ERC20Votes tokens initialise to zero/self)."
+        },
+        {
+          "name": "votingPower",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Current voting power held by the delegator (U256 hex). For balance- backed tokens this is the delegator's token balance."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Amm::AddLiquidity": {
+      "namespace": "Amm",
+      "action": "AddLiquidity",
+      "category": "amm",
+      "file": "amm/add_liquidity.cedarschema",
+      "contextType": "AddLiquidityContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "AmmVenue",
+          "fieldKind": "ref",
+          "description": "Pool receiving the deposit."
+        },
+        {
+          "name": "params",
+          "optional": false,
+          "type": "AddLiquidityParams",
+          "fieldKind": "ref",
+          "description": "User-signed deposit parameters."
+        },
+        {
+          "name": "currentPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "LiveField<Price>: current pool price (decimal serialized as string), used by policies to validate concentrated-range geometry against the current tick. `pool_state` is reducer-internal and omitted."
+        }
+      ],
+      "subTypes": {
+        "RangeSpec": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "\"tick\" | \"bin\" | \"custom\""
+          },
+          {
+            "name": "tickLower",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Tick lower bound (signed). Present iff kind = \"tick\"."
+          },
+          {
+            "name": "tickUpper",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Tick upper bound (signed). Present iff kind = \"tick\"."
+          },
+          {
+            "name": "liquidity",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "U128 hex liquidity at mint time. Present iff kind = \"tick\"."
+          },
+          {
+            "name": "activeId",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Active bin id at mint time. Present iff kind = \"bin\"."
+          },
+          {
+            "name": "protocol",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Free-form protocol identifier. Present iff kind = \"custom\"."
+          }
+        ],
+        "AddLiquidityParams": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "\"pooled\" | \"concentrated_mint\" | \"concentrated_increase\""
+          },
+          {
+            "name": "tokens",
+            "optional": true,
+            "type": "Set<{ token: Core::TokenRef, amount: String }>",
+            "fieldKind": "collection",
+            "description": "Tokens deposited (set-like; original Vec order lost). Pooled."
+          },
+          {
+            "name": "minLpOut",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Minimum LP tokens out (U256 hex). Pooled."
+          },
+          {
+            "name": "poolPair",
+            "optional": true,
+            "type": "{ tokenA: Core::TokenRef, tokenB: Core::TokenRef }",
+            "fieldKind": "record",
+            "description": "Token pair of the pool. ConcentratedMint."
+          },
+          {
+            "name": "amountDesired",
+            "optional": true,
+            "type": "{ a: String, b: String }",
+            "fieldKind": "record",
+            "description": "Desired amounts (a = first of pair, b = second). U256 hex."
+          },
+          {
+            "name": "amountMin",
+            "optional": true,
+            "type": "{ a: String, b: String }",
+            "fieldKind": "record",
+            "description": "Minimum acceptable amounts (slippage floor). U256 hex."
+          },
+          {
+            "name": "range",
+            "optional": true,
+            "type": "RangeSpec",
+            "fieldKind": "ref",
+            "description": "Tick / bin / custom range for the new position. ConcentratedMint."
+          },
+          {
+            "name": "nftKey",
+            "optional": true,
+            "type": "Core::TokenKey",
+            "fieldKind": "ref",
+            "description": "Existing NFT position key. ConcentratedIncrease."
+          },
+          {
+            "name": "recipient",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Recipient of LP tokens (Pooled) or position NFT (ConcentratedMint). ConcentratedIncrease has no recipient field (target is the existing NFT)."
+          }
+        ]
+      }
+    },
+    "Amm::CancelIntentOrder": {
+      "namespace": "Amm",
+      "action": "CancelIntentOrder",
+      "category": "amm",
+      "file": "amm/cancel_intent_order.cedarschema",
+      "contextType": "CancelIntentOrderContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "IntentVenue",
+          "fieldKind": "ref",
+          "description": "Intent venue the order was signed against."
+        },
+        {
+          "name": "orderHash",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "32-byte hex order hash being cancelled."
+        },
+        {
+          "name": "signature",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "EIP-712 signature authorizing the cancellation (0x-hex bytes). Present only for venues that require a separate cancel-sig (e.g. CowSwap off-chain cancel)."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Amm::CollectFees": {
+      "namespace": "Amm",
+      "action": "CollectFees",
+      "category": "amm",
+      "file": "amm/collect_fees.cedarschema",
+      "contextType": "CollectFeesContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "AmmVenue",
+          "fieldKind": "ref",
+          "description": "Pool holding the position."
+        },
+        {
+          "name": "nftKey",
+          "optional": false,
+          "type": "Core::TokenKey",
+          "fieldKind": "ref",
+          "description": "NFT position key whose fees are being collected."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Recipient of the collected fees (Address)."
+        },
+        {
+          "name": "feesOwed",
+          "optional": false,
+          "type": "Set<{ token: Core::TokenRef, amount: String }>",
+          "fieldKind": "collection",
+          "description": "LiveField<Vec<(TokenRef, U256)>>: fees owed to the position at simulation time (set-like; original Vec order lost)."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Amm::RemoveLiquidity": {
+      "namespace": "Amm",
+      "action": "RemoveLiquidity",
+      "category": "amm",
+      "file": "amm/remove_liquidity.cedarschema",
+      "contextType": "RemoveLiquidityContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "AmmVenue",
+          "fieldKind": "ref",
+          "description": "Pool being withdrawn from."
+        },
+        {
+          "name": "params",
+          "optional": false,
+          "type": "RemoveLiquidityParams",
+          "fieldKind": "ref",
+          "description": "User-signed withdrawal parameters."
+        },
+        {
+          "name": "feesOwed",
+          "optional": false,
+          "type": "Set<{ token: Core::TokenRef, amount: String }>",
+          "fieldKind": "collection",
+          "description": "LiveField<Vec<(TokenRef, U256)>>: fees owed to the position at simulation time (set-like; order lost). `pool_state` is reducer-internal and omitted."
+        }
+      ],
+      "subTypes": {
+        "RemoveLiquidityParams": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "\"pooled_burn\" | \"concentrated_decrease\" | \"concentrated_burn\""
+          },
+          {
+            "name": "lpToken",
+            "optional": true,
+            "type": "Core::TokenRef",
+            "fieldKind": "ref",
+            "description": "LP token being burned. PooledBurn."
+          },
+          {
+            "name": "lpAmount",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Amount of LP token to burn (U256 hex). PooledBurn."
+          },
+          {
+            "name": "minOut",
+            "optional": true,
+            "type": "Set<{ token: Core::TokenRef, amount: String }>",
+            "fieldKind": "collection",
+            "description": "Minimum acceptable output per underlying token (set-like; original Vec order lost). PooledBurn."
+          },
+          {
+            "name": "recipient",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Recipient of withdrawn tokens. PooledBurn only; the V3 variants send to the NFT owner / are noop respectively."
+          },
+          {
+            "name": "nftKey",
+            "optional": true,
+            "type": "Core::TokenKey",
+            "fieldKind": "ref",
+            "description": "NFT position key. ConcentratedDecrease and ConcentratedBurn."
+          },
+          {
+            "name": "liquidityBurn",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Amount of V3 liquidity to burn (U128 hex). ConcentratedDecrease."
+          },
+          {
+            "name": "amountMin",
+            "optional": true,
+            "type": "{ a: String, b: String }",
+            "fieldKind": "record",
+            "description": "Minimum acceptable amounts (slippage floor). U256 hex. ConcentratedDecrease."
+          }
+        ]
+      }
+    },
+    "Amm::SignIntentOrder": {
+      "namespace": "Amm",
+      "action": "SignIntentOrder",
+      "category": "amm",
+      "file": "amm/sign_intent_order.cedarschema",
+      "contextType": "SignIntentOrderContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "IntentVenue",
+          "fieldKind": "ref",
+          "description": "Intent venue receiving the signed order."
+        },
+        {
+          "name": "sell",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token being sold."
+        },
+        {
+          "name": "buy",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token being bought."
+        },
+        {
+          "name": "sellAmount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount of sell token offered (U256 hex)."
+        },
+        {
+          "name": "sellAmountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano sibling of sellAmount (Host-populated)."
+        },
+        {
+          "name": "sellAmountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate of sell side (Host-populated)."
+        },
+        {
+          "name": "buyMin",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Minimum acceptable amount of buy token (U256 hex)."
+        },
+        {
+          "name": "buyMinNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano sibling of buyMin (Host-populated)."
+        },
+        {
+          "name": "buyMinUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate of buy side (Host-populated)."
+        },
+        {
+          "name": "orderKind",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "\"dutch\" | \"limit\" | \"rfq\" — order price-discovery semantics."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Recipient of the buy token when the order fills (Address)."
+        },
+        {
+          "name": "validUntil",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Order expiry (unix seconds)."
+        },
+        {
+          "name": "expectedFillPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "LiveField<Price>: expected fill price at simulation time (decimal serialized as string)."
+        },
+        {
+          "name": "competingOrders",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "LiveField<u32>: number of active competing orders on the same pair."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Amm::Swap": {
+      "namespace": "Amm",
+      "action": "Swap",
+      "category": "amm",
+      "file": "amm/swap.cedarschema",
+      "contextType": "SwapContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "AmmVenue",
+          "fieldKind": "ref",
+          "description": "Pool / aggregator the user calls."
+        },
+        {
+          "name": "tokenIn",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token being sold."
+        },
+        {
+          "name": "tokenOut",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token being bought."
+        },
+        {
+          "name": "direction",
+          "optional": false,
+          "type": "SwapDirection",
+          "fieldKind": "ref",
+          "description": "Exact-in / exact-out direction and limits."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Recipient of the output tokens (Address)."
+        },
+        {
+          "name": "slippageBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Slippage tolerance in basis points, applied across the whole route."
+        },
+        {
+          "name": "routeEstimatedOut",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Sum of estimated_out across all RoutePaths (U256 hex). Route shape (paths × hops) is too complex for Cedar — only the summary is exposed."
+        },
+        {
+          "name": "expectedAmountOut",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "LiveField<U256> projection: estimated total output (U256 hex)."
+        },
+        {
+          "name": "priceImpactBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "LiveField<u32>: estimated price impact in basis points."
+        },
+        {
+          "name": "gasEstimate",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "LiveField<U256>: estimated gas cost (U256 hex)."
+        }
+      ],
+      "subTypes": {
+        "SwapDirection": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "\"exact_input\" | \"exact_output\""
+          },
+          {
+            "name": "amountIn",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Exact amount of tokenIn sold (U256 hex). Present iff exact_input."
+          },
+          {
+            "name": "minAmountOut",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Minimum acceptable tokenOut (U256 hex). Present iff exact_input."
+          },
+          {
+            "name": "maxAmountIn",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Maximum tokenIn willing to spend (U256 hex). Present iff exact_output."
+          },
+          {
+            "name": "amountOut",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Exact tokenOut to receive (U256 hex). Present iff exact_output."
+          },
+          {
+            "name": "amountInNano",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Token-native nano sibling of amountIn (Host-populated)."
+          },
+          {
+            "name": "minAmountOutNano",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Token-native nano sibling of minAmountOut."
+          },
+          {
+            "name": "maxAmountInNano",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Token-native nano sibling of maxAmountIn."
+          },
+          {
+            "name": "amountOutNano",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "Token-native nano sibling of amountOut."
+          },
+          {
+            "name": "amountInUsd",
+            "optional": true,
+            "type": "decimal",
+            "fieldKind": "primitive",
+            "description": "USD estimate of input (Host-populated)."
+          },
+          {
+            "name": "amountOutUsd",
+            "optional": true,
+            "type": "decimal",
+            "fieldKind": "primitive",
+            "description": "USD estimate of output (Host-populated)."
+          }
+        ]
+      }
+    },
+    "Launchpad::ClaimAllocation": {
+      "namespace": "Launchpad",
+      "action": "ClaimAllocation",
+      "category": "launchpad",
+      "file": "launchpad/claim_allocation.cedarschema",
+      "contextType": "ClaimAllocationContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "platform",
+          "optional": false,
+          "type": "Core::ProtocolRef",
+          "fieldKind": "ref",
+          "description": "Launchpad platform identifier."
+        },
+        {
+          "name": "saleId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Identifier of the sale within the platform."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the claimed allocation."
+        },
+        {
+          "name": "allocatedToken",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "----- Live inputs (flattened from `ClaimAllocationLiveInputs`) ----- Token component of `LiveField<(TokenRef, U256)>`."
+        },
+        {
+          "name": "allocatedAmount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount component of `LiveField<(TokenRef, U256)>` (U256 hex)."
+        },
+        {
+          "name": "allocatedAmountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "allocatedAmountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "refundDue",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Refund owed due to oversubscription (U256 hex)."
+        },
+        {
+          "name": "isClaimable",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": "Whether the allocation is currently claimable."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Launchpad::ClaimVested": {
+      "namespace": "Launchpad",
+      "action": "ClaimVested",
+      "category": "launchpad",
+      "file": "launchpad/claim_vested.cedarschema",
+      "contextType": "ClaimVestedContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "positionId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Opaque position identifier — state §5 `LaunchpadAllocation` or `VestingSchedule`."
+        },
+        {
+          "name": "amount",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to claim (U256 hex); absent claims the maximum currently available."
+        },
+        {
+          "name": "claimableNow",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "----- Live inputs (flattened from `ClaimVestedLiveInputs`) ----- Amount currently claimable from the vesting schedule (U256 hex)."
+        },
+        {
+          "name": "nextUnlockTime",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Next unlock time (unix seconds). Present iff there is a next unlock."
+        },
+        {
+          "name": "nextUnlockAmount",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Next unlock amount (U256 hex). Present iff there is a next unlock."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Launchpad::Commit": {
+      "namespace": "Launchpad",
+      "action": "Commit",
+      "category": "launchpad",
+      "file": "launchpad/commit.cedarschema",
+      "contextType": "CommitContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "platform",
+          "optional": false,
+          "type": "Core::ProtocolRef",
+          "fieldKind": "ref",
+          "description": "Launchpad platform identifier."
+        },
+        {
+          "name": "saleId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Identifier of the sale within the platform."
+        },
+        {
+          "name": "payToken",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token used to pay into the sale."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount of `payToken` to commit (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the resulting allocation/claim rights."
+        },
+        {
+          "name": "saleState",
+          "optional": false,
+          "type": "SaleState",
+          "fieldKind": "ref",
+          "description": "----- Live inputs (flattened from `CommitLiveInputs`) ----- Current sale state (cap, window, vest schedule, totals)."
+        },
+        {
+          "name": "userCap",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Per-user commit cap enforced by the platform (U256 hex)."
+        },
+        {
+          "name": "userCommitted",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount already committed by the user (U256 hex)."
+        },
+        {
+          "name": "expectedTokenPrice",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Expected sale price (Decimal as string). Optional inside `LiveField<Option<Price>>`."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Launchpad::Refund": {
+      "namespace": "Launchpad",
+      "action": "Refund",
+      "category": "launchpad",
+      "file": "launchpad/refund.cedarschema",
+      "contextType": "RefundContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "platform",
+          "optional": false,
+          "type": "Core::ProtocolRef",
+          "fieldKind": "ref",
+          "description": "Launchpad platform identifier."
+        },
+        {
+          "name": "saleId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Identifier of the sale within the platform."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the refunded tokens."
+        },
+        {
+          "name": "refundAmount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "----- Live inputs (flattened from `RefundLiveInputs`) ----- Amount eligible to be refunded (U256 hex)."
+        },
+        {
+          "name": "refundAmountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "refundAmountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "refundToken",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token of the asset being refunded."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Launchpad::WithdrawCommit": {
+      "namespace": "Launchpad",
+      "action": "WithdrawCommit",
+      "category": "launchpad",
+      "file": "launchpad/withdraw_commit.cedarschema",
+      "contextType": "WithdrawCommitContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "platform",
+          "optional": false,
+          "type": "Core::ProtocolRef",
+          "fieldKind": "ref",
+          "description": "Launchpad platform identifier."
+        },
+        {
+          "name": "saleId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Identifier of the sale within the platform."
+        },
+        {
+          "name": "amount",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to withdraw (U256 hex); absent withdraws the full committed balance."
+        },
+        {
+          "name": "withdrawable",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "----- Live inputs (flattened from `WithdrawCommitLiveInputs`) ----- Amount currently available to withdraw (U256 hex)."
+        },
+        {
+          "name": "saleState",
+          "optional": false,
+          "type": "SaleState",
+          "fieldKind": "ref",
+          "description": "Current sale state used to verify withdrawal is still permitted."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::Borrow": {
+      "namespace": "Lending",
+      "action": "Borrow",
+      "category": "lending",
+      "file": "lending/borrow.cedarschema",
+      "contextType": "BorrowContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset being borrowed."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to borrow (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "rateMode",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Borrow rate mode: \"variable\" | \"stable\"."
+        },
+        {
+          "name": "onBehalfOf",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Borrower of record; defaults to submitter when omitted."
+        },
+        {
+          "name": "reserveState",
+          "optional": false,
+          "type": "ReserveState",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>)."
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "assetPriceUsd",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Borrow asset price in USD (Price/Decimal as string)."
+        },
+        {
+          "name": "currentBorrowRate",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Current borrow rate for the chosen RateMode (Decimal as string)."
+        },
+        {
+          "name": "availableLiquidity",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Liquidity available in the reserve for borrowing (U256 hex)."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::DelegateBorrow": {
+      "namespace": "Lending",
+      "action": "DelegateBorrow",
+      "category": "lending",
+      "file": "lending/delegate_borrow.cedarschema",
+      "contextType": "DelegateBorrowContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset whose borrow allowance is being delegated."
+        },
+        {
+          "name": "delegatee",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address being granted the borrow allowance."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Allowance amount (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "rateMode",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Rate mode covered by the delegation: \"variable\" | \"stable\"."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::DisableCollateral": {
+      "namespace": "Lending",
+      "action": "DisableCollateral",
+      "category": "lending",
+      "file": "lending/disable_collateral.cedarschema",
+      "contextType": "DisableCollateralContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset whose collateral flag is being disabled."
+        },
+        {
+          "name": "reserveState",
+          "optional": false,
+          "type": "ReserveState",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>)."
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::EnableCollateral": {
+      "namespace": "Lending",
+      "action": "EnableCollateral",
+      "category": "lending",
+      "file": "lending/enable_collateral.cedarschema",
+      "contextType": "EnableCollateralContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset whose collateral flag is being enabled."
+        },
+        {
+          "name": "reserveState",
+          "optional": false,
+          "type": "ReserveState",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>)."
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::Liquidate": {
+      "namespace": "Lending",
+      "action": "Liquidate",
+      "category": "lending",
+      "file": "lending/liquidate.cedarschema",
+      "contextType": "LiquidateContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "victim",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Borrower being liquidated."
+        },
+        {
+          "name": "debtAsset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Debt asset being repaid by the liquidator."
+        },
+        {
+          "name": "collatAsset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Collateral asset being seized."
+        },
+        {
+          "name": "debtToCover",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Debt amount the liquidator covers (U256 hex)."
+        },
+        {
+          "name": "debtToCoverNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "debtToCoverUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "receiveAToken",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": "Aave V3 option — receive seized collateral as aToken instead of underlying."
+        },
+        {
+          "name": "victimState",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>). Account state of the borrower being liquidated."
+        },
+        {
+          "name": "liquidationBonus",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Liquidation bonus, in basis points."
+        },
+        {
+          "name": "debtAssetPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Debt asset price in USD (Price/Decimal as string)."
+        },
+        {
+          "name": "collatAssetPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Collateral asset price in USD (Price/Decimal as string)."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::Repay": {
+      "namespace": "Lending",
+      "action": "Repay",
+      "category": "lending",
+      "file": "lending/repay.cedarschema",
+      "contextType": "RepayContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset being repaid."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to repay (U256 hex); U256::MAX = full repay."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "rateMode",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Rate mode of the debt being repaid: \"variable\" | \"stable\"."
+        },
+        {
+          "name": "onBehalfOf",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Debtor of record; defaults to submitter when omitted."
+        },
+        {
+          "name": "useATokens",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": "Aave V3 flag — repay directly using aToken balance."
+        },
+        {
+          "name": "reserveState",
+          "optional": false,
+          "type": "ReserveState",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>)."
+        },
+        {
+          "name": "currentDebt",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Current outstanding debt for the chosen RateMode (U256 hex)."
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::SetEMode": {
+      "namespace": "Lending",
+      "action": "SetEMode",
+      "category": "lending",
+      "file": "lending/set_emode.cedarschema",
+      "contextType": "SetEModeContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "categoryId",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Target category id; 0 = disable e-mode."
+        },
+        {
+          "name": "categoryConfig",
+          "optional": false,
+          "type": "EModeConfig",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>)."
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {
+        "EModeConfig": [
+          {
+            "name": "ltvBp",
+            "optional": false,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "liquidationThresholdBp",
+            "optional": false,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "liquidationBonusBp",
+            "optional": false,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "priceSource",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Address (optional)"
+          },
+          {
+            "name": "assetsInCategory",
+            "optional": false,
+            "type": "Set<Core::TokenRef>",
+            "fieldKind": "collection",
+            "description": "assets eligible under this category"
+          },
+          {
+            "name": "categoryCode",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "EModeCategory id (u8 alias in state)"
+          }
+        ]
+      }
+    },
+    "Lending::Supply": {
+      "namespace": "Lending",
+      "action": "Supply",
+      "category": "lending",
+      "file": "lending/supply.cedarschema",
+      "contextType": "SupplyContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": "Lending venue (e.g. AaveV3 on Optimism)."
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset being supplied."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to supply (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "onBehalfOf",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Beneficiary; defaults to submitter when omitted."
+        },
+        {
+          "name": "reserveState",
+          "optional": false,
+          "type": "ReserveState",
+          "fieldKind": "ref",
+          "description": "Live inputs (LiveField<T> flattened to T)."
+        },
+        {
+          "name": "supplyApy",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Decimal as string"
+        },
+        {
+          "name": "aTokenPriceUsd",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Price/Decimal as string"
+        },
+        {
+          "name": "eligibleAsCollat",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::SwapRateMode": {
+      "namespace": "Lending",
+      "action": "SwapRateMode",
+      "category": "lending",
+      "file": "lending/swap_rate_mode.cedarschema",
+      "contextType": "SwapRateModeContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset whose debt rate mode is being switched."
+        },
+        {
+          "name": "newMode",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Target rate mode after the swap: \"variable\" | \"stable\"."
+        },
+        {
+          "name": "currentDebtVariable",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Live inputs — (variable, stable) tuples flattened to named fields."
+        },
+        {
+          "name": "currentDebtStable",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "U256 hex"
+        },
+        {
+          "name": "rateVariable",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Decimal as string"
+        },
+        {
+          "name": "rateStable",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Decimal as string"
+        }
+      ],
+      "subTypes": {}
+    },
+    "Lending::Withdraw": {
+      "namespace": "Lending",
+      "action": "Withdraw",
+      "category": "lending",
+      "file": "lending/withdraw.cedarschema",
+      "contextType": "WithdrawContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "LendingVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Asset being withdrawn."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to withdraw (U256 hex); U256::MAX = max-withdraw."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the withdrawn funds."
+        },
+        {
+          "name": "reserveState",
+          "optional": false,
+          "type": "ReserveState",
+          "fieldKind": "ref",
+          "description": "Live inputs (flattened from LiveField<T>)."
+        },
+        {
+          "name": "availableToWithdraw",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Maximum amount the user can withdraw right now (U256 hex)."
+        },
+        {
+          "name": "userStateBefore",
+          "optional": false,
+          "type": "UserLendingState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Core::Multicall": {
+      "namespace": "Core",
+      "action": "Multicall",
+      "category": "core",
+      "file": "multicall.cedarschema",
+      "contextType": "MulticallContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "childCount",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "children",
+          "optional": false,
+          "type": "Set<MulticallChildSummary>",
+          "fieldKind": "collection",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::AdjustMargin": {
+      "namespace": "Perp",
+      "action": "AdjustMargin",
+      "category": "perp",
+      "file": "perp/adjust_margin.cedarschema",
+      "contextType": "AdjustMarginContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "positionId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "delta",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "SignedI256 (signed)"
+        },
+        {
+          "name": "positionState",
+          "optional": false,
+          "type": "PerpPositionLive",
+          "fieldKind": "ref",
+          "description": "AdjustMarginLiveInputs flattened."
+        },
+        {
+          "name": "freeMarginAfter",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "U256"
+        }
+      ],
+      "subTypes": {
+        "PerpPositionLive": [
+          {
+            "name": "sizeBase",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "notionalUsd",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "entryPrice",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "markPrice",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "liqPrice",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "unrealizedPnl",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "SignedI256"
+          }
+        ]
+      }
+    },
+    "Perp::CancelOrder": {
+      "namespace": "Perp",
+      "action": "CancelOrder",
+      "category": "perp",
+      "file": "perp/cancel_order.cedarschema",
+      "contextType": "CancelOrderContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "orderId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::ChangeLeverage": {
+      "namespace": "Perp",
+      "action": "ChangeLeverage",
+      "category": "perp",
+      "file": "perp/change_leverage.cedarschema",
+      "contextType": "ChangeLeverageContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "market",
+          "optional": false,
+          "type": "MarketRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "newLeverage",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Decimal as string"
+        },
+        {
+          "name": "maxLeverage",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "ChangeLeverageLiveInputs flattened."
+        },
+        {
+          "name": "affectedPositions",
+          "optional": false,
+          "type": "Set<String>",
+          "fieldKind": "collection",
+          "description": ""
+        },
+        {
+          "name": "newLiqPrices",
+          "optional": false,
+          "type": "Set<{ positionId: String, liqPrice?: String }>",
+          "fieldKind": "collection",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::ChangeMarginMode": {
+      "namespace": "Perp",
+      "action": "ChangeMarginMode",
+      "category": "perp",
+      "file": "perp/change_margin_mode.cedarschema",
+      "contextType": "ChangeMarginModeContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "market",
+          "optional": false,
+          "type": "MarketRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "newMode",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "MarginMode: \"cross\" | \"isolated\""
+        },
+        {
+          "name": "affectedPositions",
+          "optional": false,
+          "type": "Set<String>",
+          "fieldKind": "collection",
+          "description": "ChangeMarginModeLiveInputs flattened."
+        },
+        {
+          "name": "marginReallocation",
+          "optional": false,
+          "type": "Set<{ positionId: String, amount: String }>",
+          "fieldKind": "collection",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::ClaimFunding": {
+      "namespace": "Perp",
+      "action": "ClaimFunding",
+      "category": "perp",
+      "file": "perp/claim_funding.cedarschema",
+      "contextType": "ClaimFundingContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "market",
+          "optional": true,
+          "type": "MarketRef",
+          "fieldKind": "ref",
+          "description": "None ≡ all markets"
+        },
+        {
+          "name": "claimable",
+          "optional": false,
+          "type": "Set<{ token: Core::TokenRef, amount: String }>",
+          "fieldKind": "collection",
+          "description": "ClaimFundingLiveInputs flattened."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::ClosePosition": {
+      "namespace": "Perp",
+      "action": "ClosePosition",
+      "category": "perp",
+      "file": "perp/close_position.cedarschema",
+      "contextType": "ClosePositionContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "positionId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "size",
+          "optional": true,
+          "type": "SizeSpec",
+          "fieldKind": "ref",
+          "description": "None ≡ full close"
+        },
+        {
+          "name": "slippageBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "markPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "ClosePerpLiveInputs flattened."
+        },
+        {
+          "name": "unrealizedPnlNow",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "SignedI256"
+        },
+        {
+          "name": "fundingAccrued",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "SignedI256"
+        },
+        {
+          "name": "feeBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::DecreasePosition": {
+      "namespace": "Perp",
+      "action": "DecreasePosition",
+      "category": "perp",
+      "file": "perp/decrease_position.cedarschema",
+      "contextType": "DecreasePositionContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "positionId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "type": "SizeSpec",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "slippageBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "markPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "ClosePerpLiveInputs flattened."
+        },
+        {
+          "name": "unrealizedPnlNow",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "SignedI256"
+        },
+        {
+          "name": "fundingAccrued",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "SignedI256"
+        },
+        {
+          "name": "feeBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::IncreasePosition": {
+      "namespace": "Perp",
+      "action": "IncreasePosition",
+      "category": "perp",
+      "file": "perp/increase_position.cedarschema",
+      "contextType": "IncreasePositionContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "positionId",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "type": "SizeSpec",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "addCollateralToken",
+          "optional": true,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "addCollateralAmount",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "raw U256 hex"
+        },
+        {
+          "name": "addCollateralAmountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "host-populated"
+        },
+        {
+          "name": "slippageBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "markPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "OpenPerpLiveInputs flattened (same 10 fields as OpenPosition)."
+        },
+        {
+          "name": "oraclePrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "fundingRate",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "availableOi",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "maxLeverage",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "initialMarginBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "maintenanceBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "feeTakerBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "feeMakerBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "userAccountState",
+          "optional": false,
+          "type": "PerpAccountState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::OpenPosition": {
+      "namespace": "Perp",
+      "action": "OpenPosition",
+      "category": "perp",
+      "file": "perp/open_position.cedarschema",
+      "contextType": "OpenPositionContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "market",
+          "optional": false,
+          "type": "MarketRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "side",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "PerpSide: \"long\" | \"short\""
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "type": "SizeSpec",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "leverage",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Decimal as string"
+        },
+        {
+          "name": "collateralToken",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "collateralAmount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "raw U256 hex"
+        },
+        {
+          "name": "collateralAmountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "host-populated"
+        },
+        {
+          "name": "collateralAmountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "host-populated"
+        },
+        {
+          "name": "marginMode",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "MarginMode: \"cross\" | \"isolated\""
+        },
+        {
+          "name": "slippageBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "reduceOnly",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "markPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "OpenPerpLiveInputs flattened."
+        },
+        {
+          "name": "oraclePrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "fundingRate",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "availableOi",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "maxLeverage",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "initialMarginBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "maintenanceBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "feeTakerBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "feeMakerBp",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "userAccountState",
+          "optional": false,
+          "type": "PerpAccountState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Perp::PlaceLimitOrder": {
+      "namespace": "Perp",
+      "action": "PlaceLimitOrder",
+      "category": "perp",
+      "file": "perp/place_limit_order.cedarschema",
+      "contextType": "PlaceLimitOrderContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "market",
+          "optional": false,
+          "type": "MarketRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "side",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "\"long\" | \"short\""
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "type": "SizeSpec",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "price",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Price as string"
+        },
+        {
+          "name": "timeInForce",
+          "optional": false,
+          "type": "TimeInForce",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "reduceOnly",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "markPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "PlaceLimitLiveInputs flattened."
+        },
+        {
+          "name": "bestBid",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "bestAsk",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "openOrdersCount",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "userAccountState",
+          "optional": false,
+          "type": "PerpAccountState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {
+        "TimeInForce": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "\"gtc\" | \"ioc\" | \"fok\" | \"post_only\" | \"gtd\""
+          },
+          {
+            "name": "until",
+            "optional": true,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": "gtd only"
+          }
+        ]
+      }
+    },
+    "Perp::PlaceStopOrder": {
+      "namespace": "Perp",
+      "action": "PlaceStopOrder",
+      "category": "perp",
+      "file": "perp/place_stop_order.cedarschema",
+      "contextType": "PlaceStopOrderContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "venue",
+          "optional": false,
+          "type": "PerpVenue",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "market",
+          "optional": false,
+          "type": "MarketRef",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "side",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "\"long\" | \"short\""
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "type": "SizeSpec",
+          "fieldKind": "ref",
+          "description": ""
+        },
+        {
+          "name": "triggerPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "orderKind",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "\"stop_market\" | \"stop_limit\" | \"take_profit\" | \"take_profit_limit\""
+        },
+        {
+          "name": "limitPrice",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "required for stop_limit / take_profit_limit"
+        },
+        {
+          "name": "reduceOnly",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": ""
+        },
+        {
+          "name": "markPrice",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "PlaceStopLiveInputs flattened."
+        },
+        {
+          "name": "userAccountState",
+          "optional": false,
+          "type": "PerpAccountState",
+          "fieldKind": "ref",
+          "description": ""
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::Erc20Approve": {
+      "namespace": "Token",
+      "action": "Erc20Approve",
+      "category": "token",
+      "file": "token/erc20_approve.cedarschema",
+      "contextType": "Erc20ApproveContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "token",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token being approved."
+        },
+        {
+          "name": "spender",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address authorized to spend."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Allowance amount (U256 hex). `0xff..ff` ≈ unlimited."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::Erc20Permit": {
+      "namespace": "Token",
+      "action": "Erc20Permit",
+      "category": "token",
+      "file": "token/erc20_permit.cedarschema",
+      "contextType": "Erc20PermitContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "token",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token whose `permit` is being signed."
+        },
+        {
+          "name": "spender",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address authorized to spend."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Allowance amount (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "deadline",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Signature expiration timestamp (unix seconds)."
+        },
+        {
+          "name": "nonce",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Current `permit` nonce on the token contract (U256 hex; LiveField inner)."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::Erc20Transfer": {
+      "namespace": "Token",
+      "action": "Erc20Transfer",
+      "category": "token",
+      "file": "token/erc20_transfer.cedarschema",
+      "contextType": "Erc20TransferContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "token",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Token being transferred."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the tokens."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Amount to transfer (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::NftApprove": {
+      "namespace": "Token",
+      "action": "NftApprove",
+      "category": "token",
+      "file": "token/nft_approve.cedarschema",
+      "contextType": "NftApproveContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "nftKey",
+          "optional": false,
+          "type": "Core::TokenKey",
+          "fieldKind": "ref",
+          "description": "`TokenKey::Erc721 { .., tokenId }` (or `ERC1155` equivalent)."
+        },
+        {
+          "name": "spender",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address authorized to operate the NFT."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::NftSetApprovalForAll": {
+      "namespace": "Token",
+      "action": "NftSetApprovalForAll",
+      "category": "token",
+      "file": "token/nft_set_approval_for_all.cedarschema",
+      "contextType": "NftSetApprovalForAllContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "chain",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Chain on which the collection lives (CAIP-2 id)."
+        },
+        {
+          "name": "contract",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "`ERC721` or `ERC1155` contract address."
+        },
+        {
+          "name": "spender",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Operator being granted or revoked."
+        },
+        {
+          "name": "approved",
+          "optional": false,
+          "type": "Bool",
+          "fieldKind": "primitive",
+          "description": "`true` grants operator rights; `false` revokes them."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::NftTransfer": {
+      "namespace": "Token",
+      "action": "NftTransfer",
+      "category": "token",
+      "file": "token/nft_transfer.cedarschema",
+      "contextType": "NftTransferContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "nftKey",
+          "optional": false,
+          "type": "Core::TokenKey",
+          "fieldKind": "ref",
+          "description": "`TokenKey::Erc721` or `TokenKey::Erc1155` identifying the token."
+        },
+        {
+          "name": "amount",
+          "optional": true,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "`ERC1155` quantity (U256 hex); absent for `ERC721` (implicitly 1)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "recipient",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address receiving the NFT."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::Permit2Approve": {
+      "namespace": "Token",
+      "action": "Permit2Approve",
+      "category": "token",
+      "file": "token/permit2_approve.cedarschema",
+      "contextType": "Permit2ApproveContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "token",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Underlying token whose allowance is delegated through `Permit2`."
+        },
+        {
+          "name": "spender",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address authorized to spend."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Allowance amount (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "expiresAt",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Timestamp at which the allowance expires (unix seconds)."
+        }
+      ],
+      "subTypes": {}
+    },
+    "Token::Permit2SignAllowance": {
+      "namespace": "Token",
+      "action": "Permit2SignAllowance",
+      "category": "token",
+      "file": "token/permit2_sign_allowance.cedarschema",
+      "contextType": "Permit2SignAllowanceContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "token",
+          "optional": false,
+          "type": "Core::TokenRef",
+          "fieldKind": "ref",
+          "description": "Underlying token whose allowance is delegated through `Permit2`."
+        },
+        {
+          "name": "spender",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Address authorized to spend."
+        },
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "Allowance amount (U256 hex)."
+        },
+        {
+          "name": "amountNano",
+          "optional": true,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Token-native nano (raw × 10^(9 − decimals)). Host-populated."
+        },
+        {
+          "name": "amountUsd",
+          "optional": true,
+          "type": "decimal",
+          "fieldKind": "primitive",
+          "description": "USD estimate at submission time. Host-populated."
+        },
+        {
+          "name": "expiresAt",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Timestamp at which the allowance expires (unix seconds)."
+        },
+        {
+          "name": "sigDeadline",
+          "optional": false,
+          "type": "Long",
+          "fieldKind": "primitive",
+          "description": "Timestamp at which the signature itself expires (unix seconds)."
+        },
+        {
+          "name": "nonce",
+          "optional": false,
+          "type": "Permit2Nonce",
+          "fieldKind": "ref",
+          "description": "`Permit2` nonce bitmap coordinates (LiveField inner value)."
+        }
+      ],
+      "subTypes": {
+        "Permit2Nonce": [
+          {
+            "name": "word",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": ""
+          },
+          {
+            "name": "bit",
+            "optional": false,
+            "type": "Long",
+            "fieldKind": "primitive",
+            "description": ""
+          }
+        ]
+      }
+    },
+    "Token::RevokeApproval": {
+      "namespace": "Token",
+      "action": "RevokeApproval",
+      "category": "token",
+      "file": "token/revoke_approval.cedarschema",
+      "contextType": "RevokeApprovalContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "scope",
+          "optional": false,
+          "type": "RevokeScope",
+          "fieldKind": "ref",
+          "description": "Which approval to revoke."
+        }
+      ],
+      "subTypes": {
+        "RevokeScope": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Discriminator: \"erc20\" | \"nft_single_token\" | \"nft_set_for_all\" | \"permit2_lockdown\"."
+          },
+          {
+            "name": "token",
+            "optional": true,
+            "type": "Core::TokenRef",
+            "fieldKind": "ref",
+            "description": "Token whose allowance is being revoked (erc20, permit2_lockdown)."
+          },
+          {
+            "name": "spender",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Spender losing the allowance (erc20, nft_set_for_all, permit2_lockdown)."
+          },
+          {
+            "name": "nftKey",
+            "optional": true,
+            "type": "Core::TokenKey",
+            "fieldKind": "ref",
+            "description": "`TokenKey` identifying the specific NFT (nft_single_token)."
+          },
+          {
+            "name": "chain",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "Chain on which the collection lives (nft_set_for_all)."
+          },
+          {
+            "name": "contract",
+            "optional": true,
+            "type": "String",
+            "fieldKind": "primitive",
+            "description": "`ERC721`/`ERC1155` contract address (nft_set_for_all)."
+          }
+        ]
+      }
+    },
+    "Core::Unknown": {
+      "namespace": "Core",
+      "action": "Unknown",
+      "category": "core",
+      "file": "unknown.cedarschema",
+      "contextType": "UnknownContext",
+      "principal": "Wallet",
+      "resource": "Protocol",
+      "parameters": [
+        {
+          "name": "target",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "contract Address"
+        },
+        {
+          "name": "chain",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "CAIP-2 chain id"
+        },
+        {
+          "name": "calldata",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "0x-hex raw calldata (use length-based heuristics in policy)"
+        },
+        {
+          "name": "value",
+          "optional": false,
+          "type": "String",
+          "fieldKind": "primitive",
+          "description": "U256 hex (raw ETH value attached)"
+        }
+      ],
+      "subTypes": {}
+    }
+  }
+}
