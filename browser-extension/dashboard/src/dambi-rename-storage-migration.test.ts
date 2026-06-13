@@ -68,6 +68,31 @@ describe("migrateDambiRenameLocalStorage", () => {
     expect(window.localStorage.getItem(newerLegacyScopedKey("market-locale"))).toBeNull();
   });
 
+  it("rewrites the legacy production server URL to the current dambi host", () => {
+    window.localStorage.setItem(
+      newerLegacyKey("server_url"),
+      "https://pasu-policy.duckdns.org",
+    );
+
+    const result = migrateDambiRenameLocalStorage();
+
+    expect(result).toEqual({ copied: 1, removed: 1 });
+    expect(window.localStorage.getItem(activeKey("server_url"))).toBe(
+      "https://dambi-policy.duckdns.org",
+    );
+  });
+
+  it("repairs an already-migrated legacy production server URL", () => {
+    window.localStorage.setItem(activeKey("server_url"), "https://pasu-policy.duckdns.org");
+
+    const result = migrateDambiRenameLocalStorage();
+
+    expect(result).toEqual({ copied: 0, removed: 0 });
+    expect(window.localStorage.getItem(activeKey("server_url"))).toBe(
+      "https://dambi-policy.duckdns.org",
+    );
+  });
+
   it("new key wins when both old and new exist; old is dropped", () => {
     window.localStorage.setItem(newerLegacyKey("jwt"), "old");
     window.localStorage.setItem(activeKey("jwt"), "new");

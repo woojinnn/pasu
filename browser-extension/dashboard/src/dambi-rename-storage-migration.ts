@@ -24,6 +24,12 @@ const activeKey = (suffix: string) => `dambi_${suffix}`;
 const activeScopedKey = (suffix: string) => `dambi:${suffix}`;
 const legacyKey = (brand: string, suffix: string) => `${brand}_${suffix}`;
 const legacyScopedKey = (brand: string, suffix: string) => `${brand}:${suffix}`;
+const ACTIVE_SERVER_URL_KEY = activeKey("server_url");
+const CURRENT_PRODUCTION_SERVER_URL = "https://dambi-policy.duckdns.org";
+const LEGACY_PRODUCTION_SERVER_URLS = new Set([
+  "https://pasu-policy.duckdns.org",
+  "https://pasu-policy.duckdns.org/",
+]);
 
 const KEY_RENAMES: ReadonlyArray<readonly [string, string]> =
   LEGACY_BRANDS.flatMap((brand) => [
@@ -32,6 +38,16 @@ const KEY_RENAMES: ReadonlyArray<readonly [string, string]> =
     [legacyKey(brand, "server_url"), activeKey("server_url")] as const,
     [legacyScopedKey(brand, "market-locale"), activeScopedKey("market-locale")] as const,
   ]);
+
+function normalizeMigratedValue(newKey: string, value: string): string {
+  if (
+    newKey === ACTIVE_SERVER_URL_KEY &&
+    LEGACY_PRODUCTION_SERVER_URLS.has(value.trim())
+  ) {
+    return CURRENT_PRODUCTION_SERVER_URL;
+  }
+  return value;
+}
 
 export interface DambiRenameMigrationResult {
   copied: number;
@@ -52,12 +68,23 @@ export function migrateDambiRenameLocalStorage(): DambiRenameMigrationResult {
     if (oldVal === null) continue; // nothing to migrate for this key
 
     if (window.localStorage.getItem(newKey) === null) {
-      window.localStorage.setItem(newKey, oldVal);
+      window.localStorage.setItem(newKey, normalizeMigratedValue(newKey, oldVal));
       copied += 1;
     }
     // New key wins when both exist — either way the old key is now stale.
     window.localStorage.removeItem(oldKey);
     removed += 1;
+  }
+
+  const activeServerUrl = window.localStorage.getItem(ACTIVE_SERVER_URL_KEY);
+  if (activeServerUrl !== null) {
+    const normalizedServerUrl = normalizeMigratedValue(
+      ACTIVE_SERVER_URL_KEY,
+      activeServerUrl,
+    );
+    if (normalizedServerUrl !== activeServerUrl) {
+      window.localStorage.setItem(ACTIVE_SERVER_URL_KEY, normalizedServerUrl);
+    }
   }
 
   if (copied > 0 || removed > 0) {

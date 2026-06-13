@@ -79,6 +79,28 @@ describe("migrateDambiRenameStorageKeys", () => {
     expect(mocks.localStore.has(newerLegacyKey("diag_timeouts"))).toBe(false);
   });
 
+  it("rewrites the legacy production server URL to the current dambi host", async () => {
+    mocks.localStore.set(newerLegacyKey("server_url"), "https://pasu-policy.duckdns.org");
+
+    const result = await migrateDambiRenameStorageKeys();
+
+    expect(result).toEqual({ copied: 1, removed: 1 });
+    expect(mocks.localStore.get(activeKey("server_url"))).toBe(
+      "https://dambi-policy.duckdns.org",
+    );
+  });
+
+  it("repairs an already-migrated legacy production server URL", async () => {
+    mocks.localStore.set(activeKey("server_url"), "https://pasu-policy.duckdns.org");
+
+    const result = await migrateDambiRenameStorageKeys();
+
+    expect(result).toEqual({ copied: 0, removed: 0 });
+    expect(mocks.localStore.get(activeKey("server_url"))).toBe(
+      "https://dambi-policy.duckdns.org",
+    );
+  });
+
   it("new key wins when both old and new exist; old is dropped", async () => {
     mocks.localStore.set(newerLegacyKey("jwt"), "old");
     mocks.localStore.set(activeKey("jwt"), "new");
