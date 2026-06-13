@@ -27,6 +27,12 @@ pub(crate) fn lower(
     if let Some(nano) = ctx.amount_nano(&action.token, action.amount) {
         m.insert("amountNano".into(), Value::from(nano));
     }
+    // Surface the router-egress flag ONLY when set, so a normal user transfer's
+    // context is byte-identical and the `sweep-recipient-not-self` policy stays
+    // dormant for it (no alarm fatigue). See `Erc20TransferAction.is_router_egress`.
+    if action.is_router_egress {
+        m.insert("is_router_egress".into(), Value::Bool(true));
+    }
     // `amountUsd` / `custom` are host-populated — OMITTED here.
 
     Ok(ctx.lowered(r#"Token::Action::"Erc20Transfer""#, Value::Object(m)))
@@ -58,6 +64,7 @@ mod tests {
             token,
             recipient: recipient(),
             amount: U256::from(1_234_567u64),
+            is_router_egress: false,
         }));
         let meta = onchain_meta();
         super::super::test_support::assert_conforms("erc20_transfer", &body, &meta);
@@ -83,6 +90,46 @@ mod tests {
     #[test]
     fn erc20_transfer_erc1155_token_key_conforms() {
         assert_transfer_token_conforms(sample_erc1155_token());
+    }
+
+    /// A router-egress transfer (Uniswap `sweepToken` / `unwrapWETH9`) emits the
+    /// `is_router_egress` context flag so a policy can gate a redirected sweep;
+    /// a normal user transfer (the default) OMITS it (no alarm-fatigue surface).
+    #[test]
+    fn erc20_transfer_emits_is_router_egress_flag_only_when_set() {
+        use crate::lowering_v2::{lower_action, TxMeta};
+
+        const FROM: &str = "0x1111111111111111111111111111111111111111";
+        const TO: &str = "0x2222222222222222222222222222222222222222";
+        let meta = onchain_meta();
+        let tx = TxMeta { from: FROM, to: TO };
+
+        let sweep = ActionBody::Token(TokenAction::Erc20Transfer(Erc20TransferAction {
+            token: sample_erc20_token(),
+            recipient: recipient(),
+            amount: U256::from(1u64),
+            is_router_egress: true,
+        }));
+        let lowered = lower_action(&sweep, &meta, &tx).unwrap();
+        assert_eq!(
+            lowered.context["is_router_egress"],
+            serde_json::json!(true),
+            "router egress must surface the flag"
+        );
+        // The egress context (with the new flag) must validate against the schema.
+        super::super::test_support::assert_conforms("erc20_transfer", &sweep, &meta);
+
+        let normal = ActionBody::Token(TokenAction::Erc20Transfer(Erc20TransferAction {
+            token: sample_erc20_token(),
+            recipient: recipient(),
+            amount: U256::from(1u64),
+            is_router_egress: false,
+        }));
+        let lowered_normal = lower_action(&normal, &meta, &tx).unwrap();
+        assert!(
+            lowered_normal.context.get("is_router_egress").is_none(),
+            "a normal user transfer must NOT surface the flag"
+        );
     }
 
     /// With injected `decimals`, the lowering fills `amountNano` (the
@@ -111,6 +158,7 @@ mod tests {
             },
             recipient: recipient(),
             amount: U256::from(1_000_000_000u64),
+            is_router_egress: false,
         }));
         let meta = onchain_meta();
         let tx = TxMeta { from: FROM, to: TO };

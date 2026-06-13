@@ -123,6 +123,7 @@ fn erc20_transfer_action(amount: u128) -> Action {
             token: usdc_ref(),
             recipient: recipient(),
             amount: U256::from(amount),
+            is_router_egress: false,
         })),
     }
 }

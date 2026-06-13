@@ -933,6 +933,7 @@ mod tests {
             token: usdc_ref(),
             recipient,
             amount: U256::from(250_000_000u64),
+            is_router_egress: false,
         };
         let delta = action.apply(&state, &ctx()).unwrap();
         assert_eq!(delta.token_changes.len(), 1);
@@ -952,6 +953,7 @@ mod tests {
             token: usdc_ref(),
             recipient: spender_addr(),
             amount: U256::from(101u64),
+            is_router_egress: false,
         };
         let err = action.apply(&state, &ctx()).unwrap_err();
         assert!(matches!(err, ReducerError::Invariant(_)));

@@ -1,10 +1,10 @@
 {
   "package": "day1-safety",
-  "title": "지갑 처음 켤 때 5",
+  "title": "지갑 처음 켤 때 6",
   "title_en": "Day-1 Safety",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "audience": "트레이딩/Web3 입문자 — 지갑을 처음 설치하고 첫 승인·송금·스왑을 하는 사람",
-  "description": "모든 지갑 사용자가 반드시 마주치는 3가지 순간(승인/서명, 송금, 스왑)에서 가장 흔하고 가장 치명적인 사고만 막는 최소 필수 5종. 5개 중 4개는 외부 의존 없이 순수 Cedar로 즉시 동작하고, 무제한 승인 차단 1종만 fact host를 필요로 한다.",
+  "description": "모든 지갑 사용자가 반드시 마주치는 3가지 순간(승인/서명, 송금, 스왑)에서 가장 흔하고 가장 치명적인 사고만 막는 최소 필수 6종. 6개 중 5개는 외부 의존 없이 순수 Cedar로 즉시 동작하고, 무제한 승인 차단 1종만 fact host를 필요로 한다.",
   "source": {
     "repo": "woojinnn/dambi",
     "branch": "feat/cedar_manifest",
@@ -52,6 +52,14 @@
       "trigger": { "action.tag": "swap" },
       "requires_facts": [],
       "summary": "스왑 산출 토큰의 수령처가 내 지갑이 아니면 차단 (fund-redirect)"
+    },
+    {
+      "id": "sweep-recipient-not-self-warn",
+      "dir": "policies/sweep-recipient-not-self-warn",
+      "severity": "warn",
+      "trigger": { "action.tag": "erc20_transfer" },
+      "requires_facts": [],
+      "summary": "라우터 sweep/unwrap(Uniswap sweepToken·unwrapWETH9)의 수령처가 내 지갑이 아니면 경고 — 스왑 산출이 멀티콜에 숨은 egress로 redirect되는 것 차단"
     }
   ],
   "fact_dependencies": ["approval.unlimited_over_balance"],

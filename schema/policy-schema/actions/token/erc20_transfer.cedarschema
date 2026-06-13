@@ -22,6 +22,11 @@ namespace Token {
     amountNano?: Long,
     // USD estimate at submission time. Host-populated.
     amountUsd?: decimal,
+    // `true` when this transfer is a protocol/router egress of its OWN held
+    // balance (e.g. Uniswap `sweepToken`/`unwrapWETH9`), not a direct user send.
+    // Present only when set; absent for ordinary user transfers. A policy gates
+    // a redirected egress (recipient != signer) via this flag.
+    is_router_egress?: Bool,
     // Manifest-extensible slot.
     custom?: Erc20TransferCustomContext,
   };

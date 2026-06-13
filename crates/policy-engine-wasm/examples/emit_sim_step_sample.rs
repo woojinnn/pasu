@@ -90,6 +90,7 @@ fn main() {
             token: usdc_ref,
             recipient,
             amount: U256::from(250_000_000u64),
+            is_router_egress: false,
         })),
     };
 
