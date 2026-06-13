@@ -29,24 +29,63 @@ import {
 } from "@lib/types";
 
 /**
- * Venue endpoints we police. Each entry maps a URL test → venue id.
+ * Exact hosts whose `/exchange` POST we police. The live web app POSTs to the
+ * `api-ui` gateway, not the bare `api.hyperliquid.xyz` documented for SDKs, so
+ * both mainnet hosts (`api`, `api-ui`) and their testnet variants are covered.
  *
- * The live web app actually POSTs to `api-ui.hyperliquid.xyz/exchange` (the
- * `-ui` gateway), not the bare `api.hyperliquid.xyz` documented for SDKs — so
- * the host pattern matches an optional `-ui` (and `-testnet`) sub-label. Both
- * mainnet hosts (`api`, `api-ui`) and their testnet variants are covered.
+ * H1: matching is on the PARSED + NORMALIZED URL (host + exact path), not a
+ * substring regex. DNS is case-insensitive and tolerates a trailing-dot FQDN
+ * root and an explicit `:443` port, all of which reach the same server — a
+ * case-sensitive substring regex let `API.HYPERLIQUID.XYZ/exchange` (and a
+ * relative `/exchange`) slip past the hook entirely (a venue-gating bypass).
  */
-export const VENUE_MATCHERS: { test: (url: string) => boolean; venue: string }[] =
-  [
-    {
-      test: (url) =>
-        /(^|\/\/)api(-ui)?\.hyperliquid(-testnet)?\.xyz\/exchange\b/.test(url),
-      venue: "hyperliquid",
-    },
-  ];
+const HL_EXCHANGE_HOSTS: ReadonlySet<string> = new Set([
+  "api.hyperliquid.xyz",
+  "api-ui.hyperliquid.xyz",
+  "api.hyperliquid-testnet.xyz",
+  "api-ui.hyperliquid-testnet.xyz",
+]);
 
-export function matchVenue(url: string): string | undefined {
-  return VENUE_MATCHERS.find((m) => m.test(url))?.venue;
+/** Normalize a URL hostname for allowlist comparison: `URL` already lowercases
+ *  it, so we only strip a single trailing dot (the FQDN root `host.` form). */
+function normalizeHost(hostname: string): string {
+  return hostname.endsWith(".") ? hostname.slice(0, -1) : hostname;
+}
+
+/**
+ * Parse `raw` into an absolute `URL`, resolving a relative URL against `base`
+ * (callers pass `location.href` so `fetch("/exchange")` resolves to the page
+ * origin). Returns `null` for an unparseable input rather than throwing.
+ */
+export function normalizeVenueUrl(raw: string, base?: string): URL | null {
+  try {
+    return new URL(raw, base);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Venue endpoints we police. Each entry tests the NORMALIZED `URL`
+ * (host allowlist + exact `/exchange` path) → venue id.
+ */
+export const VENUE_MATCHERS: { test: (url: URL) => boolean; venue: string }[] = [
+  {
+    test: (url) =>
+      HL_EXCHANGE_HOSTS.has(normalizeHost(url.hostname)) &&
+      url.pathname === "/exchange",
+    venue: "hyperliquid",
+  },
+];
+
+/**
+ * Resolve `url` (absolute or, with `base`, relative) and return the matched
+ * venue id, or `undefined` if it is not a policed venue endpoint / unparseable.
+ */
+export function matchVenue(url: string, base?: string): string | undefined {
+  const parsed = normalizeVenueUrl(url, base);
+  if (!parsed) return undefined;
+  return VENUE_MATCHERS.find((m) => m.test(parsed))?.venue;
 }
 
 /**

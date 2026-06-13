@@ -3,6 +3,7 @@ import objectHash from "object-hash";
 import type Browser from "webextension-polyfill";
 import { RequestType } from "./types";
 import type { AwaitingUserMessage, MessageData, StreamResponse } from "./types";
+import type { VerdictReceiver } from "./verdict-channel";
 
 // Phase-1 covers the SW round-trip from the moment we write to the stream
 // to the moment the SW posts back a verdict. The cold-path budget includes
@@ -109,6 +110,32 @@ export function sendToStreamAndAwaitResponse(
     messageStream.on("data", onData);
     armTimer(PHASE1_MS);
     messageStream.write({ requestId, data });
+  });
+}
+
+/**
+ * C1: write the action request over the page-observable `WindowPostMessageStream`
+ * (so the ISOLATED bridge reads it) but await the VERDICT over the authenticated
+ * `receiver` ({@link VerdictReceiver}) — a `MessageChannel` whose writer port
+ * never leaves the ISOLATED world. A verdict forged on the window bus is ignored;
+ * only the ISOLATED writer port resolves the gate. `awaiting-user` re-arms the
+ * deadline to {@link PHASE2_MS} inside the receiver. Replaces
+ * {@link sendToStreamAndAwaitResponse} for every verdict-bearing call.
+ */
+export function sendRequestAndAwaitVerdict(
+  stream: WindowPostMessageStream,
+  receiver: VerdictReceiver,
+  data: MessageData,
+): Promise<boolean> {
+  const requestId = generateRequestId(data);
+  const messageStream = stream as Duplex<
+    StreamResponse,
+    { requestId: string; data: MessageData }
+  >;
+  messageStream.write({ requestId, data });
+  return receiver.awaitVerdict(requestId, {
+    phase1Ms: PHASE1_MS,
+    phase2Ms: PHASE2_MS,
   });
 }
 

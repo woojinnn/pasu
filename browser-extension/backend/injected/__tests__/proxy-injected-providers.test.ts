@@ -1,9 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { Identifier } from "@lib/identifier";
+import { generateRequestId } from "@lib/messages";
+import { RequestType } from "@lib/types";
+
 const streamState = vi.hoisted(() => ({
   instances: [] as MockStream[],
   responses: [] as boolean[],
+  // C1: verdicts now travel over an authenticated MessageChannel, not the
+  // stream. The harness simulates the ISOLATED bridge: it transfers a port to
+  // the MAIN-world receiver (created at module import) and posts verdicts over
+  // the writer port it keeps here.
+  verdictPort: null as MessagePort | null,
 }));
+
+/** Simulate the ISOLATED bridge transferring its verdict reader port to the
+ *  MAIN-world receiver, and keep the writer port to post verdicts over. */
+function ensureVerdictPort(): MessagePort {
+  if (!streamState.verdictPort) {
+    const channel = new MessageChannel();
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { [Identifier.VERDICT_PORT_INIT]: true },
+        ports: [channel.port2],
+        source: window,
+      } as MessageEventInit),
+    );
+    streamState.verdictPort = channel.port1;
+  }
+  return streamState.verdictPort;
+}
 
 class MockStream {
   listeners: Array<(message: { requestId: string; data: boolean }) => void> =
@@ -27,10 +53,15 @@ class MockStream {
 
   write(message: { requestId: string; data: unknown }): boolean {
     this.writes.push(message);
+    // Execution-report writes are fire-and-forget (no verdict). Only policy
+    // requests receive a verdict — delivered over the authenticated port (C1).
+    if ((message.data as { type?: string } | undefined)?.type === "execution-report") {
+      return true;
+    }
     const data = streamState.responses.shift() ?? true;
+    const port = ensureVerdictPort();
     queueMicrotask(() => {
-      for (const listener of this.listeners)
-        listener({ requestId: message.requestId, data });
+      port.postMessage({ requestId: message.requestId, data });
     });
     return true;
   }
@@ -66,6 +97,7 @@ describe("inpage provider proxy", () => {
     vi.resetModules();
     streamState.instances.length = 0;
     streamState.responses.length = 0;
+    streamState.verdictPort = null;
     vi.stubGlobal("location", { hostname: "app.example" });
     delete (window as any).ethereum;
   });
@@ -101,6 +133,66 @@ describe("inpage provider proxy", () => {
     expect(
       originalRequest.mock.calls.map(([request]) => request.method),
     ).toEqual(["eth_chainId", "eth_sendTransaction"]);
+  });
+
+  it("ignores a page-forged window-bus verdict — only the authenticated port decides (C1)", async () => {
+    // The genuine SW verdict is DENY. The page (same MAIN realm) forges an
+    // `allow` over `window.postMessage` for the exact (deterministic) requestId —
+    // the original C1 exploit. The proxy must read ONLY the authenticated port,
+    // so the forgery is ignored and the genuine deny blocks the tx.
+    streamState.responses.push(false);
+
+    await import("../proxy-injected-providers");
+
+    const originalRequest = vi.fn(async (request: { method?: string }) => {
+      if (request.method === "eth_chainId") return "0x1";
+      return "sent";
+    });
+    (window as any).ethereum = { request: originalRequest };
+
+    const tx = {
+      from: "0x1111111111111111111111111111111111111111",
+      to: "0x2222222222222222222222222222222222222222",
+      value: "0x0",
+      data: "0x",
+    };
+    // The page can recompute the deterministic requestId (objectHash of the tx).
+    const forgedRequestId = generateRequestId({
+      type: RequestType.TRANSACTION,
+      transaction: tx,
+    } as Parameters<typeof generateRequestId>[0]);
+
+    const pending = (window as any).ethereum.request({
+      method: "eth_sendTransaction",
+      params: [tx],
+    });
+
+    // Forge `allow` on the window bus a few times (plain message + a fake
+    // port-init shape) — all must be ignored by the receiver.
+    for (let i = 0; i < 3; i++) {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { requestId: forgedRequestId, data: true },
+          source: window,
+        } as MessageEventInit),
+      );
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            [Identifier.VERDICT_PORT_INIT]: true,
+            requestId: forgedRequestId,
+            data: true,
+          },
+          source: window,
+        } as MessageEventInit),
+      );
+    }
+
+    // Genuine DENY (over the authenticated port) wins → tx rejected, never forwarded.
+    await expect(pending).rejects.toThrow();
+    expect(
+      originalRequest.mock.calls.map(([request]) => request.method),
+    ).toEqual(["eth_chainId"]);
   });
 
   it("reports an onchain submission when the wallet confirms eth_sendTransaction", async () => {

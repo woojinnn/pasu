@@ -18,6 +18,7 @@ import {
   sendToPortAndAwaitResponse,
   sendToPortAndDisregard,
 } from "@lib/messages";
+import { createVerdictSender } from "@lib/verdict-channel";
 import {
   isExecutionReport,
   type Message,
@@ -31,6 +32,11 @@ const stream = new WindowPostMessageStream({
   on(event: "data", callback: (message: Message) => void): void;
   write(data: StreamResponse): boolean;
 };
+
+// C1: emit the venue verdict over the authenticated MessageChannel (writer port
+// held HERE in ISOLATED) instead of the page-observable stream, so a page cannot
+// forge an `allow`. The request still arrives on the stream above.
+const verdictSender = createVerdictSender(Identifier.FETCH_VERDICT_PORT_INIT);
 
 stream.on("data", async (message: Message) => {
   // Drop post-init handshake echoes / malformed envelopes (see the provider
@@ -56,7 +62,7 @@ stream.on("data", async (message: Message) => {
         "venue order blocked. Reload this tab to restore policy evaluation.",
       err,
     );
-    stream.write({ requestId: message.requestId, data: false });
+    verdictSender.send({ requestId: message.requestId, data: false });
     return;
   }
 
@@ -72,10 +78,10 @@ stream.on("data", async (message: Message) => {
 
   port.onMessage.addListener((msg: { kind?: string; requestId?: string }) => {
     if (msg?.kind === "awaiting-user" && msg.requestId === message.requestId) {
-      stream.write({ requestId: message.requestId, kind: "awaiting-user" });
+      verdictSender.send({ requestId: message.requestId, kind: "awaiting-user" });
     }
   });
   const ok = await sendToPortAndAwaitResponse(port, data);
-  stream.write({ requestId: message.requestId, data: ok });
+  verdictSender.send({ requestId: message.requestId, data: ok });
   port.disconnect();
 });

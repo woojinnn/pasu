@@ -124,3 +124,38 @@ describe("matchVenue host coverage", () => {
     expect(matchVenue("https://notapi.hyperliquid.xyz.evil.com/exchange")).toBeUndefined();
   });
 });
+
+describe("matchVenue normalization (H1)", () => {
+  it("matches case-insensitive hostnames (DNS is case-insensitive)", () => {
+    // H1: a malicious/compromised HL frontend can POST to an upper/mixed-case
+    // host that reaches the same server but slipped past the case-sensitive regex.
+    expect(matchVenue("https://API.HYPERLIQUID.XYZ/exchange")).toBe("hyperliquid");
+    expect(matchVenue("https://Api-Ui.Hyperliquid.Xyz/exchange")).toBe("hyperliquid");
+    expect(matchVenue("https://API-UI.HYPERLIQUID-TESTNET.XYZ/exchange")).toBe(
+      "hyperliquid",
+    );
+  });
+
+  it("normalizes a trailing-dot FQDN and an explicit :443 port", () => {
+    expect(matchVenue("https://api.hyperliquid.xyz.:443/exchange")).toBe("hyperliquid");
+    expect(matchVenue("https://api-ui.hyperliquid.xyz:443/exchange")).toBe("hyperliquid");
+  });
+
+  it("resolves a relative URL against the page base before matching", () => {
+    expect(matchVenue("/exchange", "https://api-ui.hyperliquid.xyz/")).toBe(
+      "hyperliquid",
+    );
+    expect(matchVenue("/info", "https://api-ui.hyperliquid.xyz/")).toBeUndefined();
+  });
+
+  it("matches /exchange with a query string but not a sub-path or look-alike", () => {
+    expect(matchVenue("https://api.hyperliquid.xyz/exchange?x=1")).toBe("hyperliquid");
+    expect(matchVenue("https://api.hyperliquid.xyz/exchange/extra")).toBeUndefined();
+    // path-segment look-alike must not match via substring.
+    expect(matchVenue("https://evil.xyz/api.hyperliquid.xyz/exchange")).toBeUndefined();
+  });
+
+  it("returns undefined for an unparseable URL instead of throwing", () => {
+    expect(matchVenue("::::not a url::::")).toBeUndefined();
+  });
+});

@@ -39,9 +39,10 @@
 import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import { Identifier } from "@lib/identifier";
 import {
-  sendToStreamAndAwaitResponse,
+  sendRequestAndAwaitVerdict,
   sendToStreamAndDisregard,
 } from "@lib/messages";
+import { createVerdictReceiver } from "@lib/verdict-channel";
 import type { MessageData, VenueOrderPayload } from "@lib/types";
 import { buildHyperliquidExecutionReport } from "./hl-execution-report";
 import {
@@ -76,6 +77,10 @@ function install(): void {
     name: Identifier.FETCH_INPAGE,
     target: Identifier.FETCH_CONTENT_SCRIPT,
   }) as WritableStream;
+  // C1: venue verdicts are read ONLY from the authenticated MessageChannel the
+  // ISOLATED fetch bridge transfers — never the page-observable stream — so a
+  // page cannot forge an `allow` and slip a venue order past deny-closed gating.
+  const verdictReceiver = createVerdictReceiver(Identifier.FETCH_VERDICT_PORT_INIT);
   w[FETCH_INSTALL_STATE] = { stream };
 
   function recordVerdict(url: string, venue: string, allowed: boolean): void {
@@ -174,8 +179,9 @@ function install(): void {
       if (connectedAccount) {
         payload.wallet_id = { address: connectedAccount, chains: [] };
       }
-      const ok = await sendToStreamAndAwaitResponse(
+      const ok = await sendRequestAndAwaitVerdict(
         stream,
+        verdictReceiver,
         payload as MessageData,
       );
       if (!ok) return false; // deny-closed: one denied leg blocks the batch
@@ -274,7 +280,7 @@ function install(): void {
             ? (input as Request).method
             : "GET")
         ).toUpperCase();
-        const venue = matchVenue(url);
+        const venue = matchVenue(url, location.href);
         if (venue && method === "POST") {
           venueT0 = performance.now();
           venueLabel = venue;
@@ -330,7 +336,7 @@ function install(): void {
             : input instanceof URL
               ? input.toString()
               : (input as Request)?.url ?? "";
-        if (matchVenue(url)) {
+        if (matchVenue(url, location.href)) {
           console.error(
             "[Dambi] fetch-hook fault on a venue request — blocking (fail-closed)",
             err,
@@ -387,7 +393,7 @@ function install(): void {
         const meta: XhrMeta = {
           method: String(method).toUpperCase(),
           url: u,
-          venue: matchVenue(u),
+          venue: matchVenue(u, location.href),
         };
         (this as unknown as Record<PropertyKey, unknown>)[XHR_META] = meta;
       } catch {

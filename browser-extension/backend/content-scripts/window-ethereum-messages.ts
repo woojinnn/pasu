@@ -2,6 +2,7 @@ import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import Browser from "webextension-polyfill";
 import { Identifier } from "@lib/identifier";
 import { sendToPortAndAwaitResponse } from "@lib/messages";
+import { createVerdictSender } from "@lib/verdict-channel";
 import type { Message, StreamResponse } from "@lib/types";
 
 const stream = new WindowPostMessageStream({
@@ -11,6 +12,12 @@ const stream = new WindowPostMessageStream({
   on(event: "data", callback: (message: Message) => void): void;
   write(data: StreamResponse): boolean;
 };
+
+// C1: emit the verdict over the authenticated MessageChannel (writer port held
+// HERE in the ISOLATED world) instead of the page-observable stream, so a page
+// in the MAIN realm cannot forge an `allow`. The request still arrives on the
+// stream above; only the verdict response moves to the port.
+const verdictSender = createVerdictSender(Identifier.VERDICT_PORT_INIT);
 
 stream.on("data", async (message: Message) => {
   // Drop anything that doesn't look like a real wallet-action envelope.
@@ -44,7 +51,7 @@ stream.on("data", async (message: Message) => {
         "transaction blocked. Reload this tab to restore policy evaluation.",
       err,
     );
-    stream.write({ requestId: message.requestId, data: false });
+    verdictSender.send({ requestId: message.requestId, data: false });
     return;
   }
   const data: Message["data"] = {
@@ -53,10 +60,10 @@ stream.on("data", async (message: Message) => {
   };
   port.onMessage.addListener((msg: any) => {
     if (msg?.kind === "awaiting-user" && msg.requestId === message.requestId) {
-      stream.write({ requestId: message.requestId, kind: "awaiting-user" });
+      verdictSender.send({ requestId: message.requestId, kind: "awaiting-user" });
     }
   });
   const ok = await sendToPortAndAwaitResponse(port, data);
-  stream.write({ requestId: message.requestId, data: ok });
+  verdictSender.send({ requestId: message.requestId, data: ok });
   port.disconnect();
 });

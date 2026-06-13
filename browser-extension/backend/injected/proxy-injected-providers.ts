@@ -2,9 +2,10 @@ import { WindowPostMessageStream } from "@metamask/post-message-stream";
 import { ethErrors } from "eth-rpc-errors";
 import { Identifier, PROVIDER_MARKER } from "@lib/identifier";
 import {
-  sendToStreamAndAwaitResponse,
+  sendRequestAndAwaitVerdict,
   sendToStreamAndDisregard,
 } from "@lib/messages";
+import { createVerdictReceiver } from "@lib/verdict-channel";
 import { RequestType } from "@lib/types";
 import type {
   ExecutionReportOutcome,
@@ -73,6 +74,11 @@ const stream = new WindowPostMessageStream({
   name: Identifier.INPAGE,
   target: Identifier.CONTENT_SCRIPT,
 }) as WritableStream;
+
+// C1: verdicts are read ONLY from the authenticated MessageChannel the ISOLATED
+// bridge transfers at document_start — never from the page-observable stream —
+// so a same-realm page cannot forge an `allow`. See `@lib/verdict-channel`.
+const verdictReceiver = createVerdictReceiver(Identifier.VERDICT_PORT_INIT);
 
 const REJECT_TX = ethErrors.provider.userRejectedRequest(
   "Dambi: transaction blocked by policy",
@@ -192,7 +198,7 @@ async function checkTransaction(
     transaction,
   } as MessageData;
 
-  return sendToStreamAndAwaitResponse(stream, data);
+  return sendRequestAndAwaitVerdict(stream, verdictReceiver, data);
 }
 
 async function checkWalletSendCalls(
@@ -250,7 +256,7 @@ async function checkTypedSignature(
       ? second
       : `0x${"0".repeat(40)}`;
 
-  return sendToStreamAndAwaitResponse(stream, {
+  return sendRequestAndAwaitVerdict(stream, verdictReceiver, {
     type: RequestType.TYPED_SIGNATURE,
     chainId: await readChainId(provider, readRequest),
     hostname: location.hostname,
@@ -263,7 +269,7 @@ async function checkUntypedSignature(params: unknown[]): Promise<boolean> {
   const [first, second] = params;
   if (first === undefined || second === undefined) return true;
 
-  return sendToStreamAndAwaitResponse(stream, {
+  return sendRequestAndAwaitVerdict(stream, verdictReceiver, {
     type: RequestType.UNTYPED_SIGNATURE,
     hostname: location.hostname,
     message: String(looksLikeAddress(first) ? second : first),
