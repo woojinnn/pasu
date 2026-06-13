@@ -92,7 +92,7 @@ impl NftFloorOracle for NoFloorOracle {
 }
 
 /// Live external enrichment IO — a network call per request, distinct from the
-/// wallet-state-derived [`crate::methods`] facts. Both external token-policy
+/// wallet-state-derived `crate::methods` facts. Both external token-policy
 /// needs (a malicious-address feed and the owner's transfer history) are bundled
 /// into ONE trait so the dispatch and every call site thread a single param.
 /// Each method returns `Option`, independently fail-open: a `None` leaves that
