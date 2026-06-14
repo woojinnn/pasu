@@ -50,17 +50,41 @@ export async function startGoogleLogin(): Promise<{ access: string; refresh: str
   console.log("[dambi] OAuth redirect_uri (allowlist this exactly):", redirectUri);
 
   const url = `${getServerBaseUrl()}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`;
-  const redirectUrl: string = await identity.launchWebAuthFlow({
-    url,
-    interactive: true,
-  });
+  // launchWebAuthFlow 가 던지는 에러(대표적으로 "The user did not approve
+  // access.")는 원인이 모호하다 — 사용자가 정말 동의를 닫았을 수도, 로드된 확장
+  // ID 가 서버 allowlist 의 chromiumapp.org URL 과 달라 콜백이 이 확장으로 못
+  // 돌아왔을 수도 있다. 둘을 한눈에 가리려면 실제 redirect_uri(확장 ID 포함)를
+  // 에러에 박아 화면까지 올려준다 — 그래야 "ID 가 다른지/allowlist 누락인지"를
+  // 콘솔을 안 봐도 진단할 수 있다.
+  let redirectUrl: string;
+  try {
+    redirectUrl = await identity.launchWebAuthFlow({
+      url,
+      interactive: true,
+    });
+  } catch (err) {
+    const cause = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `로그인 실패 (redirect_uri=${redirectUri}). ` +
+        `이 URL 이 chrome://extensions 의 확장 ID 와 일치하고, 서버 ` +
+        `OAUTH_ALLOWED_REDIRECT_URIS 에 (끝 슬래시 포함) 정확히 등록됐는지 ` +
+        `확인하세요. 원인: ${cause}`,
+    );
+  }
 
   if (!redirectUrl) {
     throw new Error("OAuth flow returned no redirect URL");
   }
   const { access, refresh } = parseTokensFromUrl(redirectUrl);
   if (!access) {
-    throw new Error(`OAuth redirect missing access_token: ${redirectUrl}`);
+    // launchWebAuthFlow 가 토큰 fragment 없이 resolve 됐다 — 흔히 서버가
+    // "redirect_uri not allowed" 같은 에러 페이지로 바운스한 경우다. 받은 URL 을
+    // 그대로 노출해 서버 쪽 거부인지(allowlist 누락) 바로 보이게 한다.
+    throw new Error(
+      `로그인 응답에 access_token 이 없습니다. 서버가 redirect_uri 를 거부했을 ` +
+        `수 있습니다 (OAUTH_ALLOWED_REDIRECT_URIS 에 ${redirectUri} 추가 필요). ` +
+        `받은 redirect: ${redirectUrl}`,
+    );
   }
   await setTokens(access, refresh);
   return { access, refresh };
