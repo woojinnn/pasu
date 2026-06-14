@@ -11,6 +11,13 @@ export interface RegistryApiConfig {
   cacheTtlMs: number;
   cacheNegativeTtlMs: number;
   cacheControlValue: string;
+  /** Cache-Control for content-addressed leaves (bundles/<sha>, signatures/<sha>):
+   *  immutable — the sha IS the version, so they can be cached indefinitely. */
+  immutableCacheControlValue: string;
+  /** Cache-Control for 404 responses — short negative cache blunts probe floods. */
+  negativeCacheControlValue: string;
+  /** Shared secret gating GET /debug/recent (empty ⇒ the route is 404/disabled). */
+  debugToken: string;
   rateLimitBurst: number;
   rateLimitRefillPerSec: number;
   rateLimitMaxIps: number;
@@ -30,17 +37,24 @@ function stringFromEnv(name: string, fallback: string): string {
 }
 
 export function loadConfig(): RegistryApiConfig {
+  const cacheNegativeTtlMs = intFromEnv("CACHE_NEGATIVE_TTL_MS", 60_000);
   return {
     host: stringFromEnv("HOST", "0.0.0.0"),
     port: intFromEnv("PORT", 8080),
     bucketName: stringFromEnv("REGISTRY_BUCKET", "dambi-registry-seoul"),
     cacheMaxEntries: intFromEnv("CACHE_MAX_ENTRIES", 1024),
     cacheTtlMs: intFromEnv("CACHE_TTL_MS", 300_000),
-    cacheNegativeTtlMs: intFromEnv("CACHE_NEGATIVE_TTL_MS", 60_000),
-    cacheControlValue: stringFromEnv(
-      "CACHE_CONTROL",
-      "public, max-age=300, stale-while-revalidate=600",
+    cacheNegativeTtlMs,
+    // SWR removed: the proxy's ObjectCache does hard TTL expiry with no background
+    // revalidation, so advertising stale-while-revalidate promised semantics it did
+    // not implement (and widened the N1 rollback window). Plain max-age.
+    cacheControlValue: stringFromEnv("CACHE_CONTROL", "public, max-age=300"),
+    immutableCacheControlValue: stringFromEnv(
+      "CACHE_CONTROL_IMMUTABLE",
+      "public, max-age=31536000, immutable",
     ),
+    negativeCacheControlValue: `public, max-age=${Math.floor(cacheNegativeTtlMs / 1000)}`,
+    debugToken: stringFromEnv("DEBUG_TOKEN", ""),
     rateLimitBurst: intFromEnv("RATE_LIMIT_BURST", 60),
     rateLimitRefillPerSec: intFromEnv("RATE_LIMIT_REFILL_PER_SEC", 10),
     rateLimitMaxIps: intFromEnv("RATE_LIMIT_MAX_IPS", 10_000),

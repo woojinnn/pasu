@@ -14,6 +14,13 @@ export function startRegistryApiServer() {
   const config = loadConfig();
   const reader = new GcsObjectReader({ bucketName: config.bucketName });
   const server = createRegistryApiServer({ config, reader });
+  // HTTP edge timeouts (slowloris / dribble defenses). The registry serves small
+  // JSON in well under a second, so a client that cannot complete its headers /
+  // request quickly is abusive — close it rather than hold a fleet slot (capacity
+  // is max-instances × concurrency). keepAlive also reaps idle sockets promptly.
+  server.headersTimeout = 5_000;
+  server.requestTimeout = 10_000;
+  server.keepAliveTimeout = 5_000;
   server.listen(config.port, config.host, () => {
     console.log(
       JSON.stringify({

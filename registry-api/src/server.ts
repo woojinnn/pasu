@@ -80,7 +80,9 @@ export function createRegistryApiServer(
   const logStore = options.logStore ?? new LogStore();
   const singleFlight = new SingleFlight<ObjectResult>();
 
-  return createServer(async (request, response) => {
+  // maxHeaderSize bounds header-based memory abuse; set explicitly so a stray
+  // NODE_OPTIONS can't silently raise it. (HTTP timeouts are set in index.ts.)
+  return createServer({ maxHeaderSize: 16 * 1024 }, async (request, response) => {
     try {
       await routeRequest({
         request,
@@ -130,6 +132,18 @@ async function routeRequest(input: RouteInput): Promise<void> {
     return;
   }
   if (method === "GET" && url.pathname === "/debug/recent") {
+    // Telemetry (recent request paths + cache stats) leaks user pre-sign intent
+    // (callkeys = chain__contract__selector) if public. Gate behind a shared
+    // secret; absent/mismatch → 404 so the route is invisible without the token.
+    const want = input.config.debugToken;
+    const got = input.request.headers["x-debug-token"];
+    if (!want || got !== want) {
+      writeJson(input.response, 404, {
+        ok: false,
+        error: { code: "not_found", message: "Route not found" },
+      });
+      return;
+    }
     writeJson(input.response, 200, {
       entries: input.logStore.recent(),
       cache: input.cache.stats(),
@@ -203,7 +217,7 @@ async function handleProxy(input: RouteInput, proxyPath: string): Promise<void> 
   //    invalid path 는 404.
   const target = parseProxyTarget(proxyPath);
   if (!target.ok) {
-    writeProxy404(input.response);
+    writeProxy404(input.response, input.config.negativeCacheControlValue);
     logRequest(input, proxyPath, 404, "n/a", startMs);
     return;
   }
@@ -212,7 +226,7 @@ async function handleProxy(input: RouteInput, proxyPath: string): Promise<void> 
   // 3. cache lookup — hit (positive/negative) 면 GCS 를 건너뜀.
   const cached = input.cache.get(cacheKey);
   if (cached) {
-    sendCacheValue(input, cached);
+    sendCacheValue(input, cached, proxyPath);
     logRequest(input, proxyPath, cached.status, "hit", startMs);
     return;
   }
@@ -245,13 +259,13 @@ async function handleProxy(input: RouteInput, proxyPath: string): Promise<void> 
       return;
     }
     input.cache.set(cacheKey, value);
-    sendCacheValue(input, value);
+    sendCacheValue(input, value, proxyPath);
     logRequest(input, proxyPath, 200, "miss", startMs);
     return;
   }
   if (result.kind === "not_found") {
     input.cache.set(cacheKey, { status: 404 });
-    writeProxy404(input.response);
+    writeProxy404(input.response, input.config.negativeCacheControlValue);
     logRequest(input, proxyPath, 404, "miss", startMs);
     return;
   }
@@ -529,25 +543,43 @@ async function materializeIfRefIndex(
   };
 }
 
-function sendCacheValue(input: RouteInput, value: CacheValue): void {
+function sendCacheValue(
+  input: RouteInput,
+  value: CacheValue,
+  proxyPath: string,
+): void {
   if (value.status === 404) {
-    writeProxy404(input.response);
+    writeProxy404(input.response, input.config.negativeCacheControlValue);
     return;
   }
+  // Content-addressed leaves (sha IS the version) cache forever; mutable pointers
+  // (index/tokens) use the short max-age.
+  const cacheControl = isContentAddressed(proxyPath)
+    ? input.config.immutableCacheControlValue
+    : input.config.cacheControlValue;
   input.response.writeHead(200, {
     ...CORS_HEADERS,
     "content-type": value.contentType,
-    "cache-control": input.config.cacheControlValue,
+    "cache-control": cacheControl,
   });
   input.response.end(value.body);
 }
 
-function writeProxy404(response: ServerResponse): void {
-  // REAL 404 status — 익스텐션 registry client 가 5분 no_publisher negative
-  // cache 로 매핑. body 는 informational.
+/** Content-addressed leaves — the sha IS the version, so safe to cache forever. */
+function isContentAddressed(proxyPath: string): boolean {
+  return (
+    proxyPath.startsWith("/bundles/") || proxyPath.startsWith("/signatures/")
+  );
+}
+
+function writeProxy404(response: ServerResponse, cacheControl?: string): void {
+  // REAL 404 status — 익스텐션 registry client 가 negative cache 로 매핑. body 는
+  // informational. A short negative Cache-Control blunts repeated probe floods at
+  // the client/edge (the in-process cache already serves negatives for misses).
   response.writeHead(404, {
     ...CORS_HEADERS,
     "content-type": "application/json; charset=utf-8",
+    ...(cacheControl ? { "cache-control": cacheControl } : {}),
   });
   response.end(
     JSON.stringify({

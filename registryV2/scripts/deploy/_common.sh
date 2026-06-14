@@ -56,13 +56,17 @@ MEMORY="${MEMORY:-256Mi}"
 MIN_INSTANCES="${MIN_INSTANCES:-1}"
 MAX_INSTANCES="${MAX_INSTANCES:-3}"
 CONCURRENCY="${CONCURRENCY:-80}"
-TIMEOUT="${TIMEOUT:-300}"
+# Cloud Run request timeout. The proxy answers small JSON in <1s; a long ceiling
+# only helps slowloris pin the max-instances×concurrency fleet. 15s is generous.
+TIMEOUT="${TIMEOUT:-15}"
 # --set-env-vars REPLACES the whole env set on each deploy, so every var the
 # service needs must be listed here or prior out-of-band tuning silently drops.
 CACHE_TTL_MS="${CACHE_TTL_MS:-300000}"
 CACHE_NEGATIVE_TTL_MS="${CACHE_NEGATIVE_TTL_MS:-60000}"
 CACHE_MAX_ENTRIES="${CACHE_MAX_ENTRIES:-1024}"
-CACHE_CONTROL="${CACHE_CONTROL:-public, max-age=300, stale-while-revalidate=600}"
+# max-age only — the proxy cache does hard TTL expiry (no background revalidation),
+# so advertising stale-while-revalidate promised semantics it never implemented.
+CACHE_CONTROL="${CACHE_CONTROL:-public, max-age=300}"
 RATE_LIMIT_BURST="${RATE_LIMIT_BURST:-60}"
 RATE_LIMIT_REFILL_PER_SEC="${RATE_LIMIT_REFILL_PER_SEC:-10}"
 RATE_LIMIT_MAX_IPS="${RATE_LIMIT_MAX_IPS:-10000}"
