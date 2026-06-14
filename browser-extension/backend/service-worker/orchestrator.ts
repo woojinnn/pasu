@@ -142,6 +142,13 @@ interface LifecycleResult {
   declarativeV3?: DeclarativeV3AuditMeta;
 }
 
+interface ConfirmDetails {
+  kind: "untyped_signature";
+  title: string;
+  messagePreview: string;
+  messageTruncated: boolean;
+}
+
 /**
  * Per-actor mutex chain. The read-evaluate-reserve sequence is non-atomic
  * at the storage layer; we serialize lifecycles per `actor` (lowercased)
@@ -279,6 +286,7 @@ async function decideInner(
         message.requestId,
         message.data.hostname,
         verdict,
+        confirmDetailsForMessage(message),
       );
     } else {
       // Warn: open the modal and await the user's Trust-and-proceed / Cancel.
@@ -286,6 +294,7 @@ async function decideInner(
         message.requestId,
         message.data.hostname,
         verdict,
+        confirmDetailsForMessage(message),
         options.onAwaitingUser,
       );
       userDecision = ok ? "trusted" : "cancelled";
@@ -1624,11 +1633,50 @@ function unsupportedUntypedSignatureVerdict(): VerdictDto {
     matched: [
       {
         policy_id: "__engine::unsupported_untyped_signature",
-        reason: "Untyped signatures cannot be fully evaluated yet",
+        reason: "Plain-text signature: review the message before signing",
         severity: "warn",
         origin: "engine_error",
       },
     ],
+  };
+}
+
+const SIGNATURE_PREVIEW_MAX = 900;
+
+function decodeHexUtf8(input: string): string | null {
+  if (!/^0x(?:[0-9a-f]{2})+$/i.test(input)) return null;
+  const bytes = new Uint8Array((input.length - 2) / 2);
+  for (let i = 2, j = 0; i < input.length; i += 2, j += 1) {
+    bytes[j] = Number.parseInt(input.slice(i, i + 2), 16);
+  }
+  const decoded = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  if (!decoded || decoded.includes("\uFFFD")) return null;
+  return decoded;
+}
+
+function signatureMessagePreview(message: string): {
+  messagePreview: string;
+  messageTruncated: boolean;
+} {
+  const readable = (decodeHexUtf8(message) ?? message)
+    .replace(/\r\n/g, "\n")
+    .replace(/\u0000/g, "\\0");
+  const messageTruncated = readable.length > SIGNATURE_PREVIEW_MAX;
+  return {
+    messagePreview: messageTruncated
+      ? `${readable.slice(0, SIGNATURE_PREVIEW_MAX)}...`
+      : readable,
+    messageTruncated,
+  };
+}
+
+function confirmDetailsForMessage(message: Message): ConfirmDetails | null {
+  if (!isUntypedSignature(message)) return null;
+  const preview = signatureMessagePreview(message.data.message);
+  return {
+    kind: "untyped_signature",
+    title: "Plain-text signature",
+    ...preview,
   };
 }
 
@@ -1715,8 +1763,9 @@ async function openVerdictWindow(
   requestId: string,
   hostname: string,
   verdict: VerdictDto,
+  details: ConfirmDetails | null = null,
 ): Promise<void> {
-  const url = buildConfirmUrl(requestId, hostname, verdict);
+  const url = buildConfirmUrl(requestId, hostname, verdict, details);
   try {
     await Browser.windows.create({
       url,
@@ -1744,6 +1793,7 @@ async function openVerdictWindowAndAwait(
   requestId: string,
   hostname: string,
   verdict: VerdictDto,
+  details: ConfirmDetails | null = null,
   onAwaitingUser?: () => void,
 ): Promise<boolean> {
   const all =
@@ -1758,7 +1808,7 @@ async function openVerdictWindowAndAwait(
   all[requestId] = { verdict, status: "awaiting" };
   await Browser.storage.session.set({ [PENDING_DECISION_KEY]: all });
 
-  const url = buildConfirmUrl(requestId, hostname, verdict);
+  const url = buildConfirmUrl(requestId, hostname, verdict, details);
   let win: Browser.Windows.Window;
   try {
     win = await Browser.windows.create({
@@ -1837,12 +1887,14 @@ function buildConfirmUrl(
   requestId: string,
   hostname: string,
   verdict: VerdictDto,
+  details: ConfirmDetails | null = null,
 ): string {
   const params = new URLSearchParams({
     requestId,
     hostname,
     verdict: JSON.stringify(verdict),
   });
+  if (details) params.set("details", JSON.stringify(details));
   return Browser.runtime.getURL(`confirm.html?${params.toString()}`);
 }
 

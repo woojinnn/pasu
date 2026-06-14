@@ -23,17 +23,31 @@ interface VerdictDto {
   kind: "pass" | "warn" | "fail";
   matched?: MatchedPolicy[];
 }
+interface ConfirmDetails {
+  kind: "untyped_signature";
+  title?: string;
+  messagePreview?: string;
+  messageTruncated?: boolean;
+}
 
 const params = new URLSearchParams(window.location.search);
 const requestId = params.get("requestId") ?? "";
 const hostname = params.get("hostname") ?? "";
 const verdictRaw = params.get("verdict") ?? '{"kind":"fail"}';
+const detailsRaw = params.get("details") ?? "";
 
 let verdict: VerdictDto;
 try {
   verdict = JSON.parse(verdictRaw) as VerdictDto;
 } catch {
   verdict = { kind: "fail" };
+}
+
+let details: ConfirmDetails | null = null;
+try {
+  details = detailsRaw ? (JSON.parse(detailsRaw) as ConfirmDetails) : null;
+} catch {
+  details = null;
 }
 
 const PENDING_DECISION_KEY = "requests:pending-decisions";
@@ -123,6 +137,28 @@ const SEV_ICON: Record<string, string> = { deny: SVG.x, warn: SVG.warn, info: SV
 // severity(데이터) → 행 비주얼 클래스
 const SEV_CLASS: Record<string, string> = { deny: "fail", warn: "warn", info: "info" };
 
+function renderDetails(details: ConfirmDetails | null): HTMLElement | null {
+  if (!details || details.kind !== "untyped_signature") return null;
+  const messagePreview = details.messagePreview ?? "";
+  if (!messagePreview) return null;
+
+  const children: HTMLElement[] = [
+    el("div", {
+      class: "sig-title",
+      text: details.title || "Plain-text signature",
+    }),
+    el("pre", { class: "sig-message", text: messagePreview }),
+  ];
+
+  if (details.messageTruncated) {
+    children.push(
+      el("div", { class: "sig-note", text: "Message preview truncated." }),
+    );
+  }
+
+  return el("section", { class: "sig-preview" }, children);
+}
+
 function render(): void {
   const root = document.getElementById("root");
   if (!root) return;
@@ -168,17 +204,23 @@ function render(): void {
 
   // ── body: origin + matched ──
   const body = el("div", { class: "body" });
+  const requestLabel =
+    details?.kind === "untyped_signature"
+      ? "Plain-text signature requested"
+      : "Signature requested";
   if (hostname) {
     body.appendChild(
       el("div", { class: "origin" }, [
         svgSpan("fav", SVG.globe),
         el("div", { class: "otx" }, [
           el("div", { class: "oh", text: hostname }),
-          el("div", { class: "os", text: "Signature requested" }),
+          el("div", { class: "os", text: requestLabel }),
         ]),
       ]),
     );
   }
+  const detailsCard = renderDetails(details);
+  if (detailsCard) body.appendChild(detailsCard);
 
   const matched = verdict.matched ?? [];
   if (matched.length === 0) {

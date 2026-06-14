@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { RequestType, type Message, type VenueOrderPayload } from "@lib/types";
+import {
+  RequestType,
+  isUntypedSignature,
+  type Message,
+  type VenueOrderPayload,
+} from "@lib/types";
 
 const OWNER = "0x1111111111111111111111111111111111111111";
 const ROUTER = "0x2222222222222222222222222222222222222222";
@@ -1002,6 +1007,29 @@ describe("orchestrator", () => {
     const result = await decideAndApprove(untypedMessage("sig-skip"), true);
     expect(result.ok).toBe(true);
     expect(mocks.tryDeclarativeRouteV3).not.toHaveBeenCalled();
+  });
+
+  it("passes a readable untyped signature preview to the confirmation window", async () => {
+    const message = untypedMessage("sig-preview");
+    if (!isUntypedSignature(message))
+      throw new Error("expected untyped signature");
+    message.data.message = "EigenLayer Terms of Service\nI agree to the terms.";
+
+    const result = await decideAndApprove(message, true);
+
+    expect(result.ok).toBe(true);
+    const lastCreateCall = mocks.browser.windows.create.mock.calls.at(-1) as
+      | [{ url: string }]
+      | undefined;
+    expect(lastCreateCall).toBeDefined();
+    const url = new URL(lastCreateCall![0].url);
+    const detailsRaw = url.searchParams.get("details");
+    expect(detailsRaw).toBeTruthy();
+    expect(JSON.parse(detailsRaw!)).toMatchObject({
+      kind: "untyped_signature",
+      title: "Plain-text signature",
+      messagePreview: "EigenLayer Terms of Service\nI agree to the terms.",
+    });
   });
 
   it("lets the user explicitly approve unsupported untyped signatures", async () => {
