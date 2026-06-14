@@ -165,6 +165,41 @@ pub struct ListingDetail {
     pub recent_reviews: Vec<Review>,
 }
 
+/// `GET /market/activity-summary` query — `days` is the look-back window (how
+/// far back install events count toward "recent"), `limit` caps the rows.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ActivitySummaryQuery {
+    /// Look-back window in days. Defaults to 7 ("최근 7일").
+    #[serde(default)]
+    pub days: Option<i64>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+/// One listing's recent-install rollup. The dashboard buckets these by its own
+/// `categoryOf(slug)` taxonomy to drive the "최근 인기" recommendation hero.
+/// This is real install demand (install events in the window), never mocked.
+#[derive(Clone, Debug, Serialize)]
+pub struct InstallActivityEntry {
+    pub slug: String,
+    pub kind: ListingKind,
+    pub display_name: I18nText,
+    /// Server action-based category (may differ from the dashboard taxonomy).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    /// Install events for this listing within the look-back window.
+    pub recent_installs: i64,
+}
+
+/// `GET /market/activity-summary` response. `since` echoes the unix-seconds
+/// cutoff actually used so the client can label the window precisely.
+#[derive(Clone, Debug, Serialize)]
+pub struct ActivitySummary {
+    pub days: i64,
+    pub since: i64,
+    pub entries: Vec<InstallActivityEntry>,
+}
+
 /// `POST /market/listings` body — publish a new listing along with its
 /// initial v1.0.0 version in one call. Tail fields are gated by `kind`.
 #[derive(Clone, Debug, Deserialize)]

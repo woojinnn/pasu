@@ -197,6 +197,12 @@ pub fn build_router_with_config(state: AppState, config: &ServerConfig) -> Route
             "/market/listings",
             get(market_handlers::list_listings).post(market_handlers::create_listing),
         )
+        // Static path — registered before `/market/listings/:slug` so the
+        // slug capture never swallows it (and it reads no per-listing slug).
+        .route(
+            "/market/activity-summary",
+            get(market_handlers::activity_summary),
+        )
         .route("/market/listings/:slug", get(market_handlers::get_listing))
         .route(
             "/market/listings/id/:id",

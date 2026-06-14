@@ -153,6 +153,7 @@ export {
 export {
   listListings,
   getListing,
+  getActivitySummary,
   getListingVersion,
   createListing,
   deleteListing,
@@ -175,6 +176,8 @@ export {
   type ListingSummary,
   type ListingVersion,
   type ListingDetail,
+  type InstallActivityEntry,
+  type ActivitySummary,
   type Review,
   type ListListingsParams,
   type CreatePolicyListingBody,

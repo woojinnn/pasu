@@ -9,6 +9,7 @@
  */
 
 import { request } from "./client";
+import { seedDetail, seedListings } from "./market-seed-beginner";
 
 export type ListingKind = "policy" | "set";
 export type PublisherTier = "official" | "verified" | "community";
@@ -193,12 +194,103 @@ export async function listListings(
   if (params.offset != null) search.set("offset", String(params.offset));
   const qs = search.toString();
   const path = qs ? `/market/listings?${qs}` : "/market/listings";
-  return request<ListingSummary[]>(path);
+  const rows = await request<ListingSummary[]>(path);
+  return mergeSeedListings(rows, params); // ⚠️ 임시 시드 폴백 — market-seed-beginner.ts
+}
+
+/** One listing's recent-install rollup from `GET /market/activity-summary`.
+ * Real install demand within the look-back window — never mocked. The landing
+ * hero buckets these by `categoryOf(slug)` to surface "최근 인기" categories. */
+export interface InstallActivityEntry {
+  slug: string;
+  kind: ListingKind;
+  display_name: I18nText;
+  /** Server action-based category (differs from the dashboard taxonomy). */
+  category?: string;
+  recent_installs: number;
+}
+
+export interface ActivitySummary {
+  days: number;
+  /** Unix-seconds cutoff actually used (now − days·86400). */
+  since: number;
+  entries: InstallActivityEntry[];
+}
+
+/** `GET /market/activity-summary` — per-listing install counts in the last
+ * `days` (default 7), most-installed first. Powers the "최근 인기" hero with
+ * real demand data. Returns an empty `entries` list when nothing was installed
+ * in the window (the caller then falls back to coverage-based suggestions). */
+export async function getActivitySummary(
+  params: { days?: number; limit?: number } = {},
+): Promise<ActivitySummary> {
+  const search = new URLSearchParams();
+  if (params.days != null) search.set("days", String(params.days));
+  if (params.limit != null) search.set("limit", String(params.limit));
+  const qs = search.toString();
+  const path = qs ? `/market/activity-summary?${qs}` : "/market/activity-summary";
+  try {
+    return await request<ActivitySummary>(path);
+  } catch {
+    // Server unreachable / endpoint absent → no activity signal. The hero
+    // falls back to coverage ("미설치 N개"), which is honest with no data.
+    const days = params.days ?? 7;
+    return { days, since: 0, entries: [] };
+  }
 }
 
 /** `GET /market/listings/:slug` — listing detail + latest version + recent reviews. */
 export async function getListing(slug: string): Promise<ListingDetail> {
-  return request<ListingDetail>(`/market/listings/${encodeURIComponent(slug)}`);
+  try {
+    return await request<ListingDetail>(`/market/listings/${encodeURIComponent(slug)}`);
+  } catch (e) {
+    // ⚠️ 임시 시드 폴백 — 서버에 없는 slug 면 데모 시드로 본다.
+    const seeded = getSeedDetail(slug);
+    if (seeded) return seeded;
+    throw e;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ⚠️ 임시 시드 폴백 (PASU Beginner Pack V1) — 실제 데이터 올라오면 제거.
+//    market-seed-beginner.ts 와 이 두 헬퍼, 그리고 listListings/getListing
+//    의 호출 지점만 지우면 원복된다.
+// ════════════════════════════════════════════════════════════════════
+
+/** 서버 결과가 시드 slug 를 아직 포함하지 않을 때만 시드를 끼워 넣고,
+ *  요청 파라미터(kind/category/q/sort/limit)로 시드도 동일하게 거른다. */
+function mergeSeedListings(
+  rows: ListingSummary[],
+  params: ListListingsParams,
+): ListingSummary[] {
+  const have = new Set(rows.map((r) => r.slug));
+  let seed = seedListings().filter((s) => !have.has(s.slug));
+  if (seed.length === 0) return rows;
+
+  if (params.kind) seed = seed.filter((s) => s.kind === params.kind);
+  if (params.category) seed = seed.filter((s) => s.category === params.category);
+  if (params.publisher_tier) seed = seed.filter((s) => s.publisher_tier === params.publisher_tier);
+  if (params.q) {
+    const q = params.q.toLowerCase();
+    seed = seed.filter(
+      (s) =>
+        s.slug.includes(q) ||
+        (s.display_name.ko ?? "").toLowerCase().includes(q) ||
+        s.display_name.en.toLowerCase().includes(q),
+    );
+  }
+
+  let merged = [...rows, ...seed];
+  if (params.sort === "new") merged = merged.sort((a, b) => b.created_at - a.created_at);
+  else if (params.sort === "rating") merged = merged.sort((a, b) => (b.rating_avg ?? 0) - (a.rating_avg ?? 0));
+  else merged = merged.sort((a, b) => b.install_count - a.install_count); // popular(기본)
+  if (params.limit != null) merged = merged.slice(0, params.limit);
+  return merged;
+}
+
+/** 시드 slug 의 상세를 돌려준다(없으면 null). getListing 의 404 폴백. */
+function getSeedDetail(slug: string): ListingDetail | null {
+  return seedDetail(slug);
 }
 
 /** `GET /market/listings/id/:id/versions/:ver` — fetch a specific version body. */

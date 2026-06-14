@@ -22,7 +22,8 @@ use policy_db::market::{
     create_review_report as db_create_review_report, create_version as db_create_version,
     delete_listing as db_delete_listing, get_latest_version as db_get_latest_version,
     get_listing_by_id as db_get_listing_by_id, get_listing_by_slug as db_get_listing_by_slug,
-    get_version as db_get_version, list_listings as db_list_listings,
+    get_version as db_get_version, install_activity_since as db_install_activity_since,
+    list_listings as db_list_listings,
     list_reports as db_list_reports, list_reports_by_reporter as db_list_reports_by_reporter,
     list_reviews as db_list_reviews, list_watches as db_list_watches,
     record_install as db_record_install, unwatch as db_unwatch,
@@ -35,10 +36,11 @@ use policy_db::market::{
 use crate::app::AppState;
 use crate::auth::AuthUser;
 use crate::market_dto::{
-    CreateInstallReq, CreateListingReq, CreateReportReq, CreateReviewReq, CreateVersionReq,
-    I18nText, ListListingsQuery, ListingDetail, ListingKind, ListingSort, ListingStatus,
-    ListingSummary, ListingVersion, MarketReport, PublisherTier, ReportReason, ReportStatus,
-    Review, SetMember, Severity, UpdateReportStatusReq,
+    ActivitySummary, ActivitySummaryQuery, CreateInstallReq, CreateListingReq, CreateReportReq,
+    CreateReviewReq, CreateVersionReq, I18nText, InstallActivityEntry, ListListingsQuery,
+    ListingDetail, ListingKind, ListingSort, ListingStatus, ListingSummary, ListingVersion,
+    MarketReport, PublisherTier, ReportReason, ReportStatus, Review, SetMember, Severity,
+    UpdateReportStatusReq,
 };
 
 // ---------------------------------------------------------------------------
@@ -72,6 +74,49 @@ pub async fn list_listings(
         Ok(rows) => {
             let summaries: Vec<ListingSummary> = rows.iter().map(listing_row_to_summary).collect();
             Json(summaries).into_response()
+        }
+        Err(e) => server_error(&e.to_string()),
+    }
+}
+
+/// `GET /market/activity-summary` — per-listing install counts within a
+/// look-back window (default 7 days), most-installed first.
+///
+/// Powers the landing "최근 인기" recommendation hero. The counts are real
+/// install events from `market_installs` (no personalization, no mock data);
+/// the dashboard buckets the returned slugs by its own category taxonomy.
+pub async fn activity_summary(
+    State(state): State<AppState>,
+    Extension(_user): Extension<AuthUser>,
+    Query(q): Query<ActivitySummaryQuery>,
+) -> Response {
+    let pool = state.global_db.pool();
+    let days = q.days.unwrap_or(7).clamp(1, 90);
+    let limit = q.limit.unwrap_or(50);
+    let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_secs() as i64,
+        Err(e) => return server_error(&e.to_string()),
+    };
+    let since = now - days * 86_400;
+
+    match db_install_activity_since(pool, since, limit).await {
+        Ok(rows) => {
+            let entries: Vec<InstallActivityEntry> = rows
+                .iter()
+                .map(|r| InstallActivityEntry {
+                    slug: r.slug.clone(),
+                    kind: parse_kind(&r.kind),
+                    display_name: json_to_i18n(&r.display_name),
+                    category: r.category.clone(),
+                    recent_installs: r.recent_installs,
+                })
+                .collect();
+            Json(ActivitySummary {
+                days,
+                since,
+                entries,
+            })
+            .into_response()
         }
         Err(e) => server_error(&e.to_string()),
     }

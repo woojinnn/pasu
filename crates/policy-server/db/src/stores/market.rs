@@ -514,6 +514,60 @@ pub async fn record_install(
     Ok(id)
 }
 
+/// One row of the install-activity rollup: a published listing plus how many
+/// install events it received since `since` (a unix-seconds cutoff).
+///
+/// Note this counts install *events*, not distinct users — same semantics as
+/// the `install_count` LATERAL join above, so "popular this week" reflects
+/// demand. `slug` lets the dashboard bucket rows by its own category taxonomy
+/// (`categoryOf(slug)`), which is finer-grained than the server's action-based
+/// `category` column.
+#[derive(Clone, Debug)]
+pub struct InstallActivityRow {
+    pub slug: String,
+    pub kind: String,
+    pub display_name: Value,
+    pub category: Option<String>,
+    pub recent_installs: i64,
+}
+
+/// Aggregate install events newer than `since` (unix seconds) per published
+/// listing, most-installed first. Listings with zero recent installs are
+/// omitted (INNER JOIN), so the result is exactly "what got installed lately".
+pub async fn install_activity_since(
+    pool: &PgPool,
+    since: i64,
+    limit: i64,
+) -> DbResult<Vec<InstallActivityRow>> {
+    let limit = limit.clamp(1, LIST_LIMIT_MAX);
+    let rows = query(
+        "SELECT l.slug, l.kind, l.display_name, l.category,
+                COUNT(i.id) AS recent_installs
+         FROM market_listings l
+         JOIN market_installs i ON i.listing_id = l.id
+         WHERE l.status = 'published' AND i.installed_at >= $1
+         GROUP BY l.slug, l.kind, l.display_name, l.category
+         ORDER BY recent_installs DESC, l.slug ASC
+         LIMIT $2",
+    )
+    .bind(since)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| DbError::Invariant(e.to_string()))?;
+
+    Ok(rows
+        .iter()
+        .map(|r| InstallActivityRow {
+            slug: r.get("slug"),
+            kind: r.get("kind"),
+            display_name: r.get("display_name"),
+            category: r.get("category"),
+            recent_installs: r.get("recent_installs"),
+        })
+        .collect())
+}
+
 pub async fn list_reviews(pool: &PgPool, listing_id: Uuid, limit: i64) -> DbResult<Vec<ReviewRow>> {
     let limit = limit.clamp(1, 200);
     let rows = query(
