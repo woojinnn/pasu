@@ -108,6 +108,22 @@ describe("parseProxyTarget", () => {
     });
   });
 
+  it("maps a signature sidecar path to the GCS object name", () => {
+    const sha = "0x" + "a".repeat(64);
+    expect(parseProxyTarget(`/signatures/${sha}.sig`)).toEqual({
+      ok: true,
+      objectName: `signatures/${sha}.sig`,
+    });
+  });
+
+  it("rejects malformed / traversal signature paths", () => {
+    expect(parseProxyTarget("/signatures/not-a-sha.sig").ok).toBe(false);
+    expect(parseProxyTarget(`/signatures/0x${"a".repeat(64)}.json`).ok).toBe(false); // wrong suffix
+    expect(parseProxyTarget(`/signatures/0x${"A".repeat(64)}.sig`).ok).toBe(false); // uppercase
+    expect(parseProxyTarget("/signatures/../bundles/x.sig").ok).toBe(false);
+    expect(parseProxyTarget("/signatures/0x%2e%2e.sig").ok).toBe(false);
+  });
+
   it("rejects malformed generated bundle and context refs", () => {
     expect(parseProxyTarget("/bundles/not-a-sha.json").ok).toBe(false);
     expect(

@@ -28,6 +28,9 @@ const SELECTOR_KEY_RE = new RegExp(`^${CHAIN_ID}__${SELECTOR_LC}$`);
 const CHAIN_RE = new RegExp(`^${CHAIN_ID}$`);
 const ADDRESS_RE = new RegExp(`^${ADDRESS_LC}$`);
 const BUNDLE_FILE_RE = new RegExp(`^${SHA256_LC}\\.json$`);
+// Detached bundle signature sidecar = <bundle_sha256>.sig (content-addressed,
+// 0x + 64 lowercase hex). Tightly bounded → path-traversal-safe.
+const SIG_FILE_RE = new RegExp(`^${SHA256_LC}\\.sig$`);
 
 // typed-data key = <chainId>__<verifyingContract.lower>__<primaryType>.
 // primaryType 는 EIP-712 콜론(:)이 "__" 로 escape 된 형태라 자체적으로 "__" 를
@@ -53,6 +56,9 @@ export function isValidChainSegment(s: string): boolean {
 export function isValidAddressSegment(s: string): boolean {
   return ADDRESS_RE.test(s);
 }
+export function isValidSignatureFile(s: string): boolean {
+  return SIG_FILE_RE.test(s);
+}
 
 export interface ProxyTargetOk {
   ok: true;
@@ -68,6 +74,7 @@ const INDEX_TYPED_DATA_PREFIX = "/index/by-typed-data/";
 const INDEX_BY_SELECTOR_PREFIX = "/index/by-selector/";
 const TOKENS_PREFIX = "/tokens/";
 const BUNDLES_PREFIX = "/bundles/";
+const SIGNATURES_PREFIX = "/signatures/";
 const CONTEXTS_PREFIX = "/contexts/";
 const JSON_SUFFIX = ".json";
 
@@ -134,6 +141,16 @@ export function parseProxyTarget(pathname: string): ProxyTarget {
     const file = pathname.slice(BUNDLES_PREFIX.length);
     return BUNDLE_FILE_RE.test(file)
       ? { ok: true, objectName: `bundles/${file}` }
+      : { ok: false };
+  }
+
+  // Detached bundle signatures — <bundle_sha256>.sig, served verbatim. The
+  // extension fetches one per unique bundle (keyed by its recomputed hash) and
+  // verifies it against the pinned key before installing the decoder.
+  if (pathname.startsWith(SIGNATURES_PREFIX)) {
+    const file = pathname.slice(SIGNATURES_PREFIX.length);
+    return SIG_FILE_RE.test(file)
+      ? { ok: true, objectName: `signatures/${file}` }
       : { ok: false };
   }
 

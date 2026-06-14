@@ -340,4 +340,29 @@ describe("registry-api HTTP server", () => {
     expect(res.status).toBe(404);
     expect(reader.reads).toHaveLength(0);
   });
+
+  it("serves a signature sidecar verbatim (200, content-addressed)", async () => {
+    const sha = "0x" + "b".repeat(64);
+    const sigBody =
+      '{"alg":"ECDSA_P256_SHA256","key_id":"local-x","sig_b64":"AAAA"}';
+    const url = await start(fakeReader({ [`signatures/${sha}.sig`]: sigBody }));
+    const res = await fetch(`${url}/signatures/${sha}.sig`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect(await res.text()).toBe(sigBody);
+  });
+
+  it("passes a missing signature through as a real HTTP 404", async () => {
+    const url = await start(fakeReader({}));
+    const sha = "0x" + "c".repeat(64);
+    expect((await fetch(`${url}/signatures/${sha}.sig`)).status).toBe(404);
+  });
+
+  it("rejects a malformed signature path with 404 and no GCS read", async () => {
+    const reader = fakeReader({});
+    const url = await start(reader);
+    const res = await fetch(`${url}/signatures/not-a-sha.sig`);
+    expect(res.status).toBe(404);
+    expect(reader.reads).toHaveLength(0);
+  });
 });

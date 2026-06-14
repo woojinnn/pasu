@@ -22,13 +22,29 @@
 set -euo pipefail
 
 # --- Identity / resources -----------------------------------------------------
-PROJECT_ID="${PROJECT_ID:-dambi-registry-poc-g}"
+PROJECT_ID="${PROJECT_ID:-dambi-registry}"
 REGION="${REGION:-asia-northeast3}"
 BUCKET="${BUCKET:-dambi-registry-v3-seoul}"
 SA_NAME="${SA_NAME:-registry-api-v3-sa}"
 SA_EMAIL="${SA_EMAIL:-${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com}"
 SERVICE_NAME="${SERVICE_NAME:-registry-api-v3}"
 AR_REPO="${AR_REPO:-${REGION}-docker.pkg.dev/${PROJECT_ID}/dambi/registry-api}"
+
+# --- Bundle signing (Cloud KMS, asymmetric EC_SIGN_P256_SHA256) ---------------
+# The detached signatures/<sha>.sig published with the index are produced by
+# signing each bundle_sha256 digest with this KMS key. The private key never
+# leaves the HSM; CI signs via Workload Identity (roles/cloudkms.signerVerifier).
+# The matching PUBLIC key (SPKI) is pinned in the extension build (.env
+# PINNED_BUNDLE_PUBLIC_KEY) — get it with `kms keys versions get-public-key`.
+KMS_KEYRING="${KMS_KEYRING:-registry-signing}"
+KMS_KEY="${KMS_KEY:-bundle-sign-p256}"
+KMS_LOCATION="${KMS_LOCATION:-${REGION}}"
+KMS_KEY_VERSION="${KMS_KEY_VERSION:-1}"
+# Full key-VERSION resource name consumed by scripts/sign-bundles.ts (kms mode).
+KMS_KEY_NAME="${KMS_KEY_NAME:-projects/${PROJECT_ID}/locations/${KMS_LOCATION}/keyRings/${KMS_KEYRING}/cryptoKeys/${KMS_KEY}/cryptoKeyVersions/${KMS_KEY_VERSION}}"
+# The CI/deploy SA that signs (Workload Identity). Distinct from the read-only
+# proxy SA above. Leave empty to skip the IAM grant in provision-infra.sh.
+SIGNER_SA_EMAIL="${SIGNER_SA_EMAIL:-}"
 
 # --- Cloud Run runtime shape (env-overridable) --------------------------------
 # max-instances = denial-of-wallet cost ceiling (threat model A5) — always pin.
@@ -64,8 +80,9 @@ REPO_ROOT="$(cd "${RV2_DIR}/.." && pwd)"                        # repo root
 
 # Activate the gcloud config (GCLOUD_CONFIG, default `dambi`) + project, then
 # assert the active account matches EXPECTED_ACCOUNT (misfire guard). Fatal on
-# mismatch. Override GCLOUD_CONFIG when the local config name differs (e.g. the
-# live infra still uses `dambi`).
+# mismatch. Config map: PROD = config `dambi` / project `dambi-registry`;
+# the legacy PoC = config `scopeball` / project `scopeball-registry-poc-g`
+# (override GCLOUD_CONFIG=scopeball PROJECT_ID=scopeball-registry-poc-g to target it).
 rv3_activate_and_guard() {
   echo "=== gcloud config 활성 + 계정 가드 ==="
   gcloud config configurations activate "${GCLOUD_CONFIG:-dambi}" >/dev/null

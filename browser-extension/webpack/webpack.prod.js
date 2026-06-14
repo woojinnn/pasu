@@ -27,6 +27,21 @@ if (process.env.DAMBI_ALLOW_INSECURE_REGISTRY !== "1") {
   }
 }
 
+// Bundle-signature pinned-key guard. If this build ENFORCES signatures, a
+// pinned public key MUST be present — otherwise every bundle install would
+// fail-closed (warn) and the extension would decode nothing. Fail the build.
+if (
+  process.env.DAMBI_REQUIRE_BUNDLE_SIGNATURE === "true" &&
+  !(process.env.PINNED_BUNDLE_PUBLIC_KEY ?? "").trim()
+) {
+  throw new Error(
+    "[webpack.prod] DAMBI_REQUIRE_BUNDLE_SIGNATURE=true but PINNED_BUNDLE_PUBLIC_KEY " +
+      "is empty. Set the SPKI(base64) pinned signing key in browser-extension/.env " +
+      "(from `gcloud kms keys versions get-public-key` or `npm run gen-signing-key`), " +
+      "or unset the require flag for an unsigned-registry build.",
+  );
+}
+
 const prodOverrides = {
   mode: "production",
   devtool: false,

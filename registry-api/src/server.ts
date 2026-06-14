@@ -154,6 +154,7 @@ async function routeRequest(input: RouteInput): Promise<void> {
       proxyPath.startsWith("/index/by-selector/") ||
       proxyPath.startsWith("/tokens/") ||
       proxyPath.startsWith("/bundles/") ||
+      proxyPath.startsWith("/signatures/") ||
       proxyPath.startsWith("/contexts/"))
   ) {
     await handleProxy(input, proxyPath);
@@ -285,7 +286,7 @@ interface RefRegistryEntry {
   context_ref?: string;
 }
 
-interface SourceContextDocument {
+export interface SourceContextDocument {
   schema_version: "3-source-context";
   chain_id: number;
   address: string;
@@ -296,7 +297,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function isRefRegistryEntry(v: unknown): v is RefRegistryEntry {
+export function isRefRegistryEntry(v: unknown): v is RefRegistryEntry {
   if (!isRecord(v)) return false;
   return (
     v.matched === true &&
@@ -426,7 +427,7 @@ function appendIdSuffix(id: string, suffix: string): string {
   return `${id.slice(0, at)}/${clean}${id.slice(at)}`;
 }
 
-function materializeSourceBundle(
+export function materializeSourceBundle(
   template: unknown,
   contextDoc: SourceContextDocument,
 ): Record<string, unknown> {

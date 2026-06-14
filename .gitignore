@@ -69,6 +69,14 @@ browser-extension/public/wasm/
 /registryV2/index/
 /registryV2/bundles/
 /registryV2/contexts/
+# Detached bundle signatures — output of `registryV2/scripts/sign-bundles.ts`.
+# Generated + published to GCS like the index; never committed.
+/registryV2/signatures/
+
+# Bundle-signing LOCAL dev keys (BUNDLE_SIGNING_MODE=local). The private key
+# must NEVER be committed — production keys live in Cloud KMS. Only the dev
+# PUBLIC key (SPKI base64) is pinned, via the extension's .env.
+/registryV2/scripts/deploy/keys/
 
 # Local scratch copies of policy-server k8s manifests. The tracked local
 # self-service path is crates/policy-server/server/deploy/local/.
@@ -82,6 +90,9 @@ browser-extension/public/wasm/
 # Policy-catalog shared aggregator-method impl-spec library — tracked so the RPC
 # server implementer (and auditors) get each method's spec alongside the policies.
 !**/policy_catalog_v2/_methods/*.md
+# Registry trust-chain operator runbook — must travel with the repo (sole doc of
+# the signing contract, cutover order, rotation, and PoC decommission).
+!registryV2/docs/REGISTRY_ARCHITECTURE.md
 # Local Codex session memory; keep repo-specific copies out of git.
 AGENTS.md
 # The rest of /docs/ stays ignored (scratch research/audit notes).

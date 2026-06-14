@@ -22,6 +22,20 @@ function resolveServerUrl(env = process.env) {
   return env.DAMBI_SERVER_URL || DEFAULT_SERVER_URL;
 }
 
+// Channel-specific PINNED registry-bundle signing public key (SPKI base64). The
+// SW verifies each bundle's detached ECDSA P-256 signature against this before
+// installing the decoder. Empty when signing is not yet pinned on this channel.
+function resolvePinnedBundleKey(env = process.env) {
+  return env.PINNED_BUNDLE_PUBLIC_KEY || "";
+}
+
+// Whether bundle signatures are ENFORCED on this build channel. Baked verbatim
+// as the string "true"/"false"; the verifier reads `=== "true"`. Off by default
+// so an unsigned dev/staging registry keeps working (staged rollout).
+function resolveRequireBundleSig(env = process.env) {
+  return env.DAMBI_REQUIRE_BUNDLE_SIGNATURE === "true" ? "true" : "false";
+}
+
 module.exports = {
   DEFAULT_SERVER_URL,
   buildMode,
@@ -29,4 +43,6 @@ module.exports = {
   envPathForMode,
   loadBuildEnv,
   resolveServerUrl,
+  resolvePinnedBundleKey,
+  resolveRequireBundleSig,
 };

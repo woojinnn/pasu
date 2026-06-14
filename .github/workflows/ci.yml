@@ -41,7 +41,19 @@ jobs:
         working-directory: registryV2
         run: |
           npm ci
-          npm run build -- --summary-only --representative-source-refs
+          # --strict-callkeys: a (chain,to,selector) collision must FAIL CI, not
+          # resolve last-wins (which could silently route a call to the wrong
+          # adapter and skip a dangerous action's policy).
+          npm run build -- --summary-only --representative-source-refs --strict-callkeys
+
+      # Surface-completeness + token-graph gates: a missed/dropped state-changing
+      # selector or a dangling token reference is a pre-sign decode gap, so these
+      # designed-machine-checked invariants run in CI rather than trust-only.
+      - name: Registry gates (surface + tokens)
+        working-directory: registryV2
+        run: |
+          npm run check:surface
+          npm run check:tokens
 
       - name: Format
         run: cargo fmt --all -- --check
@@ -212,3 +224,38 @@ jobs:
 
       - name: Scan git history for secrets
         run: gitleaks detect --source . --config .gitleaks.toml --log-opts="--all" --redact --no-banner
+
+  # Registry-api proxy + bundle-signature parity gate. Builds the index so the
+  # parity test has a corpus, then runs the proxy path-allowlist / serving tests
+  # (incl. the new signatures/ branch) and the Phase-0 parity invariant (every
+  # served bundle — concrete + materialized — hashes to its bundle_sha256, which
+  # is what the extension verifies the detached signature against).
+  registry-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build registry index (parity-gate corpus)
+        working-directory: registryV2
+        run: |
+          npm install --no-audit --no-fund
+          npx tsx scripts/build-index.ts --strict-callkeys
+
+      - name: registry-api tests (validation + serving + parity gate)
+        working-directory: registry-api
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+
+      - name: registry-api typecheck
+        working-directory: registry-api
+        run: npm run typecheck
+
+      - name: registryV2 sign-bundles test
+        run: |
+          cd registry-api
+          npx vitest run --root ../registryV2 scripts/__tests__/sign-bundles.test.ts

@@ -34,6 +34,10 @@ import {
   type DeclarativeV3CacheEntry,
 } from "./declarative-v3-cache";
 import { fetchStarted, fetchEnded } from "../diagnostics";
+import {
+  readBundleSigDefines,
+  verifyBundleSignature,
+} from "./bundle-verify";
 
 /**
  * Cached v3 install results keyed by canonical callkey. The process-local map
@@ -67,7 +71,11 @@ export type InstallV3Stage =
   | "fetch_status"
   | "fetch_json"
   | "parse"
+  | "verify"
   | "install";
+
+/** Build-time bundle-signature policy (pinned key + require flag), read once. */
+const bundleSigDefines = readBundleSigDefines();
 
 export class InstallDeclarativeV3Error extends Error {
   constructor(
@@ -316,6 +324,13 @@ export async function installDeclarativeBundleV3(
   // process-local cache is empty, but a prior lifetime may have persisted the
   // bundle. On hit, reinstall into WASM and rebuild the in-memory cache without
   // a registry round-trip.
+  //
+  // Signature trust: the verify gate runs BEFORE install (and install precedes
+  // persistence), so only signature-verified bundles are ever persisted here.
+  // Rehydrate therefore reinstalls a previously-verified bundle without a fresh
+  // sig fetch. Defeating this requires DIRECT chrome.storage tampering — a
+  // strictly stronger local attacker than the registry-MITM this guards — which
+  // is out of scope for v1 (documented in REGISTRY_ARCHITECTURE.md).
   try {
     const storageEntry = await declarativeV3Cache.get(cacheKey);
     if (storageEntry) {
@@ -409,6 +424,24 @@ export async function installDeclarativeBundleV3(
     // to hydrate via the v3 path. Treat as a miss; the orchestrator owns the
     // resulting fail-closed verdict/audit behavior.
     return null;
+  }
+
+  // Supply-chain gate — verify the bundle's detached signature BEFORE install.
+  // Hash the RAW response bundle (not parseBundleV3 output). tx flow is
+  // warn-closed, so a throw here degrades to the same fail-closed warn as a miss.
+  const verifyResult = await verifyBundleSignature({
+    bundle: parsedResponse.bundle,
+    claimedSha256: parsedResponse.bundle_sha256,
+    baseUrl,
+    fetchImpl: doFetch,
+    ...bundleSigDefines,
+  });
+  if (!verifyResult.ok) {
+    throw new InstallDeclarativeV3Error(
+      "verify",
+      url,
+      new Error(`bundle signature: ${verifyResult.reason}`),
+    );
   }
 
   const bundleJson = JSON.stringify(parsedResponse.bundle);
@@ -590,6 +623,24 @@ export async function installDeclarativeBundleV3ByTypedData(
     return { ok: false, reason: "not_v3_bundle" };
   }
 
+  // Supply-chain gate — verify before install. typed-data NEVER throws (the
+  // sig-router maps a miss to a transparent null fall-through), so a verify
+  // failure returns { ok:false } like every other fault here.
+  const verifyResult = await verifyBundleSignature({
+    bundle: parsedResponse.bundle,
+    claimedSha256: parsedResponse.bundle_sha256,
+    baseUrl,
+    fetchImpl: doFetch,
+    ...bundleSigDefines,
+  });
+  if (!verifyResult.ok) {
+    console.warn("[Dambi] installDeclarativeBundleV3ByTypedData verify failed", {
+      typedDataKey: cacheKey,
+      reason: verifyResult.reason,
+    });
+    return { ok: false, reason: "verify_failed" };
+  }
+
   const bundleJson = JSON.stringify(parsedResponse.bundle);
   let installed: DeclarativeInstallResult;
   try {
@@ -704,6 +755,23 @@ export async function installDeclarativeBundleV3BySelector(args: {
     throw err;
   }
   if (parsedBundle === null) return null;
+
+  // Supply-chain gate — verify before install. by-selector NEVER throws; a
+  // verify failure returns null like every other miss/fault (warn-closed).
+  const verifyResult = await verifyBundleSignature({
+    bundle: parsedResponse.bundle,
+    claimedSha256: parsedResponse.bundle_sha256,
+    baseUrl,
+    fetchImpl: doFetch,
+    ...bundleSigDefines,
+  });
+  if (!verifyResult.ok) {
+    console.warn("[Dambi] installDeclarativeBundleV3BySelector verify failed", {
+      selectorKey: cacheKey,
+      reason: verifyResult.reason,
+    });
+    return null;
+  }
 
   const bundleJson = JSON.stringify(parsedResponse.bundle);
   let installed: DeclarativeInstallResult;

@@ -12,6 +12,11 @@ const mocks = vi.hoisted(() => {
   const localStore = new Map<string, unknown>();
   return {
     declarativeInstallV3: vi.fn(),
+    // Default: signature gate is a no-op pass, so every existing test exercises
+    // the unsigned path unchanged. Fail-shape tests override per-call.
+    verifyBundleSignature: vi.fn(
+      async (): Promise<{ ok: boolean; reason?: string }> => ({ ok: true }),
+    ),
     getURL: vi.fn((p: string) => `chrome-extension://dambi/${p}`),
     localStore,
     storageLocal: {
@@ -34,9 +39,15 @@ vi.mock("../wasm-bridge", () => ({
   declarativeInstallV3: mocks.declarativeInstallV3,
 }));
 
+vi.mock("../adapter-loader/bundle-verify", () => ({
+  readBundleSigDefines: () => ({ require: false, pinnedKeySpkiB64: "" }),
+  verifyBundleSignature: mocks.verifyBundleSignature,
+}));
+
 import {
   __resetDeclarativeV3CacheForTest,
   installDeclarativeBundleV3,
+  installDeclarativeBundleV3ByTypedData,
   installDeclarativeBundleV3BySelector,
   InstallDeclarativeV3Error,
 } from "../adapter-loader/declarative-adapter-loader";
@@ -469,5 +480,123 @@ describe("installDeclarativeBundleV3BySelector", () => {
     });
     expect(result).toBeNull();
     expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+});
+
+describe("bundle signature gate — per-site fail shape", () => {
+  const fetchMock = vi.fn();
+  const okBundle = {
+    type: "adapter_action",
+    id: "sig-gate/test@1.0.0",
+    schema_version: "3",
+    match: {
+      selector: "0x18cbafe5",
+      chain_to_addresses: {
+        "1": ["0x7a250d5630b4cf539739df2c5dacb4c659f2488d"],
+      },
+    },
+    abi_fragment: {
+      function_name: "f",
+      abi: { name: "f", type: "function", inputs: [] },
+    },
+    emit: {
+      strategy: "single_emit",
+      body: {
+        domain: "amm",
+        amm: { action: "swap", swap: { venue: { name: "uniswap_v2" } } },
+      },
+    },
+  };
+  const resp = (bundle: unknown) =>
+    new Response(
+      JSON.stringify({
+        matched: true,
+        bundle_id: okBundle.id,
+        manifest_path: "m",
+        bundle_sha256: "0x" + "a".repeat(64),
+        bundle,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  const ROUTER = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.localStore.clear();
+    __resetDeclarativeV3CacheForTest();
+    fetchMock.mockReset();
+    mocks.verifyBundleSignature.mockResolvedValue({ ok: true });
+    mocks.declarativeInstallV3.mockResolvedValue({
+      decoder_id: okBundle.id,
+      bundle_id: okBundle.id,
+    });
+  });
+
+  it("callkey: verify fail → throws InstallDeclarativeV3Error(stage=verify), no install", async () => {
+    fetchMock.mockResolvedValueOnce(resp(okBundle));
+    mocks.verifyBundleSignature.mockResolvedValueOnce({
+      ok: false,
+      reason: "sig_invalid",
+    });
+    await expect(
+      installDeclarativeBundleV3({
+        chainId: 1,
+        to: ROUTER,
+        selector: "0x18cbafe5",
+        baseUrl: "https://example.invalid",
+        fetchImpl: fetchMock as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ stage: "verify" });
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("typed-data: verify fail → { ok:false, reason:'verify_failed' }, no install", async () => {
+    fetchMock.mockResolvedValueOnce(resp(okBundle));
+    mocks.verifyBundleSignature.mockResolvedValueOnce({
+      ok: false,
+      reason: "sig_invalid",
+    });
+    const r = await installDeclarativeBundleV3ByTypedData(
+      {
+        chainId: 1,
+        verifyingContract: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+        primaryType: "PermitSingle",
+      },
+      {
+        baseUrl: "https://example.invalid",
+        fetchImpl: fetchMock as unknown as typeof fetch,
+      },
+    );
+    expect(r).toEqual({ ok: false, reason: "verify_failed" });
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("by-selector: verify fail → null, no install", async () => {
+    fetchMock.mockResolvedValueOnce(resp(okBundle));
+    mocks.verifyBundleSignature.mockResolvedValueOnce({
+      ok: false,
+      reason: "sig_invalid",
+    });
+    const r = await installDeclarativeBundleV3BySelector({
+      chainId: 1,
+      selector: "0x18cbafe5",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(r).toBeNull();
+    expect(mocks.declarativeInstallV3).not.toHaveBeenCalled();
+  });
+
+  it("verify pass (default) → install proceeds (control)", async () => {
+    fetchMock.mockResolvedValueOnce(resp(okBundle));
+    const r = await installDeclarativeBundleV3({
+      chainId: 1,
+      to: ROUTER,
+      selector: "0x18cbafe5",
+      baseUrl: "https://example.invalid",
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    expect(r).not.toBeNull();
+    expect(mocks.declarativeInstallV3).toHaveBeenCalledTimes(1);
   });
 });
