@@ -27,7 +27,8 @@ use crate::dashboard_handlers;
 use crate::dto::EvaluateRequest;
 use crate::events::{EventBus, EventPublisher};
 use crate::handler::{
-    evaluate, HandlerError, NftFloorOracle, PriceBook, PriceFact, SanctionsScreen,
+    evaluate_with_feeds, ActivityFacts, AddressActivity, ExtraFeeds, HandlerError, NftFloorOracle,
+    PoolStats, PriceBook, PriceFact, ReputationFeed, SanctionsScreen,
 };
 use crate::market_handlers;
 use crate::read_handlers;
@@ -471,6 +472,146 @@ impl NftFloorOracle for AlchemyFloorOracle {
     }
 }
 
+/// Scam/drainer reputation screen for [`ReputationFeed`], backed by an HTTP feed at
+/// `POLICY_REPUTATION_API_URL` (`GET {url}?chain_id={c}&address={a}` →
+/// `{ "flagged": bool }`). When unset the feed returns `None` (the optional
+/// `address.reputation` call fail-opens — the deny policies stay dormant), never a
+/// fabricated verdict. Hard-bounded (1.5 s); any network / non-200 / parse failure →
+/// `None`. No canonical free reputation oracle exists — this is the integration seam:
+/// point the env URL at a denylist/attribution API to activate.
+struct ReputationApiFeed {
+    client: reqwest::Client,
+    base_url: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl ReputationFeed for ReputationApiFeed {
+    async fn is_flagged(&self, chain_id: i64, address: &str) -> Option<bool> {
+        let base = self.base_url.as_deref()?;
+        let url = format!("{base}?chain_id={chain_id}&address={address}");
+        let resp = self
+            .client
+            .get(&url)
+            .header("accept", "application/json")
+            .timeout(std::time::Duration::from_millis(1500))
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let body = resp.json::<serde_json::Value>().await.ok()?;
+        body.get("flagged")?.as_bool()
+    }
+}
+
+/// On-chain activity source for [`AddressActivity`]: the recipient's outbound tx
+/// count via `eth_getTransactionCount(address, "latest")` against
+/// `POLICY_ACTIVITY_RPC_URL`, plus its first-seen timestamp via the Etherscan v2
+/// `txlist` (oldest tx) keyed by `POLICY_ETHERSCAN_API_KEY`. BOTH facts are required
+/// (the cooldown cedar reads both), so an unset env or either failure → `None`
+/// (dormant, fail-open). v1 is Ethereum-mainnet only. Each request is hard-bounded
+/// (1.5 s) so a slow/dead endpoint degrades to `None`, never blocking the verdict.
+struct ActivityRpcSource {
+    client: reqwest::Client,
+    rpc_url: Option<String>,
+    etherscan_key: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl AddressActivity for ActivityRpcSource {
+    async fn activity(&self, chain_id: i64, address: &str) -> Option<ActivityFacts> {
+        if chain_id != 1 {
+            return None; // v1: Ethereum mainnet only.
+        }
+        let rpc_url = self.rpc_url.as_deref()?;
+        let key = self.etherscan_key.as_deref()?;
+
+        // Outbound tx count = the account nonce.
+        let body = serde_json::json!({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "eth_getTransactionCount", "params": [address, "latest"],
+        });
+        let nonce_hex = self
+            .client
+            .post(rpc_url)
+            .json(&body)
+            .timeout(std::time::Duration::from_millis(1500))
+            .send()
+            .await
+            .ok()?
+            .json::<serde_json::Value>()
+            .await
+            .ok()?
+            .get("result")?
+            .as_str()?
+            .to_owned();
+        let tx_count = i64::from_str_radix(nonce_hex.trim_start_matches("0x"), 16).ok()?;
+
+        // First-seen = the timestamp of the address's earliest transaction.
+        let url = format!(
+            "https://api.etherscan.io/v2/api?chainid=1&module=account&action=txlist\
+             &address={address}&startblock=0&endblock=99999999&page=1&offset=1&sort=asc&apikey={key}"
+        );
+        let es = self
+            .client
+            .get(&url)
+            .timeout(std::time::Duration::from_millis(1500))
+            .send()
+            .await
+            .ok()?
+            .json::<serde_json::Value>()
+            .await
+            .ok()?;
+        let first_seen_ts = es
+            .get("result")?
+            .as_array()?
+            .first()?
+            .get("timeStamp")?
+            .as_str()?
+            .parse()
+            .ok()?;
+        Some(ActivityFacts {
+            tx_count,
+            first_seen_ts,
+        })
+    }
+}
+
+/// AMM pool 24h-volume source for [`PoolStats`], backed by an HTTP analytics feed at
+/// `POLICY_POOL_STATS_API_URL` (`GET {url}?chain={chain}&venue={venue}` →
+/// `{ "vol24hUsd": <f64> }`). Unset / non-200 / parse failure → `None` (the
+/// low-liquidity policy stays dormant). Hard-bounded (1.5 s). Point the env URL at a
+/// DEX subgraph / analytics endpoint to activate.
+struct PoolStatsApi {
+    client: reqwest::Client,
+    base_url: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl PoolStats for PoolStatsApi {
+    async fn vol24h_usd(&self, chain: &str, venue: &str) -> Option<f64> {
+        let base = self.base_url.as_deref()?;
+        let url = format!("{base}?chain={chain}&venue={venue}");
+        let resp = self
+            .client
+            .get(&url)
+            .header("accept", "application/json")
+            .timeout(std::time::Duration::from_millis(1500))
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        resp.json::<serde_json::Value>()
+            .await
+            .ok()?
+            .get("vol24hUsd")?
+            .as_f64()
+    }
+}
+
 async fn evaluate_handler(
     State(state): State<AppState>,
     Extension(user): Extension<AuthUser>,
@@ -505,7 +646,25 @@ async fn evaluate_handler(
         client: reqwest::Client::new(),
         base_url: std::env::var("ALCHEMY_NFT_API_URL").ok(),
     };
-    match evaluate(&*store, &price_book, &sanctions, &floor, req).await {
+    let reputation = ReputationApiFeed {
+        client: reqwest::Client::new(),
+        base_url: std::env::var("POLICY_REPUTATION_API_URL").ok(),
+    };
+    let activity = ActivityRpcSource {
+        client: reqwest::Client::new(),
+        rpc_url: std::env::var("POLICY_ACTIVITY_RPC_URL").ok(),
+        etherscan_key: std::env::var("POLICY_ETHERSCAN_API_KEY").ok(),
+    };
+    let pool_stats = PoolStatsApi {
+        client: reqwest::Client::new(),
+        base_url: std::env::var("POLICY_POOL_STATS_API_URL").ok(),
+    };
+    let feeds = ExtraFeeds {
+        reputation: &reputation,
+        activity: &activity,
+        pool_stats: &pool_stats,
+    };
+    match evaluate_with_feeds(&*store, &price_book, &sanctions, &floor, feeds, req).await {
         Ok(resp) => Json(resp).into_response(),
         Err(err @ HandlerError::Reducer(_)) => {
             (StatusCode::UNPROCESSABLE_ENTITY, err.to_string()).into_response()
