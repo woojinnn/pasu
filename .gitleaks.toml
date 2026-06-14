@@ -53,5 +53,7 @@ paths = [
 ]
 regexes = [
   '''0x[a-fA-F0-9]{40}\b''',                          # EVM addresses are never secrets
+  '''permit2-max-signature-warn''',                    # market policy id, not a secret
+  '''permit2-sign-allowance-far-expiry-warn''',        # market policy id, not a secret
   '''test-secret-only-do-not-use-in-production''',    # explicit throwaway test JWT secret
 ]
